@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="卡片管家">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#667eea">
+
+    <title>卡片管家</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        /* 禁止選取文字，讓觸感更像 App */
+        body { 
+            background-color: #f4f6f9; 
+            font-family: -apple-system, BlinkMacSystemFont, "Microsoft JhengHei", sans-serif;
+            user-select: none; 
+            -webkit-user-select: none;
+            padding-bottom: 50px; /* 預留底部空間 */
+        }
+        .card-custom { border: none; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .total-box { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            color: white; 
+            border-radius: 0 0 25px 25px; /* 只有下方圓角 */
+            margin-top: -25px; /* 貼頂 */
+            padding-top: 50px !important; /* 避開瀏海 */
+        }
+        .status-urgent { background-color: #ffebee; color: #c62828; font-weight: bold; }
+        .btn-circle { border-radius: 50%; width: 40px; height: 40px; padding: 0; display: inline-flex; justify-content: center; align-items: center;}
+        
+        /* 手機優化：按鈕大一點 */
+        .btn { border-radius: 12px; padding: 10px 15px; }
+        
+        #loadingOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.9); z-index: 9999;
+            display: none; flex-direction: column; justify-content: center; align-items: center;
+        }
+    </style>
+</head>
+<body>
+
+<div id="loadingOverlay">
+    <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
+    <div class="mt-3 fw-bold text-primary">處理中...</div>
+</div>
+
+<div class="card card-custom total-box mb-4 p-4 text-center shadow">
+    <div class="d-flex justify-content-between align-items-start w-100 mb-2">
+        <span class="opacity-50 small"><i class="fas fa-signal"></i> Online</span>
+        <button class="btn btn-sm btn-outline-light border-0" onclick="showSettings()"><i class="fas fa-cog"></i></button>
+    </div>
+    <h6 class="opacity-75 text-uppercase ls-1">本月待繳總額</h6>
+    <h1 class="display-3 fw-bold my-2" id="displayTotal">$0</h1>
+    <p class="mb-0 small"><i class="fas fa-clock"></i> 最近繳費日：<span id="nearestDay" class="fw-bold">-</span> 天後</p>
+    
+    <div class="mt-4 d-flex justify-content-center gap-2">
+        <button class="btn btn-light text-primary btn-sm px-3 shadow-sm" onclick="syncData('download')">
+            <i class="fas fa-cloud-download-alt"></i> 同步下載
+        </button>
+        <button class="btn btn-light text-primary btn-sm px-3 shadow-sm" onclick="syncData('upload')">
+            <i class="fas fa-cloud-upload-alt"></i> 上傳存檔
+        </button>
+        <button class="btn btn-outline-light btn-sm px-3" onclick="exportToExcel()">
+            <i class="fas fa-file-excel"></i> 匯出
+        </button>
+    </div>
+</div>
+
+<div class="container" style="max-width: 800px;">
+    <div class="card card-custom mb-4">
+        <div class="card-body">
+            <h6 class="fw-bold text-muted mb-3"><i class="fas fa-plus-circle"></i> 記一筆</h6>
+            <form id="billForm" class="row g-2">
+                <div class="col-12">
+                    <input type="text" class="form-control form-control-lg bg-light border-0" id="cardName" placeholder="卡片名稱 (如: 台新黑狗)" required>
+                </div>
+                <div class="col-6">
+                    <input type="number" class="form-control form-control-lg bg-light border-0" id="amount" placeholder="$ 金額" required>
+                </div>
+                <div class="col-6">
+                    <input type="date" class="form-control form-control-lg bg-light border-0" id="dueDate" required>
+                </div>
+                <div class="col-12 mt-3">
+                    <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm">新增帳單</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-2 px-2">
+        <h6 class="fw-bold text-muted mb-0">帳單列表</h6>
+        <small class="text-muted" id="lastSyncTime"></small>
+    </div>
+
+    <div class="card card-custom mb-5">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light small text-muted">
+                        <tr>
+                            <th class="ps-3">卡片</th>
+                            <th>金額</th>
+                            <th>期限</th>
+                            <th class="text-end pe-3">刪除</th>
+                        </tr>
+                    </thead>
+                    <tbody id="billList"></tbody>
+                </table>
+            </div>
+            <div id="emptyMsg" class="text-center py-5 text-muted" style="display:none;">
+                <i class="fas fa-check-circle fa-3x mb-3 text-success opacity-50"></i>
+                <p>無待繳帳單，太棒了！</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="settingsModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">☁️ 雲端同步設定</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info small border-0 bg-light text-muted">
+                    <i class="fas fa-info-circle"></i> 請輸入 JSONBin.io 的 Bin ID 與 Key 來啟用跨裝置同步。
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-muted">Bin ID</label>
+                    <input type="text" class="form-control bg-light" id="inputBinId">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-muted">API Key (X-Master-Key)</label>
+                    <input type="password" class="form-control bg-light" id="inputApiKey">
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-primary w-100 rounded-pill" onclick="saveSettings()">儲存設定</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    let bills = JSON.parse(localStorage.getItem('myCreditCards')) || [];
+    let binId = localStorage.getItem('jsonbin_bin_id') || '';
+    let apiKey = localStorage.getItem('jsonbin_api_key') || '';
+    
+    const settingsModal = new bootstrap.Modal(document.getElementById('settingsModal'));
+    const loadingOverlay = document.getElementById('loadingOverlay');
+
+    renderBills();
+    document.getElementById('dueDate').value = new Date().toISOString().split('T')[0];
+
+    // 新增
+    document.getElementById('billForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        // 簡單震動回饋 (僅支援 Android)
+        if(navigator.vibrate) navigator.vibrate(50);
+        
+        const newBill = {
+            id: Date.now(),
+            name: document.getElementById('cardName').value,
+            amount: parseInt(document.getElementById('amount').value),
+            date: document.getElementById('dueDate').value
+        };
+        bills.push(newBill);
+        localSaveAndRender();
+        this.reset();
+        document.getElementById('dueDate').value = new Date().toISOString().split('T')[0];
+        if(binId && apiKey) syncData('upload', true); 
+    });
+
+    // 刪除
+    function deleteBill(id) {
+        if(confirm('確定已繳完款項並刪除？')) {
+            bills = bills.filter(bill => bill.id !== id);
+            localSaveAndRender();
+            if(binId && apiKey) syncData('upload', true);
+        }
+    }
+
+    // 渲染
+    function localSaveAndRender() {
+        bills.sort((a, b) => new Date(a.date) - new Date(b.date));
+        localStorage.setItem('myCreditCards', JSON.stringify(bills));
+        renderBills();
+    }
+
+    function renderBills() {
+        const list = document.getElementById('billList');
+        const emptyMsg = document.getElementById('emptyMsg');
+        const displayTotal = document.getElementById('displayTotal');
+        const nearestDay = document.getElementById('nearestDay');
+
+        list.innerHTML = '';
+        let totalAmount = 0;
+        let minDays = 999;
+
+        if (bills.length === 0) {
+            emptyMsg.style.display = 'block';
+            displayTotal.textContent = '$0';
+            nearestDay.textContent = '-';
+            return;
+        } else {
+            emptyMsg.style.display = 'none';
+        }
+
+        const today = new Date();
+        today.setHours(0,0,0,0);
+
+        bills.forEach(bill => {
+            totalAmount += bill.amount;
+            const dueDate = new Date(bill.date);
+            const diffDays = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24)); 
+            if (diffDays >= 0 && diffDays < minDays) minDays = diffDays;
+
+            let statusHtml = '', rowClass = '';
+            if (diffDays < 0) {
+                statusHtml = `<span class="badge bg-danger rounded-pill">過期 ${Math.abs(diffDays)} 天</span>`;
+                rowClass = 'status-urgent';
+            } else if (diffDays <= 3) {
+                statusHtml = `<span class="badge bg-warning text-dark rounded-pill">剩 ${diffDays} 天</span>`;
+                rowClass = 'status-urgent';
+            } else {
+                statusHtml = `<span class="badge bg-light text-secondary border rounded-pill">剩 ${diffDays} 天</span>`;
+            }
+
+            list.innerHTML += `
+                <tr class="${rowClass}">
+                    <td class="ps-3 fw-bold">${bill.name}</td>
+                    <td>$${bill.amount.toLocaleString()}</td>
+                    <td><small class="text-muted">${bill.date.slice(5)}</small><br>${statusHtml}</td>
+                    <td class="text-end pe-3">
+                        <button onclick="deleteBill(${bill.id})" class="btn btn-light btn-circle shadow-sm text-danger"><i class="fas fa-check"></i></button>
+                    </td>
+                </tr>`;
+        });
+
+        displayTotal.textContent = '$' + totalAmount.toLocaleString();
+        nearestDay.textContent = (minDays === 999) ? '-' : minDays;
+    }
+
+    // 設定與同步
+    function showSettings() {
+        document.getElementById('inputBinId').value = binId;
+        document.getElementById('inputApiKey').value = apiKey;
+        settingsModal.show();
+    }
+
+    function saveSettings() {
+        binId = document.getElementById('inputBinId').value.trim();
+        apiKey = document.getElementById('inputApiKey').value.trim();
+        localStorage.setItem('jsonbin_bin_id', binId);
+        localStorage.setItem('jsonbin_api_key', apiKey);
+        settingsModal.hide();
+        alert('設定已儲存！');
+    }
+
+    async function syncData(mode, silent = false) {
+        if (!binId || !apiKey) {
+            if(!silent) alert('請先點右上角齒輪設定雲端金鑰');
+            return;
+        }
+        if(!silent) loadingOverlay.style.display = 'flex';
+        const url = `https://api.jsonbin.io/v3/b/${binId}`;
+        
+        try {
+            if (mode === 'download') {
+                const response = await fetch(url + '/latest', { headers: { 'X-Master-Key': apiKey } });
+                if (!response.ok) throw new Error('下載失敗');
+                const data = await response.json();
+                bills = data.record.bills || []; 
+                localSaveAndRender();
+                if(!silent) alert('✅ 同步完成');
+            } else if (mode === 'upload') {
+                const response = await fetch(url, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'X-Master-Key': apiKey },
+                    body: JSON.stringify({ bills: bills })
+                });
+                if (!response.ok) throw new Error('上傳失敗');
+                if(!silent) alert('☁️ 上傳成功');
+            }
+        } catch (error) {
+            console.error(error);
+            if(!silent) alert('錯誤：' + error.message);
+        } finally {
+            loadingOverlay.style.display = 'none';
+        }
+    }
+
+    function exportToExcel() {
+        if (bills.length === 0) { alert("沒資料可匯出"); return; }
+        let csvContent = "卡片名稱,應繳金額,繳款截止日,狀態\n";
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        bills.forEach(bill => {
+            const diffDays = Math.ceil((new Date(bill.date) - today) / (1000 * 60 * 60 * 24));
+            let statusText = diffDays < 0 ? "已過期" : (diffDays <= 3 ? "急" : "正常");
+            csvContent += `"${bill.name}",${bill.amount},${bill.date},${statusText}\n`;
+        });
+        const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `信用卡備份_${new Date().toISOString().slice(0,10)}.csv`;
+        link.click();
+    }
+</script>
+</body>
+</html>

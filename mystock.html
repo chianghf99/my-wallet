@@ -288,7 +288,7 @@
     const { createApp, ref, computed, onMounted, watch } = Vue;
 
     /* ===========================================================
-       FIREBASE CONFIGURATION (已填入您的設定)
+       FIREBASE CONFIGURATION (您的設定)
        ===========================================================
     */
     const firebaseConfig = {
@@ -301,7 +301,7 @@
       measurementId: "G-TGV1QF9QBG"
     };
 
-    // 檢測是否啟用 Firebase (已啟用)
+    // 檢測是否啟用 Firebase
     const useCloud = true; 
     let db = null;
 
@@ -314,13 +314,11 @@
         setup() {
             // 資料狀態
             const stocks = ref([]);
-            const exchangeRate = ref(32.5); // 預設匯率，會自動更新
+            const exchangeRate = ref(32.5); 
             const lastUpdated = ref('-');
             const isLoading = ref(false);
-            const viewMode = ref('auto'); // auto, table, card
+            const viewMode = ref('auto'); 
             const isMobile = ref(window.innerWidth < 768);
-            
-            // 讓 template 也能讀取 useCloud
             const useCloudRef = ref(useCloud);
 
             // Modal 表單狀態
@@ -331,39 +329,31 @@
                 shares: 0, avgCost: 0, currentPrice: 0, dividends: 0
             });
 
-            // 響應式檢測
             window.addEventListener('resize', () => {
                 isMobile.value = window.innerWidth < 768;
             });
 
-            // 載入資料
             onMounted(async () => {
                 if (useCloud && db) {
-                    // 雲端模式：監聽 Firestore 的 'stocks' 集合
                     db.collection('stocks').onSnapshot(snapshot => {
                         stocks.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     });
                 } else {
-                    // 本地模式：讀取 LocalStorage
                     const saved = localStorage.getItem('portfolio_stocks');
                     if (saved) stocks.value = JSON.parse(saved);
                 }
-                
-                // 抓取匯率
                 fetchExchangeRate();
             });
 
-            // 監聽本地資料變更並儲存 (僅本地模式)
             watch(stocks, (newVal) => {
                 if (!useCloud) {
                     localStorage.setItem('portfolio_stocks', JSON.stringify(newVal));
                 }
-                updateDashboardTimestamp();
+                // 如果是雲端模式，這裡不需要自動存，因為透過 saveStock/fetchPrices 更新時會寫入 DB
             }, { deep: true });
 
-            // 計算屬性
+            // 計算與統計邏輯
             const sortedStocks = computed(() => {
-                // 依照市值排序
                 return [...stocks.value].sort((a, b) => {
                     const valA = a.currentPrice * a.shares * (a.currency === 'USD' ? exchangeRate.value : 1);
                     const valB = b.currentPrice * b.shares * (b.currency === 'USD' ? exchangeRate.value : 1);
@@ -371,21 +361,14 @@
                 });
             });
 
-            // 統計邏輯
             const twStats = computed(() => calculateStats(stocks.value.filter(s => s.currency === 'TWD')));
             const usStats = computed(() => calculateStats(stocks.value.filter(s => s.currency === 'USD')));
 
-            const grandTotalValue = computed(() => {
-                return twStats.value.value + (usStats.value.value * exchangeRate.value);
-            });
-            const grandTotalPnL = computed(() => {
-                return twStats.value.pnl + (usStats.value.pnl * exchangeRate.value);
-            });
+            const grandTotalValue = computed(() => twStats.value.value + (usStats.value.value * exchangeRate.value));
+            const grandTotalPnL = computed(() => twStats.value.pnl + (usStats.value.pnl * exchangeRate.value));
 
             function calculateStats(subset) {
-                let value = 0;
-                let cost = 0;
-                let dividend = 0;
+                let value = 0, cost = 0, dividend = 0;
                 subset.forEach(s => {
                     value += s.currentPrice * s.shares;
                     cost += s.avgCost * s.shares;
@@ -399,127 +382,169 @@
                 if (!num && num !== 0) return '-';
                 return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(num);
             };
-            
             const formatCurrency = (num, currency) => {
                 const style = { style: 'currency', currency: currency, maximumFractionDigits: 0 };
                 if (currency === 'USD') style.maximumFractionDigits = 2;
                 return new Intl.NumberFormat('en-US', style).format(num);
             };
-
             const getPnlClass = (val) => val >= 0 ? 'text-up' : 'text-down';
-            
             const getRoi = (cost, pnl) => {
                 if (cost === 0) return '0%';
                 const roi = (pnl / cost) * 100;
                 return (roi > 0 ? '+' : '') + roi.toFixed(2) + '%';
             };
 
-            // 操作邏輯
+            // Modal 操作
             const openModal = () => {
                 isEditing.value = false;
                 form.value = { id: Date.now().toString(), symbol: '', name: '', currency: 'TWD', shares: 0, avgCost: 0, currentPrice: 0, dividends: 0 };
                 showModal.value = true;
             };
-
             const editStock = (stock) => {
                 isEditing.value = true;
                 form.value = { ...stock };
                 showModal.value = true;
             };
-
             const closeModal = () => showModal.value = false;
 
             const saveStock = async () => {
                 if (!form.value.symbol) return alert('請輸入股票代號');
-                
                 const data = { ...form.value };
                 
                 if (useCloud && db) {
-                    if (isEditing.value) {
-                        await db.collection('stocks').doc(data.id).update(data);
-                    } else {
-                        // 新增時若無 ID 讓 Firestore 自動生成或使用 Timestamp
-                        await db.collection('stocks').doc(data.id).set(data);
-                    }
+                    if (isEditing.value) await db.collection('stocks').doc(data.id).update(data);
+                    else await db.collection('stocks').doc(data.id).set(data);
                 } else {
                     if (isEditing.value) {
                         const index = stocks.value.findIndex(s => s.id === data.id);
                         if (index !== -1) stocks.value[index] = data;
-                    } else {
-                        stocks.value.push(data);
-                    }
+                    } else stocks.value.push(data);
                 }
                 closeModal();
             };
 
             const deleteStock = async (id) => {
                 if (!confirm('確定要刪除這筆持股紀錄嗎？')) return;
+                if (useCloud && db) await db.collection('stocks').doc(id).delete();
+                else stocks.value = stocks.value.filter(s => s.id !== id);
+            };
+
+            // --- 真實 API 串接邏輯 (Yahoo Finance via CORS Proxy) ---
+
+            const getYahooData = async (symbol) => {
+                // 1. 處理代號後綴
+                let searchSymbol = symbol.toUpperCase();
+                // 簡易判斷：如果是純數字，先猜是台股上市 (.TW)
+                if (/^\d+$/.test(searchSymbol)) {
+                    searchSymbol += '.TW';
+                }
+
+                // 2. 透過 Proxy 呼叫 Yahoo Finance
+                // 使用 corsproxy.io 來解決瀏覽器跨域問題
+                const proxyUrl = 'https://corsproxy.io/?';
+                const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${searchSymbol}?interval=1d`;
                 
-                if (useCloud && db) {
-                    await db.collection('stocks').doc(id).delete();
-                } else {
-                    stocks.value = stocks.value.filter(s => s.id !== id);
+                try {
+                    const res = await fetch(proxyUrl + encodeURIComponent(targetUrl));
+                    const json = await res.json();
+                    
+                    if (!json.chart || !json.chart.result || json.chart.result.length === 0) {
+                        // 如果找不到，可能是上櫃 (.TWO)，若是台股再試一次
+                        if (searchSymbol.endsWith('.TW')) {
+                            const otcSymbol = searchSymbol.replace('.TW', '.TWO');
+                            const otcUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${otcSymbol}?interval=1d`;
+                            const otcRes = await fetch(proxyUrl + encodeURIComponent(otcUrl));
+                            const otcJson = await otcRes.json();
+                            if (otcJson.chart && otcJson.chart.result) {
+                                return otcJson.chart.result[0].meta;
+                            }
+                        }
+                        throw new Error('Symbol not found');
+                    }
+                    return json.chart.result[0].meta;
+                } catch (error) {
+                    console.error('Fetch error:', error);
+                    return null;
                 }
             };
 
-            // API 模擬與抓取邏輯
-            // 注意：純前端抓取股價常遇 CORS 問題，這裡使用 Yahoo Finance Proxy 或是模擬數據
+            // 輸入代號後自動抓取名稱與現價
             const autoFetchName = async () => {
-                const sym = form.value.symbol.toUpperCase();
-                form.value.symbol = sym;
-                
-                // 簡易判斷幣別
-                if (/^\d{4}/.test(sym)) form.value.currency = 'TWD';
-                else if (/^[A-Z]+$/.test(sym)) form.value.currency = 'USD';
+                const sym = form.value.symbol;
+                if (!sym) return;
 
-                // 模擬抓取 (為了 Demo 穩定性，這裡用模擬數據，實作可換成真實 API)
-                if (!form.value.name) {
-                    if (sym === '2330') { form.value.name = '台積電'; form.value.currentPrice = 1000; }
-                    else if (sym === '0050') { form.value.name = '元大台灣50'; form.value.currentPrice = 180; }
-                    else if (sym === 'AAPL') { form.value.name = 'Apple Inc.'; form.value.currentPrice = 175; }
-                    else if (sym === 'NVDA') { form.value.name = 'NVIDIA'; form.value.currentPrice = 800; }
-                    else { form.value.name = sym + ' Stock'; }
+                // 判斷幣別
+                if (/^\d{4}/.test(sym)) form.value.currency = 'TWD';
+                else if (/^[A-Za-z]+$/.test(sym)) form.value.currency = 'USD';
+
+                // 顯示 Loading 提示
+                const originalName = form.value.name;
+                if (!form.value.name) form.value.name = '查詢中...';
+
+                const data = await getYahooData(sym);
+                
+                if (data) {
+                    // Yahoo 有回傳資料
+                    // 優先使用繁體中文名稱 (Yahoo有時會給英文，這裡做個簡單處理)
+                    // 但 Yahoo API meta 裡通常只有 symbol 和 currency，沒有好的中文名
+                    // 我們先用 symbol 當名稱，若使用者要改再自己改
+                    if (originalName === '' || form.value.name === '查詢中...') {
+                         // 嘗試保留代號，使用者可自己輸入中文名，或是使用 Yahoo 的 exchangeName
+                         form.value.name = data.symbol; 
+                    }
+                    form.value.currentPrice = data.regularMarketPrice;
+                } else {
+                    if (form.value.name === '查詢中...') form.value.name = '';
+                    alert('查無此代號，請確認後手動輸入。');
                 }
             };
 
             const fetchExchangeRate = async () => {
-                // 使用免費 API 抓匯率
                 try {
                     const res = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
                     const data = await res.json();
                     exchangeRate.value = data.rates.TWD;
-                } catch (e) {
-                    console.error('匯率更新失敗，使用預設值');
-                }
+                } catch (e) { console.error('匯率更新失敗'); }
             };
 
+            // 一鍵更新所有股價
             const fetchPrices = async () => {
+                if (stocks.value.length === 0) return;
                 isLoading.value = true;
-                // 為了讓此檔案可直接運行，這裡使用 "模擬波動" 來展示功能
                 
-                await new Promise(r => setTimeout(r, 800)); // 假裝 loading
-
-                const newStocks = stocks.value.map(s => {
-                    // 模擬 -2% ~ +2% 的價格波動
-                    const fluctuation = 1 + (Math.random() * 0.04 - 0.02);
-                    return {
-                        ...s,
-                        currentPrice: parseFloat((s.currentPrice * fluctuation).toFixed(2))
-                    };
+                // 為了避免同時發出太多請求被 Yahoo 封鎖，我們稍微間隔一下或批次處理
+                // 但這裡為了簡單，用 Promise.all 平行處理 (量少時沒問題)
+                const updates = stocks.value.map(async (stock) => {
+                    const data = await getYahooData(stock.symbol);
+                    if (data) {
+                        return { id: stock.id, price: data.regularMarketPrice };
+                    }
+                    return null;
                 });
+
+                const results = await Promise.all(updates);
                 
+                // 更新資料庫或本地狀態
                 if (useCloud && db) {
-                    // 批次更新雲端
                     const batch = db.batch();
-                    newStocks.forEach(s => {
-                        const ref = db.collection('stocks').doc(s.id);
-                        batch.update(ref, { currentPrice: s.currentPrice });
+                    let hasUpdates = false;
+                    results.forEach(res => {
+                        if (res) {
+                            const ref = db.collection('stocks').doc(res.id);
+                            batch.update(ref, { currentPrice: res.price });
+                            hasUpdates = true;
+                        }
                     });
-                    await batch.commit();
+                    if (hasUpdates) await batch.commit();
                 } else {
-                    stocks.value = newStocks;
+                    results.forEach(res => {
+                        if (res) {
+                            const target = stocks.value.find(s => s.id === res.id);
+                            if (target) target.currentPrice = res.price;
+                        }
+                    });
                 }
-                
+
                 updateDashboardTimestamp();
                 isLoading.value = false;
             };
@@ -542,4 +567,5 @@
 </script>
 
 </body>
+
 </html>

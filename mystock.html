@@ -42,9 +42,6 @@
         }
         .trans-btn.active-buy { background-color: #dc2626; color: white; border-color: #dc2626; }
         .trans-btn.active-sell { background-color: #16a34a; color: white; border-color: #16a34a; }
-        
-        /* 隱私模式模糊效果 (可選) */
-        .blur-text { filter: blur(4px); user-select: none; }
     </style>
 </head>
 <body class="text-gray-700">
@@ -121,7 +118,10 @@
                     
                     <div class="flex justify-between mt-4 pt-4 border-t border-gray-100 text-sm">
                         <span class="text-gray-500">未實現損益</span>
-                        <span v-if="showPrivacy" :class="getPnlClass(grandTotalPnL)">{{ formatCurrency(grandTotalPnL, 'TWD') }}</span>
+                        <span v-if="showPrivacy" :class="getPnlClass(grandTotalPnL)">
+                            {{ formatCurrency(grandTotalPnL, 'TWD') }}
+                            <span class="text-xs ml-1">({{ getRoi(grandTotalValue - grandTotalPnL, grandTotalPnL) }})</span>
+                        </span>
                         <span v-else class="text-gray-300">****</span>
                     </div>
                 </div>
@@ -129,7 +129,7 @@
                 <div class="zen-card p-5">
                     <div class="flex justify-between items-center mb-1">
                         <div class="text-sm text-gray-500">台股部位</div>
-                        <span class="text-2xl">🇹🇼</span>
+                        <img src="https://flagcdn.com/w40/tw.png" alt="TW" class="w-6 shadow-sm rounded-sm">
                     </div>
                     <div class="text-2xl font-bold">
                         <span v-if="showPrivacy">{{ formatCurrency(twStats.value, 'TWD') }}</span>
@@ -137,7 +137,10 @@
                     </div>
                     <div class="mt-2 text-sm flex justify-between">
                         <span>損益</span>
-                        <span v-if="showPrivacy" :class="getPnlClass(twStats.pnl)">{{ formatCurrency(twStats.pnl, 'TWD') }}</span>
+                        <span v-if="showPrivacy" :class="getPnlClass(twStats.pnl)">
+                            {{ formatCurrency(twStats.pnl, 'TWD') }}
+                            <span class="text-xs ml-1">({{ getRoi(twStats.cost, twStats.pnl) }})</span>
+                        </span>
                         <span v-else class="text-gray-300">****</span>
                     </div>
                 </div>
@@ -145,7 +148,7 @@
                 <div class="zen-card p-5">
                     <div class="flex justify-between items-center mb-1">
                         <div class="text-sm text-gray-500">美股部位</div>
-                        <span class="text-2xl">🇺🇸</span>
+                        <img src="https://flagcdn.com/w40/us.png" alt="US" class="w-6 shadow-sm rounded-sm">
                     </div>
                     <div class="text-2xl font-bold">
                         <span v-if="showPrivacy">{{ formatCurrency(usStats.value, 'USD') }}</span>
@@ -153,7 +156,10 @@
                     </div>
                     <div class="mt-2 text-sm flex justify-between">
                         <span>損益</span>
-                        <span v-if="showPrivacy" :class="getPnlClass(usStats.pnl)">{{ formatCurrency(usStats.pnl, 'USD') }}</span>
+                        <span v-if="showPrivacy" :class="getPnlClass(usStats.pnl)">
+                            {{ formatCurrency(usStats.pnl, 'USD') }}
+                            <span class="text-xs ml-1">({{ getRoi(usStats.cost, usStats.pnl) }})</span>
+                        </span>
                         <span v-else class="text-gray-300">****</span>
                     </div>
                 </div>
@@ -172,7 +178,8 @@
 
             <div v-if="twStockList.length > 0" class="mb-8">
                 <h2 class="text-lg font-bold mb-3 flex items-center gap-2">
-                    <span>🇹🇼</span> 台股庫存
+                    <img src="https://flagcdn.com/w40/tw.png" class="w-5 h-auto rounded-sm shadow-sm">
+                    <span>台股庫存</span>
                 </h2>
                 <div v-if="viewMode === 'table' || (viewMode === 'auto' && !isMobile)" class="zen-card overflow-hidden">
                     <div class="overflow-x-auto">
@@ -193,9 +200,11 @@
                                         <div class="font-bold text-gray-900">{{ stock.symbol }}</div>
                                         <div class="text-xs text-gray-500">{{ stock.name }}</div>
                                     </td>
-                                    <td class="px-6 py-4 text-right font-medium">{{ formatNumber(stock.currentPrice) }}</td>
+                                    <td class="px-6 py-4 text-right font-medium">
+                                        {{ formatCurrency(stock.currentPrice, 'TWD') }}
+                                    </td>
                                     <td class="px-6 py-4 text-right text-gray-500">
-                                        <div>{{ formatNumber(stock.avgCost) }}</div>
+                                        <div>{{ formatCurrency(stock.avgCost, 'TWD') }}</div>
                                         <div class="text-xs">x {{ formatNumber(stock.shares) }}</div>
                                     </td>
                                     <td class="px-6 py-4 text-right font-bold">{{ formatCurrency(stock.currentPrice * stock.shares, 'TWD') }}</td>
@@ -225,7 +234,7 @@
                                 <div class="text-xs text-gray-500">{{ stock.name }}</div>
                             </div>
                             <div class="text-right">
-                                <div class="text-lg font-bold">{{ formatNumber(stock.currentPrice) }}</div>
+                                <div class="text-lg font-bold">{{ formatCurrency(stock.currentPrice, 'TWD') }}</div>
                                 <div class="text-xs text-gray-400">現價</div>
                             </div>
                         </div>
@@ -243,7 +252,7 @@
                         </div>
                         <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-50">
                             <div class="text-xs text-gray-500">
-                                 持倉 {{ formatNumber(stock.shares) }} | 均價 {{ formatNumber(stock.avgCost) }}
+                                 持倉 {{ formatNumber(stock.shares) }} | 均價 {{ formatCurrency(stock.avgCost, 'TWD') }}
                             </div>
                             <button @click.stop="openTransModal(stock)" class="text-gray-500 hover:text-gray-900"><i class="fa-solid fa-calculator"></i> 補登</button>
                         </div>
@@ -253,7 +262,8 @@
 
             <div v-if="usStockList.length > 0" class="mb-8">
                 <h2 class="text-lg font-bold mb-3 flex items-center gap-2">
-                    <span>🇺🇸</span> 美股庫存
+                    <img src="https://flagcdn.com/w40/us.png" class="w-5 h-auto rounded-sm shadow-sm">
+                    <span>美股庫存</span>
                 </h2>
                 <div v-if="viewMode === 'table' || (viewMode === 'auto' && !isMobile)" class="zen-card overflow-hidden">
                     <div class="overflow-x-auto">
@@ -489,7 +499,7 @@
             const isLoading = ref(false);
             const viewMode = ref('auto');
             const isMobile = ref(window.innerWidth < 768);
-            const showPrivacy = ref(false); // 隱私模式預設關閉
+            const showPrivacy = ref(false);
 
             let unsubscribe = null;
 
@@ -692,9 +702,9 @@
 
             return {
                 user, login, logout, stocks, exchangeRate, lastUpdated, isLoading, viewMode, isMobile,
-                showPrivacy, // 暴露隱私狀態
+                showPrivacy,
                 twStats, usStats, grandTotalValue, grandTotalPnL, 
-                twStockList, usStockList, // 暴露分流清單
+                twStockList, usStockList,
                 showModal, isEditing, form, openModal, editStock, closeModal, saveStock, deleteStock,
                 showTransModal, transForm, openTransModal, closeTransModal, submitTransaction, calculateNewAvg,
                 autoFetchName, fetchPrices, formatNumber, formatCurrency, getPnlClass, getRoi

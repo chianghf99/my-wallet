@@ -8,92 +8,67 @@
     <title>卡片管家 Pro</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { background-color: #f4f6f9; font-family: -apple-system, "Microsoft JhengHei", sans-serif; padding-bottom: 80px; user-select: none; -webkit-user-select: none; }
         .card-custom { border: none; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        
-        /* 頂部總覽區 */
-        .total-box { 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-            color: white; 
-            border-radius: 0 0 25px 25px; 
-            margin-top: -25px; 
-            padding-top: 50px !important; 
-            padding-bottom: 20px !important;
-        }
-
-        /* 狀態標籤 */
-        .status-urgent { background-color: #ffebee; color: #c62828; font-weight: bold; }
+        .total-box { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 0 0 25px 25px; margin-top: -25px; padding-top: 50px !important; padding-bottom: 20px !important; }
         .status-paid { text-decoration: line-through; color: #999; }
-        
-        /* 底部導航 */
-        .bottom-nav {
-            position: fixed; bottom: 0; left: 0; width: 100%;
-            background: white; border-top: 1px solid #eee;
-            display: flex; justify-content: space-around; padding: 10px 0;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 1000;
-        }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: white; border-top: 1px solid #eee; display: flex; justify-content: space-around; padding: 10px 0; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 1000; }
         .nav-item { text-align: center; color: #999; font-size: 0.8rem; cursor: pointer; flex: 1;}
         .nav-item.active { color: #667eea; font-weight: bold; }
         .nav-item i { font-size: 1.2rem; display: block; margin-bottom: 4px; }
-
-        /* 頁面切換 */
         .page-section { display: none; }
         .page-section.active { display: block; }
-
+        #pinOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f4f6f9; z-index: 10000; display: none; flex-direction: column; justify-content: center; align-items: center; }
+        .pin-dot { width: 12px; height: 12px; border-radius: 50%; background: #ddd; margin: 0 4px; display: inline-block; transition: 0.2s; }
+        .pin-dot.filled { background: #667eea; transform: scale(1.2); }
         .btn-circle { border-radius: 50%; width: 40px; height: 40px; padding: 0; display: inline-flex; justify-content: center; align-items: center;}
-        #loadingOverlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255,255,255,0.9); z-index: 9999;
-            display: none; flex-direction: column; justify-content: center; align-items: center;
-        }
+        #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 9999; display: none; flex-direction: column; justify-content: center; align-items: center; }
     </style>
 </head>
 <body>
 
-<div id="loadingOverlay">
-    <div class="spinner-border text-primary" role="status"></div>
-    <div class="mt-3 fw-bold text-primary">同步中...</div>
+<div id="pinOverlay">
+    <div class="text-center mb-4">
+        <i class="fas fa-lock fa-3x text-secondary mb-3"></i>
+        <h4 class="fw-bold text-secondary">請輸入 6 位數密碼</h4>
+    </div>
+    <div class="mb-4">
+        <span class="pin-dot" id="dot1"></span><span class="pin-dot" id="dot2"></span><span class="pin-dot" id="dot3"></span><span class="pin-dot" id="dot4"></span><span class="pin-dot" id="dot5"></span><span class="pin-dot" id="dot6"></span>
+    </div>
+    <input type="tel" id="pinInput" maxlength="6" style="opacity: 0; position: absolute; top: -1000px;">
+    <button class="btn btn-outline-primary px-4 rounded-pill" onclick="focusPinInput()"><i class="fas fa-key"></i> 解鎖</button>
 </div>
+
+<div id="loadingOverlay"><div class="spinner-border text-primary" role="status"></div><div class="mt-3 fw-bold text-primary">同步中...</div></div>
 
 <div id="page-dashboard" class="page-section active">
     <div class="card card-custom total-box mb-3 p-4 text-center shadow">
         <div class="d-flex justify-content-between align-items-start w-100 mb-2">
             <span class="opacity-50 small"><i class="fas fa-signal"></i> Pro版</span>
-            <button class="btn btn-sm btn-outline-light border-0" onclick="syncData('download')"><i class="fas fa-sync-alt"></i></button>
+            <button class="btn btn-sm btn-outline-light border-0" onclick="togglePrivacy()"><i class="fas fa-eye" id="privacyIcon"></i></button>
         </div>
         <h6 class="opacity-75 text-uppercase ls-1">本月待繳總額</h6>
-        <h1 class="display-3 fw-bold my-2" id="displayTotal">$0</h1>
-        
+        <h1 class="display-3 fw-bold my-2" id="displayTotal">$****</h1>
         <div class="mt-3 d-flex justify-content-center gap-2">
-            <button class="btn btn-light text-primary btn-sm px-3 shadow-sm" onclick="syncData('upload')">
-                <i class="fas fa-cloud-upload-alt"></i> 存檔
-            </button>
-            <button class="btn btn-outline-light btn-sm px-3" onclick="exportToExcel()">
-                <i class="fas fa-file-excel"></i> 匯出
-            </button>
+            <button class="btn btn-light text-primary btn-sm px-3 shadow-sm" onclick="syncData('download')"><i class="fas fa-cloud-download-alt"></i> 同步</button>
+            <button class="btn btn-light text-primary btn-sm px-3 shadow-sm" onclick="syncData('upload')"><i class="fas fa-save"></i> 存檔</button>
+            <button class="btn btn-outline-light btn-sm px-3" onclick="exportToExcel()"><i class="fas fa-file-excel"></i> 匯出</button>
         </div>
     </div>
-
     <div class="container" style="max-width: 800px;">
         <div id="statementAlerts"></div>
-
         <div class="d-flex justify-content-between align-items-center mb-2 px-2">
             <h6 class="fw-bold text-muted mb-0">待繳帳單</h6>
             <button class="btn btn-sm text-primary" onclick="showAddModal()"><i class="fas fa-plus"></i> 手動新增</button>
         </div>
-
         <div class="card card-custom mb-5">
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <tbody id="unpaidList"></tbody>
-                    </table>
+                    <table class="table table-hover align-middle mb-0"><tbody id="unpaidList"></tbody></table>
                 </div>
-                <div id="emptyMsg" class="text-center py-5 text-muted" style="display:none;">
-                    <i class="fas fa-check-circle fa-3x mb-3 text-success opacity-50"></i>
-                    <p>太棒了！目前沒有待繳帳單</p>
-                </div>
+                <div id="emptyMsg" class="text-center py-5 text-muted" style="display:none;"><i class="fas fa-check-circle fa-3x mb-3 text-success opacity-50"></i><p>太棒了！目前沒有待繳帳單</p></div>
             </div>
         </div>
     </div>
@@ -101,20 +76,30 @@
 
 <div id="page-history" class="page-section">
     <div class="container pt-4" style="max-width: 800px;">
-        <h5 class="fw-bold mb-3 px-2"><i class="fas fa-history text-primary"></i> 繳款歷史紀錄</h5>
+        <h5 class="fw-bold mb-3 px-2"><i class="fas fa-history text-primary"></i> 繳款歷史</h5>
         <div class="card card-custom">
             <div class="card-body p-0">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light small">
-                        <tr>
-                            <th class="ps-3">卡片</th>
-                            <th>金額</th>
-                            <th>期限</th>
-                            <th class="text-end pe-3">操作</th>
-                        </tr>
-                    </thead>
-                    <tbody id="paidList"></tbody>
-                </table>
+                <table class="table table-hover align-middle mb-0"><tbody id="paidList"></tbody></table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="page-analysis" class="page-section">
+    <div class="container pt-4" style="max-width: 800px;">
+        <h5 class="fw-bold mb-3 px-2"><i class="fas fa-chart-pie text-primary"></i> 年度消費分析</h5>
+        
+        <div class="card card-custom mb-3">
+            <div class="card-body">
+                <h6 class="fw-bold text-center mb-3">各銀行消費佔比</h6>
+                <canvas id="cardChart"></canvas>
+            </div>
+        </div>
+
+        <div class="card card-custom mb-4">
+            <div class="card-body">
+                <h6 class="fw-bold text-center mb-3">每月支出趨勢</h6>
+                <canvas id="monthChart"></canvas>
             </div>
         </div>
     </div>
@@ -122,65 +107,56 @@
 
 <div id="page-settings" class="page-section">
     <div class="container pt-4" style="max-width: 800px;">
-        <h5 class="fw-bold mb-3 px-2"><i class="fas fa-cog text-primary"></i> 設定與出帳日提醒</h5>
-        
+        <h5 class="fw-bold mb-3 px-2"><i class="fas fa-cog text-primary"></i> 設定</h5>
+        <div class="card card-custom mb-4 border-warning border-2">
+            <div class="card-body">
+                <h6 class="fw-bold mb-3 text-warning"><i class="fas fa-lock"></i> App 密碼鎖</h6>
+                <div class="input-group mb-2">
+                    <input type="tel" class="form-control" id="newAppPin" placeholder="輸入 6 位數密碼" maxlength="6">
+                    <button class="btn btn-warning text-dark fw-bold" onclick="setAppPin()">設定</button>
+                </div>
+                <button class="btn btn-sm btn-outline-danger mt-2 float-end" onclick="clearAppPin()">清除</button>
+            </div>
+        </div>
         <div class="card card-custom mb-4">
             <div class="card-body">
                 <h6 class="fw-bold mb-3">☁️ JSONBin 雲端同步</h6>
-                <div class="mb-2">
-                    <label class="small text-muted">Bin ID</label>
-                    <input type="text" class="form-control bg-light" id="inputBinId">
-                </div>
-                <div class="mb-3">
-                    <label class="small text-muted">API Key</label>
-                    <input type="password" class="form-control bg-light" id="inputApiKey">
-                </div>
+                <div class="mb-2"><input type="text" class="form-control bg-light" id="inputBinId" placeholder="Bin ID"></div>
+                <div class="mb-3"><input type="password" class="form-control bg-light" id="inputApiKey" placeholder="API Key"></div>
                 <button class="btn btn-primary w-100" onclick="saveKeys()">儲存金鑰</button>
             </div>
         </div>
-
         <div class="card card-custom mb-4">
             <div class="card-body">
-                <h6 class="fw-bold mb-3">📅 新增卡片出帳提醒</h6>
+                <h6 class="fw-bold mb-3">📅 出帳提醒</h6>
                 <div class="input-group mb-3">
-                    <input type="text" class="form-control" id="newCardName" placeholder="卡片名稱 (如: 玉山)">
-                    <input type="number" class="form-control" id="newCardDay" placeholder="出帳日 (如: 13)" style="max-width: 80px;">
+                    <input type="text" class="form-control" id="newCardName" placeholder="名稱">
+                    <input type="number" class="form-control" id="newCardDay" placeholder="日" style="max-width: 80px;">
                     <button class="btn btn-outline-primary" onclick="addCardSetting()">新增</button>
                 </div>
-                
-                <ul class="list-group list-group-flush" id="cardSettingsList">
-                    </ul>
+                <ul class="list-group list-group-flush" id="cardSettingsList"></ul>
             </div>
         </div>
     </div>
 </div>
 
 <div class="bottom-nav">
-    <div class="nav-item active" onclick="switchPage('dashboard')">
-        <i class="fas fa-wallet"></i> 待繳帳單
-    </div>
-    <div class="nav-item" onclick="switchPage('history')">
-        <i class="fas fa-history"></i> 歷史紀錄
-    </div>
-    <div class="nav-item" onclick="switchPage('settings')">
-        <i class="fas fa-sliders-h"></i> 設定
-    </div>
+    <div class="nav-item active" onclick="switchPage('dashboard')"><i class="fas fa-wallet"></i> 待繳</div>
+    <div class="nav-item" onclick="switchPage('history')"><i class="fas fa-history"></i> 歷史</div>
+    <div class="nav-item" onclick="switchPage('analysis')"><i class="fas fa-chart-pie"></i> 分析</div>
+    <div class="nav-item" onclick="switchPage('settings')"><i class="fas fa-sliders-h"></i> 設定</div>
 </div>
 
 <div class="modal fade" id="addModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">新增帳單</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
+            <div class="modal-header"><h5 class="modal-title">新增</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <form id="addForm">
-                    <input type="text" class="form-control mb-2" id="addName" placeholder="卡片名稱" required>
+                    <input type="text" class="form-control mb-2" id="addName" placeholder="卡片" required>
                     <input type="number" class="form-control mb-2" id="addAmount" placeholder="金額" required>
-                    <label class="small text-muted">截止日</label>
                     <input type="date" class="form-control mb-3" id="addDate" required>
-                    <button type="submit" class="btn btn-primary w-100">確定新增</button>
+                    <button type="submit" class="btn btn-primary w-100">確定</button>
                 </form>
             </div>
         </div>
@@ -189,263 +165,153 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    // 資料結構
-    let data = {
-        bills: [],
-        cards: [] // 儲存 {name: "玉山", day: 13}
-    };
-
-    // 初始化
+    let data = { bills: [], cards: [] };
     let binId = localStorage.getItem('jsonbin_bin_id') || '';
     let apiKey = localStorage.getItem('jsonbin_api_key') || '';
+    let isPrivacyOn = true;
     
-    // UI 參考
-    const addModal = new bootstrap.Modal(document.getElementById('addModal'));
-    const loadingOverlay = document.getElementById('loadingOverlay');
+    // PIN Lock
+    const pinInput = document.getElementById('pinInput'), pinOverlay = document.getElementById('pinOverlay');
+    function checkLock() { if(localStorage.getItem('app_pin')) { pinOverlay.style.display='flex'; pinInput.value=''; updateDots(0); focusPinInput(); } }
+    function focusPinInput() { pinInput.focus(); }
+    pinInput.addEventListener('input', function() {
+        updateDots(this.value.length);
+        if(this.value.length===6) {
+            if(this.value===localStorage.getItem('app_pin')) pinOverlay.style.display='none';
+            else { alert('錯誤'); this.value=''; updateDots(0); }
+        }
+    });
+    function updateDots(c) { for(let i=1;i<=6;i++) document.getElementById('dot'+i).classList.toggle('filled', i<=c); }
+    function setAppPin() { const v=document.getElementById('newAppPin').value; if(v.length===6 && !isNaN(v)) { localStorage.setItem('app_pin',v); alert('已設定'); document.getElementById('newAppPin').value=''; } else alert('請輸入6碼'); }
+    function clearAppPin() { if(confirm('移除密碼?')) { localStorage.removeItem('app_pin'); alert('已移除'); } }
 
-    // 啟動
-    loadLocal();
-    document.getElementById('inputBinId').value = binId;
-    document.getElementById('inputApiKey').value = apiKey;
-    document.getElementById('addDate').value = new Date().toISOString().split('T')[0];
+    // Core
+    const addModal = new bootstrap.Modal(document.getElementById('addModal')), loadingOverlay = document.getElementById('loadingOverlay');
+    checkLock(); loadLocal();
+    document.getElementById('inputBinId').value = binId; document.getElementById('inputApiKey').value = apiKey; document.getElementById('addDate').value = new Date().toISOString().split('T')[0];
 
-    // --- 核心邏輯 ---
+    function togglePrivacy() {
+        isPrivacyOn = !isPrivacyOn;
+        document.getElementById('privacyIcon').className = isPrivacyOn ? 'fas fa-eye' : 'fas fa-eye-slash';
+        document.getElementById('displayTotal').textContent = isPrivacyOn ? '$****' : '$' + data.bills.filter(b=>b.status!=='paid').reduce((s,b)=>s+b.amount,0).toLocaleString();
+    }
 
-    function switchPage(pageName) {
-        document.querySelectorAll('.page-section').forEach(el => el.classList.remove('active'));
-        document.getElementById('page-' + pageName).classList.add('active');
-        
-        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    function switchPage(p) {
+        document.querySelectorAll('.page-section').forEach(el=>el.classList.remove('active'));
+        document.getElementById('page-'+p).classList.add('active');
+        document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
         event.currentTarget.classList.add('active');
+        if(p==='analysis') updateCharts(); // 切換到分析頁時更新圖表
     }
 
     function render() {
-        const unpaidList = document.getElementById('unpaidList');
-        const paidList = document.getElementById('paidList');
-        const emptyMsg = document.getElementById('emptyMsg');
-        
-        unpaidList.innerHTML = '';
-        paidList.innerHTML = '';
-        
-        let totalAmount = 0;
-        let hasUnpaid = false;
+        const uList = document.getElementById('unpaidList'), pList = document.getElementById('paidList');
+        uList.innerHTML = ''; pList.innerHTML = '';
+        const unpaids = data.bills.filter(b=>b.status!=='paid').sort((a,b)=>new Date(a.date)-new Date(b.date));
+        const paids = data.bills.filter(b=>b.status==='paid').sort((a,b)=>new Date(b.date)-new Date(a.date));
 
-        // 排序：未繳依日期近->遠，已繳依日期遠->近
-        const unpaidBills = data.bills.filter(b => b.status !== 'paid').sort((a,b) => new Date(a.date) - new Date(b.date));
-        const paidBills = data.bills.filter(b => b.status === 'paid').sort((a,b) => new Date(b.date) - new Date(a.date));
-
-        // 渲染未繳
-        unpaidBills.forEach(bill => {
-            hasUnpaid = true;
-            totalAmount += bill.amount;
-            const diffDays = Math.ceil((new Date(bill.date) - new Date().setHours(0,0,0,0)) / (86400000));
-            
-            let badge = diffDays < 0 ? `<span class="badge bg-danger">過期</span>` : 
-                        diffDays <= 3 ? `<span class="badge bg-warning text-dark">剩 ${diffDays} 天</span>` : 
-                        `<span class="badge bg-light text-dark border">剩 ${diffDays} 天</span>`;
-
-            unpaidList.innerHTML += `
-                <tr>
-                    <td class="ps-3 fw-bold">${bill.name}</td>
-                    <td>$${bill.amount.toLocaleString()}</td>
-                    <td><small class="text-muted">${bill.date.slice(5)}</small><br>${badge}</td>
-                    <td class="text-end pe-3">
-                        <button onclick="markAsPaid(${bill.id})" class="btn btn-outline-success btn-sm btn-circle"><i class="fas fa-check"></i></button>
-                    </td>
-                </tr>`;
+        unpaids.forEach(b => {
+            const d = Math.ceil((new Date(b.date)-new Date().setHours(0,0,0,0))/86400000);
+            const badge = d<0 ? '<span class="badge bg-danger">過期</span>' : d<=3 ? `<span class="badge bg-warning text-dark">剩${d}天</span>` : `<span class="badge bg-light text-dark border">剩${d}天</span>`;
+            uList.innerHTML += `<tr><td class="ps-3 fw-bold">${b.name}</td><td>$${b.amount.toLocaleString()}</td><td><small>${b.date.slice(5)}</small><br>${badge}</td><td class="text-end pe-3"><button onclick="markAsPaid(${b.id})" class="btn btn-outline-success btn-sm btn-circle"><i class="fas fa-check"></i></button></td></tr>`;
+        });
+        paids.forEach(b => {
+            pList.innerHTML += `<tr class="status-paid"><td class="ps-3">${b.name}</td><td>$${b.amount.toLocaleString()}</td><td>${b.date}</td><td class="text-end pe-3"><button onclick="deleteBill(${b.id})" class="btn btn-light text-danger btn-sm"><i class="fas fa-trash"></i></button></td></tr>`;
         });
 
-        // 渲染已繳
-        paidBills.forEach(bill => {
-            paidList.innerHTML += `
-                <tr class="status-paid">
-                    <td class="ps-3">${bill.name}</td>
-                    <td>$${bill.amount.toLocaleString()}</td>
-                    <td>${bill.date}</td>
-                    <td class="text-end pe-3">
-                        <button onclick="deleteBill(${bill.id})" class="btn btn-light text-danger btn-sm"><i class="fas fa-trash"></i></button>
-                    </td>
-                </tr>`;
-        });
-
-        // 狀態顯示
-        document.getElementById('displayTotal').textContent = '$' + totalAmount.toLocaleString();
-        emptyMsg.style.display = hasUnpaid ? 'none' : 'block';
-
-        // 檢查出帳日提醒
-        checkStatementAlerts();
-        renderCardSettings();
+        if(!isPrivacyOn) document.getElementById('displayTotal').textContent = '$'+unpaids.reduce((s,b)=>s+b.amount,0).toLocaleString();
+        document.getElementById('emptyMsg').style.display = unpaids.length ? 'none' : 'block';
+        checkAlerts(); renderSettings();
     }
 
-    // --- 提醒功能 ---
-    function checkStatementAlerts() {
-        const alertBox = document.getElementById('statementAlerts');
-        alertBox.innerHTML = '';
-        const today = new Date();
-        const currentDay = today.getDate();
+    function checkAlerts() {
+        const box = document.getElementById('statementAlerts'); box.innerHTML = '';
+        const today = new Date().getDate();
+        data.cards.forEach(c => {
+            if(today >= c.day && !data.bills.some(b => b.name.includes(c.name) && b.status !== 'paid'))
+                box.innerHTML += `<div class="alert alert-warning border-0 shadow-sm small"><i class="fas fa-bell me-2"></i><strong>${c.name}</strong> 應已出帳 (${c.day}號)</div>`;
+        });
+    }
+
+    // Chart.js Logic
+    let cardChart, monthChart;
+    function updateCharts() {
+        const ctxCard = document.getElementById('cardChart').getContext('2d');
+        const ctxMonth = document.getElementById('monthChart').getContext('2d');
         
-        // 找出本月已有的帳單 (根據 ID 時間戳記，簡單判斷是否為近期)
-        // 更好的方式是看 created_at，目前簡化：只要列表裡有這個名字且未繳，就當作有收到
+        // 1. 準備數據: 只統計 "今年" 的資料 (包含已繳和未繳)
+        const currentYear = new Date().getFullYear();
+        const yearBills = data.bills.filter(b => new Date(b.date).getFullYear() === currentYear);
+
+        // 卡片統計
+        const cardMap = {};
+        yearBills.forEach(b => { 
+            // 簡化卡片名稱 (取前兩個字，如 "玉山")
+            let name = b.name.substring(0, 2);
+            cardMap[name] = (cardMap[name] || 0) + b.amount; 
+        });
         
-        data.cards.forEach(card => {
-            // 如果今天已經超過預設出帳日
-            if (currentDay >= card.day) {
-                // 檢查是否已收到帳單 (未繳列表中是否有該卡片)
-                const hasBill = data.bills.some(b => b.name.includes(card.name) && b.status !== 'paid');
-                
-                if (!hasBill) {
-                    alertBox.innerHTML += `
-                        <div class="alert alert-warning border-0 shadow-sm d-flex align-items-center" role="alert">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            <div>
-                                <strong>${card.name}</strong> 應該在 ${card.day} 號出帳，但還沒看到帳單喔！
-                            </div>
-                        </div>`;
-                }
+        // 月份統計
+        const monthMap = new Array(12).fill(0);
+        yearBills.forEach(b => {
+            const m = new Date(b.date).getMonth(); // 0-11
+            monthMap[m] += b.amount;
+        });
+
+        // 渲染圓餅圖
+        if(cardChart) cardChart.destroy();
+        cardChart = new Chart(ctxCard, {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(cardMap),
+                datasets: [{ data: Object.values(cardMap), backgroundColor: ['#FF6384','#36A2EB','#FFCE56','#4BC0C0','#9966FF','#FF9F40'] }]
             }
         });
-    }
 
-    // --- 資料操作 ---
-    function markAsPaid(id) {
-        if(confirm('確認已繳款完成？')) {
-            const bill = data.bills.find(b => b.id === id);
-            if(bill) { 
-                bill.status = 'paid'; // 改狀態，不刪除
-                saveLocal();
-                render();
-            }
-        }
-    }
-
-    function deleteBill(id) {
-        if(confirm('確定要永久刪除此紀錄嗎？')) {
-            data.bills = data.bills.filter(b => b.id !== id);
-            saveLocal();
-            render();
-        }
-    }
-
-    function addCardSetting() {
-        const name = document.getElementById('newCardName').value;
-        const day = parseInt(document.getElementById('newCardDay').value);
-        if(name && day) {
-            data.cards.push({name, day});
-            saveLocal();
-            render();
-            document.getElementById('newCardName').value = '';
-            document.getElementById('newCardDay').value = '';
-        }
-    }
-
-    function removeCardSetting(idx) {
-        data.cards.splice(idx, 1);
-        saveLocal();
-        render();
-    }
-
-    function renderCardSettings() {
-        const list = document.getElementById('cardSettingsList');
-        list.innerHTML = '';
-        (data.cards || []).forEach((c, idx) => {
-            list.innerHTML += `
-                <li class="list-group-item d-flex justify-content-between align-items-center">
-                    <span>${c.name} (每月 ${c.day} 號)</span>
-                    <button class="btn btn-sm text-danger" onclick="removeCardSetting(${idx})"><i class="fas fa-times"></i></button>
-                </li>`;
+        // 渲染長條圖
+        if(monthChart) monthChart.destroy();
+        monthChart = new Chart(ctxMonth, {
+            type: 'bar',
+            data: {
+                labels: ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
+                datasets: [{ label: '每月支出', data: monthMap, backgroundColor: '#667eea', borderRadius: 5 }]
+            },
+            options: { scales: { y: { beginAtZero: true } } }
         });
     }
 
-    // --- 儲存與同步 ---
-    function saveLocal() {
-        localStorage.setItem('myCreditData', JSON.stringify(data));
+    function markAsPaid(id) { if(confirm('已繳款?')) { data.bills.find(b=>b.id===id).status='paid'; saveLocal(); render(); } }
+    function deleteBill(id) { if(confirm('刪除?')) { data.bills=data.bills.filter(b=>b.id!==id); saveLocal(); render(); } }
+    function addCardSetting() { const n=document.getElementById('newCardName').value, d=document.getElementById('newCardDay').value; if(n&&d){ data.cards.push({name:n, day:parseInt(d)}); saveLocal(); render(); document.getElementById('newCardName').value=''; } }
+    function removeCardSetting(i) { data.cards.splice(i,1); saveLocal(); render(); }
+    function renderSettings() { 
+        const l=document.getElementById('cardSettingsList'); l.innerHTML=''; 
+        data.cards.forEach((c,i)=>l.innerHTML+=`<li class="list-group-item d-flex justify-content-between"><span>${c.name} (${c.day}號)</span><button class="btn btn-sm text-danger" onclick="removeCardSetting(${i})"><i class="fas fa-times"></i></button></li>`); 
     }
-
-    function loadLocal() {
-        const stored = localStorage.getItem('myCreditData');
-        if (stored) {
-            data = JSON.parse(stored);
-            // 兼容舊資料 (如果 bills 是純陣列)
-            if (Array.isArray(data)) data = { bills: data, cards: [] };
-            if (!data.cards) data.cards = [];
-        }
-        render();
-    }
-
-    function saveKeys() {
-        binId = document.getElementById('inputBinId').value.trim();
-        apiKey = document.getElementById('inputApiKey').value.trim();
-        localStorage.setItem('jsonbin_bin_id', binId);
-        localStorage.setItem('jsonbin_api_key', apiKey);
-        alert('金鑰已儲存！');
-    }
-
-    async function syncData(mode) {
-        if (!binId || !apiKey) return alert('請先到設定頁輸入金鑰');
-        loadingOverlay.style.display = 'flex';
-        const url = `https://api.jsonbin.io/v3/b/${binId}`;
-        
+    
+    function saveLocal() { localStorage.setItem('myCreditData', JSON.stringify(data)); }
+    function loadLocal() { const s=localStorage.getItem('myCreditData'); if(s) { data=JSON.parse(s); if(Array.isArray(data)) data={bills:data,cards:[]}; } render(); }
+    function saveKeys() { localStorage.setItem('jsonbin_bin_id', document.getElementById('inputBinId').value); localStorage.setItem('jsonbin_api_key', document.getElementById('inputApiKey').value); alert('已儲存'); }
+    async function syncData(m) {
+        if(!binId && !apiKey) return alert('請設金鑰');
+        loadingOverlay.style.display='flex';
         try {
-            if (mode === 'download') {
-                const res = await fetch(url + '/latest', { headers: { 'X-Master-Key': apiKey } });
-                if (!res.ok) throw new Error('下載失敗');
+            const url = `https://api.jsonbin.io/v3/b/${binId}`;
+            if(m==='download') {
+                const res = await fetch(url+'/latest', {headers:{'X-Master-Key':apiKey}});
+                if(!res.ok) throw new Error();
                 const json = await res.json();
-                // 確保格式正確
-                let cloudData = json.record;
-                if (Array.isArray(cloudData)) cloudData = { bills: cloudData, cards: [] };
-                
-                data = cloudData;
-                saveLocal();
-                alert('同步完成！');
+                data = Array.isArray(json.record) ? {bills:json.record, cards:[]} : json.record;
+                saveLocal(); alert('完成');
             } else {
-                const res = await fetch(url, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', 'X-Master-Key': apiKey },
-                    body: JSON.stringify(data)
-                });
-                if (!res.ok) throw new Error('上傳失敗');
-                alert('已備份到雲端！');
+                const res = await fetch(url, {method:'PUT', headers:{'Content-Type':'application/json','X-Master-Key':apiKey}, body:JSON.stringify(data)});
+                if(!res.ok) throw new Error(); alert('已備份');
             }
-        } catch (e) {
-            alert(e.message);
-        } finally {
-            loadingOverlay.style.display = 'none';
-            render();
-        }
+        } catch(e) { alert('錯誤'); } finally { loadingOverlay.style.display='none'; render(); }
     }
-
-    // 手動新增表單
-    function showAddModal() { addModal.show(); }
-    document.getElementById('addForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const newBill = {
-            id: Date.now(),
-            name: document.getElementById('addName').value,
-            amount: parseInt(document.getElementById('addAmount').value),
-            date: document.getElementById('addDate').value,
-            status: 'unpaid'
-        };
-        data.bills.push(newBill);
-        saveLocal();
-        render();
-        addModal.hide();
-        this.reset();
-    });
-
-    // 匯出 Excel
-    function exportToExcel() {
-        if (data.bills.length === 0) return alert("沒資料可匯出");
-        let csv = "卡片名稱,金額,截止日,狀態\n";
-        data.bills.forEach(b => {
-            const status = b.status === 'paid' ? '已繳' : '未繳';
-            csv += `"${b.name}",${b.amount},${b.date},${status}\n`;
-        });
-        const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = `帳單備份_${new Date().toISOString().slice(0,10)}.csv`;
-        link.click();
-    }
+    
+    document.getElementById('addForm').addEventListener('submit', function(e){ e.preventDefault(); data.bills.push({id:Date.now(), name:document.getElementById('addName').value, amount:parseInt(document.getElementById('addAmount').value), date:document.getElementById('addDate').value, status:'unpaid'}); saveLocal(); render(); addModal.hide(); this.reset(); });
+    function exportToExcel() { if(!data.bills.length)return alert('無資料'); const csv="卡片,金額,日期,狀態\n"+data.bills.map(b=>`"${b.name}",${b.amount},${b.date},${b.status==='paid'?'已繳':'未繳'}`).join('\n'); const l=document.createElement('a'); l.href=URL.createObjectURL(new Blob(["\ufeff"+csv],{type:'text/csv'})); l.download=`帳單.csv`; l.click(); }
 </script>
 </body>
 </html>

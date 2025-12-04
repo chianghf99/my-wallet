@@ -349,7 +349,6 @@
                 if (!useCloud) {
                     localStorage.setItem('portfolio_stocks', JSON.stringify(newVal));
                 }
-                // 如果是雲端模式，這裡不需要自動存，因為透過 saveStock/fetchPrices 更新時會寫入 DB
             }, { deep: true });
 
             // 計算與統計邏輯
@@ -434,13 +433,14 @@
             const getYahooData = async (symbol) => {
                 // 1. 處理代號後綴
                 let searchSymbol = symbol.toUpperCase();
-                // 簡易判斷：如果是純數字，先猜是台股上市 (.TW)
-                if (/^\d+$/.test(searchSymbol)) {
+                
+                // === 修正邏輯：支援包含字母的台股代號 (如 00631L) ===
+                // 只要是 "4-6個數字" 加上 "0-1個字母" 結尾，都視為台股
+                if (/^\d{4,6}[A-Z]?$/.test(searchSymbol)) {
                     searchSymbol += '.TW';
                 }
 
                 // 2. 透過 Proxy 呼叫 Yahoo Finance
-                // 使用 corsproxy.io 來解決瀏覽器跨域問題
                 const proxyUrl = 'https://corsproxy.io/?';
                 const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${searchSymbol}?interval=1d`;
                 
@@ -473,24 +473,18 @@
                 const sym = form.value.symbol;
                 if (!sym) return;
 
-                // 判斷幣別
-                if (/^\d{4}/.test(sym)) form.value.currency = 'TWD';
+                // 判斷幣別 (這裡也要同步修正，如果是有數字開頭的都當台股)
+                if (/^\d/.test(sym)) form.value.currency = 'TWD';
                 else if (/^[A-Za-z]+$/.test(sym)) form.value.currency = 'USD';
 
-                // 顯示 Loading 提示
                 const originalName = form.value.name;
                 if (!form.value.name) form.value.name = '查詢中...';
 
                 const data = await getYahooData(sym);
                 
                 if (data) {
-                    // Yahoo 有回傳資料
-                    // 優先使用繁體中文名稱 (Yahoo有時會給英文，這裡做個簡單處理)
-                    // 但 Yahoo API meta 裡通常只有 symbol 和 currency，沒有好的中文名
-                    // 我們先用 symbol 當名稱，若使用者要改再自己改
                     if (originalName === '' || form.value.name === '查詢中...') {
-                         // 嘗試保留代號，使用者可自己輸入中文名，或是使用 Yahoo 的 exchangeName
-                         form.value.name = data.symbol; 
+                         form.value.name = data.symbol; // Yahoo 抓不到中文名，預設填入代號
                     }
                     form.value.currentPrice = data.regularMarketPrice;
                 } else {
@@ -507,13 +501,10 @@
                 } catch (e) { console.error('匯率更新失敗'); }
             };
 
-            // 一鍵更新所有股價
             const fetchPrices = async () => {
                 if (stocks.value.length === 0) return;
                 isLoading.value = true;
                 
-                // 為了避免同時發出太多請求被 Yahoo 封鎖，我們稍微間隔一下或批次處理
-                // 但這裡為了簡單，用 Promise.all 平行處理 (量少時沒問題)
                 const updates = stocks.value.map(async (stock) => {
                     const data = await getYahooData(stock.symbol);
                     if (data) {
@@ -524,7 +515,6 @@
 
                 const results = await Promise.all(updates);
                 
-                // 更新資料庫或本地狀態
                 if (useCloud && db) {
                     const batch = db.batch();
                     let hasUpdates = false;
@@ -569,3 +559,4 @@
 </body>
 
 </html>
+

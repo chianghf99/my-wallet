@@ -20,15 +20,11 @@
     <style>
         body { font-family: 'Noto Sans TC', sans-serif; }
         
-        /* 漲跌色 (通用) */
         .text-up { color: #dc2626; }
         .text-down { color: #16a34a; }
-        
-        /* Dark Mode 漲跌微調 */
         .dark .text-up { color: #f87171; }
         .dark .text-down { color: #4ade80; }
 
-        /* 卡片樣式 */
         .zen-card {
             background: white;
             border-radius: 12px;
@@ -36,12 +32,11 @@
             transition: all 0.3s ease;
         }
         .dark .zen-card {
-            background: #1f2937; /* gray-800 */
+            background: #1f2937;
             box-shadow: none;
             border: 1px solid #374151;
         }
 
-        /* 輸入框 */
         .zen-input {
             border: 1px solid #e4e4e7;
             border-radius: 8px;
@@ -51,13 +46,12 @@
             color: #1f2937;
         }
         .dark .zen-input {
-            background-color: #374151; /* gray-700 */
+            background-color: #374151;
             border-color: #4b5563;
             color: #f3f4f6;
         }
         .zen-input:focus { outline: none; border-color: #71717a; }
 
-        /* 按鈕與過渡 */
         .trans-btn {
             padding: 0.5rem;
             border: 1px solid #e5e7eb;
@@ -69,7 +63,6 @@
         .trans-btn.active-buy { background-color: #dc2626; color: white; border-color: #dc2626; }
         .trans-btn.active-sell { background-color: #16a34a; color: white; border-color: #16a34a; }
         
-        /* 折疊區塊動畫 */
         .collapse-enter-active, .collapse-leave-active { transition: all 0.3s ease; max-height: 800px; opacity: 1; overflow: hidden; }
         .collapse-enter-from, .collapse-leave-to { max-height: 0; opacity: 0; }
     </style>
@@ -108,15 +101,9 @@
                         <span class="hidden md:inline text-sm font-medium">{{ user.displayName }}</span>
                     </div>
                     
-                    <button @click="exportData" class="text-gray-400 hover:text-blue-500" title="備份匯出">
-                        <i class="fa-solid fa-download"></i>
-                    </button>
-                    <button @click="toggleDarkMode" class="text-gray-400 hover:text-yellow-500" title="深色模式">
-                        <i class="fa-solid" :class="isDarkMode ? 'fa-sun' : 'fa-moon'"></i>
-                    </button>
-                    <button @click="logout" class="text-gray-400 hover:text-red-500" title="登出">
-                        <i class="fa-solid fa-sign-out-alt"></i>
-                    </button>
+                    <button @click="exportData" class="text-gray-400 hover:text-blue-500" title="備份匯出"><i class="fa-solid fa-download"></i></button>
+                    <button @click="toggleDarkMode" class="text-gray-400 hover:text-yellow-500" title="深色模式"><i class="fa-solid" :class="isDarkMode ? 'fa-sun' : 'fa-moon'"></i></button>
+                    <button @click="logout" class="text-gray-400 hover:text-red-500" title="登出"><i class="fa-solid fa-sign-out-alt"></i></button>
                 </div>
             </div>
             
@@ -724,10 +711,9 @@
                 const hour = new Date().getHours();
                 const historyRef = db.collection('users').doc(user.value.uid).collection('history').doc(todayStr);
 
-                // 21:00 定錨邏輯：晚上 9 點前可以隨時更新，9 點後若已有紀錄則鎖定
                 if (hour >= 21) {
                     const docSnap = await historyRef.get();
-                    if (docSnap.exists) return; 
+                    if (docSnap.exists) return; // Freeze
                 }
 
                 const snapshot = {
@@ -802,11 +788,18 @@
             // CRUD & Trans
             const openTransModal = (s) => { transForm.value = { id: s.id, type: 'buy', symbol: s.symbol, name: s.name, shares: '', totalAmount: '', currentShares: s.shares, currentAvg: s.avgCost }; form.value.currency = s.currency; showTransModal.value = true; };
             const closeTransModal = () => showTransModal.value = false;
+            
+            // Corrected Scope: Defined in Setup
+            const calculateNewAvg = () => { 
+                if (transForm.value.type !== 'buy' || !transForm.value.shares || !transForm.value.totalAmount) return transForm.value.currentAvg; 
+                const old = transForm.value.currentShares * transForm.value.currentAvg; 
+                return (old + transForm.value.totalAmount) / (transForm.value.currentShares + transForm.value.shares); 
+            };
+
             const submitTransaction = async () => {
                 if (!transForm.value.shares || !transForm.value.totalAmount) return alert('請輸入完整資訊');
                 const ref = db.collection('users').doc(user.value.uid).collection('stocks').doc(transForm.value.id);
                 let ns = 0, na = 0;
-                const calculateNewAvg = () => { if (transForm.value.type !== 'buy' || !transForm.value.shares || !transForm.value.totalAmount) return transForm.value.currentAvg; const old = transForm.value.currentShares * transForm.value.currentAvg; return (old + transForm.value.totalAmount) / (transForm.value.currentShares + transForm.value.shares); };
 
                 if (transForm.value.type === 'buy') { 
                     ns = transForm.value.currentShares + transForm.value.shares; 

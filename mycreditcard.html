@@ -14,19 +14,16 @@
         :root { --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
         body { background-color: #f8f9fa; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif; padding-bottom: 90px; user-select: none; -webkit-user-select: none; }
         
-        /* 通用樣式 */
-        .card-custom { border: none; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        .btn-circle { border-radius: 50%; width: 40px; height: 40px; padding: 0; display: inline-flex; justify-content: center; align-items: center;}
-        
-        /* 頂部卡片 (手機版) */
+        /* 頂部卡片 */
         .header-card {
             background: var(--primary-gradient); color: white;
             border-radius: 0 0 30px 30px;
             padding: 60px 20px 30px 20px;
             box-shadow: 0 4px 20px rgba(118, 75, 162, 0.3);
             margin-bottom: 20px;
+            position: relative;
         }
-
+        
         /* 列表樣式 */
         .bill-item { background: white; border-radius: 16px; margin-bottom: 12px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); transition: transform 0.1s; border: 1px solid rgba(0,0,0,0.02); }
         .bill-item:active { transform: scale(0.98); }
@@ -35,8 +32,9 @@
         .bg-urgent { background: #fee2e2; color: #dc2626; }
         .bg-soon { background: #fef3c7; color: #d97706; }
         .bg-normal { background: #e0e7ff; color: #4338ca; }
+        .card-custom { border: none; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
 
-        /* 手機版底部導航 */
+        /* 底部導航 */
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; width: 100%;
             background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);
@@ -48,26 +46,19 @@
         .nav-btn.active { color: #764ba2; font-weight: 600; }
         .nav-btn i { font-size: 1.4rem; display: block; margin-bottom: 4px; }
 
-        /* 電腦版側邊欄 (預設隱藏) */
+        /* 電腦版側邊欄 */
         .sidebar { display: none; }
-
-        /* --- 💻 電腦版樣式 (寬度 > 992px 時觸發) --- */
         @media (min-width: 992px) {
             body { padding-bottom: 0; padding-left: 260px; background-color: #f0f2f5; }
-            
-            /* 隱藏手機底部導航 */
             .bottom-nav { display: none; }
-            
-            /* 顯示側邊欄 */
             .sidebar {
                 display: flex; flex-direction: column;
                 position: fixed; top: 0; left: 0; width: 260px; height: 100vh;
                 background: white; border-right: 1px solid #eee; z-index: 1000;
                 padding: 30px 20px; box-shadow: 2px 0 10px rgba(0,0,0,0.02);
             }
-            .sidebar-title { font-size: 1.5rem; font-weight: 800; color: #4a5568; margin-bottom: 40px; padding-left: 10px; display: flex; align-items: center; }
+            .sidebar-title { font-size: 1.5rem; font-weight: 800; color: #4a5568; margin-bottom: 40px; padding-left: 10px; display: flex; align-items: center; cursor: pointer; }
             .sidebar-title i { color: #667eea; margin-right: 10px; }
-            
             .side-btn {
                 text-align: left; padding: 15px 20px; margin-bottom: 8px;
                 border-radius: 12px; color: #64748b; font-size: 1rem; font-weight: 500;
@@ -76,15 +67,21 @@
             .side-btn i { width: 30px; font-size: 1.2rem; }
             .side-btn:hover { background: #f8fafc; color: #667eea; }
             .side-btn.active { background: #eff6ff; color: #667eea; font-weight: 600; }
-
-            /* 調整主容器寬度 */
             .container { max-width: 1000px !important; padding-top: 30px; }
-            
-            /* 調整 Header Card 變圓角長條 */
             .header-card { border-radius: 20px; margin-top: 0; padding: 40px; display: flex; align-items: center; justify-content: space-between; text-align: left; }
             .header-card .text-center { text-align: left !important; }
             .header-card .d-flex.justify-content-center { justify-content: flex-end !important; }
         }
+
+        /* 版本號連結樣式 */
+        .version-link { color: #cbd5e1; font-size: 0.8rem; padding: 10px; cursor: pointer; transition: 0.2s; text-decoration: none; display: inline-block; }
+        .version-link:hover { color: #667eea; }
+
+        /* 更新日誌列表 */
+        .changelog-item { position: relative; padding-left: 20px; margin-bottom: 15px; border-left: 2px solid #e2e8f0; }
+        .changelog-date { font-size: 0.75rem; color: #94a3b8; margin-bottom: 2px; }
+        .changelog-ver { font-weight: bold; color: #475569; font-size: 0.95rem; }
+        .changelog-desc { font-size: 0.9rem; color: #64748b; line-height: 1.5; }
 
         /* PIN Lock */
         #pinOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #ffffff; z-index: 99999; display: none; flex-direction: column; justify-content: center; align-items: center; }
@@ -121,24 +118,36 @@
 <div id="loadingOverlay"><div class="spinner-border text-primary" role="status"></div><div class="mt-3 fw-bold text-primary small">資料同步中...</div></div>
 
 <div class="sidebar">
-    <div class="sidebar-title"><i class="fas fa-wallet"></i> 卡片管家 Pro</div>
+    <div class="sidebar-title" onclick="switchPage('dashboard')"><i class="fas fa-wallet"></i> 卡片管家 Pro</div>
     <button class="side-btn active" onclick="switchPage('dashboard')"><i class="fas fa-home"></i> 待繳帳單</button>
     <button class="side-btn" onclick="switchPage('history')"><i class="fas fa-history"></i> 歷史紀錄</button>
     <button class="side-btn" onclick="switchPage('analysis')"><i class="fas fa-chart-pie"></i> 統計分析</button>
     <button class="side-btn" onclick="switchPage('settings')"><i class="fas fa-cog"></i> 設定</button>
-    <div style="margin-top: auto; color: #cbd5e1; font-size: 0.8rem; padding: 10px;">v2.2 Desktop</div>
+    <div style="margin-top: auto;">
+        <div class="version-link" onclick="showVersionModal()">
+            <i class="fas fa-info-circle me-1"></i> 版本 v2.4
+        </div>
+    </div>
 </div>
 
 <div id="page-dashboard" class="page-section active">
     <div class="header-card">
-        <div>
-            <div class="mb-2"><span class="badge bg-white bg-opacity-25 fw-normal rounded-pill px-3"><i class="fas fa-cloud me-1"></i> <span id="syncStatus">未同步</span></span></div>
-            <small class="opacity-75 text-uppercase ls-1">本月待繳總額</small>
-            <h1 class="display-3 fw-bold mb-0 mt-1" id="displayTotal">$0</h1>
+        <div class="w-100">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="badge bg-white bg-opacity-25 fw-normal rounded-pill px-3"><i class="fas fa-cloud me-1"></i> <span id="syncStatus">未同步</span></span>
+                <div class="d-flex gap-3">
+                    <button class="btn btn-sm text-white p-0" onclick="togglePrivacy()"><i class="fas fa-eye-slash" id="privacyIcon" style="font-size: 1.2rem;"></i></button>
+                    <button class="btn btn-sm text-white p-0" onclick="switchPage('dashboard')" title="回首頁"><i class="fas fa-home" style="font-size: 1.2rem;"></i></button>
+                </div>
+            </div>
+            
+            <div class="text-center mt-3">
+                <small class="opacity-75 text-uppercase ls-1">本月待繳總額</small>
+                <h1 class="display-3 fw-bold mb-0 mt-1" id="displayTotal">$0</h1>
+            </div>
         </div>
-        <div class="d-flex gap-3 align-items-center">
-            <button class="btn btn-outline-light border-0" onclick="togglePrivacy()"><i class="fas fa-eye-slash" id="privacyIcon" style="font-size: 1.5rem;"></i></button>
-            <div class="vr bg-white opacity-50"></div>
+        
+        <div class="d-flex justify-content-center gap-3 mt-4 computer-actions">
             <button class="btn btn-light rounded-circle shadow-sm" style="width: 50px; height: 50px;" onclick="syncData('download')" title="同步"><i class="fas fa-sync-alt text-primary"></i></button>
             <button class="btn btn-light rounded-circle shadow-sm" style="width: 50px; height: 50px;" onclick="syncData('upload')" title="存檔"><i class="fas fa-cloud-upload-alt text-primary"></i></button>
             <button class="btn btn-light rounded-circle shadow-sm" style="width: 50px; height: 50px;" onclick="exportToExcel()" title="匯出"><i class="fas fa-file-csv text-success"></i></button>
@@ -173,7 +182,6 @@
 <div id="page-analysis" class="page-section">
     <div class="container px-3 pt-4">
         <h5 class="fw-bold mb-4 px-1">年度消費分析</h5>
-        
         <div class="row g-4">
             <div class="col-md-4">
                 <div class="card border-0 shadow-sm rounded-4 h-100 bg-white">
@@ -183,7 +191,6 @@
                     </div>
                 </div>
             </div>
-
             <div class="col-md-8">
                 <div class="card border-0 shadow-sm rounded-4 h-100">
                     <div class="card-body">
@@ -192,7 +199,6 @@
                     </div>
                 </div>
             </div>
-
             <div class="col-12">
                 <div class="card border-0 shadow-sm rounded-4">
                     <div class="card-body">
@@ -245,6 +251,11 @@
                 </div>
             </div>
         </div>
+        <div class="text-center mt-4">
+            <div class="version-link text-muted" onclick="showVersionModal()">
+                <i class="fas fa-info-circle me-1"></i> 卡片管家 Pro v2.4
+            </div>
+        </div>
     </div>
 </div>
 
@@ -271,6 +282,64 @@
     </div>
 </div>
 
+<div class="modal fade" id="versionModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 rounded-4 shadow">
+            <div class="modal-header border-0">
+                <h5 class="modal-title fw-bold"><i class="fas fa-history text-primary me-2"></i>更新日誌</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body bg-light rounded-bottom-4" style="max-height: 400px; overflow-y: auto;">
+                <div class="changelog-item">
+                    <div class="changelog-date">2025/12/06</div>
+                    <div class="changelog-ver">v2.4</div>
+                    <div class="changelog-desc">
+                        • 新增版本號點擊查看日誌<br>
+                        • 首頁快捷回到頂部功能<br>
+                        • 電腦版側邊欄整合版本資訊
+                    </div>
+                </div>
+                <div class="changelog-item">
+                    <div class="changelog-date">2025/12/06</div>
+                    <div class="changelog-ver">v2.3</div>
+                    <div class="changelog-desc">
+                        • 新增首頁(Home)快捷按鈕<br>
+                        • 優化電腦版介面佈局<br>
+                        • 預設顯示待繳總金額
+                    </div>
+                </div>
+                <div class="changelog-item">
+                    <div class="changelog-date">2025/12/05</div>
+                    <div class="changelog-ver">v2.2</div>
+                    <div class="changelog-desc">
+                        • 新增手機專用虛擬鍵盤(PIN)<br>
+                        • 支援電腦版側邊欄顯示<br>
+                        • 介面響應式設計優化
+                    </div>
+                </div>
+                <div class="changelog-item">
+                    <div class="changelog-date">2025/12/05</div>
+                    <div class="changelog-ver">v2.1</div>
+                    <div class="changelog-desc">
+                        • 升級 6 位數安全密碼鎖<br>
+                        • 預設金額顯示調整<br>
+                        • 頂部同步狀態顯示優化
+                    </div>
+                </div>
+                <div class="changelog-item">
+                    <div class="changelog-date">2025/12/04</div>
+                    <div class="changelog-ver">v2.0</div>
+                    <div class="changelog-desc">
+                        • 全新 UI 介面設計<br>
+                        • 新增年度/每月圖表分析<br>
+                        • 新增左上角雲端同步狀態
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     let data = { bills: [], cards: [] };
@@ -290,23 +359,37 @@
     }
     function updateDots() { for(let i=1; i<=6; i++) document.getElementById('d'+i).classList.toggle('active', i<=pinBuffer.length); }
     function setAppPin() { const v = document.getElementById('newAppPin').value; if(v.length === 6 && !isNaN(v)) { localStorage.setItem('app_pin', v); alert('✅ 密碼已設定'); document.getElementById('newAppPin').value=''; } else alert('請輸入 6 位數字'); }
-    function clearAppPin() { if(confirm('移除密碼？')) { localStorage.removeItem('app_pin'); alert('已移除'); } }
+    function clearAppPin() { if(confirm('確定移除密碼鎖？')) { localStorage.removeItem('app_pin'); alert('已移除'); } }
 
-    const addModal = new bootstrap.Modal(document.getElementById('addModal')), loadingOverlay = document.getElementById('loadingOverlay');
+    const addModal = new bootstrap.Modal(document.getElementById('addModal'));
+    const versionModal = new bootstrap.Modal(document.getElementById('versionModal'));
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    
     checkLock(); loadLocal();
-    document.getElementById('inputBinId').value = binId; document.getElementById('inputApiKey').value = apiKey; document.getElementById('addDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('inputBinId').value = binId;
+    document.getElementById('inputApiKey').value = apiKey;
+    document.getElementById('addDate').value = new Date().toISOString().split('T')[0];
 
-    function updateSyncStatus() { const t = localStorage.getItem('last_sync_time'); document.getElementById('syncStatus').textContent = t ? t : '未同步'; }
-    function togglePrivacy() { isPrivacyOn = !isPrivacyOn; document.getElementById('privacyIcon').className = isPrivacyOn ? 'fas fa-eye' : 'fas fa-eye-slash'; renderTotal(); }
+    function showVersionModal() { versionModal.show(); }
+
+    function updateSyncStatus() {
+        const lastTime = localStorage.getItem('last_sync_time');
+        document.getElementById('syncStatus').textContent = lastTime ? lastTime : '未同步';
+    }
+
+    function togglePrivacy() {
+        isPrivacyOn = !isPrivacyOn;
+        document.getElementById('privacyIcon').className = isPrivacyOn ? 'fas fa-eye' : 'fas fa-eye-slash';
+        renderTotal();
+    }
 
     function switchPage(p) {
         document.querySelectorAll('.page-section').forEach(el => el.classList.remove('active'));
         document.getElementById('page-'+p).classList.add('active');
-        // Update both mobile and desktop navs
         document.querySelectorAll('.nav-btn, .side-btn').forEach(el => el.classList.remove('active'));
-        // Find buttons that point to this page and activate them
         document.querySelectorAll(`[onclick="switchPage('${p}')"]`).forEach(el => el.classList.add('active'));
         if(p === 'analysis') updateCharts();
+        if(p === 'dashboard') window.scrollTo(0,0);
     }
 
     function render() {
@@ -375,16 +458,10 @@
     function deleteBill(id) { if(confirm('刪除？')) { data.bills=data.bills.filter(b=>b.id!==id); saveLocal(); render(); } }
     function addCardSetting() { const n=document.getElementById('newCardName').value, d=document.getElementById('newCardDay').value; if(n&&d){ data.cards.push({name:n, day:parseInt(d)}); saveLocal(); render(); document.getElementById('newCardName').value=''; } }
     function removeCardSetting(i) { data.cards.splice(i,1); saveLocal(); render(); }
-    
-    function renderSettings() { 
-        const l=document.getElementById('cardSettingsList'); l.innerHTML=''; 
-        data.cards.forEach((c,i)=>l.innerHTML+=`<div class="col-md-6"><div class="p-3 border rounded-3 d-flex justify-content-between align-items-center bg-white"><span><i class="fas fa-credit-card text-muted me-2"></i>${c.name} (${c.day}號)</span><button class="btn btn-sm text-danger" onclick="removeCardSetting(${i})"><i class="fas fa-times"></i></button></div></div>`); 
-    }
-    
+    function renderSettings() { const l=document.getElementById('cardSettingsList'); l.innerHTML=''; data.cards.forEach((c,i)=>l.innerHTML+=`<div class="col-md-6"><div class="p-3 border rounded-3 d-flex justify-content-between align-items-center bg-white"><span><i class="fas fa-credit-card text-muted me-2"></i>${c.name} (${c.day}號)</span><button class="btn btn-sm text-danger" onclick="removeCardSetting(${i})"><i class="fas fa-times"></i></button></div></div>`); }
     function saveLocal() { localStorage.setItem('myCreditData', JSON.stringify(data)); }
     function loadLocal() { const s=localStorage.getItem('myCreditData'); if(s) { data=JSON.parse(s); if(Array.isArray(data)) data={bills:data,cards:[]}; } render(); }
-    function saveKeys() { localStorage.setItem('jsonbin_bin_id', document.getElementById('inputBinId').value); localStorage.setItem('jsonbin_api_key', document.getElementById('inputApiKey').value); alert('✅ 已儲存'); }
-    
+    function saveKeys() { localStorage.setItem('jsonbin_bin_id', document.getElementById('inputBinId').value); localStorage.setItem('jsonbin_api_key', document.getElementById('inputApiKey').value); alert('✅ 金鑰已儲存'); }
     async function syncData(m) {
         if(!binId && !apiKey) return alert('請先設定金鑰');
         loadingOverlay.style.display='flex';

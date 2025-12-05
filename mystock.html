@@ -695,8 +695,48 @@
             const closeModal = () => showModal.value = false;
             const saveStock = async () => { if (!user.value || !form.value.symbol) return; const d = { ...form.value }; const r = db.collection('users').doc(user.value.uid).collection('stocks'); if (isEditing.value) await r.doc(d.id).update(d); else await r.doc(d.id).set(d); closeModal(); };
             const deleteStock = async (id) => { if (!user.value || !confirm('刪除？')) return; await db.collection('users').doc(user.value.uid).collection('stocks').doc(id).delete(); };
-            
-            const getYahooData = async (symbol) => { let s = symbol.toUpperCase(); if (/^\d{4,6}[A-Z]?$/.test(s)) s += '.TW'; try { const r = await fetch('https://corsproxy.io/?' + encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${s}?interval=1d`)); const j = await r.json(); if (!j.chart?.result?.length) { if (s.endsWith('.TW')) { const r2 = await fetch('https://corsproxy.io/?' + encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${s.replace('.TW','.TWO')}?interval=1d`)); const j2 = await r2.json(); if (j2.chart?.result) return { symbol: j2.chart.result[0].meta.symbol, regularMarketPrice: j2.chart.result[0].meta.regularMarketPrice, previousClose: j2.chart.result[0].meta.chartPreviousClose || j2.chart.result[0].meta.previousClose }; } throw new Error('Not Found'); } return { symbol: j.chart.result[0].meta.symbol, regularMarketPrice: j.chart.result[0].meta.regularMarketPrice, previousClose: j.chart.result[0].meta.chartPreviousClose || j.chart.result[0].meta.previousClose }; } catch (e) { return null; } };
+            const getYahooData = async (symbol) => {
+                let s = symbol.toUpperCase();
+                // 台股邏輯：4-6碼數字 + 可選字母 = 視為台股 (加上 .TW)
+                if (/^\d{4,6}[A-Z]?$/.test(s)) s += '.TW';
+                
+                try {
+                    // 加入 &t=Date.now() 強制刷新
+                    const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${s}?interval=1d&events=div,splits&t=${Date.now()}`;
+                    const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(targetUrl);
+                    
+                    const res = await fetch(proxyUrl);
+                    const json = await res.json();
+                    
+                    if (!json.chart || !json.chart.result || json.chart.result.length === 0) {
+                         // 備援：如果是 .TW 失敗，嘗試 .TWO (上櫃)
+                         if (s.endsWith('.TW')) {
+                            const targetUrl2 = `https://query1.finance.yahoo.com/v8/finance/chart/${s.replace('.TW','.TWO')}?interval=1d&t=${Date.now()}`;
+                            const res2 = await fetch('https://corsproxy.io/?' + encodeURIComponent(targetUrl2));
+                            const json2 = await res2.json();
+                            
+                            if (json2.chart && json2.chart.result) {
+                                return { 
+                                    symbol: json2.chart.result[0].meta.symbol, 
+                                    regularMarketPrice: json2.chart.result[0].meta.regularMarketPrice, 
+                                    previousClose: json2.chart.result[0].meta.chartPreviousClose || json2.chart.result[0].meta.previousClose 
+                                };
+                            }
+                        }
+                        throw new Error('Not Found');
+                    }
+                    
+                    // 成功抓取
+                    return { 
+                        symbol: json.chart.result[0].meta.symbol, 
+                        regularMarketPrice: json.chart.result[0].meta.regularMarketPrice, 
+                        previousClose: json.chart.result[0].meta.chartPreviousClose || json.chart.result[0].meta.previousClose 
+                    };
+                } catch (e) { 
+                    console.error("股價更新失敗:", s, e);
+                    return null; 
+                }
+            };
             const autoFetchName = async () => { const s = form.value.symbol; if (!s) return; if (/^\d/.test(s)) form.value.currency = 'TWD'; else if (/^[A-Za-z]+$/.test(s)) form.value.currency = 'USD'; if (!form.value.name) form.value.name = '查詢中...'; const d = await getYahooData(s); if (d) { if (form.value.name === '查詢中...') form.value.name = d.symbol; form.value.currentPrice = d.regularMarketPrice; form.value.previousClose = d.previousClose; } else { if (form.value.name === '查詢中...') form.value.name = ''; alert('查無代號'); } };
             
             // New Auto Fetch for Independent Transaction
@@ -745,3 +785,4 @@
 
 </body>
 </html>
+

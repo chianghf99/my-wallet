@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio</title>
+    <title>我的投資組合 v2.3.0 | Portfolio</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -38,6 +38,15 @@
         
         /* 隱私模式模糊 */
         .blur-sm { filter: blur(4px); user-select: none; }
+        
+        /* 交易紀錄標籤 */
+        .tag { padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
+        .tag-buy { background-color: #fee2e2; color: #dc2626; }
+        .dark .tag-buy { background-color: #7f1d1d; color: #fca5a5; }
+        .tag-sell { background-color: #dcfce7; color: #16a34a; }
+        .dark .tag-sell { background-color: #14532d; color: #86efac; }
+        .tag-div { background-color: #fef9c3; color: #ca8a04; }
+        .dark .tag-div { background-color: #713f12; color: #fde047; }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-200 transition-colors duration-300">
@@ -46,7 +55,7 @@
     <div v-if="!user" class="flex-grow flex flex-col items-center justify-center p-4">
         <div class="zen-card p-8 max-w-sm w-full text-center space-y-6">
             <div class="bg-gray-800 text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto text-2xl"><i class="fa-solid fa-chart-line"></i></div>
-            <div><h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本</h1><p class="text-gray-500 dark:text-gray-400 text-sm mt-2">安全、即時、跨裝置的投資管理工具</p></div>
+            <div><h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v2.3</h1><p class="text-gray-500 dark:text-gray-400 text-sm mt-2">安全、即時、跨裝置的投資管理工具</p></div>
             <button @click="login" class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
                 <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5 mr-3" alt="Google">使用 Google 帳號登入
             </button>
@@ -124,7 +133,8 @@
             <div class="flex flex-wrap gap-2 justify-center mb-6">
                 <button @click="toggleSection('chart')" :class="{'bg-gray-200 dark:bg-gray-700': activeSection==='chart'}" class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 px-4 py-2 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-sm transition"><i class="fa-solid fa-chart-line mr-2"></i>資產走勢</button>
                 <button @click="toggleSection('pie')" :class="{'bg-gray-200 dark:bg-gray-700': activeSection==='pie'}" class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 px-4 py-2 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-sm transition"><i class="fa-solid fa-chart-pie mr-2"></i>資產配置</button>
-                <button @click="toggleSection('dividend')" :class="{'bg-gray-200 dark:bg-gray-700': activeSection==='dividend'}" class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 px-4 py-2 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-sm transition"><i class="fa-solid fa-coins mr-2"></i>股息紀錄</button>
+                <button @click="toggleSection('transactions')" :class="{'bg-gray-200 dark:bg-gray-700': activeSection==='transactions'}" class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 px-4 py-2 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-sm transition"><i class="fa-solid fa-list-ul mr-2"></i>交易紀錄</button>
+                <button @click="toggleSection('dividend')" :class="{'bg-gray-200 dark:bg-gray-700': activeSection==='dividend'}" class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 px-4 py-2 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-sm transition"><i class="fa-solid fa-coins mr-2"></i>股息統計</button>
                 <button @click="toggleSection('realized')" :class="{'bg-gray-200 dark:bg-gray-700': activeSection==='realized'}" class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 px-4 py-2 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-sm transition"><i class="fa-solid fa-file-invoice-dollar mr-2"></i>已實現損益</button>
             </div>
 
@@ -145,6 +155,52 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div class="flex flex-col items-center"><h4 class="text-sm font-bold mb-2 flex items-center gap-2"><img src="https://flagcdn.com/w20/tw.png"> 台股配置 (TWD)</h4><div class="w-full max-w-[300px] h-[300px] relative"><canvas id="pieTw"></canvas></div></div>
                         <div class="flex flex-col items-center"><h4 class="text-sm font-bold mb-2 flex items-center gap-2"><img src="https://flagcdn.com/w20/us.png"> 美股配置 (USD)</h4><div class="w-full max-w-[300px] h-[300px] relative"><canvas id="pieUs"></canvas></div></div>
+                    </div>
+                </div>
+            </transition>
+            
+            <transition name="collapse">
+                <div v-if="activeSection === 'transactions'" class="zen-card p-4 md:p-6 mb-8">
+                    <h3 class="font-bold mb-4 dark:text-white flex justify-between items-center">
+                        <span>歷史交易明細</span>
+                        <span class="text-xs text-gray-400 font-normal">買入 / 賣出 / 領息</span>
+                    </h3>
+                    <div class="overflow-x-auto max-h-[500px] overflow-y-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-gray-100 dark:bg-gray-800 text-gray-500 uppercase font-medium sticky top-0">
+                                <tr>
+                                    <th class="px-4 py-2">日期</th>
+                                    <th class="px-4 py-2">類別</th>
+                                    <th class="px-4 py-2">標的</th>
+                                    <th class="px-4 py-2 text-right">股數</th>
+                                    <th class="px-4 py-2 text-right">單價</th>
+                                    <th class="px-4 py-2 text-right">總金額</th>
+                                    <th class="px-4 py-2 text-center">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                <tr v-for="tx in transactionHistory" :key="tx.id" class="hover:bg-gray-50 dark:hover:bg-gray-800">
+                                    <td class="px-4 py-3 whitespace-nowrap text-gray-500">{{ tx.date }}</td>
+                                    <td class="px-4 py-3">
+                                        <span class="tag" :class="{'tag-buy': tx.type==='buy', 'tag-sell': tx.type==='sell', 'tag-div': tx.type==='dividend'}">
+                                            {{ tx.type==='buy'?'買入':(tx.type==='sell'?'賣出':'領息') }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 font-bold">
+                                        {{ tx.symbol }} <span class="text-xs text-gray-400 font-normal hidden sm:inline">{{ tx.name }}</span>
+                                    </td>
+                                    <td class="px-4 py-3 text-right">{{ tx.type === 'dividend' ? '-' : formatNumber(tx.shares) }}</td>
+                                    <td class="px-4 py-3 text-right text-gray-500">{{ tx.type === 'dividend' ? '-' : formatCurrency(tx.price, tx.currency) }}</td>
+                                    <td class="px-4 py-3 text-right font-bold" :class="tx.type==='buy' ? '' : (tx.type==='sell'?'text-down':'text-yellow-600')">
+                                        {{ tx.type==='buy' ? '-' : '+' }}{{ formatCurrency(tx.totalAmount, tx.currency) }}
+                                    </td>
+                                    <td class="px-4 py-3 text-center">
+                                         <button @click="deleteTransaction(tx.id)" class="text-gray-400 hover:text-red-500"><i class="fa-solid fa-trash-can"></i></button>
+                                    </td>
+                                </tr>
+                                <tr v-if="transactionHistory.length === 0"><td colspan="7" class="px-4 py-8 text-center text-gray-400">尚無交易紀錄</td></tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </transition>
@@ -354,8 +410,24 @@
                 </div>
             </div>
         </div>
-
+        
+        <div v-if="showModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
+                <div class="bg-gray-800 dark:bg-gray-900 text-white px-6 py-4 flex justify-between items-center"><h3 class="font-bold">{{ isEditing ? '編輯持股' : '新增持股' }}</h3><button @click="closeModal" class="text-gray-300 hover:text-white"><i class="fa-solid fa-times"></i></button></div>
+                <div class="p-6 space-y-4">
+                    <div><label class="block text-xs font-bold text-gray-500 mb-1">代號 (如 2330 或 AAPL)</label><div class="flex gap-2"><input type="text" v-model="form.symbol" @change="autoFetchName" class="zen-input uppercase" placeholder="輸入代號"><button @click="autoFetchName" class="bg-gray-200 dark:bg-gray-700 px-3 rounded hover:bg-gray-300 dark:hover:bg-gray-600"><i class="fa-solid fa-search"></i></button></div></div>
+                    <div><label class="block text-xs font-bold text-gray-500 mb-1">名稱</label><input type="text" v-model="form.name" class="zen-input"></div>
+                    <div><label class="block text-xs font-bold text-gray-500 mb-1">幣別</label><select v-model="form.currency" class="zen-input"><option value="TWD">TWD (台幣)</option><option value="USD">USD (美金)</option></select></div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">股數</label><input type="number" v-model.number="form.shares" class="zen-input"></div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">平均成本</label><input type="number" v-model.number="form.avgCost" class="zen-input"></div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex justify-end gap-3"><button @click="closeModal" class="px-4 py-2 rounded text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button><button @click="saveStock" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-medium transition">儲存</button></div>
+            </div>
         </div>
+
+    </div>
 </div>
 
 <script>
@@ -398,7 +470,9 @@
             let chartInstance = null, pieTwInstance = null, pieUsInstance = null;
             const realizedGains = ref([]);
             const dividendRecords = ref([]);
+            const transactionHistory = ref([]); // 新增：交易紀錄
             let unsubscribe = null;
+            let unsubscribeTrans = null;
 
             // Forms
             const showModal = ref(false);
@@ -422,7 +496,7 @@
                 auth.onAuthStateChanged((u) => {
                     user.value = u;
                     if (u) { loadUserData(u.uid); fetchPreviousDayData(u.uid); }
-                    else { stocks.value = []; realizedGains.value = []; dividendRecords.value = []; if(unsubscribe) unsubscribe(); }
+                    else { stocks.value = []; realizedGains.value = []; dividendRecords.value = []; transactionHistory.value = []; if(unsubscribe) unsubscribe(); if(unsubscribeTrans) unsubscribeTrans(); }
                 });
                 fetchExchangeRate();
             });
@@ -436,6 +510,7 @@
                     if (s === 'pie') setTimeout(drawPieCharts, 100); 
                     if (s === 'realized') fetchRealizedGains();
                     if (s === 'dividend') fetchDividends(); 
+                    if (s === 'transactions') fetchTransactions(); // 新增
                 }
             };
 
@@ -452,7 +527,7 @@
 
             const exportData = async () => {
                 if (!user.value) return;
-                const obj = { stocks: stocks.value, realized: realizedGains.value, history: (await db.collection('users').doc(user.value.uid).collection('history').orderBy('date').get()).docs.map(d=>d.data()) };
+                const obj = { stocks: stocks.value, realized: realizedGains.value, history: (await db.collection('users').doc(user.value.uid).collection('history').orderBy('date').get()).docs.map(d=>d.data()), transactions: transactionHistory.value };
                 const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(obj, null, 2)); a.download = `portfolio_${new Date().toISOString().split('T')[0]}.json`; document.body.appendChild(a); a.click(); a.remove();
             };
 
@@ -462,6 +537,22 @@
                 const snap = await db.collection('users').doc(user.value.uid).collection('dividends')
                     .where('date', '>=', divStartDate.value).where('date', '<=', divEndDate.value).orderBy('date', 'desc').get();
                 dividendRecords.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            };
+            
+            // 新增：讀取交易紀錄
+            const fetchTransactions = async () => {
+                if (!user.value) return;
+                if (unsubscribeTrans) unsubscribeTrans();
+                unsubscribeTrans = db.collection('users').doc(user.value.uid).collection('transactions')
+                    .orderBy('date', 'desc').orderBy('timestamp', 'desc').limit(50)
+                    .onSnapshot(snap => {
+                        transactionHistory.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    });
+            };
+            
+            const deleteTransaction = async (id) => {
+                 if (!confirm('刪除紀錄不會還原庫存狀態，僅刪除此筆流水帳。確定嗎？')) return;
+                 await db.collection('users').doc(user.value.uid).collection('transactions').doc(id).delete();
             };
 
             const saveDailySnapshot = async () => {
@@ -522,11 +613,25 @@
             const closeTransModal = () => showTransModal.value = false;
 
             const submitTransaction = async () => {
+                // 1. 紀錄到通用的 Transactions Collection (用於全歷史紀錄)
+                const logData = {
+                    date: transForm.value.date || new Date().toISOString().split('T')[0],
+                    type: transForm.value.type,
+                    symbol: transForm.value.symbol,
+                    name: transForm.value.name,
+                    shares: transForm.value.type === 'dividend' ? 0 : transForm.value.shares,
+                    price: transForm.value.type === 'dividend' ? 0 : (transForm.value.totalAmount / transForm.value.shares),
+                    totalAmount: transForm.value.totalAmount,
+                    currency: form.value.currency,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                
+                // 2. 處理庫存邏輯
                 if (transForm.value.type === 'dividend') {
                     if (!transForm.value.totalAmount) return alert('請輸入金額');
-                    await db.collection('users').doc(user.value.uid).collection('dividends').add({
-                        date: transForm.value.date, symbol: transForm.value.symbol, amount: transForm.value.totalAmount, currency: form.value.currency
-                    });
+                    await db.collection('users').doc(user.value.uid).collection('dividends').add(logData); // 舊有邏輯保留
+                    await db.collection('users').doc(user.value.uid).collection('transactions').add(logData); // 新增：整合紀錄
+                    
                     const ref = db.collection('users').doc(user.value.uid).collection('stocks').doc(transForm.value.id);
                     const currentDiv = stocks.value.find(s=>s.id===transForm.value.id)?.dividends || 0;
                     await ref.update({ dividends: currentDiv + transForm.value.totalAmount });
@@ -545,8 +650,12 @@
                     ns = transForm.value.currentShares - transForm.value.shares; 
                     na = transForm.value.currentAvg;
                     const pnl = transForm.value.totalAmount - (transForm.value.shares * transForm.value.currentAvg);
-                    await db.collection('users').doc(user.value.uid).collection('realized_gains').add({ date: new Date().toISOString().split('T')[0], symbol: transForm.value.symbol, currency: form.value.currency, shares: transForm.value.shares, price: transForm.value.totalAmount/transForm.value.shares, totalAmount: transForm.value.totalAmount, pnl: pnl });
+                    await db.collection('users').doc(user.value.uid).collection('realized_gains').add({ ...logData, pnl: pnl, price: transForm.value.totalAmount/transForm.value.shares }); // 舊有邏輯保留
                 }
+                
+                // 寫入整合紀錄
+                await db.collection('users').doc(user.value.uid).collection('transactions').add(logData);
+                
                 await ref.update({ shares: ns, avgCost: na });
                 if (ns === 0 && confirm('股數歸零，刪除？')) await ref.delete();
                 setTimeout(saveDailySnapshot, 500); closeTransModal();
@@ -591,7 +700,8 @@
                 showTransModal, transForm, openTransModal, closeTransModal, submitTransaction, calculateNewAvg,
                 autoFetchName, fetchPrices, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange,
                 chartStartDate, chartEndDate, drawChart, prevDayData, exportData, realizedGains, realizedTotalTw, realizedTotalUs,
-                divStartDate, divEndDate, fetchDividends, dividendRecords, dividendYearlyTw, dividendYearlyUs
+                divStartDate, divEndDate, fetchDividends, dividendRecords, dividendYearlyTw, dividendYearlyUs,
+                transactionHistory, fetchTransactions, deleteTransaction // 新增回傳
             };
         }
     }).mount('#app');

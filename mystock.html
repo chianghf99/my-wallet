@@ -31,7 +31,7 @@
         .dark .trans-btn { border-color: #4b5563; }
         .trans-btn.active-buy { background-color: #dc2626; color: white; border-color: #dc2626; }
         .trans-btn.active-sell { background-color: #16a34a; color: white; border-color: #16a34a; }
-        .trans-btn.active-div { background-color: #eab308; color: white; border-color: #eab308; } /* Yellow for Dividend */
+        .trans-btn.active-div { background-color: #eab308; color: white; border-color: #eab308; } 
 
         .collapse-enter-active, .collapse-leave-active { transition: all 0.3s ease; max-height: 800px; opacity: 1; overflow: hidden; }
         .collapse-enter-from, .collapse-leave-to { max-height: 0; opacity: 0; }
@@ -84,8 +84,10 @@
                     </div>
                     <div class="text-3xl font-bold text-gray-900 dark:text-white"><span v-if="showPrivacy">{{ formatCurrency(grandTotalValue, 'TWD') }}</span><span v-else>****</span></div>
                     <div class="mt-1 text-xs flex items-center gap-1" v-if="showPrivacy">
-                        <span class="text-gray-400">較前日:</span>
-                        <span v-if="prevDayData" :class="getPnlClass(grandTotalPnL - (prevDayData.totalPnL || 0))">{{ formatCurrency(grandTotalPnL - (prevDayData.totalPnL || 0), 'TWD') }}</span>
+                        <span class="text-gray-400">較前日(損益):</span>
+                        <span v-if="prevDayData" :class="getPnlClass(grandTotalPnL - (prevDayData.totalPnL || 0))">
+                             {{ formatCurrency(grandTotalPnL - (prevDayData.totalPnL || 0), 'TWD') }}
+                        </span>
                         <span v-else class="text-gray-400">-</span>
                     </div>
                     <div v-else class="mt-1 text-xs text-gray-300">****</div>
@@ -103,7 +105,7 @@
                     </div>
                     <div v-else class="mt-1 text-xs text-gray-300">****</div>
                     <div class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 text-sm flex justify-between">
-                        <span class="text-gray-500 dark:text-gray-400">損益</span><span v-if="showPrivacy" :class="getPnlClass(twStats.pnl)">{{ formatCurrency(twStats.pnl, 'TWD') }}</span><span v-else class="text-gray-300 dark:text-gray-600">****</span>
+                        <span class="text-gray-500 dark:text-gray-400">損益</span><span v-if="showPrivacy" :class="getPnlClass(twStats.pnl)">{{ formatCurrency(twStats.pnl, 'TWD') }}<span class="text-xs ml-1">({{ getRoi(twStats.cost, twStats.pnl) }})</span></span><span v-else class="text-gray-300 dark:text-gray-600">****</span>
                     </div>
                 </div>
                 <div class="zen-card p-5">
@@ -114,7 +116,7 @@
                     </div>
                     <div v-else class="mt-1 text-xs text-gray-300">****</div>
                     <div class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 text-sm flex justify-between">
-                        <span class="text-gray-500 dark:text-gray-400">損益</span><span v-if="showPrivacy" :class="getPnlClass(usStats.pnl)">{{ formatCurrency(usStats.pnl, 'USD') }}</span><span v-else class="text-gray-300 dark:text-gray-600">****</span>
+                        <span class="text-gray-500 dark:text-gray-400">損益</span><span v-if="showPrivacy" :class="getPnlClass(usStats.pnl)">{{ formatCurrency(usStats.pnl, 'USD') }}<span class="text-xs ml-1">({{ getRoi(usStats.cost, usStats.pnl) }})</span></span><span v-else class="text-gray-300 dark:text-gray-600">****</span>
                     </div>
                 </div>
             </div>
@@ -303,19 +305,6 @@
             <div v-if="stocks.length === 0" class="text-center py-10 text-gray-400 zen-card dark:text-gray-500">目前沒有任何持股資料，請點擊上方「新增」按鈕。</div>
         </div>
 
-        <div v-if="showModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden">
-                <div class="bg-gray-800 dark:bg-gray-900 text-white px-6 py-4 flex justify-between items-center"><h3 class="font-bold">{{ isEditing ? '編輯持股' : '新增持股' }}</h3><button @click="closeModal" class="text-gray-300 hover:text-white"><i class="fa-solid fa-times"></i></button></div>
-                <div class="p-6 space-y-4">
-                    <div class="grid grid-cols-2 gap-4"><div><label class="block text-xs font-bold text-gray-500 mb-1">代號</label><input v-model="form.symbol" @blur="autoFetchName" placeholder="如 2330" class="zen-input uppercase"></div><div><label class="block text-xs font-bold text-gray-500 mb-1">幣別</label><select v-model="form.currency" class="zen-input"><option value="TWD">TWD</option><option value="USD">USD</option></select></div></div>
-                    <div><label class="block text-xs font-bold text-gray-500 mb-1">名稱</label><input v-model="form.name" class="zen-input"></div>
-                    <div class="grid grid-cols-2 gap-4"><div><label class="block text-xs font-bold text-gray-500 mb-1">總股數</label><input type="number" v-model.number="form.shares" class="zen-input"></div><div><label class="block text-xs font-bold text-gray-500 mb-1">平均成本</label><input type="number" v-model.number="form.avgCost" class="zen-input"></div></div>
-                    <div class="grid grid-cols-2 gap-4"><div><label class="block text-xs font-bold text-gray-500 mb-1">現價</label><input type="number" v-model.number="form.currentPrice" class="zen-input bg-gray-50"></div><div><label class="block text-xs font-bold text-gray-500 mb-1">累計股息</label><input type="number" v-model.number="form.dividends" class="zen-input"></div></div>
-                </div>
-                <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex justify-end gap-3"><button @click="closeModal" class="px-4 py-2 rounded text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button><button @click="saveStock" class="px-6 py-2 rounded bg-gray-800 text-white font-medium hover:bg-gray-700 transition">儲存</button></div>
-            </div>
-        </div>
-
         <div v-if="showTransModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
                 <div class="bg-gray-800 dark:bg-gray-900 text-white px-6 py-4 flex justify-between items-center"><div><h3 class="font-bold">交易補登</h3><div class="text-xs text-gray-400">{{ transForm.symbol }} {{ transForm.name }}</div></div><button @click="closeTransModal" class="text-gray-300 hover:text-white"><i class="fa-solid fa-times"></i></button></div>
@@ -342,15 +331,15 @@
                         <input type="date" v-model="transForm.date" class="zen-input">
                     </div>
                     <div v-if="transForm.type === 'dividend'">
-                        <label class="block text-xs font-bold text-gray-500 mb-1">實領金額 ({{form.currency}})</label>
-                        <input type="number" v-model.number="transForm.totalAmount" class="zen-input" placeholder="稅後金額">
+                        <label class="block text-xs font-bold text-gray-500 mb-1">股息金額 ({{form.currency}})</label>
+                        <input type="number" v-model.number="transForm.totalAmount" class="zen-input" placeholder="輸入金額">
                     </div>
 
                     <div v-if="transForm.type !== 'dividend'" class="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg text-sm space-y-2">
                         <div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">目前持股</span><span class="dark:text-gray-200">{{ formatNumber(transForm.currentShares) }}</span></div>
                         <div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">目前成本</span><span class="dark:text-gray-200">{{ formatCurrency(transForm.currentAvg, form.currency) }}</span></div>
                         <div class="border-t border-gray-200 dark:border-gray-600 my-2"></div>
-                        <div v-if="transForm.type === 'buy'" class="flex justify-between font-bold text-gray-900 dark:text-white"><span>預估新成本</span><span class="text-blue-600 dark:text-blue-400">{{ formatCurrency(calculateNewAvg(), form.currency) }}</span></div>
+                        <div v-if="transForm.type === 'buy'" class="flex justify-between font-bold text-gray-900 dark:text-white"><span>預估新成本</span><span class="text-blue-600 dark:text-blue-400">{{ formatCurrency(calculateNewAvg(), form.currency) }} /股</span></div>
                         <div v-if="transForm.type === 'sell'" class="flex justify-between font-bold text-gray-900 dark:text-white"><span>實現損益</span><span :class="getPnlClass(transForm.totalAmount - (transForm.shares * transForm.currentAvg))">{{ formatCurrency(transForm.totalAmount - (transForm.shares * transForm.currentAvg), form.currency) }}</span></div>
                     </div>
                 </div>
@@ -366,7 +355,7 @@
             </div>
         </div>
 
-    </div>
+        </div>
 </div>
 
 <script>
@@ -426,7 +415,6 @@
                 const past = new Date(); past.setDate(today.getDate() - 30);
                 chartEndDate.value = today.toISOString().split('T')[0];
                 chartStartDate.value = past.toISOString().split('T')[0];
-                // Dividend Filter Init
                 const yearStart = new Date(today.getFullYear(), 0, 1);
                 divEndDate.value = today.toISOString().split('T')[0];
                 divStartDate.value = yearStart.toISOString().split('T')[0];
@@ -469,8 +457,6 @@
             };
 
             const fetchRealizedGains = async () => { if (user.value) realizedGains.value = (await db.collection('users').doc(user.value.uid).collection('realized_gains').orderBy('date', 'desc').limit(50).get()).docs.map(d => ({...d.data()})); };
-            
-            // New Dividend Fetch
             const fetchDividends = async () => {
                 if (!user.value) return;
                 const snap = await db.collection('users').doc(user.value.uid).collection('dividends')
@@ -478,7 +464,6 @@
                 dividendRecords.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             };
 
-            // Snapshot Logic
             const saveDailySnapshot = async () => {
                 if (!user.value) return;
                 const todayStr = new Date().toISOString().split('T')[0];
@@ -501,7 +486,6 @@
                 if (docs[0].date !== todayStr) prevDayData.value = docs[0]; else if (docs.length > 1) prevDayData.value = docs[1];
             };
 
-            // Charting
             const drawChart = async () => {
                 if (!user.value || !document.getElementById('assetChart')) return;
                 const snap = await db.collection('users').doc(user.value.uid).collection('history').where('date', '>=', chartStartDate.value).where('date', '<=', chartEndDate.value).orderBy('date', 'asc').get();
@@ -521,12 +505,10 @@
                     const fv = c.chart.canvas.id === 'pieTw' ? formatCurrency(v, 'TWD') : formatCurrency(v, 'USD');
                     return `${l}: ${fv} (${p})`; 
                 }}};
-                // Use Name instead of Symbol for labels
                 if(document.getElementById('pieTw') && twStockList.value.length) pieTwInstance = new Chart(document.getElementById('pieTw'), { type: 'doughnut', data: { labels: twStockList.value.map(s=>s.name || s.symbol), datasets: [{ data: twStockList.value.map(s=>s.currentPrice*s.shares), backgroundColor: ['#3b82f6','#2563eb','#1d4ed8','#60a5fa','#93c5fd'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { tooltip: tooltipOptions } } });
                 if(document.getElementById('pieUs') && usStockList.value.length) pieUsInstance = new Chart(document.getElementById('pieUs'), { type: 'doughnut', data: { labels: usStockList.value.map(s=>s.name || s.symbol), datasets: [{ data: usStockList.value.map(s=>s.currentPrice*s.shares), backgroundColor: ['#ef4444','#dc2626','#b91c1c','#f87171','#fca5a5'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { tooltip: tooltipOptions } } });
             };
 
-            // Calculations
             const calculateNewAvg = () => { 
                 if (transForm.value.type !== 'buy' || !transForm.value.shares || !transForm.value.totalAmount) return transForm.value.currentAvg; 
                 const old = transForm.value.currentShares * transForm.value.currentAvg; 
@@ -545,7 +527,6 @@
                     await db.collection('users').doc(user.value.uid).collection('dividends').add({
                         date: transForm.value.date, symbol: transForm.value.symbol, amount: transForm.value.totalAmount, currency: form.value.currency
                     });
-                    // Also update cumulative dividend on stock doc for reference
                     const ref = db.collection('users').doc(user.value.uid).collection('stocks').doc(transForm.value.id);
                     const currentDiv = stocks.value.find(s=>s.id===transForm.value.id)?.dividends || 0;
                     await ref.update({ dividends: currentDiv + transForm.value.totalAmount });
@@ -563,7 +544,6 @@
                     if (transForm.value.shares > transForm.value.currentShares) return alert('股數不足');
                     ns = transForm.value.currentShares - transForm.value.shares; 
                     na = transForm.value.currentAvg;
-                    // Save Realized
                     const pnl = transForm.value.totalAmount - (transForm.value.shares * transForm.value.currentAvg);
                     await db.collection('users').doc(user.value.uid).collection('realized_gains').add({ date: new Date().toISOString().split('T')[0], symbol: transForm.value.symbol, currency: form.value.currency, shares: transForm.value.shares, price: transForm.value.totalAmount/transForm.value.shares, totalAmount: transForm.value.totalAmount, pnl: pnl });
                 }
@@ -572,7 +552,6 @@
                 setTimeout(saveDailySnapshot, 500); closeTransModal();
             };
             
-            // Standard CRUD & API
             const openModal = () => { isEditing.value = false; form.value = { id: Date.now().toString(), symbol: '', name: '', currency: 'TWD', shares: 0, avgCost: 0, currentPrice: 0, dividends: 0, previousClose: 0 }; showModal.value = true; };
             const editStock = (s) => { isEditing.value = true; form.value = {...s}; showModal.value = true; };
             const closeModal = () => showModal.value = false;
@@ -595,7 +574,6 @@
             const realizedTotalTw = computed(() => realizedGains.value.filter(r => r.currency === 'TWD').reduce((acc, cur) => acc + cur.pnl, 0));
             const realizedTotalUs = computed(() => realizedGains.value.filter(r => r.currency === 'USD').reduce((acc, cur) => acc + cur.pnl, 0));
             
-            // Dividend Stats
             const dividendYearlyTw = computed(() => dividendRecords.value.filter(r => r.currency === 'TWD' && r.date.startsWith(new Date().getFullYear().toString())).reduce((acc, cur) => acc + cur.amount, 0));
             const dividendYearlyUs = computed(() => dividendRecords.value.filter(r => r.currency === 'USD' && r.date.startsWith(new Date().getFullYear().toString())).reduce((acc, cur) => acc + cur.amount, 0));
 

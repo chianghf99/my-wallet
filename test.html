@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 v2.3.0 | Portfolio</title>
+    <title>我的投資組合 v2.3.1 | Portfolio</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -55,7 +55,7 @@
     <div v-if="!user" class="flex-grow flex flex-col items-center justify-center p-4">
         <div class="zen-card p-8 max-w-sm w-full text-center space-y-6">
             <div class="bg-gray-800 text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto text-2xl"><i class="fa-solid fa-chart-line"></i></div>
-            <div><h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v2.3</h1><p class="text-gray-500 dark:text-gray-400 text-sm mt-2">安全、即時、跨裝置的投資管理工具</p></div>
+            <div><h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v2.3.1</h1><p class="text-gray-500 dark:text-gray-400 text-sm mt-2">安全、即時、跨裝置的投資管理工具</p></div>
             <button @click="login" class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
                 <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5 mr-3" alt="Google">使用 Google 帳號登入
             </button>
@@ -225,10 +225,15 @@
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm text-left">
-                            <thead class="bg-gray-100 dark:bg-gray-800 text-gray-500 uppercase font-medium"><tr><th class="px-4 py-2">入帳日</th><th class="px-4 py-2">標的</th><th class="px-4 py-2 text-right">金額</th></tr></thead>
+                            <thead class="bg-gray-100 dark:bg-gray-800 text-gray-500 uppercase font-medium"><tr><th class="px-4 py-2">入帳日</th><th class="px-4 py-2">標的</th><th class="px-4 py-2 text-right">金額</th><th class="px-4 py-2 text-center">操作</th></tr></thead>
                             <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                                <tr v-for="rec in dividendRecords" :key="rec.id" class="hover:bg-gray-50 dark:hover:bg-gray-800"><td class="px-4 py-3">{{ rec.date }}</td><td class="px-4 py-3 font-bold">{{ rec.symbol }}</td><td class="px-4 py-3 text-right font-bold text-yellow-600 dark:text-yellow-400">+{{ formatCurrency(rec.amount, rec.currency) }}</td></tr>
-                                <tr v-if="dividendRecords.length === 0"><td colspan="3" class="px-4 py-6 text-center text-gray-400">無紀錄</td></tr>
+                                <tr v-for="rec in dividendRecords" :key="rec.id" class="hover:bg-gray-50 dark:hover:bg-gray-800">
+                                    <td class="px-4 py-3">{{ rec.date }}</td>
+                                    <td class="px-4 py-3 font-bold">{{ rec.symbol }}</td>
+                                    <td class="px-4 py-3 text-right font-bold text-yellow-600 dark:text-yellow-400">+{{ formatCurrency(rec.amount, rec.currency) }}</td>
+                                    <td class="px-4 py-3 text-center"><button @click="deleteDividend(rec)" class="text-gray-400 hover:text-red-500"><i class="fa-solid fa-trash-can"></i></button></td>
+                                </tr>
+                                <tr v-if="dividendRecords.length === 0"><td colspan="4" class="px-4 py-6 text-center text-gray-400">無紀錄</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -244,9 +249,14 @@
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm text-left">
-                            <thead class="bg-gray-100 dark:bg-gray-800 text-gray-500 uppercase font-medium"><tr><th class="px-4 py-2">日期</th><th class="px-4 py-2">標的</th><th class="px-4 py-2 text-right">獲利/虧損</th></tr></thead>
+                            <thead class="bg-gray-100 dark:bg-gray-800 text-gray-500 uppercase font-medium"><tr><th class="px-4 py-2">日期</th><th class="px-4 py-2">標的</th><th class="px-4 py-2 text-right">獲利/虧損</th><th class="px-4 py-2 text-center">操作</th></tr></thead>
                             <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                                <tr v-for="rec in realizedGains" :key="rec.timestamp" class="hover:bg-gray-50 dark:hover:bg-gray-800"><td class="px-4 py-3">{{ rec.date }}</td><td class="px-4 py-3 font-bold">{{ rec.symbol }}</td><td class="px-4 py-3 text-right font-bold" :class="getPnlClass(rec.pnl)">{{ formatCurrency(rec.pnl, rec.currency) }}</td></tr>
+                                <tr v-for="rec in realizedGains" :key="rec.id" class="hover:bg-gray-50 dark:hover:bg-gray-800">
+                                    <td class="px-4 py-3">{{ rec.date }}</td>
+                                    <td class="px-4 py-3 font-bold">{{ rec.symbol }}</td>
+                                    <td class="px-4 py-3 text-right font-bold" :class="getPnlClass(rec.pnl)">{{ formatCurrency(rec.pnl, rec.currency) }}</td>
+                                    <td class="px-4 py-3 text-center"><button @click="deleteRealized(rec.id)" class="text-gray-400 hover:text-red-500"><i class="fa-solid fa-trash-can"></i></button></td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -531,7 +541,7 @@
                 const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(obj, null, 2)); a.download = `portfolio_${new Date().toISOString().split('T')[0]}.json`; document.body.appendChild(a); a.click(); a.remove();
             };
 
-            const fetchRealizedGains = async () => { if (user.value) realizedGains.value = (await db.collection('users').doc(user.value.uid).collection('realized_gains').orderBy('date', 'desc').limit(50).get()).docs.map(d => ({...d.data()})); };
+            const fetchRealizedGains = async () => { if (user.value) realizedGains.value = (await db.collection('users').doc(user.value.uid).collection('realized_gains').orderBy('date', 'desc').limit(50).get()).docs.map(d => ({id: d.id, ...d.data()})); };
             const fetchDividends = async () => {
                 if (!user.value) return;
                 const snap = await db.collection('users').doc(user.value.uid).collection('dividends')
@@ -551,8 +561,30 @@
             };
             
             const deleteTransaction = async (id) => {
-                 if (!confirm('刪除紀錄不會還原庫存狀態，僅刪除此筆流水帳。確定嗎？')) return;
+                 if (!confirm('確定刪除此筆交易流水帳？(注意：此操作不會自動還原庫存，僅刪除紀錄)')) return;
                  await db.collection('users').doc(user.value.uid).collection('transactions').doc(id).delete();
+            };
+
+            // 新增：刪除股息
+            const deleteDividend = async (rec) => {
+                if(!confirm('確定刪除此筆股息紀錄？')) return;
+                
+                // 扣除庫存中的累計股息
+                const stock = stocks.value.find(s => s.symbol === rec.symbol);
+                if (stock) {
+                    const newDiv = (stock.dividends || 0) - rec.amount;
+                    await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ dividends: Math.max(0, newDiv) });
+                }
+
+                await db.collection('users').doc(user.value.uid).collection('dividends').doc(rec.id).delete();
+                fetchDividends();
+            };
+
+            // 新增：刪除已實現損益
+            const deleteRealized = async (id) => {
+                if(!confirm('確定刪除此筆已實現損益紀錄？')) return;
+                await db.collection('users').doc(user.value.uid).collection('realized_gains').doc(id).delete();
+                fetchRealizedGains();
             };
 
             const saveDailySnapshot = async () => {
@@ -613,7 +645,7 @@
             const closeTransModal = () => showTransModal.value = false;
 
             const submitTransaction = async () => {
-                // 1. 紀錄到通用的 Transactions Collection (用於全歷史紀錄)
+                // 1. 準備通用的紀錄資料 (Transactions Collection 使用)
                 const logData = {
                     date: transForm.value.date || new Date().toISOString().split('T')[0],
                     type: transForm.value.type,
@@ -626,15 +658,21 @@
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 };
                 
-                // 2. 處理庫存邏輯
+                // 2. 處理庫存與分類邏輯
                 if (transForm.value.type === 'dividend') {
                     if (!transForm.value.totalAmount) return alert('請輸入金額');
-                    await db.collection('users').doc(user.value.uid).collection('dividends').add(logData); // 舊有邏輯保留
-                    await db.collection('users').doc(user.value.uid).collection('transactions').add(logData); // 新增：整合紀錄
                     
+                    // 【修正點】：存入 dividends 集合時，必須包含 'amount' 欄位，以相容舊資料
+                    const dividendData = { ...logData, amount: transForm.value.totalAmount };
+                    
+                    await db.collection('users').doc(user.value.uid).collection('dividends').add(dividendData); 
+                    await db.collection('users').doc(user.value.uid).collection('transactions').add(logData); 
+                    
+                    // 更新個股累計股息
                     const ref = db.collection('users').doc(user.value.uid).collection('stocks').doc(transForm.value.id);
                     const currentDiv = stocks.value.find(s=>s.id===transForm.value.id)?.dividends || 0;
                     await ref.update({ dividends: currentDiv + transForm.value.totalAmount });
+                    
                     closeTransModal(); return;
                 }
 
@@ -650,7 +688,8 @@
                     ns = transForm.value.currentShares - transForm.value.shares; 
                     na = transForm.value.currentAvg;
                     const pnl = transForm.value.totalAmount - (transForm.value.shares * transForm.value.currentAvg);
-                    await db.collection('users').doc(user.value.uid).collection('realized_gains').add({ ...logData, pnl: pnl, price: transForm.value.totalAmount/transForm.value.shares }); // 舊有邏輯保留
+                    // 賣出紀錄保留舊有格式
+                    await db.collection('users').doc(user.value.uid).collection('realized_gains').add({ ...logData, pnl: pnl, price: transForm.value.totalAmount/transForm.value.shares });
                 }
                 
                 // 寫入整合紀錄
@@ -701,7 +740,7 @@
                 autoFetchName, fetchPrices, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange,
                 chartStartDate, chartEndDate, drawChart, prevDayData, exportData, realizedGains, realizedTotalTw, realizedTotalUs,
                 divStartDate, divEndDate, fetchDividends, dividendRecords, dividendYearlyTw, dividendYearlyUs,
-                transactionHistory, fetchTransactions, deleteTransaction // 新增回傳
+                transactionHistory, fetchTransactions, deleteTransaction, deleteDividend, deleteRealized // 新增回傳
             };
         }
     }).mount('#app');

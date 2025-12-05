@@ -345,7 +345,12 @@
                                         <div class="font-bold text-gray-900 dark:text-gray-200">{{ stock.symbol }}</div>
                                         <div class="text-xs text-gray-500">{{ stock.name }}</div>
                                     </td>
-                                    <td class="px-6 py-4 text-right font-medium dark:text-gray-300">{{ formatCurrency(stock.currentPrice, 'TWD') }}</td>
+                                    <td class="px-6 py-4 text-right font-medium dark:text-gray-300">
+                                        <div>{{ formatCurrency(stock.currentPrice, 'TWD') }}</div>
+                                        <div class="text-xs" :class="getPnlClass(stock.currentPrice - stock.previousClose)" v-if="stock.previousClose">
+                                            {{ formatChange(stock.currentPrice - stock.previousClose, stock.previousClose) }}
+                                        </div>
+                                    </td>
                                     <td class="px-6 py-4 text-right text-gray-500">
                                         <div>{{ formatCurrency(stock.avgCost, 'TWD') }}</div>
                                         <div class="text-xs">x {{ formatNumber(stock.shares) }}</div>
@@ -378,7 +383,10 @@
                             </div>
                             <div class="text-right">
                                 <div class="text-lg font-bold dark:text-gray-200">{{ formatCurrency(stock.currentPrice, 'TWD') }}</div>
-                                <div class="text-xs text-gray-400">現價</div>
+                                <div class="text-xs font-bold" :class="getPnlClass(stock.currentPrice - stock.previousClose)" v-if="stock.previousClose">
+                                    {{ formatChange(stock.currentPrice - stock.previousClose, stock.previousClose) }}
+                                </div>
+                                <div class="text-xs text-gray-400" v-else>現價</div>
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-4 py-2 border-t border-gray-100 dark:border-gray-700" @click="editStock(stock)">
@@ -427,7 +435,12 @@
                                         <div class="font-bold text-gray-900 dark:text-gray-200">{{ stock.symbol }}</div>
                                         <div class="text-xs text-gray-500">{{ stock.name }}</div>
                                     </td>
-                                    <td class="px-6 py-4 text-right font-medium dark:text-gray-300">{{ formatCurrency(stock.currentPrice, 'USD') }}</td>
+                                    <td class="px-6 py-4 text-right font-medium dark:text-gray-300">
+                                        <div>{{ formatCurrency(stock.currentPrice, 'USD') }}</div>
+                                        <div class="text-xs" :class="getPnlClass(stock.currentPrice - stock.previousClose)" v-if="stock.previousClose">
+                                            {{ formatChange(stock.currentPrice - stock.previousClose, stock.previousClose) }}
+                                        </div>
+                                    </td>
                                     <td class="px-6 py-4 text-right text-gray-500">
                                         <div>{{ formatCurrency(stock.avgCost, 'USD') }}</div>
                                         <div class="text-xs">x {{ formatNumber(stock.shares) }}</div>
@@ -460,7 +473,10 @@
                             </div>
                             <div class="text-right">
                                 <div class="text-lg font-bold dark:text-gray-200">{{ formatCurrency(stock.currentPrice, 'USD') }}</div>
-                                <div class="text-xs text-gray-400">現價</div>
+                                <div class="text-xs font-bold" :class="getPnlClass(stock.currentPrice - stock.previousClose)" v-if="stock.previousClose">
+                                    {{ formatChange(stock.currentPrice - stock.previousClose, stock.previousClose) }}
+                                </div>
+                                <div class="text-xs text-gray-400" v-else>現價</div>
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-4 py-2 border-t border-gray-100 dark:border-gray-700" @click="editStock(stock)">
@@ -657,7 +673,7 @@
             // Forms
             const showModal = ref(false);
             const isEditing = ref(false);
-            const form = ref({ id: null, symbol: '', name: '', currency: 'TWD', shares: 0, avgCost: 0, currentPrice: 0, dividends: 0 });
+            const form = ref({ id: null, symbol: '', name: '', currency: 'TWD', shares: 0, avgCost: 0, currentPrice: 0, dividends: 0, previousClose: 0 });
             const showTransModal = ref(false);
             const transForm = ref({ id: null, type: 'buy', symbol: '', name: '', shares: '', totalAmount: '', currentShares: 0, currentAvg: 0 });
 
@@ -818,7 +834,7 @@
             };
             
             // Standard CRUD
-            const openModal = () => { isEditing.value = false; form.value = { id: Date.now().toString(), symbol: '', name: '', currency: 'TWD', shares: 0, avgCost: 0, currentPrice: 0, dividends: 0 }; showModal.value = true; };
+            const openModal = () => { isEditing.value = false; form.value = { id: Date.now().toString(), symbol: '', name: '', currency: 'TWD', shares: 0, avgCost: 0, currentPrice: 0, dividends: 0, previousClose: 0 }; showModal.value = true; };
             const editStock = (s) => { isEditing.value = true; form.value = {...s}; showModal.value = true; };
             const closeModal = () => showModal.value = false;
             const saveStock = async () => { if (!user.value || !form.value.symbol) return; const d = { ...form.value }; const r = db.collection('users').doc(user.value.uid).collection('stocks'); if (isEditing.value) await r.doc(d.id).update(d); else await r.doc(d.id).set(d); closeModal(); };
@@ -834,15 +850,42 @@
                          if (s.endsWith('.TW')) {
                             const res2 = await fetch('https://corsproxy.io/?' + encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${s.replace('.TW','.TWO')}?interval=1d`));
                             const json2 = await res2.json();
-                            if (json2.chart?.result) return json2.chart.result[0].meta;
+                            if (json2.chart?.result) return { symbol: json2.chart.result[0].meta.symbol, regularMarketPrice: json2.chart.result[0].meta.regularMarketPrice, previousClose: json2.chart.result[0].meta.chartPreviousClose || json2.chart.result[0].meta.previousClose };
                         }
                         throw new Error('Not Found');
                     }
-                    return json.chart.result[0].meta;
+                    return { symbol: json.chart.result[0].meta.symbol, regularMarketPrice: json.chart.result[0].meta.regularMarketPrice, previousClose: json.chart.result[0].meta.chartPreviousClose || json.chart.result[0].meta.previousClose };
                 } catch (e) { return null; }
             };
-            const autoFetchName = async () => { const s = form.value.symbol; if (!s) return; if (/^\d/.test(s)) form.value.currency = 'TWD'; else if (/^[A-Za-z]+$/.test(s)) form.value.currency = 'USD'; if (!form.value.name) form.value.name = '查詢中...'; const d = await getYahooData(s); if (d) { if (form.value.name === '查詢中...') form.value.name = d.symbol; form.value.currentPrice = d.regularMarketPrice; } else { if (form.value.name === '查詢中...') form.value.name = ''; alert('查無代號'); } };
-            const fetchPrices = async () => { if (!user.value || stocks.value.length === 0) return; isLoading.value = true; const updates = stocks.value.map(async (s) => { const d = await getYahooData(s.symbol); return d ? { id: s.id, price: d.regularMarketPrice } : null; }); const res = await Promise.all(updates); const batch = db.batch(); let has = false; const ref = db.collection('users').doc(user.value.uid).collection('stocks'); res.forEach(r => { if (r) { batch.update(ref.doc(r.id), { currentPrice: r.price }); has = true; } }); if (has) await batch.commit(); setTimeout(saveDailySnapshot, 500); lastUpdated.value = `${new Date().getHours()}:${String(new Date().getMinutes()).padStart(2, '0')}`; isLoading.value = false; };
+            const autoFetchName = async () => { 
+                const s = form.value.symbol; if (!s) return; 
+                if (/^\d/.test(s)) form.value.currency = 'TWD'; else if (/^[A-Za-z]+$/.test(s)) form.value.currency = 'USD'; 
+                if (!form.value.name) form.value.name = '查詢中...'; 
+                const d = await getYahooData(s); 
+                if (d) { 
+                    if (form.value.name === '查詢中...') form.value.name = d.symbol; 
+                    form.value.currentPrice = d.regularMarketPrice;
+                    form.value.previousClose = d.previousClose; // Save Prev Close
+                } else { if (form.value.name === '查詢中...') form.value.name = ''; alert('查無代號'); } 
+            };
+            
+            const fetchPrices = async () => { 
+                if (!user.value || stocks.value.length === 0) return; 
+                isLoading.value = true; 
+                const updates = stocks.value.map(async (s) => { 
+                    const d = await getYahooData(s.symbol); 
+                    return d ? { id: s.id, price: d.regularMarketPrice, prev: d.previousClose } : null; 
+                }); 
+                const res = await Promise.all(updates); 
+                const batch = db.batch(); let has = false; 
+                const ref = db.collection('users').doc(user.value.uid).collection('stocks'); 
+                res.forEach(r => { if (r) { batch.update(ref.doc(r.id), { currentPrice: r.price, previousClose: r.prev }); has = true; } }); 
+                if (has) await batch.commit(); 
+                setTimeout(saveDailySnapshot, 500); 
+                lastUpdated.value = `${new Date().getHours()}:${String(new Date().getMinutes()).padStart(2, '0')}`; 
+                isLoading.value = false; 
+            };
+            
             const fetchExchangeRate = async () => { try { const r = await fetch('https://api.exchangerate-api.com/v4/latest/USD'); const d = await r.json(); exchangeRate.value = d.rates.TWD; } catch(e){} };
 
             // Stats
@@ -857,17 +900,27 @@
             const realizedTotalUs = computed(() => realizedGains.value.filter(r => r.currency === 'USD').reduce((acc, cur) => acc + cur.pnl, 0));
             function calculateStats(subset) { let v = 0, c = 0, d = 0; subset.forEach(s => { v += s.currentPrice * s.shares; c += s.avgCost * s.shares; d += (s.dividends || 0); }); return { value: v, cost: c, dividend: d, pnl: v - c }; }
             
-            const formatNumber = (n) => !n && n!==0 ? '-' : new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(n);
-            const formatCurrency = (n, c) => { if (c === 'TWD') return 'NT$ ' + new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(n); if (c === 'USD') return '$ ' + new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(n); return n; };
+            // Formatters
+            const formatNumber = (n) => !n && n!==0 ? '-' : new Intl.NumberFormat('en-US', { maximumFractionDigits: 5 }).format(n);
+            const formatCurrency = (n, c) => { 
+                // Always 2 decimals
+                return (c === 'TWD' ? 'NT$ ' : '$ ') + new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n); 
+            };
             const getPnlClass = (v) => v >= 0 ? 'text-up' : 'text-down';
             const getRoi = (c, p) => c === 0 ? '0%' : (p>0?'+':'')+(p/c*100).toFixed(2) + '%';
             
+            // New Helper for Day Change
+            const formatChange = (diff, prev) => {
+                const pct = (diff / prev) * 100;
+                return (diff > 0 ? '+' : '') + diff.toFixed(2) + ' (' + (pct > 0 ? '+' : '') + pct.toFixed(2) + '%)';
+            };
+
             return {
                 user, login, logout, stocks, exchangeRate, lastUpdated, isLoading, viewMode, isMobile, showPrivacy, isDarkMode, toggleDarkMode, activeSection, toggleSection,
                 twStats, usStats, grandTotalValue, grandTotalPnL, twStockList, usStockList,
                 showModal, isEditing, form, openModal, editStock, closeModal, saveStock, deleteStock,
                 showTransModal, transForm, openTransModal, closeTransModal, submitTransaction, calculateNewAvg,
-                autoFetchName, fetchPrices, formatNumber, formatCurrency, getPnlClass, getRoi,
+                autoFetchName, fetchPrices, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange,
                 chartStartDate, chartEndDate, drawChart, prevDayData, exportData, realizedGains, realizedTotalTw, realizedTotalUs
             };
         }

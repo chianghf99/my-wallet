@@ -7,98 +7,192 @@
     <meta name="theme-color" content="#667eea">
     <title>卡片管家 Pro</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
     <style>
-        body { background-color: #f4f6f9; font-family: -apple-system, "Microsoft JhengHei", sans-serif; padding-bottom: 80px; user-select: none; -webkit-user-select: none; }
-        .card-custom { border: none; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        .total-box { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 0 0 25px 25px; margin-top: -25px; padding-top: 50px !important; padding-bottom: 20px !important; }
-        .status-paid { text-decoration: line-through; color: #999; }
-        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: white; border-top: 1px solid #eee; display: flex; justify-content: space-around; padding: 10px 0; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 1000; }
-        .nav-item { text-align: center; color: #999; font-size: 0.8rem; cursor: pointer; flex: 1;}
-        .nav-item.active { color: #667eea; font-weight: bold; }
-        .nav-item i { font-size: 1.2rem; display: block; margin-bottom: 4px; }
-        .page-section { display: none; }
+        :root { --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        body { background-color: #f8f9fa; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif; padding-bottom: 90px; user-select: none; -webkit-user-select: none; }
+        
+        /* 頂部卡片 */
+        .header-card {
+            background: var(--primary-gradient); color: white;
+            border-radius: 0 0 30px 30px;
+            padding: 60px 20px 30px 20px; /* 避開手機瀏海 */
+            box-shadow: 0 4px 20px rgba(118, 75, 162, 0.3);
+            margin-bottom: 20px;
+        }
+        
+        /* 列表樣式優化 */
+        .bill-item {
+            background: white; border-radius: 16px; margin-bottom: 12px;
+            padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+            transition: transform 0.1s;
+            border: 1px solid rgba(0,0,0,0.02);
+        }
+        .bill-item:active { transform: scale(0.98); }
+        .bill-icon {
+            width: 45px; height: 45px; border-radius: 12px;
+            background: #f0f2f5; color: #667eea;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; margin-right: 15px;
+        }
+        
+        /* 狀態標籤 */
+        .badge-pill { padding: 5px 10px; border-radius: 20px; font-weight: normal; font-size: 0.75rem; }
+        .bg-urgent { background: #fee2e2; color: #dc2626; }
+        .bg-soon { background: #fef3c7; color: #d97706; }
+        .bg-normal { background: #e0e7ff; color: #4338ca; }
+        
+        /* 底部導航 */
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);
+            border-top: 1px solid #eee; padding: 12px 0;
+            display: flex; justify-content: space-around; z-index: 1000;
+            padding-bottom: max(12px, env(safe-area-inset-bottom));
+        }
+        .nav-btn { text-align: center; color: #94a3b8; font-size: 0.75rem; background: none; border: none; flex: 1; }
+        .nav-btn.active { color: #764ba2; font-weight: 600; }
+        .nav-btn i { font-size: 1.4rem; display: block; margin-bottom: 4px; }
+
+        /* PIN Lock 虛擬鍵盤 */
+        #pinOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #ffffff; z-index: 99999;
+            display: none; flex-direction: column; justify-content: center; align-items: center;
+        }
+        .pin-dots { display: flex; gap: 15px; margin-bottom: 40px; }
+        .dot { width: 14px; height: 14px; border-radius: 50%; background: #e2e8f0; transition: 0.2s; }
+        .dot.active { background: #764ba2; transform: scale(1.2); }
+        
+        .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; width: 280px; }
+        .key-btn {
+            width: 70px; height: 70px; border-radius: 35px;
+            background: #f8f9fa; border: none; font-size: 1.5rem; font-weight: 500; color: #333;
+            display: flex; align-items: center; justify-content: center; margin: 0 auto;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .key-btn:active { background: #e2e8f0; }
+
+        /* 其他 */
+        .page-section { display: none; animation: fadeIn 0.3s; }
         .page-section.active { display: block; }
-        #pinOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f4f6f9; z-index: 10000; display: none; flex-direction: column; justify-content: center; align-items: center; }
-        .pin-dot { width: 12px; height: 12px; border-radius: 50%; background: #ddd; margin: 0 4px; display: inline-block; transition: 0.2s; }
-        .pin-dot.filled { background: #667eea; transform: scale(1.2); }
-        .btn-circle { border-radius: 50%; width: 40px; height: 40px; padding: 0; display: inline-flex; justify-content: center; align-items: center;}
-        #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 9999; display: none; flex-direction: column; justify-content: center; align-items: center; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        #loadingOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.9); z-index: 9998;
+            display: none; flex-direction: column; justify-content: center; align-items: center;
+        }
     </style>
 </head>
 <body>
 
 <div id="pinOverlay">
-    <div class="text-center mb-4">
-        <i class="fas fa-lock fa-3x text-secondary mb-3"></i>
-        <h4 class="fw-bold text-secondary">請輸入 6 位數密碼</h4>
+    <div class="mb-5 text-center">
+        <div class="mb-3"><i class="fas fa-shield-alt fa-3x text-primary" style="background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent;"></i></div>
+        <h5 class="fw-bold">歡迎回來</h5>
+        <p class="text-muted small">請輸入 6 位數安全密碼</p>
     </div>
-    <div class="mb-4">
-        <span class="pin-dot" id="dot1"></span><span class="pin-dot" id="dot2"></span><span class="pin-dot" id="dot3"></span><span class="pin-dot" id="dot4"></span><span class="pin-dot" id="dot5"></span><span class="pin-dot" id="dot6"></span>
+    
+    <div class="pin-dots">
+        <div class="dot" id="d1"></div><div class="dot" id="d2"></div><div class="dot" id="d3"></div>
+        <div class="dot" id="d4"></div><div class="dot" id="d5"></div><div class="dot" id="d6"></div>
     </div>
-    <input type="tel" id="pinInput" maxlength="6" style="opacity: 0; position: absolute; top: -1000px;">
-    <button class="btn btn-outline-primary px-4 rounded-pill" onclick="focusPinInput()"><i class="fas fa-key"></i> 解鎖</button>
+
+    <div class="keypad">
+        <button class="key-btn" onclick="pressKey(1)">1</button>
+        <button class="key-btn" onclick="pressKey(2)">2</button>
+        <button class="key-btn" onclick="pressKey(3)">3</button>
+        <button class="key-btn" onclick="pressKey(4)">4</button>
+        <button class="key-btn" onclick="pressKey(5)">5</button>
+        <button class="key-btn" onclick="pressKey(6)">6</button>
+        <button class="key-btn" onclick="pressKey(7)">7</button>
+        <button class="key-btn" onclick="pressKey(8)">8</button>
+        <button class="key-btn" onclick="pressKey(9)">9</button>
+        <button class="key-btn text-muted" style="font-size: 1rem;" onclick="pressKey('clear')">清除</button>
+        <button class="key-btn" onclick="pressKey(0)">0</button>
+        <button class="key-btn text-danger" onclick="pressKey('del')"><i class="fas fa-backspace"></i></button>
+    </div>
 </div>
 
-<div id="loadingOverlay"><div class="spinner-border text-primary" role="status"></div><div class="mt-3 fw-bold text-primary">同步中...</div></div>
+<div id="loadingOverlay">
+    <div class="spinner-border text-primary" role="status"></div>
+    <div class="mt-3 fw-bold text-primary small">資料同步中...</div>
+</div>
 
 <div id="page-dashboard" class="page-section active">
-    <div class="card card-custom total-box mb-3 p-4 text-center shadow">
-        <div class="d-flex justify-content-between align-items-start w-100 mb-2">
-            <span class="opacity-50 small"><i class="fas fa-signal"></i> Pro版</span>
-            <button class="btn btn-sm btn-outline-light border-0" onclick="togglePrivacy()"><i class="fas fa-eye" id="privacyIcon"></i></button>
+    <div class="header-card">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <span class="badge bg-white bg-opacity-25 fw-normal rounded-pill px-3">
+                <i class="fas fa-cloud me-1"></i> <span id="syncStatus">未同步</span>
+            </span>
+            <button class="btn btn-sm text-white p-0" onclick="togglePrivacy()">
+                <i class="fas fa-eye" id="privacyIcon" style="font-size: 1.2rem;"></i>
+            </button>
         </div>
-        <h6 class="opacity-75 text-uppercase ls-1">本月待繳總額</h6>
-        <h1 class="display-3 fw-bold my-2" id="displayTotal">$****</h1>
-        <div class="mt-3 d-flex justify-content-center gap-2">
-            <button class="btn btn-light text-primary btn-sm px-3 shadow-sm" onclick="syncData('download')"><i class="fas fa-cloud-download-alt"></i> 同步</button>
-            <button class="btn btn-light text-primary btn-sm px-3 shadow-sm" onclick="syncData('upload')"><i class="fas fa-save"></i> 存檔</button>
-            <button class="btn btn-outline-light btn-sm px-3" onclick="exportToExcel()"><i class="fas fa-file-excel"></i> 匯出</button>
+        <div class="text-center">
+            <small class="opacity-75 text-uppercase ls-1">本月待繳總額</small>
+            <h1 class="display-3 fw-bold mb-0 mt-1" id="displayTotal">$****</h1>
+        </div>
+        <div class="d-flex justify-content-center gap-3 mt-4">
+            <button class="btn btn-light rounded-circle shadow-sm" style="width: 45px; height: 45px;" onclick="syncData('download')"><i class="fas fa-sync-alt text-primary"></i></button>
+            <button class="btn btn-light rounded-circle shadow-sm" style="width: 45px; height: 45px;" onclick="syncData('upload')"><i class="fas fa-cloud-upload-alt text-primary"></i></button>
+            <button class="btn btn-light rounded-circle shadow-sm" style="width: 45px; height: 45px;" onclick="exportToExcel()"><i class="fas fa-file-csv text-success"></i></button>
         </div>
     </div>
-    <div class="container" style="max-width: 800px;">
+
+    <div class="container px-3" style="max-width: 600px;">
         <div id="statementAlerts"></div>
-        <div class="d-flex justify-content-between align-items-center mb-2 px-2">
-            <h6 class="fw-bold text-muted mb-0">待繳帳單</h6>
-            <button class="btn btn-sm text-primary" onclick="showAddModal()"><i class="fas fa-plus"></i> 手動新增</button>
+
+        <div class="d-flex justify-content-between align-items-center mb-3 px-1">
+            <h6 class="fw-bold text-secondary mb-0">待繳帳單</h6>
+            <button class="btn btn-sm btn-light text-primary rounded-pill px-3 fw-bold" onclick="showAddModal()">
+                <i class="fas fa-plus small me-1"></i> 新增
+            </button>
         </div>
-        <div class="card card-custom mb-5">
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0"><tbody id="unpaidList"></tbody></table>
-                </div>
-                <div id="emptyMsg" class="text-center py-5 text-muted" style="display:none;"><i class="fas fa-check-circle fa-3x mb-3 text-success opacity-50"></i><p>太棒了！目前沒有待繳帳單</p></div>
+
+        <div id="unpaidList">
             </div>
+        
+        <div id="emptyMsg" class="text-center py-5 text-muted" style="display:none;">
+            <div class="mb-3"><i class="fas fa-check-circle fa-3x text-success opacity-25"></i></div>
+            <p>太棒了！目前沒有待繳帳單</p>
         </div>
     </div>
 </div>
 
 <div id="page-history" class="page-section">
-    <div class="container pt-4" style="max-width: 800px;">
-        <h5 class="fw-bold mb-3 px-2"><i class="fas fa-history text-primary"></i> 繳款歷史</h5>
-        <div class="card card-custom">
-            <div class="card-body p-0">
-                <table class="table table-hover align-middle mb-0"><tbody id="paidList"></tbody></table>
-            </div>
-        </div>
+    <div class="container px-3 pt-4" style="max-width: 600px;">
+        <h5 class="fw-bold mb-4 px-1">繳款歷史紀錄</h5>
+        <div id="paidList"></div>
     </div>
 </div>
 
 <div id="page-analysis" class="page-section">
-    <div class="container pt-4" style="max-width: 800px;">
-        <h5 class="fw-bold mb-3 px-2"><i class="fas fa-chart-pie text-primary"></i> 年度消費分析</h5>
+    <div class="container px-3 pt-4" style="max-width: 600px;">
+        <h5 class="fw-bold mb-4 px-1">年度消費分析</h5>
         
-        <div class="card card-custom mb-3">
-            <div class="card-body">
-                <h6 class="fw-bold text-center mb-3">各銀行消費佔比</h6>
-                <canvas id="cardChart"></canvas>
+        <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white">
+            <div class="card-body text-center py-4">
+                <small class="text-muted text-uppercase">今年度累計消費</small>
+                <h2 class="fw-bold text-primary mt-2" id="yearlyTotal">$0</h2>
             </div>
         </div>
 
-        <div class="card card-custom mb-4">
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
             <div class="card-body">
-                <h6 class="fw-bold text-center mb-3">每月支出趨勢</h6>
+                <h6 class="fw-bold mb-3 small text-muted">各銀行佔比</h6>
+                <div style="height: 250px; position: relative;">
+                    <canvas id="cardChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-body">
+                <h6 class="fw-bold mb-3 small text-muted">每月支出趨勢</h6>
                 <canvas id="monthChart"></canvas>
             </div>
         </div>
@@ -106,57 +200,70 @@
 </div>
 
 <div id="page-settings" class="page-section">
-    <div class="container pt-4" style="max-width: 800px;">
-        <h5 class="fw-bold mb-3 px-2"><i class="fas fa-cog text-primary"></i> 設定</h5>
-        <div class="card card-custom mb-4 border-warning border-2">
+    <div class="container px-3 pt-4" style="max-width: 600px;">
+        <h5 class="fw-bold mb-4 px-1">設定</h5>
+        
+        <div class="card border-0 shadow-sm rounded-4 mb-3">
             <div class="card-body">
-                <h6 class="fw-bold mb-3 text-warning"><i class="fas fa-lock"></i> App 密碼鎖</h6>
+                <h6 class="fw-bold mb-3"><i class="fas fa-lock text-warning me-2"></i>安全鎖</h6>
                 <div class="input-group mb-2">
-                    <input type="tel" class="form-control" id="newAppPin" placeholder="輸入 6 位數密碼" maxlength="6">
-                    <button class="btn btn-warning text-dark fw-bold" onclick="setAppPin()">設定</button>
+                    <input type="tel" class="form-control" id="newAppPin" placeholder="設定 6 位數密碼" maxlength="6">
+                    <button class="btn btn-dark" onclick="setAppPin()">設定</button>
                 </div>
-                <button class="btn btn-sm btn-outline-danger mt-2 float-end" onclick="clearAppPin()">清除</button>
+                <button class="btn btn-sm text-danger p-0" onclick="clearAppPin()">清除密碼</button>
             </div>
         </div>
-        <div class="card card-custom mb-4">
+
+        <div class="card border-0 shadow-sm rounded-4 mb-3">
             <div class="card-body">
-                <h6 class="fw-bold mb-3">☁️ JSONBin 雲端同步</h6>
-                <div class="mb-2"><input type="text" class="form-control bg-light" id="inputBinId" placeholder="Bin ID"></div>
-                <div class="mb-3"><input type="password" class="form-control bg-light" id="inputApiKey" placeholder="API Key"></div>
-                <button class="btn btn-primary w-100" onclick="saveKeys()">儲存金鑰</button>
+                <h6 class="fw-bold mb-3"><i class="fas fa-cloud text-primary me-2"></i>雲端同步 (JSONBin)</h6>
+                <input type="text" class="form-control bg-light border-0 mb-2" id="inputBinId" placeholder="Bin ID">
+                <input type="password" class="form-control bg-light border-0 mb-3" id="inputApiKey" placeholder="API Key">
+                <button class="btn btn-primary w-100 rounded-pill" onclick="saveKeys()">儲存金鑰</button>
             </div>
         </div>
-        <div class="card card-custom mb-4">
+
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
             <div class="card-body">
-                <h6 class="fw-bold mb-3">📅 出帳提醒</h6>
+                <h6 class="fw-bold mb-3"><i class="fas fa-calendar-alt text-success me-2"></i>出帳日提醒</h6>
                 <div class="input-group mb-3">
-                    <input type="text" class="form-control" id="newCardName" placeholder="名稱">
-                    <input type="number" class="form-control" id="newCardDay" placeholder="日" style="max-width: 80px;">
-                    <button class="btn btn-outline-primary" onclick="addCardSetting()">新增</button>
+                    <input type="text" class="form-control" id="newCardName" placeholder="銀行 (如: 玉山)">
+                    <input type="number" class="form-control" id="newCardDay" placeholder="日" style="max-width: 70px;">
+                    <button class="btn btn-outline-primary" onclick="addCardSetting()"><i class="fas fa-plus"></i></button>
                 </div>
-                <ul class="list-group list-group-flush" id="cardSettingsList"></ul>
+                <div id="cardSettingsList"></div>
             </div>
         </div>
+        
+        <div class="text-center text-muted small py-3">卡片管家 Pro v2.0</div>
     </div>
 </div>
 
 <div class="bottom-nav">
-    <div class="nav-item active" onclick="switchPage('dashboard')"><i class="fas fa-wallet"></i> 待繳</div>
-    <div class="nav-item" onclick="switchPage('history')"><i class="fas fa-history"></i> 歷史</div>
-    <div class="nav-item" onclick="switchPage('analysis')"><i class="fas fa-chart-pie"></i> 分析</div>
-    <div class="nav-item" onclick="switchPage('settings')"><i class="fas fa-sliders-h"></i> 設定</div>
+    <button class="nav-btn active" onclick="switchPage('dashboard')">
+        <i class="fas fa-wallet"></i> 待繳
+    </button>
+    <button class="nav-btn" onclick="switchPage('history')">
+        <i class="fas fa-history"></i> 歷史
+    </button>
+    <button class="nav-btn" onclick="switchPage('analysis')">
+        <i class="fas fa-chart-pie"></i> 分析
+    </button>
+    <button class="nav-btn" onclick="switchPage('settings')">
+        <i class="fas fa-cog"></i> 設定
+    </button>
 </div>
 
 <div class="modal fade" id="addModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header"><h5 class="modal-title">新增</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-content border-0 rounded-4 shadow">
+            <div class="modal-header border-0"><h5 class="modal-title fw-bold">記一筆</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <form id="addForm">
-                    <input type="text" class="form-control mb-2" id="addName" placeholder="卡片" required>
-                    <input type="number" class="form-control mb-2" id="addAmount" placeholder="金額" required>
-                    <input type="date" class="form-control mb-3" id="addDate" required>
-                    <button type="submit" class="btn btn-primary w-100">確定</button>
+                    <input type="text" class="form-control form-control-lg bg-light border-0 mb-2" id="addName" placeholder="卡片名稱" required>
+                    <input type="number" class="form-control form-control-lg bg-light border-0 mb-2" id="addAmount" placeholder="$ 金額" required>
+                    <input type="date" class="form-control form-control-lg bg-light border-0 mb-3" id="addDate" required>
+                    <button type="submit" class="btn btn-primary w-100 btn-lg rounded-pill">確定新增</button>
                 </form>
             </div>
         </div>
@@ -169,59 +276,149 @@
     let binId = localStorage.getItem('jsonbin_bin_id') || '';
     let apiKey = localStorage.getItem('jsonbin_api_key') || '';
     let isPrivacyOn = true;
-    
-    // PIN Lock
-    const pinInput = document.getElementById('pinInput'), pinOverlay = document.getElementById('pinOverlay');
-    function checkLock() { if(localStorage.getItem('app_pin')) { pinOverlay.style.display='flex'; pinInput.value=''; updateDots(0); focusPinInput(); } }
-    function focusPinInput() { pinInput.focus(); }
-    pinInput.addEventListener('input', function() {
-        updateDots(this.value.length);
-        if(this.value.length===6) {
-            if(this.value===localStorage.getItem('app_pin')) pinOverlay.style.display='none';
-            else { alert('錯誤'); this.value=''; updateDots(0); }
-        }
-    });
-    function updateDots(c) { for(let i=1;i<=6;i++) document.getElementById('dot'+i).classList.toggle('filled', i<=c); }
-    function setAppPin() { const v=document.getElementById('newAppPin').value; if(v.length===6 && !isNaN(v)) { localStorage.setItem('app_pin',v); alert('已設定'); document.getElementById('newAppPin').value=''; } else alert('請輸入6碼'); }
-    function clearAppPin() { if(confirm('移除密碼?')) { localStorage.removeItem('app_pin'); alert('已移除'); } }
+    let pinBuffer = "";
 
-    // Core
-    const addModal = new bootstrap.Modal(document.getElementById('addModal')), loadingOverlay = document.getElementById('loadingOverlay');
-    checkLock(); loadLocal();
-    document.getElementById('inputBinId').value = binId; document.getElementById('inputApiKey').value = apiKey; document.getElementById('addDate').value = new Date().toISOString().split('T')[0];
+    // --- 1. PIN Lock (虛擬鍵盤版) ---
+    function checkLock() { if(localStorage.getItem('app_pin')) { document.getElementById('pinOverlay').style.display='flex'; pinBuffer=""; updateDots(); } }
+    
+    function pressKey(key) {
+        if(key === 'clear') { pinBuffer = ""; }
+        else if(key === 'del') { pinBuffer = pinBuffer.slice(0, -1); }
+        else if(pinBuffer.length < 6) { pinBuffer += key; }
+        
+        updateDots();
+        
+        if(pinBuffer.length === 6) {
+            if(pinBuffer === localStorage.getItem('app_pin')) {
+                // Unlock success
+                setTimeout(() => { document.getElementById('pinOverlay').style.display='none'; }, 100);
+            } else {
+                // Unlock fail
+                navigator.vibrate?.(200); // 震動提示
+                setTimeout(() => { alert('密碼錯誤'); pinBuffer = ""; updateDots(); }, 100);
+            }
+        }
+    }
+
+    function updateDots() {
+        for(let i=1; i<=6; i++) {
+            const dot = document.getElementById('d'+i);
+            if(i <= pinBuffer.length) dot.classList.add('active');
+            else dot.classList.remove('active');
+        }
+    }
+
+    // 設定密碼
+    function setAppPin() {
+        const v = document.getElementById('newAppPin').value;
+        if(v.length === 6 && !isNaN(v)) { localStorage.setItem('app_pin', v); alert('✅ 密碼已設定'); document.getElementById('newAppPin').value=''; } 
+        else alert('請輸入 6 位數字');
+    }
+    function clearAppPin() { if(confirm('確定移除密碼鎖？')) { localStorage.removeItem('app_pin'); alert('已移除'); } }
+
+    // --- 2. Core Logic ---
+    const addModal = new bootstrap.Modal(document.getElementById('addModal'));
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    
+    checkLock(); 
+    loadLocal();
+    document.getElementById('inputBinId').value = binId;
+    document.getElementById('inputApiKey').value = apiKey;
+    document.getElementById('addDate').value = new Date().toISOString().split('T')[0];
+
+    // 更新上次同步時間
+    function updateSyncStatus() {
+        const lastTime = localStorage.getItem('last_sync_time');
+        document.getElementById('syncStatus').textContent = lastTime ? lastTime : '未同步';
+    }
 
     function togglePrivacy() {
         isPrivacyOn = !isPrivacyOn;
-        document.getElementById('privacyIcon').className = isPrivacyOn ? 'fas fa-eye' : 'fas fa-eye-slash';
-        document.getElementById('displayTotal').textContent = isPrivacyOn ? '$****' : '$' + data.bills.filter(b=>b.status!=='paid').reduce((s,b)=>s+b.amount,0).toLocaleString();
+        const icon = document.getElementById('privacyIcon');
+        icon.className = isPrivacyOn ? 'fas fa-eye' : 'fas fa-eye-slash';
+        renderTotal();
     }
 
     function switchPage(p) {
-        document.querySelectorAll('.page-section').forEach(el=>el.classList.remove('active'));
+        document.querySelectorAll('.page-section').forEach(el => el.classList.remove('active'));
         document.getElementById('page-'+p).classList.add('active');
-        document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+        document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
         event.currentTarget.classList.add('active');
-        if(p==='analysis') updateCharts(); // 切換到分析頁時更新圖表
+        if(p === 'analysis') updateCharts();
     }
 
     function render() {
-        const uList = document.getElementById('unpaidList'), pList = document.getElementById('paidList');
-        uList.innerHTML = ''; pList.innerHTML = '';
-        const unpaids = data.bills.filter(b=>b.status!=='paid').sort((a,b)=>new Date(a.date)-new Date(b.date));
-        const paids = data.bills.filter(b=>b.status==='paid').sort((a,b)=>new Date(b.date)-new Date(a.date));
+        const uList = document.getElementById('unpaidList');
+        const pList = document.getElementById('paidList');
+        const emptyMsg = document.getElementById('emptyMsg');
+        
+        uList.innerHTML = ''; 
+        pList.innerHTML = '';
+        
+        const unpaids = data.bills.filter(b => b.status !== 'paid').sort((a,b) => new Date(a.date) - new Date(b.date));
+        const paids = data.bills.filter(b => b.status === 'paid').sort((a,b) => new Date(b.date) - new Date(a.date));
 
+        // 渲染未繳 (卡片式)
         unpaids.forEach(b => {
-            const d = Math.ceil((new Date(b.date)-new Date().setHours(0,0,0,0))/86400000);
-            const badge = d<0 ? '<span class="badge bg-danger">過期</span>' : d<=3 ? `<span class="badge bg-warning text-dark">剩${d}天</span>` : `<span class="badge bg-light text-dark border">剩${d}天</span>`;
-            uList.innerHTML += `<tr><td class="ps-3 fw-bold">${b.name}</td><td>$${b.amount.toLocaleString()}</td><td><small>${b.date.slice(5)}</small><br>${badge}</td><td class="text-end pe-3"><button onclick="markAsPaid(${b.id})" class="btn btn-outline-success btn-sm btn-circle"><i class="fas fa-check"></i></button></td></tr>`;
-        });
-        paids.forEach(b => {
-            pList.innerHTML += `<tr class="status-paid"><td class="ps-3">${b.name}</td><td>$${b.amount.toLocaleString()}</td><td>${b.date}</td><td class="text-end pe-3"><button onclick="deleteBill(${b.id})" class="btn btn-light text-danger btn-sm"><i class="fas fa-trash"></i></button></td></tr>`;
+            const d = Math.ceil((new Date(b.date) - new Date().setHours(0,0,0,0)) / 86400000);
+            let badgeClass = d < 0 ? 'bg-urgent' : d <= 3 ? 'bg-soon' : 'bg-normal';
+            let badgeText = d < 0 ? `過期 ${Math.abs(d)} 天` : `剩 ${d} 天`;
+            let iconClass = getBankIcon(b.name);
+
+            uList.innerHTML += `
+                <div class="bill-item d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center">
+                        <div class="bill-icon"><i class="${iconClass}"></i></div>
+                        <div>
+                            <div class="fw-bold text-dark">${b.name}</div>
+                            <div class="small text-muted">${b.date.slice(5)} 截止</div>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <div class="fw-bold mb-1" style="font-size: 1.1rem;">$${b.amount.toLocaleString()}</div>
+                        <div class="badge-pill ${badgeClass} d-inline-block mb-1">${badgeText}</div>
+                        <div onclick="markAsPaid(${b.id})" class="text-success small cursor-pointer" style="cursor:pointer;"><i class="far fa-check-circle"></i> 標記已繳</div>
+                    </div>
+                </div>`;
         });
 
-        if(!isPrivacyOn) document.getElementById('displayTotal').textContent = '$'+unpaids.reduce((s,b)=>s+b.amount,0).toLocaleString();
-        document.getElementById('emptyMsg').style.display = unpaids.length ? 'none' : 'block';
-        checkAlerts(); renderSettings();
+        // 渲染已繳 (簡潔版)
+        paids.forEach(b => {
+            pList.innerHTML += `
+                <div class="bill-item d-flex align-items-center justify-content-between opacity-50">
+                    <div class="d-flex align-items-center">
+                        <div class="fw-bold text-secondary ps-2">${b.name}</div>
+                    </div>
+                    <div class="text-end">
+                        <div class="text-decoration-line-through">$${b.amount.toLocaleString()}</div>
+                        <div onclick="deleteBill(${b.id})" class="text-danger small" style="cursor:pointer;">刪除</div>
+                    </div>
+                </div>`;
+        });
+
+        renderTotal();
+        emptyMsg.style.display = unpaids.length ? 'none' : 'block';
+        checkAlerts(); 
+        renderSettings();
+        updateSyncStatus();
+    }
+
+    function getBankIcon(name) {
+        if(name.includes('玉山')) return 'fas fa-mountain';
+        if(name.includes('富邦')) return 'fas fa-tree';
+        if(name.includes('國泰')) return 'fas fa-leaf';
+        if(name.includes('台新')) return 'fas fa-dog';
+        if(name.includes('永豐')) return 'fas fa-coins';
+        return 'fas fa-credit-card';
+    }
+
+    function renderTotal() {
+        if(!isPrivacyOn) {
+            const total = data.bills.filter(b => b.status !== 'paid').reduce((s,b) => s + b.amount, 0);
+            document.getElementById('displayTotal').textContent = '$' + total.toLocaleString();
+        } else {
+            document.getElementById('displayTotal').textContent = '$****';
+        }
     }
 
     function checkAlerts() {
@@ -229,71 +426,60 @@
         const today = new Date().getDate();
         data.cards.forEach(c => {
             if(today >= c.day && !data.bills.some(b => b.name.includes(c.name) && b.status !== 'paid'))
-                box.innerHTML += `<div class="alert alert-warning border-0 shadow-sm small"><i class="fas fa-bell me-2"></i><strong>${c.name}</strong> 應已出帳 (${c.day}號)</div>`;
+                box.innerHTML += `<div class="alert alert-warning border-0 shadow-sm rounded-3 mb-3 d-flex align-items-center"><i class="fas fa-bell me-3 fs-4 text-warning"></i><div><strong>${c.name}</strong> 應已出帳 (${c.day}號)<br><small>尚未收到帳單資料</small></div></div>`;
         });
     }
 
-    // Chart.js Logic
+    // --- Chart Logic ---
     let cardChart, monthChart;
     function updateCharts() {
         const ctxCard = document.getElementById('cardChart').getContext('2d');
         const ctxMonth = document.getElementById('monthChart').getContext('2d');
-        
-        // 1. 準備數據: 只統計 "今年" 的資料 (包含已繳和未繳)
         const currentYear = new Date().getFullYear();
         const yearBills = data.bills.filter(b => new Date(b.date).getFullYear() === currentYear);
 
-        // 卡片統計
-        const cardMap = {};
+        // 年度總額
+        const yearTotal = yearBills.reduce((sum, b) => sum + b.amount, 0);
+        document.getElementById('yearlyTotal').textContent = '$' + yearTotal.toLocaleString();
+
+        const cardMap = {}, monthMap = new Array(12).fill(0);
         yearBills.forEach(b => { 
-            // 簡化卡片名稱 (取前兩個字，如 "玉山")
-            let name = b.name.substring(0, 2);
-            cardMap[name] = (cardMap[name] || 0) + b.amount; 
-        });
-        
-        // 月份統計
-        const monthMap = new Array(12).fill(0);
-        yearBills.forEach(b => {
-            const m = new Date(b.date).getMonth(); // 0-11
-            monthMap[m] += b.amount;
+            let name = b.name.substring(0, 2); cardMap[name] = (cardMap[name] || 0) + b.amount; 
+            monthMap[new Date(b.date).getMonth()] += b.amount;
         });
 
-        // 渲染圓餅圖
         if(cardChart) cardChart.destroy();
         cardChart = new Chart(ctxCard, {
             type: 'doughnut',
-            data: {
-                labels: Object.keys(cardMap),
-                datasets: [{ data: Object.values(cardMap), backgroundColor: ['#FF6384','#36A2EB','#FFCE56','#4BC0C0','#9966FF','#FF9F40'] }]
-            }
+            data: { labels: Object.keys(cardMap), datasets: [{ data: Object.values(cardMap), backgroundColor: ['#667eea','#764ba2','#48bb78','#f6ad55','#f56565','#ed64a6'], borderWidth: 0 }] },
+            options: { plugins: { legend: { position: 'right' } }, maintainAspectRatio: false }
         });
 
-        // 渲染長條圖
         if(monthChart) monthChart.destroy();
         monthChart = new Chart(ctxMonth, {
             type: 'bar',
-            data: {
-                labels: ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
-                datasets: [{ label: '每月支出', data: monthMap, backgroundColor: '#667eea', borderRadius: 5 }]
-            },
-            options: { scales: { y: { beginAtZero: true } } }
+            data: { labels: ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'], datasets: [{ label: '支出', data: monthMap, backgroundColor: '#667eea', borderRadius: 4 }] },
+            options: { scales: { y: { beginAtZero: true, grid: { display: false } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } }
         });
     }
 
-    function markAsPaid(id) { if(confirm('已繳款?')) { data.bills.find(b=>b.id===id).status='paid'; saveLocal(); render(); } }
-    function deleteBill(id) { if(confirm('刪除?')) { data.bills=data.bills.filter(b=>b.id!==id); saveLocal(); render(); } }
+    // --- Actions ---
+    function markAsPaid(id) { if(confirm('確認已繳款？')) { data.bills.find(b=>b.id===id).status='paid'; saveLocal(); render(); } }
+    function deleteBill(id) { if(confirm('確定刪除紀錄？')) { data.bills=data.bills.filter(b=>b.id!==id); saveLocal(); render(); } }
     function addCardSetting() { const n=document.getElementById('newCardName').value, d=document.getElementById('newCardDay').value; if(n&&d){ data.cards.push({name:n, day:parseInt(d)}); saveLocal(); render(); document.getElementById('newCardName').value=''; } }
     function removeCardSetting(i) { data.cards.splice(i,1); saveLocal(); render(); }
+    
     function renderSettings() { 
         const l=document.getElementById('cardSettingsList'); l.innerHTML=''; 
-        data.cards.forEach((c,i)=>l.innerHTML+=`<li class="list-group-item d-flex justify-content-between"><span>${c.name} (${c.day}號)</span><button class="btn btn-sm text-danger" onclick="removeCardSetting(${i})"><i class="fas fa-times"></i></button></li>`); 
+        data.cards.forEach((c,i)=>l.innerHTML+=`<li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0"><span><i class="fas fa-credit-card text-muted me-2"></i>${c.name} (${c.day}號)</span><button class="btn btn-sm text-danger" onclick="removeCardSetting(${i})"><i class="fas fa-times"></i></button></li>`); 
     }
     
     function saveLocal() { localStorage.setItem('myCreditData', JSON.stringify(data)); }
     function loadLocal() { const s=localStorage.getItem('myCreditData'); if(s) { data=JSON.parse(s); if(Array.isArray(data)) data={bills:data,cards:[]}; } render(); }
-    function saveKeys() { localStorage.setItem('jsonbin_bin_id', document.getElementById('inputBinId').value); localStorage.setItem('jsonbin_api_key', document.getElementById('inputApiKey').value); alert('已儲存'); }
+    function saveKeys() { localStorage.setItem('jsonbin_bin_id', document.getElementById('inputBinId').value); localStorage.setItem('jsonbin_api_key', document.getElementById('inputApiKey').value); alert('✅ 金鑰已儲存'); }
+    
     async function syncData(m) {
-        if(!binId && !apiKey) return alert('請設金鑰');
+        if(!binId && !apiKey) return alert('請先到設定頁輸入金鑰');
         loadingOverlay.style.display='flex';
         try {
             const url = `https://api.jsonbin.io/v3/b/${binId}`;
@@ -302,12 +488,14 @@
                 if(!res.ok) throw new Error();
                 const json = await res.json();
                 data = Array.isArray(json.record) ? {bills:json.record, cards:[]} : json.record;
-                saveLocal(); alert('完成');
+                const now = new Date();
+                localStorage.setItem('last_sync_time', `${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`);
+                saveLocal(); alert('✅ 同步完成');
             } else {
                 const res = await fetch(url, {method:'PUT', headers:{'Content-Type':'application/json','X-Master-Key':apiKey}, body:JSON.stringify(data)});
-                if(!res.ok) throw new Error(); alert('已備份');
+                if(!res.ok) throw new Error(); alert('☁️ 已備份到雲端');
             }
-        } catch(e) { alert('錯誤'); } finally { loadingOverlay.style.display='none'; render(); }
+        } catch(e) { alert('同步失敗，請檢查網路或金鑰'); } finally { loadingOverlay.style.display='none'; render(); }
     }
     
     document.getElementById('addForm').addEventListener('submit', function(e){ e.preventDefault(); data.bills.push({id:Date.now(), name:document.getElementById('addName').value, amount:parseInt(document.getElementById('addAmount').value), date:document.getElementById('addDate').value, status:'unpaid'}); saveLocal(); render(); addModal.hide(); this.reset(); });

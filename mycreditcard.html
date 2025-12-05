@@ -14,7 +14,6 @@
         :root { --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
         body { background-color: #f8f9fa; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif; padding-bottom: 90px; user-select: none; -webkit-user-select: none; }
         
-        /* 頂部卡片 */
         .header-card {
             background: var(--primary-gradient); color: white;
             border-radius: 0 0 30px 30px;
@@ -24,7 +23,6 @@
             position: relative;
         }
         
-        /* 列表樣式 */
         .bill-item { background: white; border-radius: 16px; margin-bottom: 12px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); transition: transform 0.1s; border: 1px solid rgba(0,0,0,0.02); }
         .bill-item:active { transform: scale(0.98); }
         .bill-icon { width: 45px; height: 45px; border-radius: 12px; background: #f0f2f5; color: #667eea; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; margin-right: 15px; }
@@ -34,7 +32,6 @@
         .bg-normal { background: #e0e7ff; color: #4338ca; }
         .card-custom { border: none; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
 
-        /* 底部導航 */
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; width: 100%;
             background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);
@@ -46,7 +43,6 @@
         .nav-btn.active { color: #764ba2; font-weight: 600; }
         .nav-btn i { font-size: 1.4rem; display: block; margin-bottom: 4px; }
 
-        /* 電腦版側邊欄 */
         .sidebar { display: none; }
         @media (min-width: 992px) {
             body { padding-bottom: 0; padding-left: 260px; background-color: #f0f2f5; }
@@ -73,17 +69,14 @@
             .header-card .d-flex.justify-content-center { justify-content: flex-end !important; }
         }
 
-        /* 版本號連結樣式 */
         .version-link { color: #cbd5e1; font-size: 0.8rem; padding: 10px; cursor: pointer; transition: 0.2s; text-decoration: none; display: inline-block; }
         .version-link:hover { color: #667eea; }
 
-        /* 更新日誌列表 */
         .changelog-item { position: relative; padding-left: 20px; margin-bottom: 15px; border-left: 2px solid #e2e8f0; }
         .changelog-date { font-size: 0.75rem; color: #94a3b8; margin-bottom: 2px; }
         .changelog-ver { font-weight: bold; color: #475569; font-size: 0.95rem; }
         .changelog-desc { font-size: 0.9rem; color: #64748b; line-height: 1.5; }
 
-        /* PIN Lock */
         #pinOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #ffffff; z-index: 99999; display: none; flex-direction: column; justify-content: center; align-items: center; }
         .pin-dots { display: flex; gap: 15px; margin-bottom: 40px; }
         .dot { width: 14px; height: 14px; border-radius: 50%; background: #e2e8f0; transition: 0.2s; }
@@ -125,7 +118,7 @@
     <button class="side-btn" onclick="switchPage('settings')"><i class="fas fa-cog"></i> 設定</button>
     <div style="margin-top: auto;">
         <div class="version-link" onclick="showVersionModal()">
-            <i class="fas fa-info-circle me-1"></i> 版本 v2.4
+            <i class="fas fa-info-circle me-1"></i> 版本 v2.5.1
         </div>
     </div>
 </div>
@@ -137,7 +130,7 @@
                 <span class="badge bg-white bg-opacity-25 fw-normal rounded-pill px-3"><i class="fas fa-cloud me-1"></i> <span id="syncStatus">未同步</span></span>
                 <div class="d-flex gap-3">
                     <button class="btn btn-sm text-white p-0" onclick="togglePrivacy()"><i class="fas fa-eye-slash" id="privacyIcon" style="font-size: 1.2rem;"></i></button>
-                    <button class="btn btn-sm text-white p-0" onclick="switchPage('dashboard')" title="回首頁"><i class="fas fa-home" style="font-size: 1.2rem;"></i></button>
+                    <button class="btn btn-sm text-white p-0" onclick="goToHome()" title="重整回首頁"><i class="fas fa-home" style="font-size: 1.2rem;"></i></button>
                 </div>
             </div>
             
@@ -253,7 +246,7 @@
         </div>
         <div class="text-center mt-4">
             <div class="version-link text-muted" onclick="showVersionModal()">
-                <i class="fas fa-info-circle me-1"></i> 卡片管家 Pro v2.4
+                <i class="fas fa-info-circle me-1"></i> 卡片管家 Pro v2.5.1
             </div>
         </div>
     </div>
@@ -292,47 +285,28 @@
             <div class="modal-body bg-light rounded-bottom-4" style="max-height: 400px; overflow-y: auto;">
                 <div class="changelog-item">
                     <div class="changelog-date">2025/12/06</div>
+                    <div class="changelog-ver">v2.5.1</div>
+                    <div class="changelog-desc">
+                        • 調整首頁按鈕邏輯：右上角圖示強制回到網址首頁<br>
+                        • 側邊欄標題點擊維持內部切換
+                    </div>
+                </div>
+                <div class="changelog-item">
+                    <div class="changelog-date">2025/12/06</div>
+                    <div class="changelog-ver">v2.5</div>
+                    <div class="changelog-desc">
+                        • 首頁按鈕支援指定網址跳轉<br>
+                        • 側邊欄標題加入首頁連結<br>
+                        • 更新日誌功能上線
+                    </div>
+                </div>
+                <div class="changelog-item">
+                    <div class="changelog-date">2025/12/06</div>
                     <div class="changelog-ver">v2.4</div>
                     <div class="changelog-desc">
                         • 新增版本號點擊查看日誌<br>
                         • 首頁快捷回到頂部功能<br>
                         • 電腦版側邊欄整合版本資訊
-                    </div>
-                </div>
-                <div class="changelog-item">
-                    <div class="changelog-date">2025/12/06</div>
-                    <div class="changelog-ver">v2.3</div>
-                    <div class="changelog-desc">
-                        • 新增首頁(Home)快捷按鈕<br>
-                        • 優化電腦版介面佈局<br>
-                        • 預設顯示待繳總金額
-                    </div>
-                </div>
-                <div class="changelog-item">
-                    <div class="changelog-date">2025/12/05</div>
-                    <div class="changelog-ver">v2.2</div>
-                    <div class="changelog-desc">
-                        • 新增手機專用虛擬鍵盤(PIN)<br>
-                        • 支援電腦版側邊欄顯示<br>
-                        • 介面響應式設計優化
-                    </div>
-                </div>
-                <div class="changelog-item">
-                    <div class="changelog-date">2025/12/05</div>
-                    <div class="changelog-ver">v2.1</div>
-                    <div class="changelog-desc">
-                        • 升級 6 位數安全密碼鎖<br>
-                        • 預設金額顯示調整<br>
-                        • 頂部同步狀態顯示優化
-                    </div>
-                </div>
-                <div class="changelog-item">
-                    <div class="changelog-date">2025/12/04</div>
-                    <div class="changelog-ver">v2.0</div>
-                    <div class="changelog-desc">
-                        • 全新 UI 介面設計<br>
-                        • 新增年度/每月圖表分析<br>
-                        • 新增左上角雲端同步狀態
                     </div>
                 </div>
             </div>
@@ -347,6 +321,13 @@
     let apiKey = localStorage.getItem('jsonbin_api_key') || '';
     let isPrivacyOn = false;
     let pinBuffer = "";
+    
+    // 🔥 指定網址
+    const HOME_URL = "https://chianghf99.github.io/my-wallet/";
+
+    function goToHome() {
+        window.location.href = HOME_URL;
+    }
 
     function checkLock() { if(localStorage.getItem('app_pin')) { document.getElementById('pinOverlay').style.display='flex'; pinBuffer=""; updateDots(); } }
     function pressKey(key) {

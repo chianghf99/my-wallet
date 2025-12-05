@@ -3,12 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v2.3.3</title>
+    <title>我的投資組合 v2.3.1 | Portfolio</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = { darkMode: 'class' }
-    </script>
+    <script>tailwind.config = { darkMode: 'class' }</script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
@@ -19,70 +17,47 @@
 
     <style>
         body { font-family: 'Noto Sans TC', sans-serif; }
-        
         .text-up { color: #dc2626; }
         .text-down { color: #16a34a; }
         .dark .text-up { color: #f87171; }
         .dark .text-down { color: #4ade80; }
-
-        .zen-card {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-            transition: all 0.3s ease;
-        }
-        .dark .zen-card {
-            background: #1f2937;
-            box-shadow: none;
-            border: 1px solid #374151;
-        }
-
-        .zen-input {
-            border: 1px solid #e4e4e7;
-            border-radius: 8px;
-            padding: 0.5rem 1rem;
-            width: 100%;
-            background-color: white;
-            color: #1f2937;
-        }
-        .dark .zen-input {
-            background-color: #374151;
-            border-color: #4b5563;
-            color: #f3f4f6;
-        }
+        .zen-card { background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); transition: all 0.3s ease; }
+        .dark .zen-card { background: #1f2937; box-shadow: none; border: 1px solid #374151; }
+        .zen-input { border: 1px solid #e4e4e7; border-radius: 8px; padding: 0.5rem 1rem; width: 100%; background-color: white; color: #1f2937; }
+        .dark .zen-input { background-color: #374151; border-color: #4b5563; color: #f3f4f6; }
         .zen-input:focus { outline: none; border-color: #71717a; }
-
-        .trans-btn {
-            padding: 0.5rem;
-            border: 1px solid #e5e7eb;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
+        
+        .trans-btn { padding: 0.5rem; border: 1px solid #e5e7eb; text-align: center; cursor: pointer; transition: all 0.2s; font-size: 0.875rem; }
         .dark .trans-btn { border-color: #4b5563; }
         .trans-btn.active-buy { background-color: #dc2626; color: white; border-color: #dc2626; }
         .trans-btn.active-sell { background-color: #16a34a; color: white; border-color: #16a34a; }
-        
+        .trans-btn.active-div { background-color: #eab308; color: white; border-color: #eab308; } 
+
         .collapse-enter-active, .collapse-leave-active { transition: all 0.3s ease; max-height: 800px; opacity: 1; overflow: hidden; }
         .collapse-enter-from, .collapse-leave-to { max-height: 0; opacity: 0; }
+        
+        /* 隱私模式模糊 */
+        .blur-sm { filter: blur(4px); user-select: none; }
+        
+        /* 交易紀錄標籤 */
+        .tag { padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
+        .tag-buy { background-color: #fee2e2; color: #dc2626; }
+        .dark .tag-buy { background-color: #7f1d1d; color: #fca5a5; }
+        .tag-sell { background-color: #dcfce7; color: #16a34a; }
+        .dark .tag-sell { background-color: #14532d; color: #86efac; }
+        .tag-div { background-color: #fef9c3; color: #ca8a04; }
+        .dark .tag-div { background-color: #713f12; color: #fde047; }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-200 transition-colors duration-300">
 
 <div id="app" class="min-h-screen flex flex-col">
-    
     <div v-if="!user" class="flex-grow flex flex-col items-center justify-center p-4">
         <div class="zen-card p-8 max-w-sm w-full text-center space-y-6">
-            <div class="bg-gray-800 text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto text-2xl">
-                <i class="fa-solid fa-chart-line"></i>
-            </div>
-            <div>
-                <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本</h1>
-                <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">安全、即時、跨裝置的投資管理工具 v2.3.3</p>
-            </div>
+            <div class="bg-gray-800 text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto text-2xl"><i class="fa-solid fa-chart-line"></i></div>
+            <div><h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v2.3.1</h1><p class="text-gray-500 dark:text-gray-400 text-sm mt-2">安全、即時、跨裝置的投資管理工具</p></div>
             <button @click="login" class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
-                <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5 mr-3" alt="Google">
-                使用 Google 帳號登入
+                <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5 mr-3" alt="Google">使用 Google 帳號登入
             </button>
         </div>
     </div>
@@ -90,36 +65,20 @@
     <div v-else class="pb-20">
         <nav class="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-50 transition-colors">
             <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
-                <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
-                    <i class="fa-solid fa-chart-line text-gray-800 dark:text-white"></i>
-                    <span class="hidden sm:inline">我的資產帳本</span>
-                </h1>
-                
+                <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2"><i class="fa-solid fa-chart-line text-gray-800 dark:text-white"></i><span class="hidden sm:inline">我的資產帳本</span></h1>
                 <div class="flex items-center gap-3">
-                    <div class="flex items-center gap-2 mr-2">
-                        <img :src="user.photoURL" class="w-8 h-8 rounded-full border border-gray-200 dark:border-gray-600">
-                        <span class="hidden md:inline text-sm font-medium">{{ user.displayName }}</span>
-                    </div>
-                    
-                    <button @click="exportData" class="text-gray-400 hover:text-blue-500" title="備份匯出"><i class="fa-solid fa-download"></i></button>
+                    <div class="flex items-center gap-2 mr-2"><img :src="user.photoURL" class="w-8 h-8 rounded-full border border-gray-200 dark:border-gray-600"><span class="hidden md:inline text-sm font-medium">{{ user.displayName }}</span></div>
+                    <button @click="exportData" class="text-gray-400 hover:text-blue-500" title="備份"><i class="fa-solid fa-download"></i></button>
                     <button @click="toggleDarkMode" class="text-gray-400 hover:text-yellow-500" title="深色模式"><i class="fa-solid" :class="isDarkMode ? 'fa-sun' : 'fa-moon'"></i></button>
                     <button @click="logout" class="text-gray-400 hover:text-red-500" title="登出"><i class="fa-solid fa-sign-out-alt"></i></button>
                 </div>
             </div>
-            
             <div class="border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 transition-colors">
                 <div class="max-w-6xl mx-auto px-4 py-2 flex justify-between items-center">
-                    <div class="text-xs text-gray-500 dark:text-gray-400">
-                        USD/TWD: {{ exchangeRate.toFixed(2) }} 
-                        <span class="hidden sm:inline"> | 更新: {{ lastUpdated }}</span>
-                    </div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400">USD/TWD: {{ exchangeRate.toFixed(2) }} <span class="hidden sm:inline"> | 更新: {{ lastUpdated }}</span></div>
                     <div class="flex gap-2">
-                        <button @click="fetchPrices" class="px-3 py-1 text-xs sm:text-sm rounded bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                            <i class="fa-solid fa-sync-alt mr-1" :class="{'fa-spin': isLoading}"></i> 更新
-                        </button>
-                        <button @click="openModal()" class="bg-gray-800 text-white px-3 py-1 text-xs sm:text-sm rounded hover:bg-gray-700 transition shadow">
-                            <i class="fa-solid fa-plus"></i> 新增
-                        </button>
+                        <button @click="fetchPrices" class="px-3 py-1 text-xs sm:text-sm rounded bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition"><i class="fa-solid fa-sync-alt mr-1" :class="{'fa-spin': isLoading}"></i> 更新</button>
+                        <button @click="openModal()" class="bg-gray-800 text-white px-3 py-1 text-xs sm:text-sm rounded hover:bg-gray-700 transition shadow"><i class="fa-solid fa-plus"></i> 新增</button>
                     </div>
                 </div>
             </div>
@@ -130,16 +89,9 @@
                 <div class="zen-card p-5 border-l-4 border-gray-800 dark:border-gray-500">
                     <div class="flex justify-between items-center mb-1">
                         <div class="text-sm text-gray-500 dark:text-gray-400">總資產 (TWD)</div>
-                        <button @click="showPrivacy = !showPrivacy" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none">
-                            <i class="fa-solid" :class="showPrivacy ? 'fa-eye' : 'fa-eye-slash'"></i>
-                        </button>
+                        <button @click="showPrivacy = !showPrivacy" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none"><i class="fa-solid" :class="showPrivacy ? 'fa-eye' : 'fa-eye-slash'"></i></button>
                     </div>
-                    
-                    <div class="text-3xl font-bold text-gray-900 dark:text-white">
-                        <span v-if="showPrivacy">{{ formatCurrency(grandTotalValue, 'TWD') }}</span>
-                        <span v-else>****</span>
-                    </div>
-                    
+                    <div class="text-3xl font-bold text-gray-900 dark:text-white"><span v-if="showPrivacy">{{ formatCurrency(grandTotalValue, 'TWD') }}</span><span v-else>****</span></div>
                     <div class="mt-1 text-xs flex items-center gap-1" v-if="showPrivacy">
                         <span class="text-gray-400">較前日(損益):</span>
                         <span v-if="prevDayData" :class="getPnlClass(grandTotalPnL - (prevDayData.totalPnL || 0))">
@@ -148,100 +100,52 @@
                         <span v-else class="text-gray-400">-</span>
                     </div>
                     <div v-else class="mt-1 text-xs text-gray-300">****</div>
-                    
                     <div class="flex justify-between mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 text-sm">
                         <span class="text-gray-500 dark:text-gray-400">總未實現損益</span>
-                        <span v-if="showPrivacy" :class="getPnlClass(grandTotalPnL)">
-                            {{ formatCurrency(grandTotalPnL, 'TWD') }}
-                            <span class="text-xs ml-1">({{ getRoi(grandTotalValue - grandTotalPnL, grandTotalPnL) }})</span>
-                        </span>
+                        <span v-if="showPrivacy" :class="getPnlClass(grandTotalPnL)">{{ formatCurrency(grandTotalPnL, 'TWD') }}<span class="text-xs ml-1">({{ getRoi(grandTotalValue - grandTotalPnL, grandTotalPnL) }})</span></span>
                         <span v-else class="text-gray-300 dark:text-gray-600">****</span>
                     </div>
                 </div>
-                
                 <div class="zen-card p-5">
-                    <div class="flex justify-between items-center mb-1">
-                        <div class="text-sm text-gray-500 dark:text-gray-400">台股部位</div>
-                        <img src="https://flagcdn.com/w40/tw.png" alt="TW" class="w-6 shadow-sm rounded-sm">
-                    </div>
-                    <div class="text-2xl font-bold dark:text-white">
-                        <span v-if="showPrivacy">{{ formatCurrency(twStats.value, 'TWD') }}</span>
-                        <span v-else>****</span>
-                    </div>
+                    <div class="flex justify-between items-center mb-1"><div class="text-sm text-gray-500 dark:text-gray-400">台股部位</div><img src="https://flagcdn.com/w40/tw.png" class="w-6 shadow-sm rounded-sm"></div>
+                    <div class="text-2xl font-bold dark:text-white"><span v-if="showPrivacy">{{ formatCurrency(twStats.value, 'TWD') }}</span><span v-else>****</span></div>
                     <div class="mt-1 text-xs flex items-center gap-1" v-if="showPrivacy">
-                        <span class="text-gray-400">較前日:</span>
-                        <span v-if="prevDayData" :class="getPnlClass(twStats.pnl - (prevDayData.twPnL || 0))">
-                             {{ formatCurrency(twStats.pnl - (prevDayData.twPnL || 0), 'TWD') }}
-                        </span>
-                        <span v-else class="text-gray-400">-</span>
+                        <span class="text-gray-400">較前日:</span><span v-if="prevDayData" :class="getPnlClass(twStats.pnl - (prevDayData.twPnL || 0))">{{ formatCurrency(twStats.pnl - (prevDayData.twPnL || 0), 'TWD') }}</span>
                     </div>
                     <div v-else class="mt-1 text-xs text-gray-300">****</div>
                     <div class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 text-sm flex justify-between">
-                        <span class="text-gray-500 dark:text-gray-400">損益</span>
-                        <span v-if="showPrivacy" :class="getPnlClass(twStats.pnl)">
-                            {{ formatCurrency(twStats.pnl, 'TWD') }}
-                            <span class="text-xs ml-1">({{ getRoi(twStats.cost, twStats.pnl) }})</span>
-                        </span>
-                        <span v-else class="text-gray-300 dark:text-gray-600">****</span>
+                        <span class="text-gray-500 dark:text-gray-400">損益</span><span v-if="showPrivacy" :class="getPnlClass(twStats.pnl)">{{ formatCurrency(twStats.pnl, 'TWD') }}<span class="text-xs ml-1">({{ getRoi(twStats.cost, twStats.pnl) }})</span></span><span v-else class="text-gray-300 dark:text-gray-600">****</span>
                     </div>
                 </div>
-                
                 <div class="zen-card p-5">
-                    <div class="flex justify-between items-center mb-1">
-                        <div class="text-sm text-gray-500 dark:text-gray-400">美股部位</div>
-                        <img src="https://flagcdn.com/w40/us.png" alt="US" class="w-6 shadow-sm rounded-sm">
-                    </div>
-                    <div class="text-2xl font-bold dark:text-white">
-                        <span v-if="showPrivacy">{{ formatCurrency(usStats.value, 'USD') }}</span>
-                        <span v-else>****</span>
-                    </div>
+                    <div class="flex justify-between items-center mb-1"><div class="text-sm text-gray-500 dark:text-gray-400">美股部位</div><img src="https://flagcdn.com/w40/us.png" class="w-6 shadow-sm rounded-sm"></div>
+                    <div class="text-2xl font-bold dark:text-white"><span v-if="showPrivacy">{{ formatCurrency(usStats.value, 'USD') }}</span><span v-else>****</span></div>
                     <div class="mt-1 text-xs flex items-center gap-1" v-if="showPrivacy">
-                        <span class="text-gray-400">較前日:</span>
-                        <span v-if="prevDayData" :class="getPnlClass(usStats.pnl - (prevDayData.usPnL || 0))">
-                             {{ formatCurrency(usStats.pnl - (prevDayData.usPnL || 0), 'USD') }}
-                        </span>
-                        <span v-else class="text-gray-400">-</span>
+                        <span class="text-gray-400">較前日:</span><span v-if="prevDayData" :class="getPnlClass(usStats.pnl - (prevDayData.usPnL || 0))">{{ formatCurrency(usStats.pnl - (prevDayData.usPnL || 0), 'USD') }}</span>
                     </div>
                     <div v-else class="mt-1 text-xs text-gray-300">****</div>
                     <div class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 text-sm flex justify-between">
-                        <span class="text-gray-500 dark:text-gray-400">損益</span>
-                        <span v-if="showPrivacy" :class="getPnlClass(usStats.pnl)">
-                            {{ formatCurrency(usStats.pnl, 'USD') }}
-                            <span class="text-xs ml-1">({{ getRoi(usStats.cost, usStats.pnl) }})</span>
-                        </span>
-                        <span v-else class="text-gray-300 dark:text-gray-600">****</span>
+                        <span class="text-gray-500 dark:text-gray-400">損益</span><span v-if="showPrivacy" :class="getPnlClass(usStats.pnl)">{{ formatCurrency(usStats.pnl, 'USD') }}<span class="text-xs ml-1">({{ getRoi(usStats.cost, usStats.pnl) }})</span></span><span v-else class="text-gray-300 dark:text-gray-600">****</span>
                     </div>
                 </div>
             </div>
 
             <div class="flex flex-wrap gap-2 justify-center mb-6">
-                <button @click="toggleSection('chart')" :class="{'bg-gray-200 dark:bg-gray-700': activeSection==='chart'}" class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 px-4 py-2 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-sm transition">
-                    <i class="fa-solid fa-chart-line mr-2"></i>資產走勢
-                </button>
-                <button @click="toggleSection('pie')" :class="{'bg-gray-200 dark:bg-gray-700': activeSection==='pie'}" class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 px-4 py-2 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-sm transition">
-                    <i class="fa-solid fa-chart-pie mr-2"></i>資產配置
-                </button>
-                <button @click="toggleSection('realized')" :class="{'bg-gray-200 dark:bg-gray-700': activeSection==='realized'}" class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 px-4 py-2 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-sm transition">
-                    <i class="fa-solid fa-file-invoice-dollar mr-2"></i>已實現損益
-                </button>
+                <button @click="toggleSection('chart')" :class="{'bg-gray-200 dark:bg-gray-700': activeSection==='chart'}" class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 px-4 py-2 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-sm transition"><i class="fa-solid fa-chart-line mr-2"></i>資產走勢</button>
+                <button @click="toggleSection('pie')" :class="{'bg-gray-200 dark:bg-gray-700': activeSection==='pie'}" class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 px-4 py-2 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-sm transition"><i class="fa-solid fa-chart-pie mr-2"></i>資產配置</button>
+                <button @click="toggleSection('transactions')" :class="{'bg-gray-200 dark:bg-gray-700': activeSection==='transactions'}" class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 px-4 py-2 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-sm transition"><i class="fa-solid fa-list-ul mr-2"></i>交易紀錄</button>
+                <button @click="toggleSection('dividend')" :class="{'bg-gray-200 dark:bg-gray-700': activeSection==='dividend'}" class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 px-4 py-2 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-sm transition"><i class="fa-solid fa-coins mr-2"></i>股息統計</button>
+                <button @click="toggleSection('realized')" :class="{'bg-gray-200 dark:bg-gray-700': activeSection==='realized'}" class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 px-4 py-2 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-sm transition"><i class="fa-solid fa-file-invoice-dollar mr-2"></i>已實現損益</button>
             </div>
 
             <transition name="collapse">
                 <div v-if="activeSection === 'chart'" class="zen-card p-4 md:p-6 mb-8">
                     <div class="flex flex-wrap gap-3 items-end mb-4 pb-4 border-b border-gray-100 dark:border-gray-700">
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 mb-1">開始日期</label>
-                            <input type="date" v-model="chartStartDate" class="zen-input text-sm py-1.5">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 mb-1">結束日期</label>
-                            <input type="date" v-model="chartEndDate" class="zen-input text-sm py-1.5">
-                        </div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">開始</label><input type="date" v-model="chartStartDate" class="zen-input text-sm py-1.5"></div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">結束</label><input type="date" v-model="chartEndDate" class="zen-input text-sm py-1.5"></div>
                         <button @click="drawChart" class="bg-gray-800 text-white px-4 py-1.5 rounded text-sm hover:bg-gray-700 h-9 mb-[1px]">查詢</button>
                     </div>
-                    <div class="h-64 md:h-80 w-full relative">
-                        <canvas id="assetChart"></canvas>
-                    </div>
+                    <div class="h-64 md:h-80 w-full relative"><canvas id="assetChart"></canvas></div>
                 </div>
             </transition>
 
@@ -249,64 +153,109 @@
                 <div v-if="activeSection === 'pie'" class="zen-card p-4 md:p-6 mb-8">
                     <h3 class="font-bold mb-4 dark:text-white text-center">持股占比分析</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div class="flex flex-col items-center">
-                            <h4 class="text-sm font-bold mb-2 flex items-center gap-2"><img src="https://flagcdn.com/w20/tw.png"> 台股配置 (TWD)</h4>
-                            <div class="w-full max-w-[300px] h-[300px] relative"><canvas id="pieTw"></canvas></div>
+                        <div class="flex flex-col items-center"><h4 class="text-sm font-bold mb-2 flex items-center gap-2"><img src="https://flagcdn.com/w20/tw.png"> 台股配置 (TWD)</h4><div class="w-full max-w-[300px] h-[300px] relative"><canvas id="pieTw"></canvas></div></div>
+                        <div class="flex flex-col items-center"><h4 class="text-sm font-bold mb-2 flex items-center gap-2"><img src="https://flagcdn.com/w20/us.png"> 美股配置 (USD)</h4><div class="w-full max-w-[300px] h-[300px] relative"><canvas id="pieUs"></canvas></div></div>
+                    </div>
+                </div>
+            </transition>
+            
+            <transition name="collapse">
+                <div v-if="activeSection === 'transactions'" class="zen-card p-4 md:p-6 mb-8">
+                    <h3 class="font-bold mb-4 dark:text-white flex justify-between items-center">
+                        <span>歷史交易明細</span>
+                        <span class="text-xs text-gray-400 font-normal">買入 / 賣出 / 領息</span>
+                    </h3>
+                    <div class="overflow-x-auto max-h-[500px] overflow-y-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-gray-100 dark:bg-gray-800 text-gray-500 uppercase font-medium sticky top-0">
+                                <tr>
+                                    <th class="px-4 py-2">日期</th>
+                                    <th class="px-4 py-2">類別</th>
+                                    <th class="px-4 py-2">標的</th>
+                                    <th class="px-4 py-2 text-right">股數</th>
+                                    <th class="px-4 py-2 text-right">單價</th>
+                                    <th class="px-4 py-2 text-right">總金額</th>
+                                    <th class="px-4 py-2 text-center">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                <tr v-for="tx in transactionHistory" :key="tx.id" class="hover:bg-gray-50 dark:hover:bg-gray-800">
+                                    <td class="px-4 py-3 whitespace-nowrap text-gray-500">{{ tx.date }}</td>
+                                    <td class="px-4 py-3">
+                                        <span class="tag" :class="{'tag-buy': tx.type==='buy', 'tag-sell': tx.type==='sell', 'tag-div': tx.type==='dividend'}">
+                                            {{ tx.type==='buy'?'買入':(tx.type==='sell'?'賣出':'領息') }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 font-bold">
+                                        {{ tx.symbol }} <span class="text-xs text-gray-400 font-normal hidden sm:inline">{{ tx.name }}</span>
+                                    </td>
+                                    <td class="px-4 py-3 text-right">{{ tx.type === 'dividend' ? '-' : formatNumber(tx.shares) }}</td>
+                                    <td class="px-4 py-3 text-right text-gray-500">{{ tx.type === 'dividend' ? '-' : formatCurrency(tx.price, tx.currency) }}</td>
+                                    <td class="px-4 py-3 text-right font-bold" :class="tx.type==='buy' ? '' : (tx.type==='sell'?'text-down':'text-yellow-600')">
+                                        {{ tx.type==='buy' ? '-' : '+' }}{{ formatCurrency(tx.totalAmount, tx.currency) }}
+                                    </td>
+                                    <td class="px-4 py-3 text-center">
+                                         <button @click="deleteTransaction(tx.id)" class="text-gray-400 hover:text-red-500"><i class="fa-solid fa-trash-can"></i></button>
+                                    </td>
+                                </tr>
+                                <tr v-if="transactionHistory.length === 0"><td colspan="7" class="px-4 py-8 text-center text-gray-400">尚無交易紀錄</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </transition>
+
+            <transition name="collapse">
+                <div v-if="activeSection === 'dividend'" class="zen-card p-4 md:p-6 mb-8">
+                    <h3 class="font-bold mb-4 dark:text-white flex justify-between items-center"><span>股息領取紀錄</span><span class="text-xs text-gray-400 font-normal">本年度累計</span></h3>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg text-center border border-yellow-100 dark:border-yellow-900/30">
+                            <div class="text-xs text-yellow-600 dark:text-yellow-400">台股股息 ({{new Date().getFullYear()}})</div>
+                            <div class="text-lg font-bold text-yellow-700 dark:text-yellow-300">{{ formatCurrency(dividendYearlyTw, 'TWD') }}</div>
                         </div>
-                        <div class="flex flex-col items-center">
-                            <h4 class="text-sm font-bold mb-2 flex items-center gap-2"><img src="https://flagcdn.com/w20/us.png"> 美股配置 (USD)</h4>
-                            <div class="w-full max-w-[300px] h-[300px] relative"><canvas id="pieUs"></canvas></div>
+                        <div class="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg text-center border border-yellow-100 dark:border-yellow-900/30">
+                            <div class="text-xs text-yellow-600 dark:text-yellow-400">美股股息 ({{new Date().getFullYear()}})</div>
+                            <div class="text-lg font-bold text-yellow-700 dark:text-yellow-300">{{ formatCurrency(dividendYearlyUs, 'USD') }}</div>
                         </div>
+                    </div>
+                    <div class="flex flex-wrap gap-3 items-end mb-4 pb-4 border-b border-gray-100 dark:border-gray-700">
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">開始</label><input type="date" v-model="divStartDate" class="zen-input text-sm py-1.5"></div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">結束</label><input type="date" v-model="divEndDate" class="zen-input text-sm py-1.5"></div>
+                        <button @click="fetchDividends" class="bg-gray-800 text-white px-4 py-1.5 rounded text-sm hover:bg-gray-700 h-9 mb-[1px]">查詢</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-gray-100 dark:bg-gray-800 text-gray-500 uppercase font-medium"><tr><th class="px-4 py-2">入帳日</th><th class="px-4 py-2">標的</th><th class="px-4 py-2 text-right">金額</th><th class="px-4 py-2 text-center">操作</th></tr></thead>
+                            <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                <tr v-for="rec in dividendRecords" :key="rec.id" class="hover:bg-gray-50 dark:hover:bg-gray-800">
+                                    <td class="px-4 py-3">{{ rec.date }}</td>
+                                    <td class="px-4 py-3 font-bold">{{ rec.symbol }}</td>
+                                    <td class="px-4 py-3 text-right font-bold text-yellow-600 dark:text-yellow-400">+{{ formatCurrency(rec.amount, rec.currency) }}</td>
+                                    <td class="px-4 py-3 text-center"><button @click="deleteDividend(rec)" class="text-gray-400 hover:text-red-500"><i class="fa-solid fa-trash-can"></i></button></td>
+                                </tr>
+                                <tr v-if="dividendRecords.length === 0"><td colspan="4" class="px-4 py-6 text-center text-gray-400">無紀錄</td></tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </transition>
 
             <transition name="collapse">
                 <div v-if="activeSection === 'realized'" class="zen-card p-4 md:p-6 mb-8">
-                    <h3 class="font-bold mb-4 dark:text-white flex justify-between items-center">
-                        <span>歷史已實現損益 (Realized P&L)</span>
-                        <span class="text-xs text-gray-400 font-normal">賣出時自動記錄</span>
-                    </h3>
-                    
+                    <h3 class="font-bold mb-4 dark:text-white">歷史已實現損益</h3>
                     <div class="grid grid-cols-2 gap-4 mb-4">
-                        <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-center">
-                            <div class="text-xs text-gray-500">台股總損益</div>
-                            <div class="text-lg font-bold" :class="getPnlClass(realizedTotalTw)">{{ formatCurrency(realizedTotalTw, 'TWD') }}</div>
-                        </div>
-                        <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-center">
-                            <div class="text-xs text-gray-500">美股總損益</div>
-                            <div class="text-lg font-bold" :class="getPnlClass(realizedTotalUs)">{{ formatCurrency(realizedTotalUs, 'USD') }}</div>
-                        </div>
+                        <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-center"><div class="text-xs text-gray-500">台股總損益</div><div class="text-lg font-bold" :class="getPnlClass(realizedTotalTw)">{{ formatCurrency(realizedTotalTw, 'TWD') }}</div></div>
+                        <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-center"><div class="text-xs text-gray-500">美股總損益</div><div class="text-lg font-bold" :class="getPnlClass(realizedTotalUs)">{{ formatCurrency(realizedTotalUs, 'USD') }}</div></div>
                     </div>
-
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm text-left">
-                            <thead class="bg-gray-100 dark:bg-gray-800 text-gray-500 uppercase font-medium">
-                                <tr>
-                                    <th class="px-4 py-2">日期</th>
-                                    <th class="px-4 py-2">標的</th>
-                                    <th class="px-4 py-2 text-right">股數/均價</th>
-                                    <th class="px-4 py-2 text-right">總額</th>
-                                    <th class="px-4 py-2 text-right">獲利/虧損</th>
-                                </tr>
-                            </thead>
+                            <thead class="bg-gray-100 dark:bg-gray-800 text-gray-500 uppercase font-medium"><tr><th class="px-4 py-2">日期</th><th class="px-4 py-2">標的</th><th class="px-4 py-2 text-right">獲利/虧損</th><th class="px-4 py-2 text-center">操作</th></tr></thead>
                             <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                                <tr v-for="rec in realizedGains" :key="rec.timestamp" class="hover:bg-gray-50 dark:hover:bg-gray-800">
+                                <tr v-for="rec in realizedGains" :key="rec.id" class="hover:bg-gray-50 dark:hover:bg-gray-800">
                                     <td class="px-4 py-3">{{ rec.date }}</td>
-                                    <td class="px-4 py-3 font-bold">
-                                        {{ rec.symbol }} <span class="text-xs font-normal text-gray-400 ml-1">{{ rec.currency }}</span>
-                                    </td>
-                                    <td class="px-4 py-3 text-right">
-                                        <div>{{ formatShares(rec.shares) }} 股</div>
-                                        <div class="text-xs text-gray-400">@ {{ formatPrice(rec.price, rec.currency) }}</div>
-                                    </td>
-                                    <td class="px-4 py-3 text-right">{{ formatNumber(rec.totalAmount) }}</td>
-                                    <td class="px-4 py-3 text-right font-bold" :class="getPnlClass(rec.pnl)">
-                                        {{ formatCurrency(rec.pnl, rec.currency) }}
-                                    </td>
-                                </tr>
-                                <tr v-if="realizedGains.length === 0">
-                                    <td colspan="5" class="px-4 py-6 text-center text-gray-400">尚無賣出紀錄</td>
+                                    <td class="px-4 py-3 font-bold">{{ rec.symbol }}</td>
+                                    <td class="px-4 py-3 text-right font-bold" :class="getPnlClass(rec.pnl)">{{ formatCurrency(rec.pnl, rec.currency) }}</td>
+                                    <td class="px-4 py-3 text-center"><button @click="deleteRealized(rec.id)" class="text-gray-400 hover:text-red-500"><i class="fa-solid fa-trash-can"></i></button></td>
                                 </tr>
                             </tbody>
                         </table>
@@ -322,51 +271,25 @@
             </div>
 
             <div v-if="twStockList.length > 0" class="mb-8">
-                <h2 class="text-lg font-bold mb-3 flex items-center gap-2 dark:text-white">
-                    <img src="https://flagcdn.com/w40/tw.png" class="w-5 h-auto rounded-sm shadow-sm">
-                    <span>台股庫存</span>
-                </h2>
+                <h2 class="text-lg font-bold mb-3 flex items-center gap-2 dark:text-white"><img src="https://flagcdn.com/w40/tw.png" class="w-5 h-auto rounded-sm shadow-sm"><span>台股庫存</span></h2>
                 <div v-if="viewMode === 'table' || (viewMode === 'auto' && !isMobile)" class="zen-card overflow-hidden">
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm text-left">
-                            <thead class="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase font-medium">
-                                <tr>
-                                    <th class="px-6 py-4">代號/名稱</th>
-                                    <th class="px-6 py-4 text-right">現價</th>
-                                    <th class="px-6 py-4 text-right">成本/股數</th>
-                                    <th class="px-6 py-4 text-right">市值</th>
-                                    <th class="px-6 py-4 text-right">損益</th>
-                                    <th class="px-6 py-4 text-center">操作</th>
-                                </tr>
-                            </thead>
+                            <thead class="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase font-medium"><tr><th class="px-6 py-4">代號/名稱</th><th class="px-6 py-4 text-right">現價</th><th class="px-6 py-4 text-right">股數</th><th class="px-6 py-4 text-right">市值</th><th class="px-6 py-4 text-right">損益</th><th class="px-6 py-4 text-center">操作</th></tr></thead>
                             <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                                 <tr v-for="stock in twStockList" :key="stock.id" class="hover:bg-gray-50 dark:hover:bg-gray-800 transition">
-                                    <td class="px-6 py-4">
-                                        <div class="font-bold text-gray-900 dark:text-gray-200">{{ stock.symbol }}</div>
-                                        <div class="text-xs text-gray-500">{{ stock.name }}</div>
+                                    <td class="px-6 py-4"><div class="font-bold text-gray-900 dark:text-gray-200">{{ stock.symbol }}</div><div class="text-xs text-gray-500">{{ stock.name }}</div></td>
+                                    <td class="px-6 py-4 text-right font-medium dark:text-gray-300">
+                                        <div>{{ formatCurrency(stock.currentPrice, 'TWD') }}</div>
+                                        <div class="text-xs" :class="getPnlClass(stock.currentPrice - stock.previousClose)" v-if="stock.previousClose">{{ formatChange(stock.currentPrice - stock.previousClose, stock.previousClose) }}</div>
                                     </td>
-                                    <td class="px-6 py-4 text-right font-medium dark:text-gray-300">{{ formatPrice(stock.currentPrice, 'TWD') }}</td>
-                                    
-                                    <td class="px-6 py-4 text-right text-gray-500 dark:text-gray-400">
-                                        <div class="font-medium">{{ formatPrice(stock.avgCost, 'TWD') }}</div>
-                                        <div class="text-xs">x {{ formatShares(stock.shares) }}</div>
-                                        <div class="text-xs text-gray-400 mt-1 dark:text-gray-500">總: {{ formatCurrency(stock.avgCost * stock.shares, 'TWD') }}</div>
-                                    </td>
-                                    
-                                    <td class="px-6 py-4 text-right font-bold dark:text-gray-200">{{ formatCurrency(stock.currentPrice * stock.shares, 'TWD') }}</td>
+                                    <td class="px-6 py-4 text-right text-gray-500"><span v-if="showPrivacy">{{ formatNumber(stock.shares) }}</span><span v-else>****</span></td>
+                                    <td class="px-6 py-4 text-right font-bold dark:text-gray-200"><span v-if="showPrivacy">{{ formatCurrency(stock.currentPrice * stock.shares, 'TWD') }}</span><span v-else>****</span></td>
                                     <td class="px-6 py-4 text-right">
-                                        <div :class="getPnlClass((stock.currentPrice - stock.avgCost) * stock.shares)">
-                                            {{ formatCurrency((stock.currentPrice - stock.avgCost) * stock.shares, 'TWD') }}
-                                        </div>
-                                        <div :class="getPnlClass((stock.currentPrice - stock.avgCost) * stock.shares)" class="text-xs">
-                                            {{ getRoi(stock.avgCost * stock.shares, (stock.currentPrice - stock.avgCost) * stock.shares) }}
-                                        </div>
+                                        <div v-if="showPrivacy"><div :class="getPnlClass((stock.currentPrice - stock.avgCost) * stock.shares)">{{ formatCurrency((stock.currentPrice - stock.avgCost) * stock.shares, 'TWD') }}</div><div :class="getPnlClass((stock.currentPrice - stock.avgCost) * stock.shares)" class="text-xs">{{ getRoi(stock.avgCost * stock.shares, (stock.currentPrice - stock.avgCost) * stock.shares) }}</div></div>
+                                        <div v-else class="text-gray-300">****</div>
                                     </td>
-                                    <td class="px-6 py-4 text-center">
-                                        <button @click="openTransModal(stock)" class="text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 mx-1"><i class="fa-solid fa-calculator"></i></button>
-                                        <button @click="editStock(stock)" class="text-gray-400 hover:text-blue-600 mx-1"><i class="fa-solid fa-pen"></i></button>
-                                        <button @click="deleteStock(stock.id)" class="text-gray-400 hover:text-red-600 mx-1"><i class="fa-solid fa-trash"></i></button>
-                                    </td>
+                                    <td class="px-6 py-4 text-center"><button @click="openTransModal(stock)" class="text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 mx-1"><i class="fa-solid fa-calculator"></i></button><button @click="editStock(stock)" class="text-gray-400 hover:text-blue-600 mx-1"><i class="fa-solid fa-pen"></i></button><button @click="deleteStock(stock.id)" class="text-gray-400 hover:text-red-600 mx-1"><i class="fa-solid fa-trash"></i></button></td>
                                 </tr>
                             </tbody>
                         </table>
@@ -375,31 +298,21 @@
                 <div v-if="viewMode === 'card' || (viewMode === 'auto' && isMobile)" class="space-y-3">
                     <div v-for="stock in twStockList" :key="stock.id" class="zen-card p-4 relative">
                         <div class="flex justify-between items-start mb-2" @click="editStock(stock)">
-                            <div>
-                                <span class="text-lg font-bold text-gray-800 dark:text-gray-200">{{ stock.symbol }}</span>
-                                <div class="text-xs text-gray-500">{{ stock.name }}</div>
-                            </div>
+                            <div><span class="text-lg font-bold text-gray-800 dark:text-gray-200">{{ stock.symbol }}</span><div class="text-xs text-gray-500">{{ stock.name }}</div></div>
                             <div class="text-right">
-                                <div class="text-lg font-bold dark:text-gray-200">{{ formatPrice(stock.currentPrice, 'TWD') }}</div>
-                                <div class="text-xs text-gray-400">現價</div>
+                                <div class="text-lg font-bold dark:text-gray-200">{{ formatCurrency(stock.currentPrice, 'TWD') }}</div>
+                                <div class="text-xs font-bold" :class="getPnlClass(stock.currentPrice - stock.previousClose)" v-if="stock.previousClose">{{ formatChange(stock.currentPrice - stock.previousClose, stock.previousClose) }}</div><div class="text-xs text-gray-400" v-else>現價</div>
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-4 py-2 border-t border-gray-100 dark:border-gray-700" @click="editStock(stock)">
-                            <div>
-                                <div class="text-xs text-gray-400">市值</div>
-                                <div class="font-medium dark:text-gray-200">{{ formatCurrency(stock.currentPrice * stock.shares, 'TWD') }}</div>
-                            </div>
-                            <div class="text-right">
-                                <div class="text-xs text-gray-400">損益</div>
-                                <div :class="getPnlClass((stock.currentPrice - stock.avgCost) * stock.shares)" class="font-bold">
-                                    {{ formatCurrency((stock.currentPrice - stock.avgCost) * stock.shares, 'TWD') }}
-                                </div>
+                            <div><div class="text-xs text-gray-400">市值</div><div class="font-medium dark:text-gray-200"><span v-if="showPrivacy">{{ formatCurrency(stock.currentPrice * stock.shares, 'TWD') }}</span><span v-else>****</span></div></div>
+                            <div class="text-right"><div class="text-xs text-gray-400">損益</div>
+                                <div v-if="showPrivacy" :class="getPnlClass((stock.currentPrice - stock.avgCost) * stock.shares)" class="font-bold">{{ formatCurrency((stock.currentPrice - stock.avgCost) * stock.shares, 'TWD') }}</div>
+                                <div v-else class="text-gray-300 font-bold">****</div>
                             </div>
                         </div>
                         <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-50 dark:border-gray-700">
-                            <div class="text-xs text-gray-500">
-                                 持倉 {{ formatShares(stock.shares) }} | 均價 {{ formatPrice(stock.avgCost, 'TWD') }}
-                            </div>
+                            <div class="text-xs text-gray-500"><span v-if="showPrivacy">持倉 {{ formatNumber(stock.shares) }} | 均價 {{ formatCurrency(stock.avgCost, 'TWD') }}</span><span v-else>持倉 **** | 均價 ****</span></div>
                             <button @click.stop="openTransModal(stock)" class="text-gray-500 hover:text-gray-900 dark:hover:text-white"><i class="fa-solid fa-calculator"></i> 補登</button>
                         </div>
                     </div>
@@ -407,51 +320,25 @@
             </div>
 
             <div v-if="usStockList.length > 0" class="mb-8">
-                <h2 class="text-lg font-bold mb-3 flex items-center gap-2 dark:text-white">
-                    <img src="https://flagcdn.com/w40/us.png" class="w-5 h-auto rounded-sm shadow-sm">
-                    <span>美股庫存</span>
-                </h2>
+                <h2 class="text-lg font-bold mb-3 flex items-center gap-2 dark:text-white"><img src="https://flagcdn.com/w40/us.png" class="w-5 h-auto rounded-sm shadow-sm"><span>美股庫存</span></h2>
                 <div v-if="viewMode === 'table' || (viewMode === 'auto' && !isMobile)" class="zen-card overflow-hidden">
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm text-left">
-                            <thead class="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase font-medium">
-                                <tr>
-                                    <th class="px-6 py-4">代號/名稱</th>
-                                    <th class="px-6 py-4 text-right">現價</th>
-                                    <th class="px-6 py-4 text-right">成本/股數</th>
-                                    <th class="px-6 py-4 text-right">市值</th>
-                                    <th class="px-6 py-4 text-right">損益</th>
-                                    <th class="px-6 py-4 text-center">操作</th>
-                                </tr>
-                            </thead>
+                            <thead class="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase font-medium"><tr><th class="px-6 py-4">代號/名稱</th><th class="px-6 py-4 text-right">現價</th><th class="px-6 py-4 text-right">股數</th><th class="px-6 py-4 text-right">市值</th><th class="px-6 py-4 text-right">損益</th><th class="px-6 py-4 text-center">操作</th></tr></thead>
                             <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                                 <tr v-for="stock in usStockList" :key="stock.id" class="hover:bg-gray-50 dark:hover:bg-gray-800 transition">
-                                    <td class="px-6 py-4">
-                                        <div class="font-bold text-gray-900 dark:text-gray-200">{{ stock.symbol }}</div>
-                                        <div class="text-xs text-gray-500">{{ stock.name }}</div>
+                                    <td class="px-6 py-4"><div class="font-bold text-gray-900 dark:text-gray-200">{{ stock.symbol }}</div><div class="text-xs text-gray-500">{{ stock.name }}</div></td>
+                                    <td class="px-6 py-4 text-right font-medium dark:text-gray-300">
+                                        <div>{{ formatCurrency(stock.currentPrice, 'USD') }}</div>
+                                        <div class="text-xs" :class="getPnlClass(stock.currentPrice - stock.previousClose)" v-if="stock.previousClose">{{ formatChange(stock.currentPrice - stock.previousClose, stock.previousClose) }}</div>
                                     </td>
-                                    <td class="px-6 py-4 text-right font-medium dark:text-gray-300">{{ formatPrice(stock.currentPrice, 'USD') }}</td>
-                                    
-                                    <td class="px-6 py-4 text-right text-gray-500 dark:text-gray-400">
-                                        <div class="font-medium">{{ formatPrice(stock.avgCost, 'USD') }}</div>
-                                        <div class="text-xs">x {{ formatShares(stock.shares) }}</div>
-                                        <div class="text-xs text-gray-400 mt-1 dark:text-gray-500">總: {{ formatCurrency(stock.avgCost * stock.shares, 'USD') }}</div>
-                                    </td>
-                                    
-                                    <td class="px-6 py-4 text-right font-bold dark:text-gray-200">{{ formatCurrency(stock.currentPrice * stock.shares, 'USD') }}</td>
+                                    <td class="px-6 py-4 text-right text-gray-500"><span v-if="showPrivacy">{{ formatNumber(stock.shares) }}</span><span v-else>****</span></td>
+                                    <td class="px-6 py-4 text-right font-bold dark:text-gray-200"><span v-if="showPrivacy">{{ formatCurrency(stock.currentPrice * stock.shares, 'USD') }}</span><span v-else>****</span></td>
                                     <td class="px-6 py-4 text-right">
-                                        <div :class="getPnlClass((stock.currentPrice - stock.avgCost) * stock.shares)">
-                                            {{ formatCurrency((stock.currentPrice - stock.avgCost) * stock.shares, 'USD') }}
-                                        </div>
-                                        <div :class="getPnlClass((stock.currentPrice - stock.avgCost) * stock.shares)" class="text-xs">
-                                            {{ getRoi(stock.avgCost * stock.shares, (stock.currentPrice - stock.avgCost) * stock.shares) }}
-                                        </div>
+                                        <div v-if="showPrivacy"><div :class="getPnlClass((stock.currentPrice - stock.avgCost) * stock.shares)">{{ formatCurrency((stock.currentPrice - stock.avgCost) * stock.shares, 'USD') }}</div><div :class="getPnlClass((stock.currentPrice - stock.avgCost) * stock.shares)" class="text-xs">{{ getRoi(stock.avgCost * stock.shares, (stock.currentPrice - stock.avgCost) * stock.shares) }}</div></div>
+                                        <div v-else class="text-gray-300">****</div>
                                     </td>
-                                    <td class="px-6 py-4 text-center">
-                                        <button @click="openTransModal(stock)" class="text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 mx-1"><i class="fa-solid fa-calculator"></i></button>
-                                        <button @click="editStock(stock)" class="text-gray-400 hover:text-blue-600 mx-1"><i class="fa-solid fa-pen"></i></button>
-                                        <button @click="deleteStock(stock.id)" class="text-gray-400 hover:text-red-600 mx-1"><i class="fa-solid fa-trash"></i></button>
-                                    </td>
+                                    <td class="px-6 py-4 text-center"><button @click="openTransModal(stock)" class="text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 mx-1"><i class="fa-solid fa-calculator"></i></button><button @click="editStock(stock)" class="text-gray-400 hover:text-blue-600 mx-1"><i class="fa-solid fa-pen"></i></button><button @click="deleteStock(stock.id)" class="text-gray-400 hover:text-red-600 mx-1"><i class="fa-solid fa-trash"></i></button></td>
                                 </tr>
                             </tbody>
                         </table>
@@ -460,162 +347,93 @@
                 <div v-if="viewMode === 'card' || (viewMode === 'auto' && isMobile)" class="space-y-3">
                     <div v-for="stock in usStockList" :key="stock.id" class="zen-card p-4 relative">
                         <div class="flex justify-between items-start mb-2" @click="editStock(stock)">
-                            <div>
-                                <span class="text-lg font-bold text-gray-800 dark:text-gray-200">{{ stock.symbol }}</span>
-                                <div class="text-xs text-gray-500">{{ stock.name }}</div>
-                            </div>
+                            <div><span class="text-lg font-bold text-gray-800 dark:text-gray-200">{{ stock.symbol }}</span><div class="text-xs text-gray-500">{{ stock.name }}</div></div>
                             <div class="text-right">
-                                <div class="text-lg font-bold dark:text-gray-200">{{ formatPrice(stock.currentPrice, 'USD') }}</div>
-                                <div class="text-xs text-gray-400">現價</div>
+                                <div class="text-lg font-bold dark:text-gray-200">{{ formatCurrency(stock.currentPrice, 'USD') }}</div>
+                                <div class="text-xs font-bold" :class="getPnlClass(stock.currentPrice - stock.previousClose)" v-if="stock.previousClose">{{ formatChange(stock.currentPrice - stock.previousClose, stock.previousClose) }}</div><div class="text-xs text-gray-400" v-else>現價</div>
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-4 py-2 border-t border-gray-100 dark:border-gray-700" @click="editStock(stock)">
-                            <div>
-                                <div class="text-xs text-gray-400">市值</div>
-                                <div class="font-medium dark:text-gray-200">{{ formatCurrency(stock.currentPrice * stock.shares, 'USD') }}</div>
-                            </div>
-                            <div class="text-right">
-                                <div class="text-xs text-gray-400">損益</div>
-                                <div :class="getPnlClass((stock.currentPrice - stock.avgCost) * stock.shares)" class="font-bold">
-                                    {{ formatCurrency((stock.currentPrice - stock.avgCost) * stock.shares, 'USD') }}
-                                </div>
+                            <div><div class="text-xs text-gray-400">市值</div><div class="font-medium dark:text-gray-200"><span v-if="showPrivacy">{{ formatCurrency(stock.currentPrice * stock.shares, 'USD') }}</span><span v-else>****</span></div></div>
+                            <div class="text-right"><div class="text-xs text-gray-400">損益</div>
+                                <div v-if="showPrivacy" :class="getPnlClass((stock.currentPrice - stock.avgCost) * stock.shares)" class="font-bold">{{ formatCurrency((stock.currentPrice - stock.avgCost) * stock.shares, 'USD') }}</div>
+                                <div v-else class="text-gray-300 font-bold">****</div>
                             </div>
                         </div>
                         <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-50 dark:border-gray-700">
-                            <div class="text-xs text-gray-500">
-                                 持倉 {{ formatShares(stock.shares) }} | 均價 {{ formatPrice(stock.avgCost, 'USD') }}
-                            </div>
+                            <div class="text-xs text-gray-500"><span v-if="showPrivacy">持倉 {{ formatNumber(stock.shares) }} | 均價 {{ formatCurrency(stock.avgCost, 'USD') }}</span><span v-else>持倉 **** | 均價 ****</span></div>
                             <button @click.stop="openTransModal(stock)" class="text-gray-500 hover:text-gray-900 dark:hover:text-white"><i class="fa-solid fa-calculator"></i> 補登</button>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <div v-if="stocks.length === 0" class="text-center py-10 text-gray-400 zen-card dark:text-gray-500">
-                目前沒有任何持股資料，請點擊上方「新增」按鈕。
-            </div>
-        </div>
-
-        <div v-if="showModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden">
-                <div class="bg-gray-800 dark:bg-gray-900 text-white px-6 py-4 flex justify-between items-center">
-                    <h3 class="font-bold">{{ isEditing ? '編輯持股' : '新增持股' }}</h3>
-                    <button @click="closeModal" class="text-gray-300 hover:text-white"><i class="fa-solid fa-times"></i></button>
-                </div>
-                <div class="p-6 space-y-4">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 mb-1">代號</label>
-                            <input v-model="form.symbol" @blur="autoFetchName" placeholder="如 2330" class="zen-input uppercase">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 mb-1">幣別</label>
-                            <select v-model="form.currency" class="zen-input">
-                                <option value="TWD">TWD</option>
-                                <option value="USD">USD</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 mb-1">名稱</label>
-                        <input v-model="form.name" class="zen-input">
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 mb-1">總股數</label>
-                            <input type="number" step="any" v-model.number="form.shares" class="zen-input">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 mb-1">平均成本</label>
-                            <input type="number" step="any" v-model.number="form.avgCost" class="zen-input">
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 mb-1">現價</label>
-                            <input type="number" step="any" v-model.number="form.currentPrice" class="zen-input bg-gray-50">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 mb-1">已領股息</label>
-                            <input type="number" step="any" v-model.number="form.dividends" class="zen-input">
-                        </div>
-                    </div>
-                </div>
-                <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex justify-end gap-3">
-                    <button @click="closeModal" class="px-4 py-2 rounded text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button>
-                    <button @click="saveStock" class="px-6 py-2 rounded bg-gray-800 text-white font-medium hover:bg-gray-700 transition">儲存</button>
-                </div>
-            </div>
+            <div v-if="stocks.length === 0" class="text-center py-10 text-gray-400 zen-card dark:text-gray-500">目前沒有任何持股資料，請點擊上方「新增」按鈕。</div>
         </div>
 
         <div v-if="showTransModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
-                <div class="bg-gray-800 dark:bg-gray-900 text-white px-6 py-4 flex justify-between items-center">
-                    <div>
-                        <h3 class="font-bold">交易補登</h3>
-                        <div class="text-xs text-gray-400">{{ transForm.symbol }} {{ transForm.name }}</div>
-                    </div>
-                    <button @click="closeTransModal" class="text-gray-300 hover:text-white"><i class="fa-solid fa-times"></i></button>
-                </div>
+                <div class="bg-gray-800 dark:bg-gray-900 text-white px-6 py-4 flex justify-between items-center"><div><h3 class="font-bold">交易補登</h3><div class="text-xs text-gray-400">{{ transForm.symbol }} {{ transForm.name }}</div></div><button @click="closeTransModal" class="text-gray-300 hover:text-white"><i class="fa-solid fa-times"></i></button></div>
                 
-                <div class="grid grid-cols-2 text-sm font-bold border-b border-gray-100 dark:border-gray-700">
-                    <div @click="transForm.type = 'buy'" :class="{'active-buy': transForm.type === 'buy'}" class="trans-btn dark:text-gray-300">
-                        買入 (加碼)
-                    </div>
-                    <div @click="transForm.type = 'sell'" :class="{'active-sell': transForm.type === 'sell'}" class="trans-btn dark:text-gray-300">
-                        賣出 (減碼)
-                    </div>
+                <div class="grid grid-cols-3 text-sm font-bold border-b border-gray-100 dark:border-gray-700">
+                    <div @click="transForm.type = 'buy'" :class="{'active-buy': transForm.type === 'buy'}" class="trans-btn dark:text-gray-300">買入</div>
+                    <div @click="transForm.type = 'sell'" :class="{'active-sell': transForm.type === 'sell'}" class="trans-btn dark:text-gray-300">賣出</div>
+                    <div @click="transForm.type = 'dividend'" :class="{'active-div': transForm.type === 'dividend'}" class="trans-btn dark:text-gray-300">領息</div>
                 </div>
 
                 <div class="p-6 space-y-4">
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 mb-1">
-                            {{ transForm.type === 'buy' ? '買入股數' : '賣出股數' }}
-                        </label>
-                        <input type="number" step="any" v-model.number="transForm.shares" class="zen-input" placeholder="0">
+                    <div v-if="transForm.type !== 'dividend'">
+                        <label class="block text-xs font-bold text-gray-500 mb-1">股數</label>
+                        <input type="number" v-model.number="transForm.shares" class="zen-input" placeholder="0">
                     </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 mb-1">
-                            {{ transForm.type === 'buy' ? '交易總金額 (含手續費)' : '交易總回收金額 (扣除稅/費)' }}
-                        </label>
-                        <input type="number" step="any" v-model.number="transForm.totalAmount" class="zen-input" placeholder="輸入總價，非單價">
-                        <div class="text-xs text-gray-400 mt-1 text-right" v-if="transForm.shares > 0 && transForm.totalAmount > 0">
-                            ≈ 成交均價 {{ formatPrice(transForm.totalAmount / transForm.shares, form.currency) }}
-                        </div>
+                    <div v-if="transForm.type !== 'dividend'">
+                        <label class="block text-xs font-bold text-gray-500 mb-1">總金額 ({{form.currency}})</label>
+                        <input type="number" v-model.number="transForm.totalAmount" class="zen-input" placeholder="含手續費/稅">
+                        <div class="text-xs text-gray-400 mt-1 text-right" v-if="transForm.shares > 0 && transForm.totalAmount > 0">≈ 均價 {{ formatCurrency(transForm.totalAmount / transForm.shares, form.currency) }}</div>
                     </div>
 
-                    <div class="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg text-sm space-y-2">
-                        <div class="flex justify-between">
-                            <span class="text-gray-500 dark:text-gray-400">目前持股</span>
-                            <span class="dark:text-gray-200">{{ formatShares(transForm.currentShares) }} 股</span>
-                        </div>
-                         <div class="flex justify-between">
-                            <span class="text-gray-500 dark:text-gray-400">目前成本</span>
-                            <span class="dark:text-gray-200">{{ formatPrice(transForm.currentAvg, form.currency) }} /股</span>
-                        </div>
+                    <div v-if="transForm.type === 'dividend'">
+                        <label class="block text-xs font-bold text-gray-500 mb-1">入帳日期</label>
+                        <input type="date" v-model="transForm.date" class="zen-input">
+                    </div>
+                    <div v-if="transForm.type === 'dividend'">
+                        <label class="block text-xs font-bold text-gray-500 mb-1">股息金額 ({{form.currency}})</label>
+                        <input type="number" v-model.number="transForm.totalAmount" class="zen-input" placeholder="輸入金額">
+                    </div>
+
+                    <div v-if="transForm.type !== 'dividend'" class="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg text-sm space-y-2">
+                        <div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">目前持股</span><span class="dark:text-gray-200">{{ formatNumber(transForm.currentShares) }}</span></div>
+                        <div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">目前成本</span><span class="dark:text-gray-200">{{ formatCurrency(transForm.currentAvg, form.currency) }}</span></div>
                         <div class="border-t border-gray-200 dark:border-gray-600 my-2"></div>
-                        
-                        <div v-if="transForm.type === 'buy'" class="flex justify-between font-bold text-gray-900 dark:text-white">
-                            <span>預估新成本</span>
-                            <span class="text-blue-600 dark:text-blue-400">{{ formatPrice(calculateNewAvg(), form.currency) }} /股</span>
-                        </div>
-                         <div v-if="transForm.type === 'sell'" class="flex justify-between font-bold text-gray-900 dark:text-white">
-                            <span>此筆實現損益</span>
-                            <span :class="getPnlClass(transForm.totalAmount - (transForm.shares * transForm.currentAvg))">
-                                {{ formatCurrency(transForm.totalAmount - (transForm.shares * transForm.currentAvg), form.currency) }}
-                            </span>
-                        </div>
+                        <div v-if="transForm.type === 'buy'" class="flex justify-between font-bold text-gray-900 dark:text-white"><span>預估新成本</span><span class="text-blue-600 dark:text-blue-400">{{ formatCurrency(calculateNewAvg(), form.currency) }} /股</span></div>
+                        <div v-if="transForm.type === 'sell'" class="flex justify-between font-bold text-gray-900 dark:text-white"><span>實現損益</span><span :class="getPnlClass(transForm.totalAmount - (transForm.shares * transForm.currentAvg))">{{ formatCurrency(transForm.totalAmount - (transForm.shares * transForm.currentAvg), form.currency) }}</span></div>
                     </div>
                 </div>
                 
                 <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex justify-end gap-3">
                     <button @click="closeTransModal" class="px-4 py-2 rounded text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button>
                     <button @click="submitTransaction" 
-                            :class="transForm.type === 'buy' ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'"
+                            :class="{'bg-red-600 hover:bg-red-700': transForm.type==='buy', 'bg-green-600 hover:bg-green-700': transForm.type==='sell', 'bg-yellow-500 hover:bg-yellow-600': transForm.type==='dividend'}"
                             class="px-6 py-2 rounded text-white font-medium transition">
-                        確認{{ transForm.type === 'buy' ? '買入' : '賣出' }}
+                        確認
                     </button>
                 </div>
+            </div>
+        </div>
+        
+        <div v-if="showModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
+                <div class="bg-gray-800 dark:bg-gray-900 text-white px-6 py-4 flex justify-between items-center"><h3 class="font-bold">{{ isEditing ? '編輯持股' : '新增持股' }}</h3><button @click="closeModal" class="text-gray-300 hover:text-white"><i class="fa-solid fa-times"></i></button></div>
+                <div class="p-6 space-y-4">
+                    <div><label class="block text-xs font-bold text-gray-500 mb-1">代號 (如 2330 或 AAPL)</label><div class="flex gap-2"><input type="text" v-model="form.symbol" @change="autoFetchName" class="zen-input uppercase" placeholder="輸入代號"><button @click="autoFetchName" class="bg-gray-200 dark:bg-gray-700 px-3 rounded hover:bg-gray-300 dark:hover:bg-gray-600"><i class="fa-solid fa-search"></i></button></div></div>
+                    <div><label class="block text-xs font-bold text-gray-500 mb-1">名稱</label><input type="text" v-model="form.name" class="zen-input"></div>
+                    <div><label class="block text-xs font-bold text-gray-500 mb-1">幣別</label><select v-model="form.currency" class="zen-input"><option value="TWD">TWD (台幣)</option><option value="USD">USD (美金)</option></select></div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">股數</label><input type="number" v-model.number="form.shares" class="zen-input"></div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">平均成本</label><input type="number" v-model.number="form.avgCost" class="zen-input"></div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex justify-end gap-3"><button @click="closeModal" class="px-4 py-2 rounded text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button><button @click="saveStock" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-medium transition">儲存</button></div>
             </div>
         </div>
 
@@ -652,35 +470,43 @@
             const isDarkMode = ref(localStorage.getItem('darkMode') === 'true');
             const activeSection = ref('');
             
-            // Chart vars
+            // Data vars
             const prevDayData = ref(null);
             const chartStartDate = ref('');
             const chartEndDate = ref('');
+            const divStartDate = ref('');
+            const divEndDate = ref('');
+            
             let chartInstance = null, pieTwInstance = null, pieUsInstance = null;
             const realizedGains = ref([]);
+            const dividendRecords = ref([]);
+            const transactionHistory = ref([]); // 新增：交易紀錄
             let unsubscribe = null;
+            let unsubscribeTrans = null;
 
             // Forms
             const showModal = ref(false);
             const isEditing = ref(false);
-            const form = ref({ id: null, symbol: '', name: '', currency: 'TWD', shares: 0, avgCost: 0, currentPrice: 0, dividends: 0 });
+            const form = ref({ id: null, symbol: '', name: '', currency: 'TWD', shares: 0, avgCost: 0, currentPrice: 0, dividends: 0, previousClose: 0 });
             const showTransModal = ref(false);
-            const transForm = ref({ id: null, type: 'buy', symbol: '', name: '', shares: '', totalAmount: '', currentShares: 0, currentAvg: 0 });
+            const transForm = ref({ id: null, type: 'buy', symbol: '', name: '', shares: '', totalAmount: '', currentShares: 0, currentAvg: 0, date: '' });
 
             if (isDarkMode.value) document.documentElement.classList.add('dark');
             window.addEventListener('resize', () => isMobile.value = window.innerWidth < 768);
 
             onMounted(() => {
                 const today = new Date();
-                const past = new Date();
-                past.setDate(today.getDate() - 30);
+                const past = new Date(); past.setDate(today.getDate() - 30);
                 chartEndDate.value = today.toISOString().split('T')[0];
                 chartStartDate.value = past.toISOString().split('T')[0];
+                const yearStart = new Date(today.getFullYear(), 0, 1);
+                divEndDate.value = today.toISOString().split('T')[0];
+                divStartDate.value = yearStart.toISOString().split('T')[0];
 
                 auth.onAuthStateChanged((u) => {
                     user.value = u;
                     if (u) { loadUserData(u.uid); fetchPreviousDayData(u.uid); }
-                    else { stocks.value = []; realizedGains.value = []; if(unsubscribe) unsubscribe(); }
+                    else { stocks.value = []; realizedGains.value = []; dividendRecords.value = []; transactionHistory.value = []; if(unsubscribe) unsubscribe(); if(unsubscribeTrans) unsubscribeTrans(); }
                 });
                 fetchExchangeRate();
             });
@@ -688,7 +514,14 @@
             const toggleDarkMode = () => { isDarkMode.value = !isDarkMode.value; localStorage.setItem('darkMode', isDarkMode.value); document.documentElement.classList.toggle('dark'); };
             const toggleSection = (s) => { 
                 if (activeSection.value === s) activeSection.value = ''; 
-                else { activeSection.value = s; if (s === 'chart') setTimeout(drawChart, 100); if (s === 'pie') setTimeout(drawPieCharts, 100); if (s === 'realized') fetchRealizedGains(); }
+                else { 
+                    activeSection.value = s; 
+                    if (s === 'chart') setTimeout(drawChart, 100); 
+                    if (s === 'pie') setTimeout(drawPieCharts, 100); 
+                    if (s === 'realized') fetchRealizedGains();
+                    if (s === 'dividend') fetchDividends(); 
+                    if (s === 'transactions') fetchTransactions(); // 新增
+                }
             };
 
             const loadUserData = (uid) => {
@@ -704,36 +537,67 @@
 
             const exportData = async () => {
                 if (!user.value) return;
-                const obj = { stocks: stocks.value, realized: realizedGains.value, history: (await db.collection('users').doc(user.value.uid).collection('history').orderBy('date').get()).docs.map(d=>d.data()) };
+                const obj = { stocks: stocks.value, realized: realizedGains.value, history: (await db.collection('users').doc(user.value.uid).collection('history').orderBy('date').get()).docs.map(d=>d.data()), transactions: transactionHistory.value };
                 const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(obj, null, 2)); a.download = `portfolio_${new Date().toISOString().split('T')[0]}.json`; document.body.appendChild(a); a.click(); a.remove();
             };
 
-            const fetchRealizedGains = async () => { if (user.value) realizedGains.value = (await db.collection('users').doc(user.value.uid).collection('realized_gains').orderBy('timestamp', 'desc').limit(50).get()).docs.map(d => ({...d.data(), date: d.data().timestamp?.toDate().toLocaleDateString()})); };
+            const fetchRealizedGains = async () => { if (user.value) realizedGains.value = (await db.collection('users').doc(user.value.uid).collection('realized_gains').orderBy('date', 'desc').limit(50).get()).docs.map(d => ({id: d.id, ...d.data()})); };
+            const fetchDividends = async () => {
+                if (!user.value) return;
+                const snap = await db.collection('users').doc(user.value.uid).collection('dividends')
+                    .where('date', '>=', divStartDate.value).where('date', '<=', divEndDate.value).orderBy('date', 'desc').get();
+                dividendRecords.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            };
+            
+            // 新增：讀取交易紀錄
+            const fetchTransactions = async () => {
+                if (!user.value) return;
+                if (unsubscribeTrans) unsubscribeTrans();
+                unsubscribeTrans = db.collection('users').doc(user.value.uid).collection('transactions')
+                    .orderBy('date', 'desc').orderBy('timestamp', 'desc').limit(50)
+                    .onSnapshot(snap => {
+                        transactionHistory.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    });
+            };
+            
+            const deleteTransaction = async (id) => {
+                 if (!confirm('確定刪除此筆交易流水帳？(注意：此操作不會自動還原庫存，僅刪除紀錄)')) return;
+                 await db.collection('users').doc(user.value.uid).collection('transactions').doc(id).delete();
+            };
 
-            // === Logic: Save Snapshot (Optimized for 21:00 Cutoff) ===
+            // 新增：刪除股息
+            const deleteDividend = async (rec) => {
+                if(!confirm('確定刪除此筆股息紀錄？')) return;
+                
+                // 扣除庫存中的累計股息
+                const stock = stocks.value.find(s => s.symbol === rec.symbol);
+                if (stock) {
+                    const newDiv = (stock.dividends || 0) - rec.amount;
+                    await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ dividends: Math.max(0, newDiv) });
+                }
+
+                await db.collection('users').doc(user.value.uid).collection('dividends').doc(rec.id).delete();
+                fetchDividends();
+            };
+
+            // 新增：刪除已實現損益
+            const deleteRealized = async (id) => {
+                if(!confirm('確定刪除此筆已實現損益紀錄？')) return;
+                await db.collection('users').doc(user.value.uid).collection('realized_gains').doc(id).delete();
+                fetchRealizedGains();
+            };
+
             const saveDailySnapshot = async () => {
                 if (!user.value) return;
                 const todayStr = new Date().toISOString().split('T')[0];
                 const hour = new Date().getHours();
                 const historyRef = db.collection('users').doc(user.value.uid).collection('history').doc(todayStr);
-
-                if (hour >= 21) {
-                    const docSnap = await historyRef.get();
-                    if (docSnap.exists) return; // Freeze
-                }
-
+                if (hour >= 21) { const docSnap = await historyRef.get(); if (docSnap.exists) return; }
                 const snapshot = {
-                    date: todayStr,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                    totalVal: grandTotalValue.value,
-                    twVal: twStats.value.value,
-                    usVal: usStats.value.value,
-                    totalCost: twStats.value.cost + (usStats.value.cost * exchangeRate.value),
-                    totalPnL: grandTotalPnL.value,
-                    twPnL: twStats.value.pnl,
-                    usPnL: usStats.value.pnl
+                    date: todayStr, timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    totalVal: grandTotalValue.value, twVal: twStats.value.value, usVal: usStats.value.value,
+                    totalPnL: grandTotalPnL.value, twPnL: twStats.value.pnl, usPnL: usStats.value.pnl
                 };
-                
                 await historyRef.set(snapshot, { merge: true });
             };
 
@@ -742,11 +606,9 @@
                 const snap = await db.collection('users').doc(uid).collection('history').orderBy('date', 'desc').limit(2).get();
                 if (snap.empty) return;
                 const docs = snap.docs.map(d => d.data());
-                if (docs[0].date !== todayStr) prevDayData.value = docs[0];
-                else if (docs.length > 1) prevDayData.value = docs[1];
+                if (docs[0].date !== todayStr) prevDayData.value = docs[0]; else if (docs.length > 1) prevDayData.value = docs[1];
             };
 
-            // Charting
             const drawChart = async () => {
                 if (!user.value || !document.getElementById('assetChart')) return;
                 const snap = await db.collection('users').doc(user.value.uid).collection('history').where('date', '>=', chartStartDate.value).where('date', '<=', chartEndDate.value).orderBy('date', 'asc').get();
@@ -760,49 +622,60 @@
             };
             const drawPieCharts = () => {
                 if(pieTwInstance) pieTwInstance.destroy(); if(pieUsInstance) pieUsInstance.destroy();
-                const tooltipOptions = {
-                    callbacks: {
-                        label: function(context) {
-                            const label = context.label || '';
-                            const value = context.raw;
-                            const total = context.chart._metasets[context.datasetIndex].total;
-                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) + '%' : '0%';
-                            const formattedValue = context.chart.canvas.id === 'pieTw' 
-                                ? 'NT$ ' + new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(value)
-                                : '$ ' + new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(value);
-                            return `${label}: ${formattedValue} (${percentage})`;
-                        }
-                    }
-                };
-
-                if(document.getElementById('pieTw') && twStockList.value.length) {
-                    pieTwInstance = new Chart(document.getElementById('pieTw'), { 
-                        type: 'doughnut', 
-                        data: { labels: twStockList.value.map(s=>s.symbol), datasets: [{ data: twStockList.value.map(s=>s.currentPrice*s.shares), backgroundColor: ['#3b82f6','#2563eb','#1d4ed8','#60a5fa','#93c5fd'] }] }, 
-                        options: { responsive: true, maintainAspectRatio: false, plugins: { tooltip: tooltipOptions } } 
-                    });
-                }
-                if(document.getElementById('pieUs') && usStockList.value.length) {
-                    pieUsInstance = new Chart(document.getElementById('pieUs'), { 
-                        type: 'doughnut', 
-                        data: { labels: usStockList.value.map(s=>s.symbol), datasets: [{ data: usStockList.value.map(s=>s.currentPrice*s.shares), backgroundColor: ['#ef4444','#dc2626','#b91c1c','#f87171','#fca5a5'] }] }, 
-                        options: { responsive: true, maintainAspectRatio: false, plugins: { tooltip: tooltipOptions } } 
-                    });
-                }
+                const tooltipOptions = { callbacks: { label: function(c) { 
+                    const l = c.label || ''; const v = c.raw; const t = c.chart._metasets[c.datasetIndex].total; 
+                    const p = t > 0 ? ((v/t)*100).toFixed(1)+'%' : '0%'; 
+                    const fv = c.chart.canvas.id === 'pieTw' ? formatCurrency(v, 'TWD') : formatCurrency(v, 'USD');
+                    return `${l}: ${fv} (${p})`; 
+                }}};
+                if(document.getElementById('pieTw') && twStockList.value.length) pieTwInstance = new Chart(document.getElementById('pieTw'), { type: 'doughnut', data: { labels: twStockList.value.map(s=>s.name || s.symbol), datasets: [{ data: twStockList.value.map(s=>s.currentPrice*s.shares), backgroundColor: ['#3b82f6','#2563eb','#1d4ed8','#60a5fa','#93c5fd'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { tooltip: tooltipOptions } } });
+                if(document.getElementById('pieUs') && usStockList.value.length) pieUsInstance = new Chart(document.getElementById('pieUs'), { type: 'doughnut', data: { labels: usStockList.value.map(s=>s.name || s.symbol), datasets: [{ data: usStockList.value.map(s=>s.currentPrice*s.shares), backgroundColor: ['#ef4444','#dc2626','#b91c1c','#f87171','#fca5a5'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { tooltip: tooltipOptions } } });
             };
 
-            // CRUD & Trans
-            const openTransModal = (s) => { transForm.value = { id: s.id, type: 'buy', symbol: s.symbol, name: s.name, shares: '', totalAmount: '', currentShares: s.shares, currentAvg: s.avgCost }; form.value.currency = s.currency; showTransModal.value = true; };
-            const closeTransModal = () => showTransModal.value = false;
-            
-            // Defined correctly here
             const calculateNewAvg = () => { 
                 if (transForm.value.type !== 'buy' || !transForm.value.shares || !transForm.value.totalAmount) return transForm.value.currentAvg; 
                 const old = transForm.value.currentShares * transForm.value.currentAvg; 
                 return (old + transForm.value.totalAmount) / (transForm.value.currentShares + transForm.value.shares); 
             };
 
+            const openTransModal = (s) => { 
+                transForm.value = { id: s.id, type: 'buy', symbol: s.symbol, name: s.name, shares: '', totalAmount: '', currentShares: s.shares, currentAvg: s.avgCost, date: new Date().toISOString().split('T')[0] }; 
+                form.value.currency = s.currency; showTransModal.value = true; 
+            };
+            const closeTransModal = () => showTransModal.value = false;
+
             const submitTransaction = async () => {
+                // 1. 準備通用的紀錄資料 (Transactions Collection 使用)
+                const logData = {
+                    date: transForm.value.date || new Date().toISOString().split('T')[0],
+                    type: transForm.value.type,
+                    symbol: transForm.value.symbol,
+                    name: transForm.value.name,
+                    shares: transForm.value.type === 'dividend' ? 0 : transForm.value.shares,
+                    price: transForm.value.type === 'dividend' ? 0 : (transForm.value.totalAmount / transForm.value.shares),
+                    totalAmount: transForm.value.totalAmount,
+                    currency: form.value.currency,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                
+                // 2. 處理庫存與分類邏輯
+                if (transForm.value.type === 'dividend') {
+                    if (!transForm.value.totalAmount) return alert('請輸入金額');
+                    
+                    // 【修正點】：存入 dividends 集合時，必須包含 'amount' 欄位，以相容舊資料
+                    const dividendData = { ...logData, amount: transForm.value.totalAmount };
+                    
+                    await db.collection('users').doc(user.value.uid).collection('dividends').add(dividendData); 
+                    await db.collection('users').doc(user.value.uid).collection('transactions').add(logData); 
+                    
+                    // 更新個股累計股息
+                    const ref = db.collection('users').doc(user.value.uid).collection('stocks').doc(transForm.value.id);
+                    const currentDiv = stocks.value.find(s=>s.id===transForm.value.id)?.dividends || 0;
+                    await ref.update({ dividends: currentDiv + transForm.value.totalAmount });
+                    
+                    closeTransModal(); return;
+                }
+
                 if (!transForm.value.shares || !transForm.value.totalAmount) return alert('請輸入完整資訊');
                 const ref = db.collection('users').doc(user.value.uid).collection('stocks').doc(transForm.value.id);
                 let ns = 0, na = 0;
@@ -814,44 +687,31 @@
                     if (transForm.value.shares > transForm.value.currentShares) return alert('股數不足');
                     ns = transForm.value.currentShares - transForm.value.shares; 
                     na = transForm.value.currentAvg;
-                    // Save Realized
                     const pnl = transForm.value.totalAmount - (transForm.value.shares * transForm.value.currentAvg);
-                    await db.collection('users').doc(user.value.uid).collection('realized_gains').add({ timestamp: firebase.firestore.FieldValue.serverTimestamp(), date: new Date().toISOString().split('T')[0], symbol: transForm.value.symbol, currency: form.value.currency, shares: transForm.value.shares, price: transForm.value.totalAmount/transForm.value.shares, totalAmount: transForm.value.totalAmount, pnl: pnl });
+                    // 賣出紀錄保留舊有格式
+                    await db.collection('users').doc(user.value.uid).collection('realized_gains').add({ ...logData, pnl: pnl, price: transForm.value.totalAmount/transForm.value.shares });
                 }
+                
+                // 寫入整合紀錄
+                await db.collection('users').doc(user.value.uid).collection('transactions').add(logData);
+                
                 await ref.update({ shares: ns, avgCost: na });
                 if (ns === 0 && confirm('股數歸零，刪除？')) await ref.delete();
                 setTimeout(saveDailySnapshot, 500); closeTransModal();
             };
             
-            // Standard CRUD
-            const openModal = () => { isEditing.value = false; form.value = { id: Date.now().toString(), symbol: '', name: '', currency: 'TWD', shares: 0, avgCost: 0, currentPrice: 0, dividends: 0 }; showModal.value = true; };
+            const openModal = () => { isEditing.value = false; form.value = { id: Date.now().toString(), symbol: '', name: '', currency: 'TWD', shares: 0, avgCost: 0, currentPrice: 0, dividends: 0, previousClose: 0 }; showModal.value = true; };
             const editStock = (s) => { isEditing.value = true; form.value = {...s}; showModal.value = true; };
             const closeModal = () => showModal.value = false;
             const saveStock = async () => { if (!user.value || !form.value.symbol) return; const d = { ...form.value }; const r = db.collection('users').doc(user.value.uid).collection('stocks'); if (isEditing.value) await r.doc(d.id).update(d); else await r.doc(d.id).set(d); closeModal(); };
             const deleteStock = async (id) => { if (!user.value || !confirm('刪除？')) return; await db.collection('users').doc(user.value.uid).collection('stocks').doc(id).delete(); };
-
-            // API
-            const getYahooData = async (symbol) => {
-                let s = symbol.toUpperCase(); if (/^\d{4,6}[A-Z]?$/.test(s)) s += '.TW';
-                try {
-                    const res = await fetch('https://corsproxy.io/?' + encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${s}?interval=1d`));
-                    const json = await res.json();
-                    if (!json.chart?.result?.length) {
-                         if (s.endsWith('.TW')) {
-                            const res2 = await fetch('https://corsproxy.io/?' + encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${s.replace('.TW','.TWO')}?interval=1d`));
-                            const json2 = await res2.json();
-                            if (json2.chart?.result) return json2.chart.result[0].meta;
-                        }
-                        throw new Error('Not Found');
-                    }
-                    return json.chart.result[0].meta;
-                } catch (e) { return null; }
-            };
-            const autoFetchName = async () => { const s = form.value.symbol; if (!s) return; if (/^\d/.test(s)) form.value.currency = 'TWD'; else if (/^[A-Za-z]+$/.test(s)) form.value.currency = 'USD'; if (!form.value.name) form.value.name = '查詢中...'; const d = await getYahooData(s); if (d) { if (form.value.name === '查詢中...') form.value.name = d.symbol; form.value.currentPrice = d.regularMarketPrice; } else { if (form.value.name === '查詢中...') form.value.name = ''; alert('查無代號'); } };
-            const fetchPrices = async () => { if (!user.value || stocks.value.length === 0) return; isLoading.value = true; const updates = stocks.value.map(async (s) => { const d = await getYahooData(s.symbol); return d ? { id: s.id, price: d.regularMarketPrice } : null; }); const res = await Promise.all(updates); const batch = db.batch(); let has = false; const ref = db.collection('users').doc(user.value.uid).collection('stocks'); res.forEach(r => { if (r) { batch.update(ref.doc(r.id), { currentPrice: r.price }); has = true; } }); if (has) await batch.commit(); setTimeout(saveDailySnapshot, 500); lastUpdated.value = `${new Date().getHours()}:${String(new Date().getMinutes()).padStart(2, '0')}`; isLoading.value = false; };
+            
+            const getYahooData = async (symbol) => { let s = symbol.toUpperCase(); if (/^\d{4,6}[A-Z]?$/.test(s)) s += '.TW'; try { const r = await fetch('https://corsproxy.io/?' + encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${s}?interval=1d`)); const j = await r.json(); if (!j.chart?.result?.length) { if (s.endsWith('.TW')) { const r2 = await fetch('https://corsproxy.io/?' + encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${s.replace('.TW','.TWO')}?interval=1d`)); const j2 = await r2.json(); if (j2.chart?.result) return { symbol: j2.chart.result[0].meta.symbol, regularMarketPrice: j2.chart.result[0].meta.regularMarketPrice, previousClose: j2.chart.result[0].meta.chartPreviousClose || j2.chart.result[0].meta.previousClose }; } throw new Error('Not Found'); } return { symbol: j.chart.result[0].meta.symbol, regularMarketPrice: j.chart.result[0].meta.regularMarketPrice, previousClose: j.chart.result[0].meta.chartPreviousClose || j.chart.result[0].meta.previousClose }; } catch (e) { return null; } };
+            const autoFetchName = async () => { const s = form.value.symbol; if (!s) return; if (/^\d/.test(s)) form.value.currency = 'TWD'; else if (/^[A-Za-z]+$/.test(s)) form.value.currency = 'USD'; if (!form.value.name) form.value.name = '查詢中...'; const d = await getYahooData(s); if (d) { if (form.value.name === '查詢中...') form.value.name = d.symbol; form.value.currentPrice = d.regularMarketPrice; form.value.previousClose = d.previousClose; } else { if (form.value.name === '查詢中...') form.value.name = ''; alert('查無代號'); } };
+            const fetchPrices = async () => { if (!user.value || stocks.value.length === 0) return; isLoading.value = true; const updates = stocks.value.map(async (s) => { const d = await getYahooData(s.symbol); return d ? { id: s.id, price: d.regularMarketPrice, prev: d.previousClose } : null; }); const res = await Promise.all(updates); const batch = db.batch(); let has = false; const ref = db.collection('users').doc(user.value.uid).collection('stocks'); res.forEach(r => { if (r) { batch.update(ref.doc(r.id), { currentPrice: r.price, previousClose: r.prev }); has = true; } }); if (has) await batch.commit(); setTimeout(saveDailySnapshot, 500); lastUpdated.value = `${new Date().getHours()}:${String(new Date().getMinutes()).padStart(2, '0')}`; isLoading.value = false; };
             const fetchExchangeRate = async () => { try { const r = await fetch('https://api.exchangerate-api.com/v4/latest/USD'); const d = await r.json(); exchangeRate.value = d.rates.TWD; } catch(e){} };
 
-            // Stats
+            // Stats & Formatters
             const sortedStocks = computed(() => [...stocks.value].sort((a, b) => (b.currentPrice * b.shares * (b.currency === 'USD' ? exchangeRate.value : 1)) - (a.currentPrice * a.shares * (a.currency === 'USD' ? exchangeRate.value : 1))));
             const twStockList = computed(() => sortedStocks.value.filter(s => s.currency === 'TWD'));
             const usStockList = computed(() => sortedStocks.value.filter(s => s.currency === 'USD'));
@@ -861,33 +721,26 @@
             const grandTotalPnL = computed(() => twStats.value.pnl + (usStats.value.pnl * exchangeRate.value));
             const realizedTotalTw = computed(() => realizedGains.value.filter(r => r.currency === 'TWD').reduce((acc, cur) => acc + cur.pnl, 0));
             const realizedTotalUs = computed(() => realizedGains.value.filter(r => r.currency === 'USD').reduce((acc, cur) => acc + cur.pnl, 0));
-            function calculateStats(subset) { let v = 0, c = 0, d = 0; subset.forEach(s => { v += s.currentPrice * s.shares; c += s.avgCost * s.shares; d += (s.dividends || 0); }); return { value: v, cost: c, dividend: d, pnl: v - c }; }
             
-            // Formatters
-            const formatNumber = (n) => !n && n!==0 ? '-' : new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(n);
-            const formatShares = (n) => !n && n!==0 ? '-' : new Intl.NumberFormat('en-US', { maximumFractionDigits: 5, minimumFractionDigits: 0 }).format(n);
-            
-            const formatPrice = (n, c) => {
-                if (!n && n!==0) return '-';
-                // Force 2 decimals for Unit Price & Cost
-                return (c === 'TWD' ? 'NT$ ' : '$ ') + new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
-            };
+            const dividendYearlyTw = computed(() => dividendRecords.value.filter(r => r.currency === 'TWD' && r.date.startsWith(new Date().getFullYear().toString())).reduce((acc, cur) => acc + cur.amount, 0));
+            const dividendYearlyUs = computed(() => dividendRecords.value.filter(r => r.currency === 'USD' && r.date.startsWith(new Date().getFullYear().toString())).reduce((acc, cur) => acc + cur.amount, 0));
 
-            const formatCurrency = (n, c) => { 
-                if (c === 'TWD') return 'NT$ ' + new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(n); 
-                if (c === 'USD') return '$ ' + new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(n); 
-                return n; 
-            };
+            function calculateStats(subset) { let v = 0, c = 0, d = 0; subset.forEach(s => { v += s.currentPrice * s.shares; c += s.avgCost * s.shares; d += (s.dividends || 0); }); return { value: v, cost: c, dividend: d, pnl: v - c }; }
+            const formatNumber = (n) => !n && n!==0 ? '-' : new Intl.NumberFormat('en-US', { maximumFractionDigits: 5 }).format(n);
+            const formatCurrency = (n, c) => { return (c === 'TWD' ? 'NT$ ' : '$ ') + new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n); };
             const getPnlClass = (v) => v >= 0 ? 'text-up' : 'text-down';
             const getRoi = (c, p) => c === 0 ? '0%' : (p>0?'+':'')+(p/c*100).toFixed(2) + '%';
-            
+            const formatChange = (diff, prev) => { const pct = (diff / prev) * 100; return (diff > 0 ? '+' : '') + diff.toFixed(2) + ' (' + (pct > 0 ? '+' : '') + pct.toFixed(2) + '%)'; };
+
             return {
                 user, login, logout, stocks, exchangeRate, lastUpdated, isLoading, viewMode, isMobile, showPrivacy, isDarkMode, toggleDarkMode, activeSection, toggleSection,
                 twStats, usStats, grandTotalValue, grandTotalPnL, twStockList, usStockList,
                 showModal, isEditing, form, openModal, editStock, closeModal, saveStock, deleteStock,
                 showTransModal, transForm, openTransModal, closeTransModal, submitTransaction, calculateNewAvg,
-                autoFetchName, fetchPrices, formatNumber, formatShares, formatPrice, formatCurrency, getPnlClass, getRoi,
-                chartStartDate, chartEndDate, drawChart, prevDayData, exportData, realizedGains, realizedTotalTw, realizedTotalUs
+                autoFetchName, fetchPrices, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange,
+                chartStartDate, chartEndDate, drawChart, prevDayData, exportData, realizedGains, realizedTotalTw, realizedTotalUs,
+                divStartDate, divEndDate, fetchDividends, dividendRecords, dividendYearlyTw, dividendYearlyUs,
+                transactionHistory, fetchTransactions, deleteTransaction, deleteDividend, deleteRealized // 新增回傳
             };
         }
     }).mount('#app');

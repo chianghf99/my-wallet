@@ -111,14 +111,14 @@
 <div id="loadingOverlay"><div class="spinner-border text-primary" role="status"></div><div class="mt-3 fw-bold text-primary small">資料同步中...</div></div>
 
 <div class="sidebar">
-    <div class="sidebar-title" onclick="switchPage('dashboard')"><i class="fas fa-wallet"></i> 卡片管家 Pro</div>
+    <div class="sidebar-title" onclick="goToHome()"><i class="fas fa-wallet"></i> 卡片管家 Pro</div>
     <button class="side-btn active" onclick="switchPage('dashboard')"><i class="fas fa-home"></i> 待繳帳單</button>
     <button class="side-btn" onclick="switchPage('history')"><i class="fas fa-history"></i> 歷史紀錄</button>
     <button class="side-btn" onclick="switchPage('analysis')"><i class="fas fa-chart-pie"></i> 統計分析</button>
     <button class="side-btn" onclick="switchPage('settings')"><i class="fas fa-cog"></i> 設定</button>
     <div style="margin-top: auto;">
         <div class="version-link" onclick="showVersionModal()">
-            <i class="fas fa-info-circle me-1"></i> 版本 v2.5.1
+            <i class="fas fa-info-circle me-1"></i> 版本 v2.6
         </div>
     </div>
 </div>
@@ -130,7 +130,7 @@
                 <span class="badge bg-white bg-opacity-25 fw-normal rounded-pill px-3"><i class="fas fa-cloud me-1"></i> <span id="syncStatus">未同步</span></span>
                 <div class="d-flex gap-3">
                     <button class="btn btn-sm text-white p-0" onclick="togglePrivacy()"><i class="fas fa-eye-slash" id="privacyIcon" style="font-size: 1.2rem;"></i></button>
-                    <button class="btn btn-sm text-white p-0" onclick="goToHome()" title="重整回首頁"><i class="fas fa-home" style="font-size: 1.2rem;"></i></button>
+                    <button class="btn btn-sm text-white p-0" onclick="goToHome()" title="回首頁"><i class="fas fa-home" style="font-size: 1.2rem;"></i></button>
                 </div>
             </div>
             
@@ -149,6 +149,7 @@
 
     <div class="container px-3">
         <div id="statementAlerts"></div>
+
         <div class="d-flex justify-content-between align-items-center mb-3 px-1">
             <h6 class="fw-bold text-secondary mb-0">待繳帳單</h6>
             <button class="btn btn-sm btn-light text-primary rounded-pill px-3 fw-bold shadow-sm" onclick="showAddModal()"><i class="fas fa-plus small me-1"></i> 新增</button>
@@ -246,7 +247,7 @@
         </div>
         <div class="text-center mt-4">
             <div class="version-link text-muted" onclick="showVersionModal()">
-                <i class="fas fa-info-circle me-1"></i> 卡片管家 Pro v2.5.1
+                <i class="fas fa-info-circle me-1"></i> 卡片管家 Pro v2.6
             </div>
         </div>
     </div>
@@ -285,6 +286,15 @@
             <div class="modal-body bg-light rounded-bottom-4" style="max-height: 400px; overflow-y: auto;">
                 <div class="changelog-item">
                     <div class="changelog-date">2025/12/06</div>
+                    <div class="changelog-ver">v2.6</div>
+                    <div class="changelog-desc">
+                        • 新增「本期無帳單」忽略功能<br>
+                        • 優化出帳日提醒邏輯 (已繳/略過不重複提醒)<br>
+                        • 列表隱藏已略過的帳單
+                    </div>
+                </div>
+                <div class="changelog-item">
+                    <div class="changelog-date">2025/12/06</div>
                     <div class="changelog-ver">v2.5.1</div>
                     <div class="changelog-desc">
                         • 調整首頁按鈕邏輯：右上角圖示強制回到網址首頁<br>
@@ -296,17 +306,7 @@
                     <div class="changelog-ver">v2.5</div>
                     <div class="changelog-desc">
                         • 首頁按鈕支援指定網址跳轉<br>
-                        • 側邊欄標題加入首頁連結<br>
-                        • 更新日誌功能上線
-                    </div>
-                </div>
-                <div class="changelog-item">
-                    <div class="changelog-date">2025/12/06</div>
-                    <div class="changelog-ver">v2.4</div>
-                    <div class="changelog-desc">
-                        • 新增版本號點擊查看日誌<br>
-                        • 首頁快捷回到頂部功能<br>
-                        • 電腦版側邊欄整合版本資訊
+                        • 側邊欄標題加入首頁連結
                     </div>
                 </div>
             </div>
@@ -322,13 +322,9 @@
     let isPrivacyOn = false;
     let pinBuffer = "";
     
-    // 🔥 指定網址
     const HOME_URL = "https://chianghf99.github.io/my-wallet/";
 
-    function goToHome() {
-        window.location.href = HOME_URL;
-    }
-
+    function goToHome() { window.location.href = HOME_URL; }
     function checkLock() { if(localStorage.getItem('app_pin')) { document.getElementById('pinOverlay').style.display='flex'; pinBuffer=""; updateDots(); } }
     function pressKey(key) {
         if(key === 'clear') { pinBuffer = ""; } else if(key === 'del') { pinBuffer = pinBuffer.slice(0, -1); } else if(pinBuffer.length < 6) { pinBuffer += key; }
@@ -352,17 +348,8 @@
     document.getElementById('addDate').value = new Date().toISOString().split('T')[0];
 
     function showVersionModal() { versionModal.show(); }
-
-    function updateSyncStatus() {
-        const lastTime = localStorage.getItem('last_sync_time');
-        document.getElementById('syncStatus').textContent = lastTime ? lastTime : '未同步';
-    }
-
-    function togglePrivacy() {
-        isPrivacyOn = !isPrivacyOn;
-        document.getElementById('privacyIcon').className = isPrivacyOn ? 'fas fa-eye' : 'fas fa-eye-slash';
-        renderTotal();
-    }
+    function updateSyncStatus() { const t = localStorage.getItem('last_sync_time'); document.getElementById('syncStatus').textContent = t ? t : '未同步'; }
+    function togglePrivacy() { isPrivacyOn = !isPrivacyOn; document.getElementById('privacyIcon').className = isPrivacyOn ? 'fas fa-eye' : 'fas fa-eye-slash'; renderTotal(); }
 
     function switchPage(p) {
         document.querySelectorAll('.page-section').forEach(el => el.classList.remove('active'));
@@ -376,7 +363,10 @@
     function render() {
         const uList = document.getElementById('unpaidList'), pList = document.getElementById('paidList'), emptyMsg = document.getElementById('emptyMsg');
         uList.innerHTML = ''; pList.innerHTML = '';
-        const unpaids = data.bills.filter(b => b.status !== 'paid').sort((a,b) => new Date(a.date) - new Date(b.date));
+        
+        // 🚨 這裡過濾掉 'skipped' 狀態的帳單
+        const unpaids = data.bills.filter(b => b.status === 'unpaid').sort((a,b) => new Date(a.date) - new Date(b.date));
+        // 歷史紀錄顯示 paid 和 skipped (如果想看到略過的紀錄，可把 skipped 加進來，目前僅顯示 paid)
         const paids = data.bills.filter(b => b.status === 'paid').sort((a,b) => new Date(b.date) - new Date(a.date));
 
         unpaids.forEach(b => {
@@ -404,23 +394,66 @@
         return 'fas fa-credit-card';
     }
 
-    function renderTotal() { document.getElementById('displayTotal').textContent = !isPrivacyOn ? '$' + data.bills.filter(b => b.status !== 'paid').reduce((s,b) => s + b.amount, 0).toLocaleString() : '$****'; }
+    function renderTotal() { document.getElementById('displayTotal').textContent = !isPrivacyOn ? '$' + data.bills.filter(b => b.status === 'unpaid').reduce((s,b) => s + b.amount, 0).toLocaleString() : '$****'; }
 
     function checkAlerts() {
         const box = document.getElementById('statementAlerts'); box.innerHTML = '';
         const today = new Date().getDate();
+        const now = new Date();
+        const lookbackDays = 25; // 檢查過去幾天內是否有帳單
+
         data.cards.forEach(c => {
-            if(today >= c.day && !data.bills.some(b => b.name.includes(c.name) && b.status !== 'paid'))
-                box.innerHTML += `<div class="alert alert-warning border-0 shadow-sm rounded-3 mb-3 d-flex align-items-center"><i class="fas fa-bell me-3 fs-4 text-warning"></i><div><strong>${c.name}</strong> 應已出帳 (${c.day}號)<br><small>尚未收到帳單資料</small></div></div>`;
+            if (today >= c.day) {
+                // 檢查邏輯：是否有「任何狀態」的帳單(paid, unpaid, skipped) 的日期是在最近一個月內
+                const hasRecentBill = data.bills.some(b => {
+                    if (!b.name.includes(c.name)) return false;
+                    const billDate = new Date(b.date);
+                    const diffTime = Math.abs(now - billDate);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    return diffDays <= 45; // 只要 45 天內有帳單日期，就當作已出帳
+                });
+
+                if (!hasRecentBill) {
+                    box.innerHTML += `
+                        <div class="alert alert-warning border-0 shadow-sm rounded-3 mb-3 d-flex align-items-center justify-content-between">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-bell me-3 fs-4 text-warning"></i>
+                                <div><strong>${c.name}</strong> 應已出帳 (${c.day}號)<br><small>尚未收到帳單</small></div>
+                            </div>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="markAsSkipped('${c.name}')">🔕 本期無帳單</button>
+                        </div>`;
+                }
+            }
         });
+    }
+
+    function markAsSkipped(cardName) {
+        if(!confirm(`確認標記 ${cardName} 本期無帳單？`)) return;
+        // 建立一筆 0 元略過帳單，日期設為今天
+        const todayStr = new Date().toISOString().split('T')[0];
+        const newBill = {
+            id: Date.now(),
+            name: cardName + "(無帳單)",
+            amount: 0,
+            date: todayStr,
+            status: 'skipped'
+        };
+        data.bills.push(newBill);
+        saveLocal();
+        render();
+        // 自動同步
+        syncData('upload');
     }
 
     let cardChart, monthChart;
     function updateCharts() {
         const ctxCard = document.getElementById('cardChart').getContext('2d'), ctxMonth = document.getElementById('monthChart').getContext('2d');
         const currentYear = new Date().getFullYear();
-        const yearBills = data.bills.filter(b => new Date(b.date).getFullYear() === currentYear);
-        document.getElementById('yearlyTotal').textContent = '$' + yearBills.reduce((sum, b) => sum + b.amount, 0).toLocaleString();
+        // 統計時只算 paid 和 unpaid (排除 skipped)
+        const yearBills = data.bills.filter(b => new Date(b.date).getFullYear() === currentYear && b.status !== 'skipped');
+        
+        const yearTotal = yearBills.reduce((sum, b) => sum + b.amount, 0);
+        document.getElementById('yearlyTotal').textContent = '$' + yearTotal.toLocaleString();
         
         const cardMap = {}, monthMap = new Array(12).fill(0);
         yearBills.forEach(b => { 

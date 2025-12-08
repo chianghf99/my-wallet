@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v2.5.2</title>
+    <title>我的投資組合 | Portfolio v2.6.0</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -41,9 +41,9 @@
         .tag-div { background-color: #fef9c3; color: #ca8a04; }
         .dark .tag-div { background-color: #713f12; color: #fde047; }
         
-        /* High Contrast Active Button Styles */
-        .btn-active-light { background-color: #111827; color: #ffffff; border-color: #111827; }
-        .btn-active-dark { background-color: #f3f4f6; color: #000000; border-color: #f3f4f6; }
+        /* Active Button Style */
+        .btn-active { background-color: #1f2937; color: white; border-color: #1f2937; }
+        .dark .btn-active { background-color: #e5e7eb; color: #111827; border-color: #e5e7eb; }
         .btn-inactive { background-color: white; color: #4b5563; border-color: #e5e7eb; }
         .dark .btn-inactive { background-color: #1f2937; color: #d1d5db; border-color: #374151; }
     </style>
@@ -54,7 +54,7 @@
     <div v-if="!user" class="flex-grow flex flex-col items-center justify-center p-4">
         <div class="zen-card p-8 max-w-sm w-full text-center space-y-6">
             <div class="bg-gray-800 text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto text-2xl"><i class="fa-solid fa-chart-line"></i></div>
-            <div><h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v2.5.2</h1><p class="text-gray-500 dark:text-gray-400 text-sm mt-2">安全、即時、跨裝置的投資管理工具</p></div>
+            <div><h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v2.6.0</h1><p class="text-gray-500 dark:text-gray-400 text-sm mt-2">安全、即時、跨裝置的投資管理工具</p></div>
             <button @click="login" class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
                 <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5 mr-3" alt="Google">使用 Google 帳號登入
             </button>
@@ -68,7 +68,7 @@
                     <a href="https://chianghf99.github.io/my-wallet/" class="text-gray-400 hover:text-gray-600 dark:hover:text-white transition"><i class="fa-solid fa-home"></i></a>
                     <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                         <span class="hidden sm:inline">我的資產帳本</span>
-                        <span @click="showChangelog=true" class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v2.5.2</span>
+                        <span @click="showChangelog=true" class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v2.6.0</span>
                     </h1>
                 </div>
                 <div class="flex items-center gap-3">
@@ -109,7 +109,6 @@
                         <span v-else class="text-gray-300 dark:text-gray-600">****</span>
                     </div>
                 </div>
-                
                 <div class="zen-card p-5">
                     <div class="flex justify-between items-center mb-1"><div class="text-sm text-gray-500 dark:text-gray-400">台股部位</div><img src="https://flagcdn.com/w40/tw.png" class="w-6 shadow-sm rounded-sm"></div>
                     <div class="text-2xl font-bold dark:text-white"><span v-if="showPrivacy">{{ formatCurrency(twStats.value, 'TWD') }}</span><span v-else>****</span></div>
@@ -124,7 +123,6 @@
                     <div v-else class="mt-1 text-xs text-gray-300">****</div>
                     <div class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 text-sm flex justify-between"><span class="text-gray-500 dark:text-gray-400">損益</span><span v-if="showPrivacy" :class="getPnlClass(twStats.pnl)">{{ formatCurrency(twStats.pnl, 'TWD') }}<span class="text-xs ml-1">({{ getRoi(twStats.cost, twStats.pnl) }})</span></span><span v-else class="text-gray-300 dark:text-gray-600">****</span></div>
                 </div>
-                
                 <div class="zen-card p-5">
                     <div class="flex justify-between items-center mb-1"><div class="text-sm text-gray-500 dark:text-gray-400">美股部位</div><img src="https://flagcdn.com/w40/us.png" class="w-6 shadow-sm rounded-sm"></div>
                     <div class="text-2xl font-bold dark:text-white"><span v-if="showPrivacy">{{ formatCurrency(usStats.value, 'USD') }}</span><span v-else>****</span></div>
@@ -326,7 +324,7 @@
                     </div>
                 </div>
             </div>
-
+            
             <div v-if="stocks.length === 0" class="text-center py-10 text-gray-400 zen-card dark:text-gray-500">目前沒有任何持股資料，請點擊上方「新增」按鈕。</div>
         </div>
 
@@ -340,19 +338,18 @@
                     <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
                         <div class="relative pl-6">
                             <span class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-blue-500 border-4 border-white dark:border-gray-800"></span>
-                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-blue-600 dark:text-blue-400 text-lg">v2.5.2</span><span class="text-xs text-gray-400">2025/12/06</span></div>
+                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-blue-600 dark:text-blue-400 text-lg">v2.6.0</span><span class="text-xs text-gray-400">2025/12/08</span></div>
                             <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">優化</span><span>按鈕狀態高對比 (黑白反色)</span></li>
-                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">優化</span><span>列表標的顯示 (改為名稱)</span></li>
-                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">修復</span><span>深色模式圖表即時變色</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">新增</span><span>台股改用證交所即時訊號 (5秒更新)</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">優化</span><span>台股/美股自動切換查詢源</span></li>
                             </ul>
                         </div>
                         <div class="relative pl-6">
                             <span class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-4 border-white dark:border-gray-800"></span>
-                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-gray-700 dark:text-gray-200">v2.5.1</span><span class="text-xs text-gray-400">2025/12/06</span></div>
+                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-gray-700 dark:text-gray-200">v2.5.2</span><span class="text-xs text-gray-400">2025/12/06</span></div>
                             <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">優化</span><span>股息統計標題簡化</span></li>
-                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">修復</span><span>庫存成本顯示</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">優化</span><span>按鈕狀態高對比 (黑白反色)</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">修復</span><span>深色模式圖表即時變色</span></li>
                             </ul>
                         </div>
                     </div>
@@ -362,41 +359,23 @@
         
         <div v-if="showModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden">
-                <div class="bg-gray-800 dark:bg-gray-900 text-white px-6 py-4 flex justify-between items-center">
-                    <h3 class="font-bold">{{ isEditing ? '編輯持股' : '新增持股' }}</h3>
-                    <button @click="closeModal" class="text-gray-300 hover:text-white"><i class="fa-solid fa-times"></i></button>
-                </div>
+                <div class="bg-gray-800 dark:bg-gray-900 text-white px-6 py-4 flex justify-between items-center"><h3 class="font-bold">{{ isEditing ? '編輯持股' : '新增持股' }}</h3><button @click="closeModal" class="text-gray-300 hover:text-white"><i class="fa-solid fa-times"></i></button></div>
                 <div class="p-6 space-y-4">
                     <div class="grid grid-cols-2 gap-4">
-                        <div><label class="block text-xs font-bold text-gray-500 mb-1">代號</label><input v-model="form.symbol" @blur="autoFetchName" placeholder="如 2330" class="zen-input uppercase"></div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">代號</label><div class="flex gap-2"><input type="text" v-model="form.symbol" @change="autoFetchName" class="zen-input uppercase" placeholder="如 2330"><button @click="autoFetchName" class="bg-gray-200 dark:bg-gray-700 px-3 rounded"><i class="fa-solid fa-search"></i></button></div></div>
                         <div><label class="block text-xs font-bold text-gray-500 mb-1">幣別</label><select v-model="form.currency" class="zen-input"><option value="TWD">TWD</option><option value="USD">USD</option></select></div>
                     </div>
                     <div><label class="block text-xs font-bold text-gray-500 mb-1">名稱</label><input type="text" v-model="form.name" class="zen-input"></div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div><label class="block text-xs font-bold text-gray-500 mb-1">總股數</label><input type="number" step="any" v-model.number="form.shares" class="zen-input"></div>
-                        <div><label class="block text-xs font-bold text-gray-500 mb-1">平均成本</label><input type="number" step="any" v-model.number="form.avgCost" class="zen-input"></div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div><label class="block text-xs font-bold text-gray-500 mb-1">現價</label><input type="number" step="any" v-model.number="form.currentPrice" class="zen-input bg-gray-50 dark:bg-gray-700/50"></div>
-                        <div><label class="block text-xs font-bold text-gray-500 mb-1">已領股息</label><input type="number" step="any" v-model.number="form.dividends" class="zen-input"></div>
-                    </div>
+                    <div class="grid grid-cols-2 gap-4"><div><label class="block text-xs font-bold text-gray-500 mb-1">股數</label><input type="number" step="any" v-model.number="form.shares" class="zen-input"></div><div><label class="block text-xs font-bold text-gray-500 mb-1">平均成本</label><input type="number" step="any" v-model.number="form.avgCost" class="zen-input"></div></div>
+                    <div class="grid grid-cols-2 gap-4"><div><label class="block text-xs font-bold text-gray-500 mb-1">現價</label><input type="number" step="any" v-model.number="form.currentPrice" class="zen-input bg-gray-50 dark:bg-gray-700/50"></div><div><label class="block text-xs font-bold text-gray-500 mb-1">已領股息</label><input type="number" step="any" v-model.number="form.dividends" class="zen-input"></div></div>
                 </div>
-                <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex justify-end gap-3">
-                    <button @click="closeModal" class="px-4 py-2 rounded text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button>
-                    <button @click="saveStock" class="px-6 py-2 rounded bg-gray-800 text-white font-medium hover:bg-gray-700 transition">儲存</button>
-                </div>
+                <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex justify-end gap-3"><button @click="closeModal" class="px-4 py-2 rounded text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button><button @click="saveStock" class="px-6 py-2 rounded bg-gray-800 text-white font-medium hover:bg-gray-700 transition">儲存</button></div>
             </div>
         </div>
 
         <div v-if="showTransModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
-                <div class="bg-gray-800 dark:bg-gray-900 text-white px-6 py-4 flex justify-between items-center">
-                    <div>
-                        <h3 class="font-bold">交易補登</h3>
-                        <div class="text-xs text-gray-400">{{ transForm.symbol }} {{ transForm.name }}</div>
-                    </div>
-                    <button @click="closeTransModal" class="text-gray-300 hover:text-white"><i class="fa-solid fa-times"></i></button>
-                </div>
+                <div class="bg-gray-800 dark:bg-gray-900 text-white px-6 py-4 flex justify-between items-center"><div><h3 class="font-bold">交易補登</h3><div class="text-xs text-gray-400">{{ transForm.symbol }} {{ transForm.name }}</div></div><button @click="closeTransModal" class="text-gray-300 hover:text-white"><i class="fa-solid fa-times"></i></button></div>
                 <div class="grid grid-cols-3 text-sm font-bold border-b border-gray-100 dark:border-gray-700">
                     <div @click="transForm.type = 'buy'" :class="{'active-buy': transForm.type === 'buy'}" class="trans-btn dark:text-gray-300">買入</div>
                     <div @click="transForm.type = 'sell'" :class="{'active-sell': transForm.type === 'sell'}" class="trans-btn dark:text-gray-300">賣出</div>
@@ -412,9 +391,7 @@
                         <label class="block text-xs font-bold text-gray-500 mb-1">股數</label><input type="number" step="any" v-model.number="transForm.shares" class="zen-input" placeholder="0">
                     </div>
                     <div v-if="transForm.type !== 'dividend'">
-                        <label class="block text-xs font-bold text-gray-500 mb-1">總金額 ({{form.currency}})</label>
-                        <input type="number" step="any" v-model.number="transForm.totalAmount" class="zen-input" placeholder="含手續費/稅">
-                        <div class="text-xs text-gray-400 mt-1 text-right" v-if="transForm.shares > 0 && transForm.totalAmount > 0">≈ 均價 {{ formatCurrency(transForm.totalAmount / transForm.shares, form.currency) }}</div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1">總金額 ({{form.currency}})</label><input type="number" step="any" v-model.number="transForm.totalAmount" class="zen-input" placeholder="含手續費/稅"><div class="text-xs text-gray-400 mt-1 text-right" v-if="transForm.shares > 0 && transForm.totalAmount > 0">≈ 均價 {{ formatCurrency(transForm.totalAmount / transForm.shares, form.currency) }}</div>
                     </div>
                     <div v-if="transForm.type === 'dividend'">
                         <label class="block text-xs font-bold text-gray-500 mb-1">入帳日期</label><input type="date" v-model="transForm.date" class="zen-input">
@@ -422,13 +399,7 @@
                     <div v-if="transForm.type === 'dividend'">
                         <label class="block text-xs font-bold text-gray-500 mb-1">股息金額 ({{form.currency}})</label><input type="number" step="any" v-model.number="transForm.totalAmount" class="zen-input" placeholder="輸入金額">
                     </div>
-                    <div v-if="transForm.type !== 'dividend'" class="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg text-sm space-y-2">
-                        <div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">目前持股</span><span class="dark:text-gray-200">{{ formatNumber(transForm.currentShares) }} 股</span></div>
-                         <div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">目前成本</span><span class="dark:text-gray-200">{{ formatCurrency(transForm.currentAvg, form.currency) }} /股</span></div>
-                        <div class="border-t border-gray-200 dark:border-gray-600 my-2"></div>
-                        <div v-if="transForm.type === 'buy'" class="flex justify-between font-bold text-gray-900 dark:text-white"><span>預估新成本</span><span class="text-blue-600 dark:text-blue-400">{{ formatCurrency(calculateNewAvg(), form.currency) }} /股</span></div>
-                         <div v-if="transForm.type === 'sell'" class="flex justify-between font-bold text-gray-900 dark:text-white"><span>此筆實現損益</span><span :class="getPnlClass(transForm.totalAmount - (transForm.shares * transForm.currentAvg))">{{ formatCurrency(transForm.totalAmount - (transForm.shares * transForm.currentAvg), form.currency) }}</span></div>
-                    </div>
+                    <div v-if="transForm.type !== 'dividend'" class="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg text-sm space-y-2"><div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">目前持股</span><span class="dark:text-gray-200">{{ formatNumber(transForm.currentShares) }}</span></div><div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">目前成本</span><span class="dark:text-gray-200">{{ formatCurrency(transForm.currentAvg, form.currency) }}</span></div><div class="border-t border-gray-200 dark:border-gray-600 my-2"></div><div v-if="transForm.type === 'buy'" class="flex justify-between font-bold text-gray-900 dark:text-white"><span>預估新成本</span><span class="text-blue-600 dark:text-blue-400">{{ formatCurrency(calculateNewAvg(), form.currency) }} /股</span></div><div v-if="transForm.type === 'sell'" class="flex justify-between font-bold text-gray-900 dark:text-white"><span>此筆實現損益</span><span :class="getPnlClass(transForm.totalAmount - (transForm.shares * transForm.currentAvg))">{{ formatCurrency(transForm.totalAmount - (transForm.shares * transForm.currentAvg), form.currency) }}</span></div></div>
                 </div>
                 <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex justify-end gap-3">
                     <button @click="closeTransModal" class="px-4 py-2 rounded text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button>
@@ -516,10 +487,8 @@
 
             const toggleDarkMode = () => { isDarkMode.value = !isDarkMode.value; localStorage.setItem('darkMode', isDarkMode.value); document.documentElement.classList.toggle('dark'); };
             
-            // Watch for Dark Mode to re-render chart immediately
             watch(isDarkMode, () => {
                 if (activeSection.value === 'chart') {
-                    // Slight delay to allow CSS transition
                     setTimeout(drawChart, 100);
                 }
             });
@@ -621,14 +590,13 @@
                 const d = snap.docs.map(x => x.data());
                 if (chartInstance) chartInstance.destroy();
                 
-                // Color Logic for Dark Mode
                 const isDark = document.documentElement.classList.contains('dark');
-                const totalColor = isDark ? '#a78bfa' : '#1f2937'; // Purple in dark, Dark Gray in light
+                const totalColor = isDark ? '#8b5cf6' : '#1f2937'; 
                 const gridColor = isDark ? '#374151' : '#e5e7eb';
 
                 chartInstance = new Chart(document.getElementById('assetChart').getContext('2d'), {
                     type: 'line',
-                    data: { labels: d.map(x=>x.date), datasets: [{ label: '總資產 (TWD)', data: d.map(x=>x.totalVal), borderColor: totalColor, fill: true, backgroundColor: isDark ? 'rgba(167, 139, 250, 0.1)' : 'rgba(31,41,55,0.1)', tension: 0.3 }, { label: '台股', data: d.map(x=>x.twVal), borderColor: '#3b82f6', hidden: true, tension: 0.3 }, { label: '美股(TWD)', data: d.map(x=>x.usVal * exchangeRate.value), borderColor: '#ef4444', hidden: true, tension: 0.3 }] },
+                    data: { labels: d.map(x=>x.date), datasets: [{ label: '總資產 (TWD)', data: d.map(x=>x.totalVal), borderColor: totalColor, fill: true, backgroundColor: isDark ? 'rgba(139, 92, 246, 0.1)' : 'rgba(31,41,55,0.1)', tension: 0.3 }, { label: '台股', data: d.map(x=>x.twVal), borderColor: '#3b82f6', hidden: true, tension: 0.3 }, { label: '美股(TWD)', data: d.map(x=>x.usVal * exchangeRate.value), borderColor: '#ef4444', hidden: true, tension: 0.3 }] },
                     options: { 
                         responsive: true, 
                         maintainAspectRatio: false, 
@@ -753,11 +721,133 @@
             const saveStock = async () => { if (!user.value || !form.value.symbol) return; const d = { ...form.value }; const r = db.collection('users').doc(user.value.uid).collection('stocks'); if (isEditing.value) await r.doc(d.id).update(d); else await r.doc(d.id).set(d); closeModal(); };
             const deleteStock = async (id) => { if (!user.value || !confirm('刪除？')) return; await db.collection('users').doc(user.value.uid).collection('stocks').doc(id).delete(); };
             
-            const getYahooData = async (symbol) => { let s = symbol.toUpperCase(); if (/^\d{4,6}[A-Z]?$/.test(s)) s += '.TW'; try { const r = await fetch('https://corsproxy.io/?' + encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${s}?interval=1d&events=div,splits&t=${Date.now()}`)); const j = await r.json(); if (!j.chart?.result?.length) { if (s.endsWith('.TW')) { const r2 = await fetch('https://corsproxy.io/?' + encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${s.replace('.TW','.TWO')}?interval=1d&t=${Date.now()}`)); const j2 = await r2.json(); if (j2.chart?.result) return { symbol: j2.chart.result[0].meta.symbol, regularMarketPrice: j2.chart.result[0].meta.regularMarketPrice, previousClose: j2.chart.result[0].meta.chartPreviousClose || j2.chart.result[0].meta.previousClose }; } throw new Error('Not Found'); } return { symbol: j.chart.result[0].meta.symbol, regularMarketPrice: j.chart.result[0].meta.regularMarketPrice, previousClose: j.chart.result[0].meta.chartPreviousClose || j.chart.result[0].meta.previousClose }; } catch (e) { return null; } };
-            const autoFetchName = async () => { const s = form.value.symbol; if (!s) return; if (/^\d/.test(s)) form.value.currency = 'TWD'; else if (/^[A-Za-z]+$/.test(s)) form.value.currency = 'USD'; if (!form.value.name) form.value.name = '查詢中...'; const d = await getYahooData(s); if (d) { if (form.value.name === '查詢中...') form.value.name = d.symbol; form.value.currentPrice = d.regularMarketPrice; form.value.previousClose = d.previousClose; } else { if (form.value.name === '查詢中...') form.value.name = ''; alert('查無代號'); } };
-            const autoFetchTransName = async () => { const s = transForm.value.symbol; if (!s) return; if (/^\d/.test(s)) form.value.currency = 'TWD'; else if (/^[A-Za-z]+$/.test(s)) form.value.currency = 'USD'; if (!transForm.value.name) transForm.value.name = '查詢中...'; const d = await getYahooData(s); if (d) { if (transForm.value.name === '查詢中...') transForm.value.name = d.symbol; } else { if (transForm.value.name === '查詢中...') transForm.value.name = ''; } };
+            // ==========================================
+            // 🔥 v2.6.0 核心更新：台股改用 TWSE MIS 訊號
+            // ==========================================
+            const getStockData = async (symbol) => {
+                let s = symbol.toUpperCase();
 
-            const fetchPrices = async () => { if (!user.value || stocks.value.length === 0) return; isLoading.value = true; const updates = stocks.value.map(async (s) => { const d = await getYahooData(s.symbol); return d ? { id: s.id, price: d.regularMarketPrice, prev: d.previousClose } : null; }); const res = await Promise.all(updates); const batch = db.batch(); let has = false; const ref = db.collection('users').doc(user.value.uid).collection('stocks'); res.forEach(r => { if (r) { batch.update(ref.doc(r.id), { currentPrice: r.price, previousClose: r.prev }); has = true; } }); if (has) await batch.commit(); setTimeout(saveDailySnapshot, 500); lastUpdated.value = `${new Date().getHours()}:${String(new Date().getMinutes()).padStart(2, '0')}`; isLoading.value = false; };
+                // 1. 判斷是否為台股 (4-6碼數字 + 可選字母)
+                const isTW = /^\d{4,6}[A-Z]?$/.test(s);
+
+                if (isTW) {
+                    // --- 🇹🇼 台股模式：走 TWSE MIS (即時) ---
+                    try {
+                        // 同時查詢 上市(tse) 與 上櫃(otc)
+                        const targetUrl = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?json=1&delay=0&ex_ch=tse_${s}.tw|otc_${s}.tw&t=${Date.now()}`;
+                        const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(targetUrl);
+                        
+                        const res = await fetch(proxyUrl);
+                        const json = await res.json();
+                        
+                        if (json.msgArray && json.msgArray.length > 0) {
+                            const data = json.msgArray.find(item => item.z !== "-"); // 找有成交價的
+                            if (data) {
+                                return {
+                                    symbol: data.c,           // 代號
+                                    name: data.n,             // 公司名 (直接用官方名稱)
+                                    regularMarketPrice: parseFloat(data.z), // 最新成交價
+                                    previousClose: parseFloat(data.y)       // 昨收
+                                };
+                            }
+                        }
+                        // 查無資料，可能下市或代號錯誤
+                        console.warn(`TWSE 查無資料: ${s}`);
+                        return null; 
+
+                    } catch (e) {
+                        console.error("TWSE API Error:", e);
+                        return null;
+                    }
+
+                } else {
+                    // --- 🇺🇸 美股模式：維持 Yahoo Finance ---
+                    try {
+                        const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${s}?interval=1d&events=div,splits&t=${Date.now()}`;
+                        const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(targetUrl);
+                        const res = await fetch(proxyUrl);
+                        const json = await res.json();
+
+                        if (!json.chart || !json.chart.result || json.chart.result.length === 0) return null;
+                        
+                        const meta = json.chart.result[0].meta;
+                        return { 
+                            symbol: meta.symbol, 
+                            regularMarketPrice: meta.regularMarketPrice, 
+                            previousClose: meta.chartPreviousClose || meta.previousClose 
+                        };
+                    } catch (e) {
+                        console.error("Yahoo API Error:", e);
+                        return null;
+                    }
+                }
+            };
+
+            // 使用新版 getStockData 替換舊的 getYahooData
+            const autoFetchName = async () => { 
+                const s = form.value.symbol; if (!s) return; 
+                
+                // 自動判斷幣別 (UI連動)
+                if (/^\d/.test(s)) form.value.currency = 'TWD'; else if (/^[A-Za-z]+$/.test(s)) form.value.currency = 'USD'; 
+                
+                if (!form.value.name) form.value.name = '查詢中...'; 
+                
+                const d = await getStockData(s); // 改用新函式
+                
+                if (d) { 
+                    if (form.value.name === '查詢中...') form.value.name = d.name || d.symbol; // 台股優先用中文名
+                    form.value.currentPrice = d.regularMarketPrice; 
+                    form.value.previousClose = d.previousClose; 
+                } else { 
+                    if (form.value.name === '查詢中...') form.value.name = ''; 
+                    alert('查無代號'); 
+                } 
+            };
+            
+            const autoFetchTransName = async () => { 
+                const s = transForm.value.symbol; if (!s) return; 
+                if (/^\d/.test(s)) form.value.currency = 'TWD'; else if (/^[A-Za-z]+$/.test(s)) form.value.currency = 'USD'; 
+                if (!transForm.value.name) transForm.value.name = '查詢中...'; 
+                
+                const d = await getStockData(s); // 改用新函式
+                
+                if (d) { 
+                    if (transForm.value.name === '查詢中...') transForm.value.name = d.name || d.symbol; 
+                } else { 
+                    if (transForm.value.name === '查詢中...') transForm.value.name = ''; 
+                } 
+            };
+
+            const fetchPrices = async () => { 
+                if (!user.value || stocks.value.length === 0) return; 
+                isLoading.value = true; 
+                
+                const updates = stocks.value.map(async (s) => { 
+                    const d = await getStockData(s.symbol); // 改用新函式
+                    // 如果抓到資料，同時更新價格與昨收 (計算漲跌幅用)
+                    return d ? { id: s.id, price: d.regularMarketPrice, prev: d.previousClose } : null; 
+                }); 
+                
+                const res = await Promise.all(updates); 
+                const batch = db.batch(); 
+                let has = false; 
+                const ref = db.collection('users').doc(user.value.uid).collection('stocks'); 
+                
+                res.forEach(r => { 
+                    if (r) { 
+                        batch.update(ref.doc(r.id), { currentPrice: r.price, previousClose: r.prev }); 
+                        has = true; 
+                    } 
+                }); 
+                
+                if (has) await batch.commit(); 
+                
+                setTimeout(saveDailySnapshot, 500); 
+                lastUpdated.value = `${new Date().getHours()}:${String(new Date().getMinutes()).padStart(2, '0')}`; 
+                isLoading.value = false; 
+            };
+            // ==========================================
+
             const fetchExchangeRate = async () => { try { const r = await fetch('https://api.exchangerate-api.com/v4/latest/USD'); const d = await r.json(); exchangeRate.value = d.rates.TWD; } catch(e){} };
 
             const sortedStocks = computed(() => [...stocks.value].sort((a, b) => (b.currentPrice * b.shares * (b.currency === 'USD' ? exchangeRate.value : 1)) - (a.currentPrice * a.shares * (a.currency === 'USD' ? exchangeRate.value : 1))));

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v2.6.2</title>
+    <title>我的投資組合 | Portfolio v2.6.3</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -46,6 +46,11 @@
         .dark .btn-active { background-color: #e5e7eb; color: #111827; border-color: #e5e7eb; }
         .btn-inactive { background-color: white; color: #4b5563; border-color: #e5e7eb; }
         .dark .btn-inactive { background-color: #1f2937; color: #d1d5db; border-color: #374151; }
+        
+        /* Sortable Header */
+        .sort-header { cursor: pointer; user-select: none; }
+        .sort-header:hover { color: #374151; }
+        .dark .sort-header:hover { color: #e5e7eb; }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-200 transition-colors duration-300">
@@ -54,7 +59,7 @@
     <div v-if="!user" class="flex-grow flex flex-col items-center justify-center p-4">
         <div class="zen-card p-8 max-w-sm w-full text-center space-y-6">
             <div class="bg-gray-800 text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto text-2xl"><i class="fa-solid fa-chart-line"></i></div>
-            <div><h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v2.6.2</h1><p class="text-gray-500 dark:text-gray-400 text-sm mt-2">安全、即時、跨裝置的投資管理工具</p></div>
+            <div><h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v2.6.3</h1><p class="text-gray-500 dark:text-gray-400 text-sm mt-2">安全、即時、跨裝置的投資管理工具</p></div>
             <button @click="login" class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
                 <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5 mr-3" alt="Google">使用 Google 帳號登入
             </button>
@@ -68,7 +73,7 @@
                     <a href="https://chianghf99.github.io/my-wallet/" class="text-gray-400 hover:text-gray-600 dark:hover:text-white transition"><i class="fa-solid fa-home"></i></a>
                     <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                         <span class="hidden sm:inline">我的資產帳本</span>
-                        <span @click="showChangelog=true" class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v2.6.2</span>
+                        <span @click="showChangelog=true" class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v2.6.3</span>
                     </h1>
                 </div>
                 <div class="flex items-center gap-3">
@@ -98,7 +103,7 @@
                     </div>
                     <div class="text-3xl font-bold text-gray-900 dark:text-white"><span v-if="showPrivacy">{{ formatCurrency(grandTotalValue, 'TWD') }}</span><span v-else>****</span></div>
                     <div class="mt-1 text-xs flex items-center gap-1" v-if="showPrivacy">
-                        <span class="text-gray-400">較前日:</span>
+                        <span class="text-gray-400">較前日(損益):</span>
                         <span v-if="prevDayData" :class="getPnlClass(grandTotalPnL - (prevDayData.totalPnL || 0))">{{ formatCurrency(grandTotalPnL - (prevDayData.totalPnL || 0), 'TWD') }}</span>
                         <span v-else class="text-gray-400">-</span>
                     </div>
@@ -109,7 +114,6 @@
                         <span v-else class="text-gray-300 dark:text-gray-600">****</span>
                     </div>
                 </div>
-                
                 <div class="zen-card p-5">
                     <div class="flex justify-between items-center mb-1"><div class="text-sm text-gray-500 dark:text-gray-400">台股部位</div><img src="https://flagcdn.com/w40/tw.png" class="w-6 shadow-sm rounded-sm"></div>
                     <div class="text-2xl font-bold dark:text-white"><span v-if="showPrivacy">{{ formatCurrency(twStats.value, 'TWD') }}</span><span v-else>****</span></div>
@@ -124,7 +128,6 @@
                     <div v-else class="mt-1 text-xs text-gray-300">****</div>
                     <div class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 text-sm flex justify-between"><span class="text-gray-500 dark:text-gray-400">損益</span><span v-if="showPrivacy" :class="getPnlClass(twStats.pnl)">{{ formatCurrency(twStats.pnl, 'TWD') }}<span class="text-xs ml-1">({{ getRoi(twStats.cost, twStats.pnl) }})</span></span><span v-else class="text-gray-300 dark:text-gray-600">****</span></div>
                 </div>
-                
                 <div class="zen-card p-5">
                     <div class="flex justify-between items-center mb-1"><div class="text-sm text-gray-500 dark:text-gray-400">美股部位</div><img src="https://flagcdn.com/w40/us.png" class="w-6 shadow-sm rounded-sm"></div>
                     <div class="text-2xl font-bold dark:text-white"><span v-if="showPrivacy">{{ formatCurrency(usStats.value, 'USD') }}</span><span v-else>****</span></div>
@@ -154,24 +157,60 @@
             
             <transition name="collapse">
                 <div v-if="activeSection === 'transactions'" class="zen-card p-4 md:p-6 mb-8">
-                    <div class="flex justify-between items-center mb-4">
+                    <div class="flex flex-wrap justify-between items-center mb-4 gap-3">
                         <h3 class="font-bold dark:text-white">歷史交易明細</h3>
                         <button @click="openTransModal(null)" class="bg-gray-800 text-white px-3 py-1 text-sm rounded hover:bg-gray-700 transition"><i class="fa-solid fa-plus mr-1"></i>新增紀錄</button>
                     </div>
+                    
+                    <div class="flex flex-wrap gap-3 items-end mb-4 pb-4 border-b border-gray-100 dark:border-gray-700">
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">開始</label><input type="date" v-model="transStartDate" class="zen-input text-sm py-1.5"></div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">結束</label><input type="date" v-model="transEndDate" class="zen-input text-sm py-1.5"></div>
+                        <button @click="fetchTransactions" class="bg-gray-800 text-white px-4 py-1.5 rounded text-sm hover:bg-gray-700 h-9 mb-[1px]">查詢</button>
+                    </div>
+
                     <div class="overflow-x-auto max-h-[500px] overflow-y-auto">
-                        <table class="w-full text-sm text-left">
-                            <thead class="bg-gray-100 dark:bg-gray-800 text-gray-500 uppercase font-medium sticky top-0"><tr><th class="px-4 py-2">日期</th><th class="px-4 py-2">類別</th><th class="px-4 py-2">標的</th><th class="px-4 py-2 text-right">股數</th><th class="px-4 py-2 text-right">單價</th><th class="px-4 py-2 text-right">總金額</th><th class="px-4 py-2 text-center">操作</th></tr></thead>
+                        <table class="w-full text-sm text-left hidden md:table">
+                            <thead class="bg-gray-100 dark:bg-gray-800 text-gray-500 uppercase font-medium sticky top-0">
+                                <tr>
+                                    <th class="px-4 py-2 sort-header" @click="sortTransaction('date')">日期 <i class="fa-solid fa-sort ml-1 text-xs"></i></th>
+                                    <th class="px-4 py-2 sort-header" @click="sortTransaction('type')">類別 <i class="fa-solid fa-sort ml-1 text-xs"></i></th>
+                                    <th class="px-4 py-2 sort-header" @click="sortTransaction('symbol')">標的 <i class="fa-solid fa-sort ml-1 text-xs"></i></th>
+                                    <th class="px-4 py-2 text-right">股數</th>
+                                    <th class="px-4 py-2 text-right">單價</th>
+                                    <th class="px-4 py-2 text-right">總金額</th>
+                                    <th class="px-4 py-2 text-center">操作</th>
+                                </tr>
+                            </thead>
                             <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                                <tr v-for="tx in transactionHistory" :key="tx.id" class="hover:bg-gray-50 dark:hover:bg-gray-800">
+                                <tr v-for="tx in sortedTransactions" :key="tx.id" class="hover:bg-gray-50 dark:hover:bg-gray-800">
                                     <td class="px-4 py-3 whitespace-nowrap text-gray-500">{{ tx.date }}</td>
                                     <td class="px-4 py-3"><span class="tag" :class="{'tag-buy': tx.type==='buy', 'tag-sell': tx.type==='sell', 'tag-div': tx.type==='dividend'}">{{ tx.type==='buy'?'買入':(tx.type==='sell'?'賣出':'領息') }}</span></td>
-                                    <td class="px-4 py-3 font-bold">{{ tx.name || tx.symbol }}</td> <td class="px-4 py-3 text-right">{{ tx.type === 'dividend' ? '-' : formatNumber(tx.shares) }}</td>
+                                    <td class="px-4 py-3 font-bold">{{ tx.name || tx.symbol }}</td>
+                                    <td class="px-4 py-3 text-right">{{ tx.type === 'dividend' ? '-' : formatNumber(tx.shares) }}</td>
                                     <td class="px-4 py-3 text-right text-gray-500">{{ tx.type === 'dividend' ? '-' : formatCurrency(tx.price, tx.currency) }}</td>
                                     <td class="px-4 py-3 text-right font-bold" :class="tx.type==='buy' ? '' : (tx.type==='sell'?'text-down':'text-yellow-600')">{{ tx.type==='buy' ? '-' : '+' }}{{ formatCurrency(tx.totalAmount, tx.currency) }}</td>
                                     <td class="px-4 py-3 text-center"><button @click="deleteTransaction(tx.id)" class="text-gray-400 hover:text-red-500"><i class="fa-solid fa-trash-can"></i></button></td>
                                 </tr>
                             </tbody>
                         </table>
+
+                        <div class="block md:hidden space-y-2">
+                            <div v-for="tx in sortedTransactions" :key="tx.id" class="p-3 border rounded-lg border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 flex justify-between items-center">
+                                <div>
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span class="font-bold dark:text-gray-200">{{ tx.name || tx.symbol }}</span>
+                                        <span class="tag" :class="{'tag-buy': tx.type==='buy', 'tag-sell': tx.type==='sell', 'tag-div': tx.type==='dividend'}">{{ tx.type==='buy'?'買入':(tx.type==='sell'?'賣出':'領息') }}</span>
+                                    </div>
+                                    <div class="text-xs text-gray-400">{{ tx.date }}</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="font-bold" :class="tx.type==='buy' ? '' : (tx.type==='sell'?'text-down':'text-yellow-600')">{{ tx.type==='buy' ? '-' : '+' }}{{ formatCurrency(tx.totalAmount, tx.currency) }}</div>
+                                    <div class="text-xs text-gray-400" v-if="tx.type!=='dividend'">{{ formatNumber(tx.shares) }}股 @ {{ formatNumber(tx.price) }}</div>
+                                    <button @click="deleteTransaction(tx.id)" class="text-gray-300 hover:text-red-500 text-xs mt-1"><i class="fa-solid fa-trash-can"></i></button>
+                                </div>
+                            </div>
+                            <div v-if="sortedTransactions.length === 0" class="text-center py-6 text-gray-400">無紀錄</div>
+                        </div>
                     </div>
                 </div>
             </transition>
@@ -196,21 +235,43 @@
                         <button @click="fetchDividends" class="bg-gray-800 text-white px-4 py-1.5 rounded text-sm hover:bg-gray-700 h-9 mb-[1px]">查詢</button>
                     </div>
                     <div class="overflow-x-auto">
-                        <table class="w-full text-sm text-left">
-                            <thead class="bg-gray-100 dark:bg-gray-800 text-gray-500 uppercase font-medium"><tr><th class="px-4 py-2">入帳日</th><th class="px-4 py-2">標的</th><th class="px-4 py-2 text-right">金額</th><th class="px-4 py-2 text-center">操作</th></tr></thead>
+                        <table class="w-full text-sm text-left hidden md:table">
+                            <thead class="bg-gray-100 dark:bg-gray-800 text-gray-500 uppercase font-medium">
+                                <tr>
+                                    <th class="px-4 py-2 sort-header" @click="sortDividend('date')">入帳日 <i class="fa-solid fa-sort ml-1 text-xs"></i></th>
+                                    <th class="px-4 py-2 sort-header" @click="sortDividend('symbol')">標的 <i class="fa-solid fa-sort ml-1 text-xs"></i></th>
+                                    <th class="px-4 py-2 sort-header text-right" @click="sortDividend('amount')">金額 <i class="fa-solid fa-sort ml-1 text-xs"></i></th>
+                                    <th class="px-4 py-2 text-center">操作</th>
+                                </tr>
+                            </thead>
                             <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                                <tr v-for="rec in dividendRecords" :key="rec.id" class="hover:bg-gray-50 dark:hover:bg-gray-800">
+                                <tr v-for="rec in sortedDividends" :key="rec.id" class="hover:bg-gray-50 dark:hover:bg-gray-800">
                                     <td class="px-4 py-3">{{ rec.date }}</td>
-                                    <td class="px-4 py-3 font-bold">{{ rec.name || rec.symbol }}</td> <td class="px-4 py-3 text-right font-bold text-yellow-600 dark:text-yellow-400">+{{ formatCurrency(rec.amount, rec.currency) }}</td>
+                                    <td class="px-4 py-3 font-bold">{{ rec.name || rec.symbol }}</td>
+                                    <td class="px-4 py-3 text-right font-bold text-yellow-600 dark:text-yellow-400">+{{ formatCurrency(rec.amount, rec.currency) }}</td>
                                     <td class="px-4 py-3 text-center"><button @click="deleteDividend(rec)" class="text-gray-400 hover:text-red-500"><i class="fa-solid fa-trash-can"></i></button></td>
                                 </tr>
                             </tbody>
                         </table>
+
+                        <div class="block md:hidden space-y-2">
+                            <div v-for="rec in sortedDividends" :key="rec.id" class="p-3 border rounded-lg border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 flex justify-between items-center">
+                                <div>
+                                    <div class="font-bold dark:text-gray-200">{{ rec.name || rec.symbol }}</div>
+                                    <div class="text-xs text-gray-400">{{ rec.date }}</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="font-bold text-yellow-600 dark:text-yellow-400">+{{ formatCurrency(rec.amount, rec.currency) }}</div>
+                                    <button @click="deleteDividend(rec)" class="text-gray-300 hover:text-red-500 text-xs mt-1"><i class="fa-solid fa-trash-can"></i></button>
+                                </div>
+                            </div>
+                            <div v-if="sortedDividends.length === 0" class="text-center py-6 text-gray-400">無紀錄</div>
+                        </div>
                     </div>
                 </div>
             </transition>
 
-            <transition name="collapse"><div v-if="activeSection === 'realized'" class="zen-card p-4 md:p-6 mb-8"><h3 class="font-bold mb-4 dark:text-white">歷史已實現損益</h3><div class="grid grid-cols-2 gap-4 mb-4"><div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-center"><div class="text-xs text-gray-500">台股總損益</div><div class="text-lg font-bold" :class="getPnlClass(realizedTotalTw)">{{ formatCurrency(realizedTotalTw, 'TWD') }}</div></div><div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-center"><div class="text-xs text-gray-500">美股總損益</div><div class="text-lg font-bold" :class="getPnlClass(realizedTotalUs)">{{ formatCurrency(realizedTotalUs, 'USD') }}</div></div></div><div class="overflow-x-auto"><table class="w-full text-sm text-left"><thead class="bg-gray-100 dark:bg-gray-800 text-gray-500 uppercase font-medium"><tr><th class="px-4 py-2">日期</th><th class="px-4 py-2">標的</th><th class="px-4 py-2 text-right">獲利/虧損</th><th class="px-4 py-2 text-center">操作</th></tr></thead><tbody class="divide-y divide-gray-100 dark:divide-gray-700"><tr v-for="rec in realizedGains" :key="rec.id" class="hover:bg-gray-50 dark:hover:bg-gray-800"><td class="px-4 py-3">{{ rec.date }}</td><td class="px-4 py-3 font-bold">{{ rec.name || rec.symbol }}</td> <td class="px-4 py-3 text-right font-bold" :class="getPnlClass(rec.pnl)">{{ formatCurrency(rec.pnl, rec.currency) }}</td><td class="px-4 py-3 text-center"><button @click="deleteRealized(rec.id)" class="text-gray-400 hover:text-red-500"><i class="fa-solid fa-trash-can"></i></button></td></tr></tbody></table></div></div></transition>
+            <transition name="collapse"><div v-if="activeSection === 'realized'" class="zen-card p-4 md:p-6 mb-8"><h3 class="font-bold mb-4 dark:text-white">歷史已實現損益</h3><div class="grid grid-cols-2 gap-4 mb-4"><div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-center"><div class="text-xs text-gray-500">台股總損益</div><div class="text-lg font-bold" :class="getPnlClass(realizedTotalTw)">{{ formatCurrency(realizedTotalTw, 'TWD') }}</div></div><div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-center"><div class="text-xs text-gray-500">美股總損益</div><div class="text-lg font-bold" :class="getPnlClass(realizedTotalUs)">{{ formatCurrency(realizedTotalUs, 'USD') }}</div></div></div><div class="overflow-x-auto"><table class="w-full text-sm text-left"><thead class="bg-gray-100 dark:bg-gray-800 text-gray-500 uppercase font-medium"><tr><th class="px-4 py-2">日期</th><th class="px-4 py-2">標的</th><th class="px-4 py-2 text-right">獲利/虧損</th><th class="px-4 py-2 text-center">操作</th></tr></thead><tbody class="divide-y divide-gray-100 dark:divide-gray-700"><tr v-for="rec in realizedGains" :key="rec.id" class="hover:bg-gray-50 dark:hover:bg-gray-800"><td class="px-4 py-3">{{ rec.date }}</td><td class="px-4 py-3 font-bold">{{ rec.name || rec.symbol }}</td><td class="px-4 py-3 text-right font-bold" :class="getPnlClass(rec.pnl)">{{ formatCurrency(rec.pnl, rec.currency) }}</td><td class="px-4 py-3 text-center"><button @click="deleteRealized(rec.id)" class="text-gray-400 hover:text-red-500"><i class="fa-solid fa-trash-can"></i></button></td></tr></tbody></table></div></div></transition>
 
             <div class="flex justify-end mb-4">
                 <div class="flex bg-gray-200 dark:bg-gray-700 rounded p-0.5">
@@ -338,21 +399,19 @@
                     <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
                         <div class="relative pl-6">
                             <span class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-blue-500 border-4 border-white dark:border-gray-800"></span>
-                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-blue-600 dark:text-blue-400 text-lg">v2.6.2</span><span class="text-xs text-gray-400">2025/12/09</span></div>
+                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-blue-600 dark:text-blue-400 text-lg">v2.6.3</span><span class="text-xs text-gray-400">2025/12/10</span></div>
                             <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">優化</span><span>列表改為只顯示名稱 (移除代號)</span></li>
-                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">優化</span><span>股息統計標題簡化</span></li>
-                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">修復</span><span>棄用 TWSE API，改回 Yahoo (穩定性)</span></li>
-                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">修復</span><span>交易紀錄列表不即時刷新</span></li>
-                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">修復</span><span>深色模式圖表顏色與按鈕狀態</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">新增</span><span>交易紀錄/股息紀錄 手機版卡片式排版</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">新增</span><span>交易紀錄日期範圍查詢與排序功能</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">優化</span><span>股息紀錄標題點擊排序</span></li>
                             </ul>
                         </div>
                         <div class="relative pl-6">
                             <span class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-4 border-white dark:border-gray-800"></span>
-                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-gray-700 dark:text-gray-200">v2.5.0</span><span class="text-xs text-gray-400">2025/12/06</span></div>
+                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-gray-700 dark:text-gray-200">v2.6.2</span><span class="text-xs text-gray-400">2025/12/09</span></div>
                             <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">新增</span><span>儀表板個股部位漲跌幅%</span></li>
-                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">優化</span><span>股價強制即時更新 (防快取)</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">優化</span><span>列表改為只顯示名稱 (移除代號)</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">修復</span><span>棄用 TWSE API，改回 Yahoo (穩定性)</span></li>
                             </ul>
                         </div>
                     </div>
@@ -368,12 +427,12 @@
                 </div>
                 <div class="p-6 space-y-4">
                     <div class="grid grid-cols-2 gap-4">
-                        <div><label class="block text-xs font-bold text-gray-500 mb-1">代號</label><div class="flex gap-2"><input type="text" v-model="form.symbol" @change="autoFetchName" class="zen-input uppercase" placeholder="如 2330"><button @click="autoFetchName" class="bg-gray-200 dark:bg-gray-700 px-3 rounded"><i class="fa-solid fa-search"></i></button></div></div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">代號</label><input v-model="form.symbol" @blur="autoFetchName" placeholder="如 2330" class="zen-input uppercase"></div>
                         <div><label class="block text-xs font-bold text-gray-500 mb-1">幣別</label><select v-model="form.currency" class="zen-input"><option value="TWD">TWD</option><option value="USD">USD</option></select></div>
                     </div>
                     <div><label class="block text-xs font-bold text-gray-500 mb-1">名稱</label><input type="text" v-model="form.name" class="zen-input"></div>
                     <div class="grid grid-cols-2 gap-4">
-                        <div><label class="block text-xs font-bold text-gray-500 mb-1">股數</label><input type="number" step="any" v-model.number="form.shares" class="zen-input"></div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">總股數</label><input type="number" step="any" v-model.number="form.shares" class="zen-input"></div>
                         <div><label class="block text-xs font-bold text-gray-500 mb-1">平均成本</label><input type="number" step="any" v-model.number="form.avgCost" class="zen-input"></div>
                     </div>
                     <div class="grid grid-cols-2 gap-4">
@@ -523,13 +582,20 @@
             const showChangelog = ref(false);
             
             const prevDayData = ref(null);
-            // Local Time Helper
             const getLocalDate = () => { const d = new Date(); const offset = d.getTimezoneOffset() * 60000; return new Date(d.getTime() - offset).toISOString().split('T')[0]; };
             
             const chartStartDate = ref('');
             const chartEndDate = ref('');
             const divStartDate = ref('');
             const divEndDate = ref('');
+            
+            // Transaction History Filter vars
+            const transStartDate = ref('');
+            const transEndDate = ref('');
+            const sortKeyTrans = ref('date');
+            const sortOrderTrans = ref('desc');
+            const sortKeyDiv = ref('date');
+            const sortOrderDiv = ref('desc');
             
             let chartInstance = null, pieTwInstance = null, pieUsInstance = null;
             const realizedGains = ref([]);
@@ -551,12 +617,17 @@
                 const today = getLocalDate();
                 const d = new Date(); d.setDate(d.getDate() - 30);
                 const past = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+                
                 chartEndDate.value = today;
                 chartStartDate.value = past;
+                
+                // Initialize range vars
                 const yearStart = new Date(new Date().getFullYear(), 0, 1);
                 const localYearStart = new Date(yearStart.getTime() - yearStart.getTimezoneOffset() * 60000).toISOString().split('T')[0];
                 divEndDate.value = today;
                 divStartDate.value = localYearStart;
+                transEndDate.value = today;
+                transStartDate.value = past; // Default last 30 days for transactions
 
                 auth.onAuthStateChanged((u) => {
                     user.value = u;
@@ -613,18 +684,19 @@
             
             const fetchTransactions = async () => {
                 if (!user.value) return;
-                if (unsubscribeTrans) unsubscribeTrans();
-                // 修正：簡化查詢，只使用 timestamp 排序，避免需要建立複合索引
-                unsubscribeTrans = db.collection('users').doc(user.value.uid).collection('transactions')
-                    .orderBy('timestamp', 'desc').limit(50)
-                    .onSnapshot(snap => {
-                        transactionHistory.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                    });
+                // Query by Date Range
+                const snap = await db.collection('users').doc(user.value.uid).collection('transactions')
+                    .where('date', '>=', transStartDate.value)
+                    .where('date', '<=', transEndDate.value)
+                    .orderBy('date', 'desc')
+                    .get();
+                transactionHistory.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             };
             
             const deleteTransaction = async (id) => {
                  if (!confirm('確定刪除此筆交易流水帳？(注意：此操作不會自動還原庫存)')) return;
                  await db.collection('users').doc(user.value.uid).collection('transactions').doc(id).delete();
+                 fetchTransactions(); // Refresh list
             };
 
             const deleteDividend = async (rec) => {
@@ -721,16 +793,14 @@
                     transForm.value = { id: s.id, type: 'buy', symbol: s.symbol, name: s.name, shares: '', totalAmount: '', currentShares: s.shares, currentAvg: s.avgCost, date: getLocalDate() }; 
                     form.value.currency = s.currency;
                 } else {
-                    // Independent Entry
                     transForm.value = { id: null, type: type, symbol: '', name: '', shares: '', totalAmount: '', currentShares: 0, currentAvg: 0, date: getLocalDate() };
-                    form.value.currency = 'TWD'; // Default
+                    form.value.currency = 'TWD'; 
                 }
                 showTransModal.value = true; 
             };
             const closeTransModal = () => showTransModal.value = false;
 
             const submitTransaction = async () => {
-                // 1. Prepare Data
                 const logData = {
                     date: transForm.value.date || getLocalDate(),
                     type: transForm.value.type,
@@ -743,14 +813,11 @@
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 };
                 
-                // 2. Dividend
                 if (transForm.value.type === 'dividend') {
                     if (!transForm.value.totalAmount) return alert('請輸入金額');
                     const dividendData = { ...logData, amount: transForm.value.totalAmount };
                     await db.collection('users').doc(user.value.uid).collection('dividends').add(dividendData); 
                     await db.collection('users').doc(user.value.uid).collection('transactions').add(logData); 
-                    
-                    // Try to find stock to update accumulated div
                     const existingStock = stocks.value.find(s => s.symbol === transForm.value.symbol);
                     if (existingStock) {
                         await db.collection('users').doc(user.value.uid).collection('stocks').doc(existingStock.id).update({ dividends: (existingStock.dividends || 0) + transForm.value.totalAmount });
@@ -758,31 +825,20 @@
                     closeTransModal(); return;
                 }
 
-                // 3. Buy/Sell
                 if (!transForm.value.shares || !transForm.value.totalAmount) return alert('請輸入完整資訊');
-                
-                // Find stock
                 let stockId = transForm.value.id;
                 let currentShares = transForm.value.currentShares;
                 let currentAvg = transForm.value.currentAvg;
 
-                // If independent entry, try to find existing stock or create new
                 if (!stockId) {
                     const existing = stocks.value.find(s => s.symbol === transForm.value.symbol);
                     if (existing) {
-                        stockId = existing.id;
-                        currentShares = existing.shares;
-                        currentAvg = existing.avgCost;
+                        stockId = existing.id; currentShares = existing.shares; currentAvg = existing.avgCost;
                     } else if (transForm.value.type === 'buy') {
-                        // Create new stock doc
-                        const newDoc = await db.collection('users').doc(user.value.uid).collection('stocks').add({
-                            symbol: transForm.value.symbol, name: transForm.value.name, currency: form.value.currency,
-                            shares: 0, avgCost: 0, currentPrice: 0, dividends: 0
-                        });
+                        const newDoc = await db.collection('users').doc(user.value.uid).collection('stocks').add({ symbol: transForm.value.symbol, name: transForm.value.name, currency: form.value.currency, shares: 0, avgCost: 0, currentPrice: 0, dividends: 0 });
                         stockId = newDoc.id;
                     } else {
-                        // Sell but no stock exists -> Just log transaction
-                        const pnl = transForm.value.totalAmount - 0; // Cost unknown
+                        const pnl = transForm.value.totalAmount - 0; 
                         await db.collection('users').doc(user.value.uid).collection('realized_gains').add({ ...logData, pnl: pnl, price: transForm.value.totalAmount/transForm.value.shares });
                         await db.collection('users').doc(user.value.uid).collection('transactions').add(logData);
                         closeTransModal(); return;
@@ -810,7 +866,10 @@
                     if (ns === 0 && confirm('股數歸零，是否刪除此庫存項目？')) await ref.delete();
                 }
                 
-                setTimeout(saveDailySnapshot, 500); closeTransModal();
+                setTimeout(saveDailySnapshot, 500); 
+                // Refresh list if open
+                if (activeSection.value === 'transactions') fetchTransactions();
+                closeTransModal();
             };
             
             const openModal = () => { isEditing.value = false; form.value = { id: Date.now().toString(), symbol: '', name: '', currency: 'TWD', shares: 0, avgCost: 0, currentPrice: 0, dividends: 0, previousClose: 0 }; showModal.value = true; };
@@ -819,57 +878,13 @@
             const saveStock = async () => { if (!user.value || !form.value.symbol) return; const d = { ...form.value }; const r = db.collection('users').doc(user.value.uid).collection('stocks'); if (isEditing.value) await r.doc(d.id).update(d); else await r.doc(d.id).set(d); closeModal(); };
             const deleteStock = async (id) => { if (!user.value || !confirm('刪除？')) return; await db.collection('users').doc(user.value.uid).collection('stocks').doc(id).delete(); };
             
-            const getYahooData = async (symbol) => {
-                let s = symbol.toUpperCase();
-                // 台股邏輯：4-6碼數字 + 可選字母 = 視為台股 (加上 .TW)
-                if (/^\d{4,6}[A-Z]?$/.test(s)) s += '.TW';
-                
-                try {
-                    // 加入 &t=Date.now() 強制刷新
-                    const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${s}?interval=1d&events=div,splits&t=${Date.now()}`;
-                    const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(targetUrl);
-                    
-                    const res = await fetch(proxyUrl);
-                    const json = await res.json();
-                    
-                    if (!json.chart || !json.chart.result || json.chart.result.length === 0) {
-                         // 備援：如果是 .TW 失敗，嘗試 .TWO (上櫃)
-                         if (s.endsWith('.TW')) {
-                            const targetUrl2 = `https://query1.finance.yahoo.com/v8/finance/chart/${s.replace('.TW','.TWO')}?interval=1d&t=${Date.now()}`;
-                            const res2 = await fetch('https://corsproxy.io/?' + encodeURIComponent(targetUrl2));
-                            const json2 = await res2.json();
-                            
-                            if (json2.chart && json2.chart.result) {
-                                return { 
-                                    symbol: json2.chart.result[0].meta.symbol, 
-                                    regularMarketPrice: json2.chart.result[0].meta.regularMarketPrice, 
-                                    previousClose: json2.chart.result[0].meta.chartPreviousClose || json2.chart.result[0].meta.previousClose 
-                                };
-                            }
-                        }
-                        throw new Error('Not Found');
-                    }
-                    
-                    // 成功抓取
-                    return { 
-                        symbol: json.chart.result[0].meta.symbol, 
-                        regularMarketPrice: json.chart.result[0].meta.regularMarketPrice, 
-                        previousClose: json.chart.result[0].meta.chartPreviousClose || json.chart.result[0].meta.previousClose 
-                    };
-                } catch (e) { 
-                    console.error("股價更新失敗:", s, e);
-                    return null; 
-                }
-            };
+            const getYahooData = async (symbol) => { let s = symbol.toUpperCase(); if (/^\d{4,6}[A-Z]?$/.test(s)) s += '.TW'; try { const r = await fetch('https://corsproxy.io/?' + encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${s}?interval=1d&events=div,splits&t=${Date.now()}`)); const j = await r.json(); if (!j.chart?.result?.length) { if (s.endsWith('.TW')) { const r2 = await fetch('https://corsproxy.io/?' + encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${s.replace('.TW','.TWO')}?interval=1d&t=${Date.now()}`)); const j2 = await r2.json(); if (j2.chart?.result) return { symbol: j2.chart.result[0].meta.symbol, regularMarketPrice: j2.chart.result[0].meta.regularMarketPrice, previousClose: j2.chart.result[0].meta.chartPreviousClose || j2.chart.result[0].meta.previousClose }; } throw new Error('Not Found'); } return { symbol: j.chart.result[0].meta.symbol, regularMarketPrice: j.chart.result[0].meta.regularMarketPrice, previousClose: j.chart.result[0].meta.chartPreviousClose || j.chart.result[0].meta.previousClose }; } catch (e) { return null; } };
             const autoFetchName = async () => { const s = form.value.symbol; if (!s) return; if (/^\d/.test(s)) form.value.currency = 'TWD'; else if (/^[A-Za-z]+$/.test(s)) form.value.currency = 'USD'; if (!form.value.name) form.value.name = '查詢中...'; const d = await getYahooData(s); if (d) { if (form.value.name === '查詢中...') form.value.name = d.symbol; form.value.currentPrice = d.regularMarketPrice; form.value.previousClose = d.previousClose; } else { if (form.value.name === '查詢中...') form.value.name = ''; alert('查無代號'); } };
-            
-            // New Auto Fetch for Independent Transaction
             const autoFetchTransName = async () => { const s = transForm.value.symbol; if (!s) return; if (/^\d/.test(s)) form.value.currency = 'TWD'; else if (/^[A-Za-z]+$/.test(s)) form.value.currency = 'USD'; if (!transForm.value.name) transForm.value.name = '查詢中...'; const d = await getYahooData(s); if (d) { if (transForm.value.name === '查詢中...') transForm.value.name = d.symbol; } else { if (transForm.value.name === '查詢中...') transForm.value.name = ''; } };
 
             const fetchPrices = async () => { if (!user.value || stocks.value.length === 0) return; isLoading.value = true; const updates = stocks.value.map(async (s) => { const d = await getYahooData(s.symbol); return d ? { id: s.id, price: d.regularMarketPrice, prev: d.previousClose } : null; }); const res = await Promise.all(updates); const batch = db.batch(); let has = false; const ref = db.collection('users').doc(user.value.uid).collection('stocks'); res.forEach(r => { if (r) { batch.update(ref.doc(r.id), { currentPrice: r.price, previousClose: r.prev }); has = true; } }); if (has) await batch.commit(); setTimeout(saveDailySnapshot, 500); lastUpdated.value = `${new Date().getHours()}:${String(new Date().getMinutes()).padStart(2, '0')}`; isLoading.value = false; };
             const fetchExchangeRate = async () => { try { const r = await fetch('https://api.exchangerate-api.com/v4/latest/USD'); const d = await r.json(); exchangeRate.value = d.rates.TWD; } catch(e){} };
 
-            // Stats & Formatters
             const sortedStocks = computed(() => [...stocks.value].sort((a, b) => (b.currentPrice * b.shares * (b.currency === 'USD' ? exchangeRate.value : 1)) - (a.currentPrice * a.shares * (a.currency === 'USD' ? exchangeRate.value : 1))));
             const twStockList = computed(() => sortedStocks.value.filter(s => s.currency === 'TWD'));
             const usStockList = computed(() => sortedStocks.value.filter(s => s.currency === 'USD'));
@@ -879,11 +894,40 @@
             const grandTotalPnL = computed(() => twStats.value.pnl + (usStats.value.pnl * exchangeRate.value));
             const realizedTotalTw = computed(() => realizedGains.value.filter(r => r.currency === 'TWD').reduce((acc, cur) => acc + cur.pnl, 0));
             const realizedTotalUs = computed(() => realizedGains.value.filter(r => r.currency === 'USD').reduce((acc, cur) => acc + cur.pnl, 0));
-            
             const dividendYearlyTw = computed(() => dividendRecords.value.filter(r => r.currency === 'TWD' && r.date.startsWith(new Date().getFullYear().toString())).reduce((acc, cur) => acc + cur.amount, 0));
             const dividendYearlyUs = computed(() => dividendRecords.value.filter(r => r.currency === 'USD' && r.date.startsWith(new Date().getFullYear().toString())).reduce((acc, cur) => acc + cur.amount, 0));
             const dividendRangeTw = computed(() => dividendRecords.value.filter(r => r.currency === 'TWD').reduce((acc, cur) => acc + cur.amount, 0));
             const dividendRangeUs = computed(() => dividendRecords.value.filter(r => r.currency === 'USD').reduce((acc, cur) => acc + cur.amount, 0));
+
+            // Sorted Lists
+            const sortedTransactions = computed(() => {
+                return transactionHistory.value.slice().sort((a, b) => {
+                    let modifier = sortOrderTrans.value === 'desc' ? -1 : 1;
+                    if (sortKeyTrans.value === 'date') return (new Date(a.date) - new Date(b.date)) * modifier;
+                    if (sortKeyTrans.value === 'type') return a.type.localeCompare(b.type) * modifier;
+                    if (sortKeyTrans.value === 'symbol') return (a.name || a.symbol).localeCompare(b.name || b.symbol) * modifier;
+                    return 0;
+                });
+            });
+            const sortedDividends = computed(() => {
+                return dividendRecords.value.slice().sort((a, b) => {
+                    let modifier = sortOrderDiv.value === 'desc' ? -1 : 1;
+                    if (sortKeyDiv.value === 'date') return (new Date(a.date) - new Date(b.date)) * modifier;
+                    if (sortKeyDiv.value === 'symbol') return (a.name || a.symbol).localeCompare(b.name || b.symbol) * modifier;
+                    if (sortKeyDiv.value === 'amount') return (a.amount - b.amount) * modifier;
+                    return 0;
+                });
+            });
+
+            // Sorting Handlers
+            const sortTransaction = (key) => {
+                if (sortKeyTrans.value === key) sortOrderTrans.value = sortOrderTrans.value === 'asc' ? 'desc' : 'asc';
+                else { sortKeyTrans.value = key; sortOrderTrans.value = 'desc'; }
+            };
+            const sortDividend = (key) => {
+                if (sortKeyDiv.value === key) sortOrderDiv.value = sortOrderDiv.value === 'asc' ? 'desc' : 'asc';
+                else { sortKeyDiv.value = key; sortOrderDiv.value = 'desc'; }
+            };
 
             function calculateStats(subset) { let v = 0, c = 0, d = 0; subset.forEach(s => { v += s.currentPrice * s.shares; c += s.avgCost * s.shares; d += (s.dividends || 0); }); return { value: v, cost: c, dividend: d, pnl: v - c }; }
             const formatNumber = (n) => !n && n!==0 ? '-' : new Intl.NumberFormat('en-US', { maximumFractionDigits: 5 }).format(n);
@@ -900,7 +944,9 @@
                 autoFetchName, autoFetchTransName, fetchPrices, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange,
                 chartStartDate, chartEndDate, drawChart, prevDayData, exportData, realizedGains, realizedTotalTw, realizedTotalUs,
                 divStartDate, divEndDate, fetchDividends, dividendRecords, dividendYearlyTw, dividendYearlyUs, dividendRangeTw, dividendRangeUs,
-                transactionHistory, fetchTransactions, deleteTransaction, deleteDividend, deleteRealized 
+                transactionHistory, fetchTransactions, deleteTransaction, deleteDividend, deleteRealized,
+                // New for v2.6.3
+                transStartDate, transEndDate, sortTransaction, sortDividend, sortedTransactions, sortedDividends
             };
         }
     }).mount('#app');

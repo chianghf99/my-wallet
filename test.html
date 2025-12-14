@@ -824,3 +824,26 @@
                 if (tx.type === 'sell') return 'text-down'; // Green for sell revenue? Or keep standard.
                 return '';
             };
+            const getAmountSign = (tx) => {
+                if (tx.type === 'buy' || tx.type === 'withdraw') return '-';
+                return '+';
+            };
+
+            return {
+                user, login, logout, stocks, exchangeRate, lastUpdated, isLoading, viewMode, isMobile, showPrivacy, isDarkMode, toggleDarkMode, activeSection, toggleSection, showChangelog,
+                twStats, usStats, grandTotalValue, grandTotalPnL, twStockList, usStockList,
+                showModal, isEditing, form, openModal, editStock, closeModal, saveStock, deleteStock,
+                showTransModal, transForm, openTransModal, closeTransModal, submitTransaction, calculateNewAvg, isFundMode, openFundModal,
+                autoFetchName, autoFetchTransName, fetchPrices, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountClass, getAmountSign,
+                chartStartDate, chartEndDate, drawChart, prevDayData, exportData, realizedGains, realizedTotalTw, realizedTotalUs,
+                divStartDate, divEndDate, fetchDividends, dividendRecords, dividendYearlyTw, dividendYearlyUs, dividendRangeTw, dividendRangeUs,
+                transactionHistory, fetchTransactions, deleteTransaction, deleteDividend, deleteRealized,
+                transStartDate, transEndDate, sortTransaction, sortDividend, sortedTransactions, sortedDividends,
+                realizedStartDate, realizedEndDate, fetchRealizedGains, cashData
+            };
+        }
+    }).mount('#app');
+</script>
+
+</body>
+</html>

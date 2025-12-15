@@ -118,7 +118,7 @@
     <button class="side-btn" onclick="switchPage('settings')"><i class="fas fa-cog"></i> 設定</button>
     <div style="margin-top: auto;">
         <div class="version-link" onclick="showVersionModal()">
-            <i class="fas fa-info-circle me-1"></i> 版本 v2.6
+            <i class="fas fa-info-circle me-1"></i> 版本 v2.7
         </div>
     </div>
 </div>
@@ -247,7 +247,7 @@
         </div>
         <div class="text-center mt-4">
             <div class="version-link text-muted" onclick="showVersionModal()">
-                <i class="fas fa-info-circle me-1"></i> 卡片管家 Pro v2.6
+                <i class="fas fa-info-circle me-1"></i> 卡片管家 Pro v2.7
             </div>
         </div>
     </div>
@@ -285,11 +285,17 @@
             </div>
             <div class="modal-body bg-light rounded-bottom-4" style="max-height: 400px; overflow-y: auto;">
                 <div class="changelog-item">
+                    <div class="changelog-date">2025/12/16</div>
+                    <div class="changelog-ver">v2.7</div>
+                    <div class="changelog-desc">
+                        • 修正出帳提醒邏輯：嚴格檢查本期帳單是否已存在，解決玉山/台新誤判問題。
+                    </div>
+                </div>
+                <div class="changelog-item">
                     <div class="changelog-date">2025/12/06</div>
                     <div class="changelog-ver">v2.6</div>
                     <div class="changelog-desc">
                         • 新增「本期無帳單」忽略功能<br>
-                        • 優化出帳日提醒邏輯 (已繳/略過不重複提醒)<br>
                         • 列表隱藏已略過的帳單
                     </div>
                 </div>
@@ -297,16 +303,7 @@
                     <div class="changelog-date">2025/12/06</div>
                     <div class="changelog-ver">v2.5.1</div>
                     <div class="changelog-desc">
-                        • 調整首頁按鈕邏輯：右上角圖示強制回到網址首頁<br>
-                        • 側邊欄標題點擊維持內部切換
-                    </div>
-                </div>
-                <div class="changelog-item">
-                    <div class="changelog-date">2025/12/06</div>
-                    <div class="changelog-ver">v2.5</div>
-                    <div class="changelog-desc">
-                        • 首頁按鈕支援指定網址跳轉<br>
-                        • 側邊欄標題加入首頁連結
+                        • 調整首頁按鈕邏輯：右上角圖示強制回到網址首頁
                     </div>
                 </div>
             </div>
@@ -364,9 +361,7 @@
         const uList = document.getElementById('unpaidList'), pList = document.getElementById('paidList'), emptyMsg = document.getElementById('emptyMsg');
         uList.innerHTML = ''; pList.innerHTML = '';
         
-        // 🚨 這裡過濾掉 'skipped' 狀態的帳單
         const unpaids = data.bills.filter(b => b.status === 'unpaid').sort((a,b) => new Date(a.date) - new Date(b.date));
-        // 歷史紀錄顯示 paid 和 skipped (如果想看到略過的紀錄，可把 skipped 加進來，目前僅顯示 paid)
         const paids = data.bills.filter(b => b.status === 'paid').sort((a,b) => new Date(b.date) - new Date(a.date));
 
         unpaids.forEach(b => {
@@ -396,24 +391,28 @@
 
     function renderTotal() { document.getElementById('displayTotal').textContent = !isPrivacyOn ? '$' + data.bills.filter(b => b.status === 'unpaid').reduce((s,b) => s + b.amount, 0).toLocaleString() : '$****'; }
 
+    // ✅ v2.7 修正：出帳日提醒邏輯
     function checkAlerts() {
         const box = document.getElementById('statementAlerts'); box.innerHTML = '';
         const today = new Date().getDate();
-        const now = new Date();
-        const lookbackDays = 25; // 檢查過去幾天內是否有帳單
+        const now = new Date(); // 今天日期
 
         data.cards.forEach(c => {
             if (today >= c.day) {
-                // 檢查邏輯：是否有「任何狀態」的帳單(paid, unpaid, skipped) 的日期是在最近一個月內
-                const hasRecentBill = data.bills.some(b => {
+                // 定義：這個月的出帳日
+                // 例如今天 12/16，出帳日 14 號，那本期出帳日就是 12/14
+                const expectedStatementDate = new Date(now.getFullYear(), now.getMonth(), c.day);
+                
+                // 檢查：有沒有任何一筆帳單的「截止日」是晚於「本期出帳日」的？
+                // (因為帳單截止日一定晚於出帳日，如果有抓到，代表系統裡有新帳單了)
+                const hasNewBill = data.bills.some(b => {
                     if (!b.name.includes(c.name)) return false;
-                    const billDate = new Date(b.date);
-                    const diffTime = Math.abs(now - billDate);
-                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    return diffDays <= 45; // 只要 45 天內有帳單日期，就當作已出帳
+                    const billDueDate = new Date(b.date);
+                    // 只要帳單截止日 > 本期出帳日，就當作是新的
+                    return billDueDate > expectedStatementDate; 
                 });
 
-                if (!hasRecentBill) {
+                if (!hasNewBill) {
                     box.innerHTML += `
                         <div class="alert alert-warning border-0 shadow-sm rounded-3 mb-3 d-flex align-items-center justify-content-between">
                             <div class="d-flex align-items-center">
@@ -429,19 +428,20 @@
 
     function markAsSkipped(cardName) {
         if(!confirm(`確認標記 ${cardName} 本期無帳單？`)) return;
-        // 建立一筆 0 元略過帳單，日期設為今天
-        const todayStr = new Date().toISOString().split('T')[0];
+        // 建立一筆 0 元略過帳單，日期設為今天 + 20天 (確保大於出帳日)
+        const d = new Date(); d.setDate(d.getDate() + 20);
+        const futureDateStr = d.toISOString().split('T')[0];
+        
         const newBill = {
             id: Date.now(),
             name: cardName + "(無帳單)",
             amount: 0,
-            date: todayStr,
+            date: futureDateStr, // 設定一個未來的截止日，確保下次檢查會過
             status: 'skipped'
         };
         data.bills.push(newBill);
         saveLocal();
         render();
-        // 自動同步
         syncData('upload');
     }
 
@@ -449,7 +449,6 @@
     function updateCharts() {
         const ctxCard = document.getElementById('cardChart').getContext('2d'), ctxMonth = document.getElementById('monthChart').getContext('2d');
         const currentYear = new Date().getFullYear();
-        // 統計時只算 paid 和 unpaid (排除 skipped)
         const yearBills = data.bills.filter(b => new Date(b.date).getFullYear() === currentYear && b.status !== 'skipped');
         
         const yearTotal = yearBills.reduce((sum, b) => sum + b.amount, 0);

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v2.7.4</title>
+    <title>我的投資組合 | Portfolio v2.8.0</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -60,7 +60,7 @@
     <div v-if="!user" class="flex-grow flex flex-col items-center justify-center p-4">
         <div class="zen-card p-8 max-w-sm w-full text-center space-y-6">
             <div class="bg-gray-800 text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto text-2xl"><i class="fa-solid fa-chart-line"></i></div>
-            <div><h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v2.7.4</h1><p class="text-gray-500 dark:text-gray-400 text-sm mt-2">安全、即時、跨裝置的投資管理工具</p></div>
+            <div><h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v2.8.0</h1><p class="text-gray-500 dark:text-gray-400 text-sm mt-2">安全、即時、跨裝置的投資管理工具</p></div>
             <button @click="login" class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
                 <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5 mr-3" alt="Google">使用 Google 帳號登入
             </button>
@@ -74,7 +74,7 @@
                     <a href="https://chianghf99.github.io/my-wallet/" class="text-gray-400 hover:text-gray-600 dark:hover:text-white transition"><i class="fa-solid fa-home"></i></a>
                     <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                         <span class="hidden sm:inline">我的資產帳本</span>
-                        <span @click="showChangelog=true" class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v2.7.4</span>
+                        <span @click="showChangelog=true" class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v2.8.0</span>
                     </h1>
                 </div>
                 <div class="flex items-center gap-3">
@@ -163,7 +163,10 @@
                 <div v-if="activeSection === 'cash'" class="zen-card p-4 md:p-6 mb-8">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="font-bold dark:text-white">資金管理</h3>
-                        <button @click="openFundModal()" class="bg-gray-800 text-white px-3 py-1 text-sm rounded hover:bg-gray-700 transition"><i class="fa-solid fa-money-bill-transfer mr-1"></i>入金/出金</button>
+                        <div class="flex gap-2">
+                             <button @click="jumpToFundHistory" class="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-3 py-1 text-sm rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition"><i class="fa-solid fa-list mr-1"></i>查看資金流水</button>
+                             <button @click="openFundModal()" class="bg-gray-800 text-white px-3 py-1 text-sm rounded hover:bg-gray-700 transition"><i class="fa-solid fa-money-bill-transfer mr-1"></i>入金/出金</button>
+                        </div>
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-900/30 text-center">
@@ -184,10 +187,26 @@
                         <h3 class="font-bold dark:text-white">歷史交易明細</h3>
                         <button @click="openTransModal(null)" class="bg-gray-800 text-white px-3 py-1 text-sm rounded hover:bg-gray-700 transition"><i class="fa-solid fa-plus mr-1"></i>新增紀錄</button>
                     </div>
-                    <div class="flex flex-wrap gap-3 items-end mb-4 pb-4 border-b border-gray-100 dark:border-gray-700">
-                        <div><label class="block text-xs font-bold text-gray-500 mb-1">開始</label><input type="date" v-model="transStartDate" class="zen-input text-sm py-1.5"></div>
-                        <div><label class="block text-xs font-bold text-gray-500 mb-1">結束</label><input type="date" v-model="transEndDate" class="zen-input text-sm py-1.5"></div>
-                        <button @click="fetchTransactions" class="bg-gray-800 text-white px-4 py-1.5 rounded text-sm hover:bg-gray-700 h-9 mb-[1px]">查詢</button>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-4 pb-4 border-b border-gray-100 dark:border-gray-700 items-end">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-1">篩選類別</label>
+                            <select v-model="transFilterType" class="zen-input text-sm py-1.5">
+                                <option value="all">全部顯示</option>
+                                <option value="trade">股票交易 (買/賣)</option>
+                                <option value="fund">資金出入 (入/出金)</option>
+                                <option value="dividend">股息</option>
+                            </select>
+                        </div>
+                        <div>
+                             <label class="block text-xs font-bold text-gray-500 mb-1">搜尋代號/名稱</label>
+                             <input type="text" v-model="transSearchQuery" placeholder="如: 2330" class="zen-input text-sm py-1.5 uppercase">
+                        </div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">開始日期</label><input type="date" v-model="transStartDate" class="zen-input text-sm py-1.5"></div>
+                        <div class="flex gap-2">
+                             <div class="flex-grow"><label class="block text-xs font-bold text-gray-500 mb-1">結束日期</label><input type="date" v-model="transEndDate" class="zen-input text-sm py-1.5"></div>
+                             <button @click="fetchTransactions" class="bg-gray-800 text-white px-3 py-1.5 rounded text-sm hover:bg-gray-700 h-[34px] self-end mb-[1px]">查詢</button>
+                        </div>
                     </div>
 
                     <div class="overflow-x-auto max-h-[500px] overflow-y-auto">
@@ -297,19 +316,19 @@
                 </div>
                 <div class="p-6 overflow-y-auto custom-scrollbar">
                     <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
-                        <div class="relative pl-6">
+                         <div class="relative pl-6">
                             <span class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-blue-500 border-4 border-white dark:border-gray-800"></span>
-                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-blue-600 dark:text-blue-400 text-lg">v2.7.4</span><span class="text-xs text-gray-400">2025/12/15</span></div>
+                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-blue-600 dark:text-blue-400 text-lg">v2.8.0</span><span class="text-xs text-gray-400">2025/12/17</span></div>
                             <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">修復</span><span>重新整理時現金紀錄歸零的錯誤 (競速問題)</span></li>
-                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">優化</span><span>現金資料載入後強制更新歷史快照</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">新增</span><span>超級篩選器 (交易類型、代號搜尋)</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">新增</span><span>資金流水捷徑 (一鍵查看出入金)</span></li>
                             </ul>
                         </div>
                         <div class="relative pl-6">
                             <span class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-4 border-white dark:border-gray-800"></span>
-                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-gray-700 dark:text-gray-200">v2.7.3</span><span class="text-xs text-gray-400">2025/12/15</span></div>
+                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-gray-700 dark:text-gray-200">v2.7.4</span><span class="text-xs text-gray-400">2025/12/15</span></div>
                             <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">新增</span><span>資產走勢圖 5 條線 (含現金帳戶)</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">修復</span><span>重新整理時現金紀錄歸零的錯誤</span></li>
                             </ul>
                         </div>
                     </div>
@@ -416,9 +435,11 @@
             // Realized Date Filter
             const realizedStartDate = ref('');
             const realizedEndDate = ref('');
-            // Transaction Date Filter
+            // Transaction Filters (v2.8.0)
             const transStartDate = ref('');
             const transEndDate = ref('');
+            const transFilterType = ref('all');
+            const transSearchQuery = ref('');
             
             // Sorting
             const sortKeyTrans = ref('date'); const sortOrderTrans = ref('desc');
@@ -484,6 +505,15 @@
                     if (s === 'transactions') fetchTransactions();
                 }
             };
+            
+            // v2.8.0 Shortcut
+            const jumpToFundHistory = () => {
+                transFilterType.value = 'fund';
+                toggleSection('transactions');
+                setTimeout(() => {
+                     document.querySelector('.zen-card.mb-8').scrollIntoView({ behavior: 'smooth' });
+                }, 300);
+            };
 
             const loadUserData = (uid) => {
                 if (unsubscribe) unsubscribe();
@@ -493,14 +523,12 @@
                 });
             };
             
-            // v2.7.4 FIX: fetchCash now triggers saveDailySnapshot on initial load
             const fetchCash = (uid) => {
                 if(unsubscribeCash) unsubscribeCash();
                 unsubscribeCash = db.collection('users').doc(uid).collection('portfolio').doc('cash')
                     .onSnapshot(doc => {
                         if(doc.exists) cashData.value = doc.data();
                         else cashData.value = { twd: 0, usd: 0 };
-                        // Trigger snapshot save when cash loads to fix race condition (overwrite the potentially 0-cash snapshot saved by stock loader)
                         setTimeout(saveDailySnapshot, 1000); 
                     });
             };
@@ -587,13 +615,10 @@
                 fetchRealizedGains();
             };
 
-            // v2.7.4 FIX: Removed 'doc.exists' check to allow update on refresh
             const saveDailySnapshot = async () => {
                 if (!user.value) return;
                 const todayStr = getLocalDate();
                 const historyRef = db.collection('users').doc(user.value.uid).collection('history').doc(todayStr);
-                
-                // Allow overwrite even if it exists to fix the 0-cash bug
                 
                 const snapshot = {
                     date: todayStr, 
@@ -836,8 +861,28 @@
             const dividendRangeTw = computed(() => dividendRecords.value.filter(r => r.currency === 'TWD').reduce((acc, cur) => acc + cur.amount, 0));
             const dividendRangeUs = computed(() => dividendRecords.value.filter(r => r.currency === 'USD').reduce((acc, cur) => acc + cur.amount, 0));
 
+            // v2.8.0 Filter Logic
             const sortedTransactions = computed(() => {
-                return transactionHistory.value.slice().sort((a, b) => {
+                let data = transactionHistory.value;
+                
+                // 1. Filter by Type
+                if (transFilterType.value !== 'all') {
+                    data = data.filter(tx => {
+                        if (transFilterType.value === 'trade') return tx.type === 'buy' || tx.type === 'sell';
+                        if (transFilterType.value === 'dividend') return tx.type === 'dividend';
+                        if (transFilterType.value === 'fund') return tx.type === 'deposit' || tx.type === 'withdraw';
+                        return true;
+                    });
+                }
+                
+                // 2. Filter by Search (Symbol or Name)
+                if (transSearchQuery.value) {
+                    const q = transSearchQuery.value.toUpperCase();
+                    data = data.filter(tx => (tx.symbol && tx.symbol.toUpperCase().includes(q)) || (tx.name && tx.name.includes(q)));
+                }
+
+                // 3. Sort
+                return data.slice().sort((a, b) => {
                     let modifier = sortOrderTrans.value === 'desc' ? -1 : 1;
                     if (sortKeyTrans.value === 'date') return (new Date(a.date) - new Date(b.date)) * modifier;
                     if (sortKeyTrans.value === 'type') return a.type.localeCompare(b.type) * modifier;
@@ -845,6 +890,7 @@
                     return 0;
                 });
             });
+
             const sortedDividends = computed(() => {
                 return dividendRecords.value.slice().sort((a, b) => {
                     let modifier = sortOrderDiv.value === 'desc' ? -1 : 1;
@@ -899,7 +945,8 @@
                 divStartDate, divEndDate, fetchDividends, dividendRecords, dividendYearlyTw, dividendYearlyUs, dividendRangeTw, dividendRangeUs,
                 transactionHistory, fetchTransactions, deleteTransaction, deleteDividend, deleteRealized,
                 transStartDate, transEndDate, sortTransaction, sortDividend, sortedTransactions, sortedDividends,
-                realizedStartDate, realizedEndDate, fetchRealizedGains, cashData
+                realizedStartDate, realizedEndDate, fetchRealizedGains, cashData,
+                transFilterType, transSearchQuery, jumpToFundHistory
             };
         }
     }).mount('#app');

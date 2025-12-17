@@ -11,8 +11,28 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
-        :root { --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-        body { background-color: #f8f9fa; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif; padding-bottom: 90px; user-select: none; -webkit-user-select: none; }
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --bg-color: #f8f9fa;
+            --card-bg: #ffffff;
+            --text-color: #2d3748;
+            --text-muted: #718096;
+            --border-color: rgba(0,0,0,0.05);
+            --sidebar-bg: #ffffff;
+            --input-bg: #ffffff;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #1a202c;
+            --card-bg: #2d3748;
+            --text-color: #f7fafc;
+            --text-muted: #a0aec0;
+            --border-color: rgba(255,255,255,0.1);
+            --sidebar-bg: #2d3748;
+            --input-bg: #4a5568;
+        }
+
+        body { background-color: var(--bg-color); color: var(--text-color); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif; padding-bottom: 90px; user-select: none; -webkit-user-select: none; transition: background-color 0.3s, color 0.3s; }
         
         .header-card {
             background: var(--primary-gradient); color: white;
@@ -23,53 +43,63 @@
             position: relative;
         }
         
-        .bill-item { background: white; border-radius: 16px; margin-bottom: 12px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); transition: transform 0.1s; border: 1px solid rgba(0,0,0,0.02); }
+        .bill-item { background: var(--card-bg); border-radius: 16px; margin-bottom: 12px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); transition: transform 0.1s, background-color 0.3s; border: 1px solid var(--border-color); }
         .bill-item:active { transform: scale(0.98); }
         .bill-icon { width: 45px; height: 45px; border-radius: 12px; background: #f0f2f5; color: #667eea; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; margin-right: 15px; }
+        .fw-bold.text-dark { color: var(--text-color) !important; }
+        .fw-bold.text-secondary { color: var(--text-muted) !important; }
+        
         .badge-pill { padding: 5px 10px; border-radius: 20px; font-weight: normal; font-size: 0.75rem; }
         .bg-urgent { background: #fee2e2; color: #dc2626; }
         .bg-soon { background: #fef3c7; color: #d97706; }
         .bg-normal { background: #e0e7ff; color: #4338ca; }
-        .card-custom { border: none; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        
+        .card { background-color: var(--card-bg); color: var(--text-color); transition: background-color 0.3s; }
+        .form-control, .form-select { background-color: var(--input-bg); color: var(--text-color); border: 1px solid var(--border-color); }
+        .form-control:focus, .form-select:focus { background-color: var(--input-bg); color: var(--text-color); }
+        .form-control::placeholder { color: var(--text-muted); opacity: 0.7; }
 
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; width: 100%;
-            background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);
-            border-top: 1px solid #eee; padding: 12px 0;
+            background: var(--card-bg); 
+            border-top: 1px solid var(--border-color); padding: 12px 0;
             display: flex; justify-content: space-around; z-index: 1000;
             padding-bottom: max(12px, env(safe-area-inset-bottom));
+            transition: background-color 0.3s;
         }
-        .nav-btn { text-align: center; color: #94a3b8; font-size: 0.75rem; background: none; border: none; flex: 1; }
+        .nav-btn { text-align: center; color: var(--text-muted); font-size: 0.75rem; background: none; border: none; flex: 1; }
         .nav-btn.active { color: #764ba2; font-weight: 600; }
         .nav-btn i { font-size: 1.4rem; display: block; margin-bottom: 4px; }
 
         .sidebar { display: none; }
         @media (min-width: 992px) {
             body { padding-bottom: 0; padding-left: 260px; background-color: #f0f2f5; }
+            [data-theme="dark"] body { background-color: #1a202c; }
             .bottom-nav { display: none; }
             .sidebar {
                 display: flex; flex-direction: column;
                 position: fixed; top: 0; left: 0; width: 260px; height: 100vh;
-                background: white; border-right: 1px solid #eee; z-index: 1000;
+                background: var(--sidebar-bg); border-right: 1px solid var(--border-color); z-index: 1000;
                 padding: 30px 20px; box-shadow: 2px 0 10px rgba(0,0,0,0.02);
+                transition: background-color 0.3s;
             }
-            .sidebar-title { font-size: 1.5rem; font-weight: 800; color: #4a5568; margin-bottom: 40px; padding-left: 10px; display: flex; align-items: center; cursor: pointer; }
+            .sidebar-title { font-size: 1.5rem; font-weight: 800; color: var(--text-color); margin-bottom: 40px; padding-left: 10px; display: flex; align-items: center; cursor: pointer; }
             .sidebar-title i { color: #667eea; margin-right: 10px; }
             .side-btn {
                 text-align: left; padding: 15px 20px; margin-bottom: 8px;
-                border-radius: 12px; color: #64748b; font-size: 1rem; font-weight: 500;
+                border-radius: 12px; color: var(--text-muted); font-size: 1rem; font-weight: 500;
                 background: none; border: none; transition: 0.2s; display: flex; align-items: center;
             }
             .side-btn i { width: 30px; font-size: 1.2rem; }
-            .side-btn:hover { background: #f8fafc; color: #667eea; }
-            .side-btn.active { background: #eff6ff; color: #667eea; font-weight: 600; }
+            .side-btn:hover { background: rgba(102, 126, 234, 0.1); color: #667eea; }
+            .side-btn.active { background: rgba(102, 126, 234, 0.1); color: #667eea; font-weight: 600; }
             .container { max-width: 1000px !important; padding-top: 30px; }
             .header-card { border-radius: 20px; margin-top: 0; padding: 40px; display: flex; align-items: center; justify-content: space-between; text-align: left; }
             .header-card .text-center { text-align: left !important; }
             .header-card .d-flex.justify-content-center { justify-content: flex-end !important; }
         }
 
-        .version-link { color: #cbd5e1; font-size: 0.8rem; padding: 10px; cursor: pointer; transition: 0.2s; text-decoration: none; display: inline-block; }
+        .version-link { color: var(--text-muted); font-size: 0.8rem; padding: 10px; cursor: pointer; transition: 0.2s; text-decoration: none; display: inline-block; }
         .version-link:hover { color: #667eea; }
 
         .changelog-item { position: relative; padding-left: 20px; margin-bottom: 15px; border-left: 2px solid #e2e8f0; }
@@ -118,7 +148,7 @@
     <button class="side-btn" onclick="switchPage('settings')"><i class="fas fa-cog"></i> 設定</button>
     <div style="margin-top: auto;">
         <div class="version-link" onclick="showVersionModal()">
-            <i class="fas fa-info-circle me-1"></i> 版本 v2.7
+            <i class="fas fa-info-circle me-1"></i> 版本 v3.0
         </div>
     </div>
 </div>
@@ -149,7 +179,6 @@
 
     <div class="container px-3">
         <div id="statementAlerts"></div>
-
         <div class="d-flex justify-content-between align-items-center mb-3 px-1">
             <h6 class="fw-bold text-secondary mb-0">待繳帳單</h6>
             <button class="btn btn-sm btn-light text-primary rounded-pill px-3 fw-bold shadow-sm" onclick="showAddModal()"><i class="fas fa-plus small me-1"></i> 新增</button>
@@ -168,8 +197,25 @@
 
 <div id="page-history" class="page-section">
     <div class="container px-3 pt-4">
-        <h5 class="fw-bold mb-4 px-1">繳款歷史紀錄</h5>
+        <div class="d-flex justify-content-between align-items-center mb-4 px-1">
+            <h5 class="fw-bold mb-0">繳款歷史紀錄</h5>
+        </div>
+        
+        <div class="row g-2 mb-4">
+            <div class="col-8">
+                <input type="text" id="historySearch" class="form-control rounded-pill" placeholder="🔍 搜尋銀行名稱..." onkeyup="renderHistory()">
+            </div>
+            <div class="col-4">
+                <select id="historyYearMonth" class="form-select rounded-pill" onchange="renderHistory()">
+                    <option value="all">全部</option>
+                    </select>
+            </div>
+        </div>
+
         <div id="paidList"></div>
+        <div id="historyEmptyMsg" class="text-center py-5 text-muted" style="display:none;">
+            <p>查無符合的紀錄</p>
+        </div>
     </div>
 </div>
 
@@ -178,7 +224,7 @@
         <h5 class="fw-bold mb-4 px-1">年度消費分析</h5>
         <div class="row g-4">
             <div class="col-md-4">
-                <div class="card border-0 shadow-sm rounded-4 h-100 bg-white">
+                <div class="card border-0 shadow-sm rounded-4 h-100">
                     <div class="card-body text-center py-5 d-flex flex-column justify-content-center">
                         <small class="text-muted text-uppercase mb-2">今年度累計消費</small>
                         <h2 class="fw-bold text-primary display-5" id="yearlyTotal">$0</h2>
@@ -209,6 +255,20 @@
     <div class="container px-3 pt-4">
         <h5 class="fw-bold mb-4 px-1">設定</h5>
         <div class="row g-4">
+            <div class="col-12">
+                <div class="card border-0 shadow-sm rounded-4">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="fw-bold mb-1"><i class="fas fa-moon text-secondary me-2"></i>深色模式</h6>
+                            <small class="text-muted">切換至暗色主題</small>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="darkModeSwitch" onchange="toggleDarkMode()">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="col-md-6">
                 <div class="card border-0 shadow-sm rounded-4 h-100">
                     <div class="card-body">
@@ -247,7 +307,7 @@
         </div>
         <div class="text-center mt-4">
             <div class="version-link text-muted" onclick="showVersionModal()">
-                <i class="fas fa-info-circle me-1"></i> 卡片管家 Pro v2.7
+                <i class="fas fa-info-circle me-1"></i> 卡片管家 Pro v3.0
             </div>
         </div>
     </div>
@@ -285,25 +345,19 @@
             </div>
             <div class="modal-body bg-light rounded-bottom-4" style="max-height: 400px; overflow-y: auto;">
                 <div class="changelog-item">
+                    <div class="changelog-date">2025/12/17</div>
+                    <div class="changelog-ver">v3.0</div>
+                    <div class="changelog-desc">
+                        • 新增深色模式 (Dark Mode)<br>
+                        • 歷史紀錄新增搜尋與月份篩選<br>
+                        • 介面優化
+                    </div>
+                </div>
+                <div class="changelog-item">
                     <div class="changelog-date">2025/12/16</div>
                     <div class="changelog-ver">v2.7</div>
                     <div class="changelog-desc">
-                        • 修正出帳提醒邏輯：嚴格檢查本期帳單是否已存在，解決玉山/台新誤判問題。
-                    </div>
-                </div>
-                <div class="changelog-item">
-                    <div class="changelog-date">2025/12/06</div>
-                    <div class="changelog-ver">v2.6</div>
-                    <div class="changelog-desc">
-                        • 新增「本期無帳單」忽略功能<br>
-                        • 列表隱藏已略過的帳單
-                    </div>
-                </div>
-                <div class="changelog-item">
-                    <div class="changelog-date">2025/12/06</div>
-                    <div class="changelog-ver">v2.5.1</div>
-                    <div class="changelog-desc">
-                        • 調整首頁按鈕邏輯：右上角圖示強制回到網址首頁
+                        • 修正出帳提醒邏輯：嚴格檢查本期帳單是否已存在。
                     </div>
                 </div>
             </div>
@@ -340,9 +394,29 @@
     const loadingOverlay = document.getElementById('loadingOverlay');
     
     checkLock(); loadLocal();
+    initDarkMode(); // 初始化深色模式
     document.getElementById('inputBinId').value = binId;
     document.getElementById('inputApiKey').value = apiKey;
     document.getElementById('addDate').value = new Date().toISOString().split('T')[0];
+
+    // --- 深色模式邏輯 ---
+    function initDarkMode() {
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark') {
+            document.body.setAttribute('data-theme', 'dark');
+            document.getElementById('darkModeSwitch').checked = true;
+        }
+    }
+    function toggleDarkMode() {
+        const isDark = document.getElementById('darkModeSwitch').checked;
+        if (isDark) {
+            document.body.setAttribute('data-theme', 'dark');
+            localStorage.setItem('theme', 'dark');
+        } else {
+            document.body.removeAttribute('data-theme');
+            localStorage.setItem('theme', 'light');
+        }
+    }
 
     function showVersionModal() { versionModal.show(); }
     function updateSyncStatus() { const t = localStorage.getItem('last_sync_time'); document.getElementById('syncStatus').textContent = t ? t : '未同步'; }
@@ -354,29 +428,74 @@
         document.querySelectorAll('.nav-btn, .side-btn').forEach(el => el.classList.remove('active'));
         document.querySelectorAll(`[onclick="switchPage('${p}')"]`).forEach(el => el.classList.add('active'));
         if(p === 'analysis') updateCharts();
+        if(p === 'history') { updateHistoryFilterOptions(); renderHistory(); }
         if(p === 'dashboard') window.scrollTo(0,0);
     }
 
+    // --- 歷史紀錄搜尋與篩選 ---
+    function updateHistoryFilterOptions() {
+        const select = document.getElementById('historyYearMonth');
+        const currentVal = select.value;
+        const years = new Set();
+        data.bills.forEach(b => {
+            if(b.status === 'paid' || b.status === 'skipped') {
+                years.add(b.date.substring(0, 7)); // YYYY-MM
+            }
+        });
+        const sortedYears = Array.from(years).sort().reverse();
+        
+        let html = '<option value="all">全部時間</option>';
+        sortedYears.forEach(ym => {
+            html += `<option value="${ym}">${ym}</option>`;
+        });
+        select.innerHTML = html;
+        select.value = currentVal; // 保持原本選擇
+    }
+
+    function renderHistory() {
+        const pList = document.getElementById('paidList');
+        const emptyMsg = document.getElementById('historyEmptyMsg');
+        const searchTerm = document.getElementById('historySearch').value.toLowerCase();
+        const filterYM = document.getElementById('historyYearMonth').value;
+        
+        pList.innerHTML = '';
+        
+        // 篩選邏輯
+        const paids = data.bills.filter(b => (b.status === 'paid' || b.status === 'skipped')).sort((a,b) => new Date(b.date) - new Date(a.date));
+        
+        let hasData = false;
+        paids.forEach(b => {
+            // 1. 關鍵字搜尋
+            if (searchTerm && !b.name.toLowerCase().includes(searchTerm)) return;
+            // 2. 年月篩選
+            if (filterYM !== 'all' && !b.date.startsWith(filterYM)) return;
+
+            hasData = true;
+            let statusBadge = b.status === 'skipped' ? '<span class="badge bg-secondary">略過</span>' : '';
+            let textClass = b.status === 'skipped' ? 'text-muted text-decoration-line-through' : 'text-decoration-line-through';
+            
+            pList.innerHTML += `<div class="bill-item d-flex align-items-center justify-content-between opacity-75"><div class="d-flex align-items-center"><div class="fw-bold text-secondary ps-2">${b.name} ${statusBadge}</div><div class="small text-muted ms-2">${b.date}</div></div><div class="text-end"><div class="${textClass}">$${b.amount.toLocaleString()}</div><div onclick="deleteBill(${b.id})" class="text-danger small" style="cursor:pointer;">刪除</div></div></div>`;
+        });
+
+        emptyMsg.style.display = hasData ? 'none' : 'block';
+    }
+
     function render() {
-        const uList = document.getElementById('unpaidList'), pList = document.getElementById('paidList'), emptyMsg = document.getElementById('emptyMsg');
-        uList.innerHTML = ''; pList.innerHTML = '';
+        const uList = document.getElementById('unpaidList'), emptyMsg = document.getElementById('emptyMsg');
+        uList.innerHTML = '';
         
         const unpaids = data.bills.filter(b => b.status === 'unpaid').sort((a,b) => new Date(a.date) - new Date(b.date));
-        const paids = data.bills.filter(b => b.status === 'paid').sort((a,b) => new Date(b.date) - new Date(a.date));
 
         unpaids.forEach(b => {
             const d = Math.ceil((new Date(b.date) - new Date().setHours(0,0,0,0)) / 86400000);
             let badgeClass = d < 0 ? 'bg-urgent' : d <= 3 ? 'bg-soon' : 'bg-normal';
             let badgeText = d < 0 ? `過期 ${Math.abs(d)} 天` : `剩 ${d} 天`;
             let iconClass = getBankIcon(b.name);
-            uList.innerHTML += `<div class="bill-item d-flex align-items-center justify-content-between"><div class="d-flex align-items-center"><div class="bill-icon"><i class="${iconClass}"></i></div><div><div class="fw-bold text-dark">${b.name}</div><div class="small text-muted">${b.date.slice(5)} 截止</div></div></div><div class="text-end"><div class="fw-bold mb-1" style="font-size: 1.1rem;">$${b.amount.toLocaleString()}</div><div class="badge-pill ${badgeClass} d-inline-block mb-1">${badgeText}</div><div onclick="markAsPaid(${b.id})" class="text-success small cursor-pointer" style="cursor:pointer;"><i class="far fa-check-circle"></i> 標記已繳</div></div></div>`;
-        });
-
-        paids.forEach(b => {
-            pList.innerHTML += `<div class="bill-item d-flex align-items-center justify-content-between opacity-50"><div class="d-flex align-items-center"><div class="fw-bold text-secondary ps-2">${b.name}</div></div><div class="text-end"><div class="text-decoration-line-through">$${b.amount.toLocaleString()}</div><div onclick="deleteBill(${b.id})" class="text-danger small" style="cursor:pointer;">刪除</div></div></div>`;
+            uList.innerHTML += `<div class="bill-item d-flex align-items-center justify-content-between"><div class="d-flex align-items-center"><div class="bill-icon"><i class="${iconClass}"></i></div><div><div class="fw-bold text-dark">${b.name}</div><div class="small text-muted">${b.date.slice(5)} 截止</div></div></div><div class="text-end"><div class="fw-bold mb-1 text-dark" style="font-size: 1.1rem;">$${b.amount.toLocaleString()}</div><div class="badge-pill ${badgeClass} d-inline-block mb-1">${badgeText}</div><div onclick="markAsPaid(${b.id})" class="text-success small cursor-pointer" style="cursor:pointer;"><i class="far fa-check-circle"></i> 標記已繳</div></div></div>`;
         });
 
         renderTotal(); emptyMsg.style.display = unpaids.length ? 'none' : 'block'; checkAlerts(); renderSettings(); updateSyncStatus();
+        renderHistory(); // 同步刷新歷史
     }
 
     function getBankIcon(name) {
@@ -391,24 +510,17 @@
 
     function renderTotal() { document.getElementById('displayTotal').textContent = !isPrivacyOn ? '$' + data.bills.filter(b => b.status === 'unpaid').reduce((s,b) => s + b.amount, 0).toLocaleString() : '$****'; }
 
-    // ✅ v2.7 修正：出帳日提醒邏輯
     function checkAlerts() {
         const box = document.getElementById('statementAlerts'); box.innerHTML = '';
         const today = new Date().getDate();
-        const now = new Date(); // 今天日期
+        const now = new Date();
 
         data.cards.forEach(c => {
             if (today >= c.day) {
-                // 定義：這個月的出帳日
-                // 例如今天 12/16，出帳日 14 號，那本期出帳日就是 12/14
                 const expectedStatementDate = new Date(now.getFullYear(), now.getMonth(), c.day);
-                
-                // 檢查：有沒有任何一筆帳單的「截止日」是晚於「本期出帳日」的？
-                // (因為帳單截止日一定晚於出帳日，如果有抓到，代表系統裡有新帳單了)
                 const hasNewBill = data.bills.some(b => {
                     if (!b.name.includes(c.name)) return false;
                     const billDueDate = new Date(b.date);
-                    // 只要帳單截止日 > 本期出帳日，就當作是新的
                     return billDueDate > expectedStatementDate; 
                 });
 
@@ -428,21 +540,11 @@
 
     function markAsSkipped(cardName) {
         if(!confirm(`確認標記 ${cardName} 本期無帳單？`)) return;
-        // 建立一筆 0 元略過帳單，日期設為今天 + 20天 (確保大於出帳日)
         const d = new Date(); d.setDate(d.getDate() + 20);
         const futureDateStr = d.toISOString().split('T')[0];
-        
-        const newBill = {
-            id: Date.now(),
-            name: cardName + "(無帳單)",
-            amount: 0,
-            date: futureDateStr, // 設定一個未來的截止日，確保下次檢查會過
-            status: 'skipped'
-        };
+        const newBill = { id: Date.now(), name: cardName + "(無帳單)", amount: 0, date: futureDateStr, status: 'skipped' };
         data.bills.push(newBill);
-        saveLocal();
-        render();
-        syncData('upload');
+        saveLocal(); render(); syncData('upload');
     }
 
     let cardChart, monthChart;

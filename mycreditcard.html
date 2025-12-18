@@ -12,100 +12,86 @@
     
     <style>
         :root {
-            /* 🌞 淺色模式變數 */
             --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --bg-body: #f0f2f5;
-            --bg-card: #ffffff;
-            --bg-input: #f8f9fa;
-            --bg-icon: #f0f2f5;
-            --text-main: #2d3748;
-            --text-sub: #718096;
+            --bg-color: #f8f9fa;
+            --card-bg: #ffffff;
+            --input-bg: #f8f9fa;
+            --text-color: #2d3748;
+            --text-muted: #6c757d;
             --border-color: rgba(0,0,0,0.05);
-            --shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            --shadow-color: rgba(0,0,0,0.05);
+            --sidebar-bg: #ffffff;
         }
 
-        /* 🌙 深色模式變數 (強制覆蓋) */
+        /* 🌙 深色模式變數 (精心調色) */
         [data-theme="dark"] {
-            --bg-body: #121212;        /* 極深灰背景 */
-            --bg-card: #1e1e1e;        /* 卡片背景 */
-            --bg-input: #2c2c2c;       /* 輸入框背景 */
-            --bg-icon: #2c2c2c;        /* 圖示背景 */
-            --text-main: #e2e8f0;      /* 淺灰白文字 */
-            --text-sub: #a0aec0;       /* 靜音文字 */
-            --border-color: #333333;   /* 深色邊框 */
-            --shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            --bg-color: #111827;       /* 極深藍黑 (背景) */
+            --card-bg: #1f2937;        /* 深灰藍 (卡片) */
+            --input-bg: #374151;       /* 淺一點的灰 (輸入框) */
+            --text-color: #f9fafb;     /* 亮白 (主要文字) */
+            --text-muted: #9ca3af;     /* 淺灰 (次要文字) */
+            --border-color: #374151;   /* 邊框 */
+            --shadow-color: rgba(0,0,0,0.3);
+            --sidebar-bg: #1f2937;
         }
 
         /* 全域設定 */
-        body { 
-            background-color: var(--bg-body); 
-            color: var(--text-main); 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif; 
-            padding-bottom: 90px; 
-            user-select: none; 
-            -webkit-user-select: none; 
-            transition: background-color 0.3s, color 0.3s; 
-        }
-
-        /* 🌙 強制覆蓋 Bootstrap 的預設樣式 (關鍵修正) */
-        [data-theme="dark"] .bg-light { background-color: var(--bg-input) !important; color: var(--text-main) !important; }
-        [data-theme="dark"] .bg-white { background-color: var(--bg-card) !important; color: var(--text-main) !important; }
-        [data-theme="dark"] .text-dark { color: var(--text-main) !important; }
-        [data-theme="dark"] .text-muted { color: var(--text-sub) !important; }
-        [data-theme="dark"] .text-secondary { color: var(--text-sub) !important; }
+        body { background-color: var(--bg-color); color: var(--text-color); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif; padding-bottom: 90px; user-select: none; -webkit-user-select: none; transition: background-color 0.3s, color 0.3s; }
+        
+        /* 🔧 強制覆蓋 Bootstrap 樣式 (關鍵修正) */
+        [data-theme="dark"] .bg-light { background-color: var(--input-bg) !important; }
+        [data-theme="dark"] .bg-white { background-color: var(--card-bg) !important; }
+        [data-theme="dark"] .text-dark { color: var(--text-color) !important; }
+        [data-theme="dark"] .text-secondary { color: var(--text-muted) !important; }
+        [data-theme="dark"] .text-muted { color: var(--text-muted) !important; }
         [data-theme="dark"] .border { border-color: var(--border-color) !important; }
         
-        [data-theme="dark"] .form-control, 
-        [data-theme="dark"] .form-select {
-            background-color: var(--bg-input);
-            border-color: var(--border-color);
-            color: var(--text-main);
+        /* 卡片與元件優化 */
+        .card, .modal-content, .bill-item {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 6px var(--shadow-color);
+            transition: background-color 0.3s, border-color 0.3s;
         }
-        [data-theme="dark"] .form-control::placeholder { color: #666; }
         
-        [data-theme="dark"] .modal-content { background-color: var(--bg-card); border: 1px solid var(--border-color); }
-        [data-theme="dark"] .modal-header, [data-theme="dark"] .modal-footer { border-color: var(--border-color); }
-        [data-theme="dark"] .btn-close { filter: invert(1) grayscale(100%) brightness(200%); } /* 讓關閉按鈕變白 */
-
-        /* 組件樣式 */
         .header-card {
             background: var(--primary-gradient); color: white;
             border-radius: 0 0 30px 30px;
             padding: 60px 20px 30px 20px;
-            box-shadow: 0 4px 20px rgba(118, 75, 162, 0.3);
+            box-shadow: 0 4px 20px rgba(118, 75, 162, 0.4);
             margin-bottom: 20px;
+            position: relative;
         }
-        
-        .card { background-color: var(--bg-card); border: none; }
 
-        .bill-item { 
-            background: var(--bg-card); 
-            border-radius: 16px; 
-            margin-bottom: 12px; 
-            padding: 15px; 
-            box-shadow: var(--shadow); 
-            transition: transform 0.1s; 
-            border: 1px solid var(--border-color); 
-        }
+        .bill-item { border-radius: 16px; margin-bottom: 12px; padding: 15px; }
         .bill-item:active { transform: scale(0.98); }
+        .bill-icon { width: 45px; height: 45px; border-radius: 12px; background: var(--input-bg); color: #667eea; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; margin-right: 15px; }
         
-        .bill-icon { 
-            width: 45px; height: 45px; 
-            border-radius: 12px; 
-            background: var(--bg-icon); 
-            color: #667eea; 
-            display: flex; align-items: center; justify-content: center; 
-            font-size: 1.2rem; margin-right: 15px; 
+        /* 輸入框深色優化 */
+        .form-control, .form-select {
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
         }
-
+        .form-control:focus, .form-select:focus {
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.25);
+        }
+        .form-control::placeholder { color: var(--text-muted); opacity: 0.7; }
+        
+        /* 底部導航與側邊欄 */
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; width: 100%;
-            background: var(--bg-card); 
+            background: var(--card-bg); 
             border-top: 1px solid var(--border-color); padding: 12px 0;
             display: flex; justify-content: space-around; z-index: 1000;
             padding-bottom: max(12px, env(safe-area-inset-bottom));
+            transition: background-color 0.3s;
         }
-        .nav-btn { text-align: center; color: var(--text-sub); font-size: 0.75rem; background: none; border: none; flex: 1; }
+        .nav-btn { text-align: center; color: var(--text-muted); font-size: 0.75rem; background: none; border: none; flex: 1; }
         .nav-btn.active { color: #764ba2; font-weight: 600; }
         .nav-btn i { font-size: 1.4rem; display: block; margin-bottom: 4px; }
 
@@ -116,52 +102,52 @@
             .sidebar {
                 display: flex; flex-direction: column;
                 position: fixed; top: 0; left: 0; width: 260px; height: 100vh;
-                background: var(--bg-card); border-right: 1px solid var(--border-color); z-index: 1000;
-                padding: 30px 20px;
+                background: var(--sidebar-bg); border-right: 1px solid var(--border-color); z-index: 1000;
+                padding: 30px 20px; transition: background-color 0.3s;
             }
+            .sidebar-title { font-size: 1.5rem; font-weight: 800; color: var(--text-color); margin-bottom: 40px; padding-left: 10px; display: flex; align-items: center; cursor: pointer; }
+            .sidebar-title i { color: #667eea; margin-right: 10px; }
             .side-btn {
                 text-align: left; padding: 15px 20px; margin-bottom: 8px;
-                border-radius: 12px; color: var(--text-sub); font-size: 1rem; font-weight: 500;
+                border-radius: 12px; color: var(--text-muted); font-size: 1rem; font-weight: 500;
                 background: none; border: none; transition: 0.2s; display: flex; align-items: center;
             }
-            .side-btn:hover { background: var(--bg-input); color: #667eea; }
-            .side-btn.active { background: var(--bg-input); color: #667eea; font-weight: 600; }
+            .side-btn:hover { background: rgba(102, 126, 234, 0.1); color: #667eea; }
+            .side-btn.active { background: rgba(102, 126, 234, 0.1); color: #667eea; font-weight: 600; }
             .container { max-width: 1000px !important; padding-top: 30px; }
             .header-card { border-radius: 20px; margin-top: 0; padding: 40px; display: flex; align-items: center; justify-content: space-between; text-align: left; }
             .header-card .text-center { text-align: left !important; }
             .header-card .d-flex.justify-content-center { justify-content: flex-end !important; }
         }
 
-        .version-link { color: var(--text-sub); font-size: 0.8rem; padding: 10px; cursor: pointer; text-decoration: none; display: inline-block; }
-        .changelog-item { border-left: 2px solid var(--border-color); padding-left: 20px; margin-bottom: 15px; }
-        .changelog-date { font-size: 0.75rem; color: var(--text-sub); }
-        .changelog-ver { font-weight: bold; color: var(--text-main); }
-        .changelog-desc { font-size: 0.9rem; color: var(--text-sub); }
+        .version-link { color: var(--text-muted); font-size: 0.8rem; padding: 10px; cursor: pointer; transition: 0.2s; text-decoration: none; display: inline-block; }
+        .version-link:hover { color: #667eea; }
+        .changelog-item { position: relative; padding-left: 20px; margin-bottom: 15px; border-left: 2px solid var(--border-color); }
+        .changelog-date { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 2px; }
+        .changelog-ver { font-weight: bold; color: var(--text-color); font-size: 0.95rem; }
+        .changelog-desc { font-size: 0.9rem; color: var(--text-muted); line-height: 1.5; }
 
-        /* Badge Colors */
-        .bg-urgent { background: #fee2e2; color: #dc2626; }
-        .bg-soon { background: #fef3c7; color: #d97706; }
-        .bg-normal { background: #e0e7ff; color: #4338ca; }
+        /* Badge Pills */
+        .badge-pill { padding: 5px 10px; border-radius: 20px; font-weight: normal; font-size: 0.75rem; }
+        .bg-urgent { background: rgba(220, 38, 38, 0.15); color: #ef4444; }
+        .bg-soon { background: rgba(217, 119, 6, 0.15); color: #f59e0b; }
+        .bg-normal { background: rgba(79, 70, 229, 0.15); color: #6366f1; }
         
-        /* 🌙 Badge Dark Mode Override */
-        [data-theme="dark"] .bg-urgent { background: #451a1a; color: #fca5a5; }
-        [data-theme="dark"] .bg-soon { background: #422006; color: #fdba74; }
-        [data-theme="dark"] .bg-normal { background: #1e1b4b; color: #a5b4fc; }
-
+        /* Animation */
         .page-section { display: none; animation: fadeIn 0.3s; }
         .page-section.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* PIN Lock Overlay */
-        #pinOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-card); z-index: 99999; display: none; flex-direction: column; justify-content: center; align-items: center; color: var(--text-main); }
-        .pin-dots { display: flex; gap: 15px; margin-bottom: 40px; }
-        .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--bg-input); transition: 0.2s; }
-        .dot.active { background: #764ba2; transform: scale(1.2); }
-        .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; width: 280px; }
-        .key-btn { width: 70px; height: 70px; border-radius: 35px; background: var(--bg-input); border: none; font-size: 1.5rem; color: var(--text-main); display: flex; align-items: center; justify-content: center; margin: 0 auto; box-shadow: var(--shadow); }
-        .key-btn:active { background: var(--border-color); }
         
-        #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9998; display: none; flex-direction: column; justify-content: center; align-items: center; color: white; }
+        /* PIN Overlay */
+        #pinOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); z-index: 99999; display: none; flex-direction: column; justify-content: center; align-items: center; color: var(--text-color); }
+        .key-btn { width: 70px; height: 70px; border-radius: 35px; background: var(--input-bg); border: 1px solid var(--border-color); font-size: 1.5rem; font-weight: 500; color: var(--text-color); display: flex; align-items: center; justify-content: center; margin: 0 auto; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .key-btn:active { background: var(--border-color); }
+        .pin-dots { display: flex; gap: 15px; margin-bottom: 40px; }
+        .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--input-bg); border: 1px solid var(--border-color); transition: 0.2s; }
+        .dot.active { background: #764ba2; border-color: #764ba2; transform: scale(1.2); }
+        .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; width: 280px; }
+        
+        #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 9998; display: none; flex-direction: column; justify-content: center; align-items: center; color: white; }
     </style>
 </head>
 <body>
@@ -170,18 +156,18 @@
     <div class="mb-5 text-center">
         <div class="mb-3"><i class="fas fa-shield-alt fa-3x text-primary" style="background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent;"></i></div>
         <h5 class="fw-bold">歡迎回來</h5>
-        <p class="small opacity-50">請輸入 6 位數安全密碼</p>
+        <p class="small opacity-75">請輸入 6 位數安全密碼</p>
     </div>
     <div class="pin-dots"><div class="dot" id="d1"></div><div class="dot" id="d2"></div><div class="dot" id="d3"></div><div class="dot" id="d4"></div><div class="dot" id="d5"></div><div class="dot" id="d6"></div></div>
     <div class="keypad">
         <button class="key-btn" onclick="pressKey(1)">1</button><button class="key-btn" onclick="pressKey(2)">2</button><button class="key-btn" onclick="pressKey(3)">3</button>
         <button class="key-btn" onclick="pressKey(4)">4</button><button class="key-btn" onclick="pressKey(5)">5</button><button class="key-btn" onclick="pressKey(6)">6</button>
         <button class="key-btn" onclick="pressKey(7)">7</button><button class="key-btn" onclick="pressKey(8)">8</button><button class="key-btn" onclick="pressKey(9)">9</button>
-        <button class="key-btn text-muted" style="font-size: 1rem;" onclick="pressKey('clear')">清除</button><button class="key-btn" onclick="pressKey(0)">0</button><button class="key-btn text-danger" onclick="pressKey('del')"><i class="fas fa-backspace"></i></button>
+        <button class="key-btn opacity-75" style="font-size: 1rem;" onclick="pressKey('clear')">清除</button><button class="key-btn" onclick="pressKey(0)">0</button><button class="key-btn text-danger" onclick="pressKey('del')"><i class="fas fa-backspace"></i></button>
     </div>
 </div>
 
-<div id="loadingOverlay"><div class="spinner-border text-primary" role="status"></div><div class="mt-3 fw-bold small">資料同步中...</div></div>
+<div id="loadingOverlay"><div class="spinner-border text-light" role="status"></div><div class="mt-3 fw-bold small">資料同步中...</div></div>
 
 <div class="sidebar">
     <div class="sidebar-title" onclick="goToHome()"><i class="fas fa-wallet"></i> 卡片管家 Pro</div>
@@ -191,7 +177,7 @@
     <button class="side-btn" onclick="switchPage('settings')"><i class="fas fa-cog"></i> 設定</button>
     <div style="margin-top: auto;">
         <div class="version-link" onclick="showVersionModal()">
-            <i class="fas fa-info-circle me-1"></i> 版本 v3.1 (優化版)
+            <i class="fas fa-info-circle me-1"></i> 版本 v3.1 (Dark)
         </div>
     </div>
 </div>
@@ -223,7 +209,7 @@
     <div class="container px-3">
         <div id="statementAlerts"></div>
         <div class="d-flex justify-content-between align-items-center mb-3 px-1">
-            <h6 class="fw-bold text-muted mb-0">待繳帳單</h6>
+            <h6 class="fw-bold text-secondary mb-0">待繳帳單</h6>
             <button class="btn btn-sm btn-light text-primary rounded-pill px-3 fw-bold shadow-sm" onclick="showAddModal()"><i class="fas fa-plus small me-1"></i> 新增</button>
         </div>
         <div class="row">
@@ -251,7 +237,6 @@
                 </select>
             </div>
         </div>
-
         <div id="paidList"></div>
         <div id="historyEmptyMsg" class="text-center py-5 text-muted" style="display:none;">
             <p>查無符合的紀錄</p>
@@ -264,7 +249,7 @@
         <h5 class="fw-bold mb-4 px-1">年度消費分析</h5>
         <div class="row g-4">
             <div class="col-md-4">
-                <div class="card shadow-sm rounded-4 h-100">
+                <div class="card border-0 shadow-sm rounded-4 h-100">
                     <div class="card-body text-center py-5 d-flex flex-column justify-content-center">
                         <small class="text-muted text-uppercase mb-2">今年度累計消費</small>
                         <h2 class="fw-bold text-primary display-5" id="yearlyTotal">$0</h2>
@@ -272,7 +257,7 @@
                 </div>
             </div>
             <div class="col-md-8">
-                <div class="card shadow-sm rounded-4 h-100">
+                <div class="card border-0 shadow-sm rounded-4 h-100">
                     <div class="card-body">
                         <h6 class="fw-bold mb-3 small text-muted">每月支出趨勢</h6>
                         <div style="height: 300px;"><canvas id="monthChart"></canvas></div>
@@ -280,7 +265,7 @@
                 </div>
             </div>
             <div class="col-12">
-                <div class="card shadow-sm rounded-4">
+                <div class="card border-0 shadow-sm rounded-4">
                     <div class="card-body">
                         <h6 class="fw-bold mb-3 small text-muted">各銀行佔比</h6>
                         <div style="height: 300px; position: relative;"><canvas id="cardChart"></canvas></div>
@@ -296,7 +281,7 @@
         <h5 class="fw-bold mb-4 px-1">設定</h5>
         <div class="row g-4">
             <div class="col-12">
-                <div class="card shadow-sm rounded-4">
+                <div class="card border-0 shadow-sm rounded-4">
                     <div class="card-body d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="fw-bold mb-1"><i class="fas fa-moon text-secondary me-2"></i>深色模式</h6>
@@ -310,7 +295,7 @@
             </div>
 
             <div class="col-md-6">
-                <div class="card shadow-sm rounded-4 h-100">
+                <div class="card border-0 shadow-sm rounded-4 h-100">
                     <div class="card-body">
                         <h6 class="fw-bold mb-3"><i class="fas fa-lock text-warning me-2"></i>安全鎖</h6>
                         <div class="input-group mb-2">
@@ -322,17 +307,17 @@
                 </div>
             </div>
             <div class="col-md-6">
-                <div class="card shadow-sm rounded-4 h-100">
+                <div class="card border-0 shadow-sm rounded-4 h-100">
                     <div class="card-body">
                         <h6 class="fw-bold mb-3"><i class="fas fa-cloud text-primary me-2"></i>雲端同步</h6>
-                        <input type="text" class="form-control mb-2" id="inputBinId" placeholder="Bin ID">
-                        <input type="password" class="form-control mb-3" id="inputApiKey" placeholder="API Key">
+                        <input type="text" class="form-control bg-light border-0 mb-2" id="inputBinId" placeholder="Bin ID">
+                        <input type="password" class="form-control bg-light border-0 mb-3" id="inputApiKey" placeholder="API Key">
                         <button class="btn btn-primary w-100 rounded-pill" onclick="saveKeys()">儲存金鑰</button>
                     </div>
                 </div>
             </div>
             <div class="col-12">
-                <div class="card shadow-sm rounded-4">
+                <div class="card border-0 shadow-sm rounded-4">
                     <div class="card-body">
                         <h6 class="fw-bold mb-3"><i class="fas fa-calendar-alt text-success me-2"></i>出帳日提醒</h6>
                         <div class="input-group mb-3">
@@ -362,7 +347,7 @@
 
 <div class="modal fade" id="addModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content rounded-4 shadow">
+        <div class="modal-content border-0 rounded-4 shadow">
             <div class="modal-header border-0"><h5 class="modal-title fw-bold">記一筆</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <form id="addForm">
@@ -378,17 +363,18 @@
 
 <div class="modal fade" id="versionModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-sm">
-        <div class="modal-content rounded-4 shadow">
+        <div class="modal-content border-0 rounded-4 shadow">
             <div class="modal-header border-0">
                 <h5 class="modal-title fw-bold"><i class="fas fa-history text-primary me-2"></i>更新日誌</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body bg-light rounded-bottom-4" style="max-height: 400px; overflow-y: auto;">
+            <div class="modal-body rounded-bottom-4" style="max-height: 400px; overflow-y: auto;">
                 <div class="changelog-item">
                     <div class="changelog-date">2025/12/17</div>
                     <div class="changelog-ver">v3.1</div>
                     <div class="changelog-desc">
-                        • 優化深色模式：修正輸入框、文字對比度、背景顏色異常問題。
+                        • 修正深色模式：優化輸入框、彈窗與文字對比度<br>
+                        • 解決文字被背景遮擋問題
                     </div>
                 </div>
             </div>
@@ -403,8 +389,8 @@
     let apiKey = localStorage.getItem('jsonbin_api_key') || '';
     let isPrivacyOn = false;
     let pinBuffer = "";
-    
     const HOME_URL = "https://chianghf99.github.io/my-wallet/";
+
     function goToHome() { window.location.href = HOME_URL; }
     function checkLock() { if(localStorage.getItem('app_pin')) { document.getElementById('pinOverlay').style.display='flex'; pinBuffer=""; updateDots(); } }
     function pressKey(key) {
@@ -423,22 +409,26 @@
     const versionModal = new bootstrap.Modal(document.getElementById('versionModal'));
     const loadingOverlay = document.getElementById('loadingOverlay');
     
-    checkLock(); loadLocal(); initDarkMode();
+    checkLock(); loadLocal();
+    initDarkMode();
     document.getElementById('inputBinId').value = binId;
     document.getElementById('inputApiKey').value = apiKey;
     document.getElementById('addDate').value = new Date().toISOString().split('T')[0];
 
     function initDarkMode() {
-        const savedTheme = localStorage.getItem('theme');
-        if (savedTheme === 'dark') {
+        if (localStorage.getItem('theme') === 'dark') {
             document.body.setAttribute('data-theme', 'dark');
             document.getElementById('darkModeSwitch').checked = true;
         }
     }
     function toggleDarkMode() {
-        const isDark = document.getElementById('darkModeSwitch').checked;
-        if (isDark) { document.body.setAttribute('data-theme', 'dark'); localStorage.setItem('theme', 'dark'); } 
-        else { document.body.removeAttribute('data-theme'); localStorage.setItem('theme', 'light'); }
+        if (document.getElementById('darkModeSwitch').checked) {
+            document.body.setAttribute('data-theme', 'dark');
+            localStorage.setItem('theme', 'dark');
+        } else {
+            document.body.removeAttribute('data-theme');
+            localStorage.setItem('theme', 'light');
+        }
     }
 
     function showVersionModal() { versionModal.show(); }
@@ -480,7 +470,7 @@
             hasData = true;
             let statusBadge = b.status === 'skipped' ? '<span class="badge bg-secondary">略過</span>' : '';
             let textClass = b.status === 'skipped' ? 'text-muted text-decoration-line-through' : 'text-decoration-line-through';
-            pList.innerHTML += `<div class="bill-item d-flex align-items-center justify-content-between opacity-75"><div class="d-flex align-items-center"><div class="fw-bold text-main ps-2">${b.name} ${statusBadge}</div><div class="small text-muted ms-2">${b.date}</div></div><div class="text-end"><div class="${textClass}">$${b.amount.toLocaleString()}</div><div onclick="deleteBill(${b.id})" class="text-danger small" style="cursor:pointer;">刪除</div></div></div>`;
+            pList.innerHTML += `<div class="bill-item d-flex align-items-center justify-content-between opacity-75"><div class="d-flex align-items-center"><div class="fw-bold text-secondary ps-2">${b.name} ${statusBadge}</div><div class="small text-muted ms-2">${b.date}</div></div><div class="text-end"><div class="${textClass}">$${b.amount.toLocaleString()}</div><div onclick="deleteBill(${b.id})" class="text-danger small" style="cursor:pointer;">刪除</div></div></div>`;
         });
         emptyMsg.style.display = hasData ? 'none' : 'block';
     }
@@ -493,25 +483,31 @@
             const d = Math.ceil((new Date(b.date) - new Date().setHours(0,0,0,0)) / 86400000);
             let badgeClass = d < 0 ? 'bg-urgent' : d <= 3 ? 'bg-soon' : 'bg-normal';
             let badgeText = d < 0 ? `過期 ${Math.abs(d)} 天` : `剩 ${d} 天`;
-            let iconClass = getBankIcon(b.name);
-            uList.innerHTML += `<div class="bill-item d-flex align-items-center justify-content-between"><div class="d-flex align-items-center"><div class="bill-icon"><i class="${iconClass}"></i></div><div><div class="fw-bold text-main">${b.name}</div><div class="small text-muted">${b.date.slice(5)} 截止</div></div></div><div class="text-end"><div class="fw-bold mb-1 text-main" style="font-size: 1.1rem;">$${b.amount.toLocaleString()}</div><div class="badge-pill ${badgeClass} d-inline-block mb-1">${badgeText}</div><div onclick="markAsPaid(${b.id})" class="text-success small cursor-pointer" style="cursor:pointer;"><i class="far fa-check-circle"></i> 標記已繳</div></div></div>`;
+            uList.innerHTML += `<div class="bill-item d-flex align-items-center justify-content-between"><div class="d-flex align-items-center"><div class="bill-icon"><i class="${getBankIcon(b.name)}"></i></div><div><div class="fw-bold text-dark">${b.name}</div><div class="small text-secondary">${b.date.slice(5)} 截止</div></div></div><div class="text-end"><div class="fw-bold mb-1 text-dark" style="font-size: 1.1rem;">$${b.amount.toLocaleString()}</div><div class="badge-pill ${badgeClass} d-inline-block mb-1">${badgeText}</div><div onclick="markAsPaid(${b.id})" class="text-success small cursor-pointer"><i class="far fa-check-circle"></i> 標記已繳</div></div></div>`;
         });
         renderTotal(); emptyMsg.style.display = unpaids.length ? 'none' : 'block'; checkAlerts(); renderSettings(); updateSyncStatus(); renderHistory();
     }
 
     function getBankIcon(name) {
-        if(name.includes('玉山')) return 'fas fa-mountain'; if(name.includes('富邦')) return 'fas fa-tree'; if(name.includes('國泰')) return 'fas fa-leaf'; if(name.includes('台新')) return 'fas fa-dog'; if(name.includes('永豐')) return 'fas fa-coins'; if(name.includes('彰化') || name.includes('彰銀')) return 'fas fa-landmark'; return 'fas fa-credit-card';
+        if(name.includes('玉山')) return 'fas fa-mountain';
+        if(name.includes('富邦')) return 'fas fa-tree';
+        if(name.includes('國泰')) return 'fas fa-leaf';
+        if(name.includes('台新')) return 'fas fa-dog';
+        if(name.includes('永豐')) return 'fas fa-coins';
+        if(name.includes('彰化') || name.includes('彰銀')) return 'fas fa-landmark';
+        return 'fas fa-credit-card';
     }
 
     function renderTotal() { document.getElementById('displayTotal').textContent = !isPrivacyOn ? '$' + data.bills.filter(b => b.status === 'unpaid').reduce((s,b) => s + b.amount, 0).toLocaleString() : '$****'; }
 
     function checkAlerts() {
         const box = document.getElementById('statementAlerts'); box.innerHTML = '';
-        const today = new Date().getDate(); const now = new Date();
+        const today = new Date().getDate();
+        const now = new Date();
         data.cards.forEach(c => {
             if (today >= c.day) {
                 const expectedStatementDate = new Date(now.getFullYear(), now.getMonth(), c.day);
-                const hasNewBill = data.bills.some(b => { if (!b.name.includes(c.name)) return false; const billDueDate = new Date(b.date); return billDueDate > expectedStatementDate; });
+                const hasNewBill = data.bills.some(b => b.name.includes(c.name) && new Date(b.date) > expectedStatementDate);
                 if (!hasNewBill) {
                     box.innerHTML += `<div class="alert alert-warning border-0 shadow-sm rounded-3 mb-3 d-flex align-items-center justify-content-between"><div class="d-flex align-items-center"><i class="fas fa-bell me-3 fs-4 text-warning"></i><div><strong>${c.name}</strong> 應已出帳 (${c.day}號)<br><small>尚未收到帳單</small></div></div><button class="btn btn-sm btn-outline-secondary" onclick="markAsSkipped('${c.name}')">🔕 本期無帳單</button></div>`;
                 }
@@ -536,16 +532,16 @@
         const cardMap = {}, monthMap = new Array(12).fill(0);
         yearBills.forEach(b => { let name = b.name.substring(0, 2); cardMap[name] = (cardMap[name] || 0) + b.amount; monthMap[new Date(b.date).getMonth()] += b.amount; });
         if(cardChart) cardChart.destroy();
-        cardChart = new Chart(ctxCard, { type: 'doughnut', data: { labels: Object.keys(cardMap), datasets: [{ data: Object.values(cardMap), backgroundColor: ['#667eea','#764ba2','#48bb78','#f6ad55','#f56565','#ed64a6'], borderWidth: 0 }] }, options: { plugins: { legend: { position: 'right' } }, maintainAspectRatio: false } });
+        cardChart = new Chart(ctxCard, { type: 'doughnut', data: { labels: Object.keys(cardMap), datasets: [{ data: Object.values(cardMap), backgroundColor: ['#667eea','#764ba2','#48bb78','#f6ad55','#f56565','#ed64a6'], borderWidth: 0 }] }, options: { plugins: { legend: { position: 'right', labels: { color: document.body.getAttribute('data-theme')==='dark'?'#f7fafc':'#666' } } }, maintainAspectRatio: false } });
         if(monthChart) monthChart.destroy();
-        monthChart = new Chart(ctxMonth, { type: 'bar', data: { labels: ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'], datasets: [{ label: '支出', data: monthMap, backgroundColor: '#667eea', borderRadius: 4 }] }, options: { scales: { y: { beginAtZero: true, grid: { display: false, color: document.body.getAttribute('data-theme')==='dark'?'rgba(255,255,255,0.1)':'rgba(0,0,0,0.1)' }, ticks: { color: document.body.getAttribute('data-theme')==='dark'?'#a0aec0':'#718096' } }, x: { grid: { display: false }, ticks: { color: document.body.getAttribute('data-theme')==='dark'?'#a0aec0':'#718096' } } }, plugins: { legend: { display: false } }, maintainAspectRatio: false } });
+        monthChart = new Chart(ctxMonth, { type: 'bar', data: { labels: ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'], datasets: [{ label: '支出', data: monthMap, backgroundColor: '#667eea', borderRadius: 4 }] }, options: { scales: { y: { beginAtZero: true, grid: { color: document.body.getAttribute('data-theme')==='dark'?'rgba(255,255,255,0.1)':'rgba(0,0,0,0.05)' }, ticks: { color: document.body.getAttribute('data-theme')==='dark'?'#a0aec0':'#666' } }, x: { grid: { display: false }, ticks: { color: document.body.getAttribute('data-theme')==='dark'?'#a0aec0':'#666' } } }, plugins: { legend: { display: false } }, maintainAspectRatio: false } });
     }
 
     function markAsPaid(id) { if(confirm('已繳款？')) { data.bills.find(b=>b.id===id).status='paid'; saveLocal(); render(); } }
     function deleteBill(id) { if(confirm('刪除？')) { data.bills=data.bills.filter(b=>b.id!==id); saveLocal(); render(); } }
     function addCardSetting() { const n=document.getElementById('newCardName').value, d=document.getElementById('newCardDay').value; if(n&&d){ data.cards.push({name:n, day:parseInt(d)}); saveLocal(); render(); document.getElementById('newCardName').value=''; } }
     function removeCardSetting(i) { data.cards.splice(i,1); saveLocal(); render(); }
-    function renderSettings() { const l=document.getElementById('cardSettingsList'); l.innerHTML=''; data.cards.forEach((c,i)=>l.innerHTML+=`<div class="col-md-6"><div class="p-3 border rounded-3 d-flex justify-content-between align-items-center bg-white"><span><i class="fas fa-credit-card text-muted me-2"></i>${c.name} (${c.day}號)</span><button class="btn btn-sm text-danger" onclick="removeCardSetting(${i})"><i class="fas fa-times"></i></button></div></div>`); }
+    function renderSettings() { const l=document.getElementById('cardSettingsList'); l.innerHTML=''; data.cards.forEach((c,i)=>l.innerHTML+=`<div class="col-md-6"><div class="p-3 border rounded-3 d-flex justify-content-between align-items-center bg-white"><span class="text-dark"><i class="fas fa-credit-card text-muted me-2"></i>${c.name} (${c.day}號)</span><button class="btn btn-sm text-danger" onclick="removeCardSetting(${i})"><i class="fas fa-times"></i></button></div></div>`); }
     function saveLocal() { localStorage.setItem('myCreditData', JSON.stringify(data)); }
     function loadLocal() { const s=localStorage.getItem('myCreditData'); if(s) { data=JSON.parse(s); if(Array.isArray(data)) data={bills:data,cards:[]}; } render(); }
     function saveKeys() { localStorage.setItem('jsonbin_bin_id', document.getElementById('inputBinId').value); localStorage.setItem('jsonbin_api_key', document.getElementById('inputApiKey').value); alert('✅ 金鑰已儲存'); }

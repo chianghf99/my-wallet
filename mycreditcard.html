@@ -23,22 +23,21 @@
             --sidebar-bg: #ffffff;
         }
 
-        /* 🌙 深色模式變數 (精心調色) */
+        /* 🌙 深色模式變數 */
         [data-theme="dark"] {
-            --bg-color: #111827;       /* 極深藍黑 (背景) */
-            --card-bg: #1f2937;        /* 深灰藍 (卡片) */
-            --input-bg: #374151;       /* 淺一點的灰 (輸入框) */
-            --text-color: #f9fafb;     /* 亮白 (主要文字) */
-            --text-muted: #9ca3af;     /* 淺灰 (次要文字) */
-            --border-color: #374151;   /* 邊框 */
+            --bg-color: #111827;       /* 極深藍黑 */
+            --card-bg: #1f2937;        /* 深灰藍 */
+            --input-bg: #374151;       /* 淺灰 */
+            --text-color: #f9fafb;     /* 亮白 */
+            --text-muted: #9ca3af;     /* 淺灰 */
+            --border-color: #374151;
             --shadow-color: rgba(0,0,0,0.3);
             --sidebar-bg: #1f2937;
         }
 
-        /* 全域設定 */
         body { background-color: var(--bg-color); color: var(--text-color); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif; padding-bottom: 90px; user-select: none; -webkit-user-select: none; transition: background-color 0.3s, color 0.3s; }
         
-        /* 🔧 強制覆蓋 Bootstrap 樣式 (關鍵修正) */
+        /* 強制覆蓋 Bootstrap */
         [data-theme="dark"] .bg-light { background-color: var(--input-bg) !important; }
         [data-theme="dark"] .bg-white { background-color: var(--card-bg) !important; }
         [data-theme="dark"] .text-dark { color: var(--text-color) !important; }
@@ -46,7 +45,6 @@
         [data-theme="dark"] .text-muted { color: var(--text-muted) !important; }
         [data-theme="dark"] .border { border-color: var(--border-color) !important; }
         
-        /* 卡片與元件優化 */
         .card, .modal-content, .bill-item {
             background-color: var(--card-bg);
             color: var(--text-color);
@@ -68,21 +66,10 @@
         .bill-item:active { transform: scale(0.98); }
         .bill-icon { width: 45px; height: 45px; border-radius: 12px; background: var(--input-bg); color: #667eea; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; margin-right: 15px; }
         
-        /* 輸入框深色優化 */
-        .form-control, .form-select {
-            background-color: var(--input-bg);
-            color: var(--text-color);
-            border: 1px solid var(--border-color);
-        }
-        .form-control:focus, .form-select:focus {
-            background-color: var(--input-bg);
-            color: var(--text-color);
-            border-color: #667eea;
-            box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.25);
-        }
+        .form-control, .form-select { background-color: var(--input-bg); color: var(--text-color); border: 1px solid var(--border-color); }
+        .form-control:focus, .form-select:focus { background-color: var(--input-bg); color: var(--text-color); border-color: #667eea; box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.25); }
         .form-control::placeholder { color: var(--text-muted); opacity: 0.7; }
         
-        /* 底部導航與側邊欄 */
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; width: 100%;
             background: var(--card-bg); 
@@ -127,18 +114,15 @@
         .changelog-ver { font-weight: bold; color: var(--text-color); font-size: 0.95rem; }
         .changelog-desc { font-size: 0.9rem; color: var(--text-muted); line-height: 1.5; }
 
-        /* Badge Pills */
         .badge-pill { padding: 5px 10px; border-radius: 20px; font-weight: normal; font-size: 0.75rem; }
         .bg-urgent { background: rgba(220, 38, 38, 0.15); color: #ef4444; }
         .bg-soon { background: rgba(217, 119, 6, 0.15); color: #f59e0b; }
         .bg-normal { background: rgba(79, 70, 229, 0.15); color: #6366f1; }
         
-        /* Animation */
         .page-section { display: none; animation: fadeIn 0.3s; }
         .page-section.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
-        /* PIN Overlay */
         #pinOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); z-index: 99999; display: none; flex-direction: column; justify-content: center; align-items: center; color: var(--text-color); }
         .key-btn { width: 70px; height: 70px; border-radius: 35px; background: var(--input-bg); border: 1px solid var(--border-color); font-size: 1.5rem; font-weight: 500; color: var(--text-color); display: flex; align-items: center; justify-content: center; margin: 0 auto; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .key-btn:active { background: var(--border-color); }
@@ -177,7 +161,7 @@
     <button class="side-btn" onclick="switchPage('settings')"><i class="fas fa-cog"></i> 設定</button>
     <div style="margin-top: auto;">
         <div class="version-link" onclick="showVersionModal()">
-            <i class="fas fa-info-circle me-1"></i> 版本 v3.1 (Dark)
+            <i class="fas fa-info-circle me-1"></i> 版本 v3.2
         </div>
     </div>
 </div>
@@ -332,7 +316,7 @@
         </div>
         <div class="text-center mt-4">
             <div class="version-link text-muted" onclick="showVersionModal()">
-                <i class="fas fa-info-circle me-1"></i> 卡片管家 Pro v3.1
+                <i class="fas fa-info-circle me-1"></i> 卡片管家 Pro v3.2
             </div>
         </div>
     </div>
@@ -371,10 +355,11 @@
             <div class="modal-body rounded-bottom-4" style="max-height: 400px; overflow-y: auto;">
                 <div class="changelog-item">
                     <div class="changelog-date">2025/12/17</div>
-                    <div class="changelog-ver">v3.1</div>
+                    <div class="changelog-ver">v3.2</div>
                     <div class="changelog-desc">
-                        • 修正深色模式：優化輸入框、彈窗與文字對比度<br>
-                        • 解決文字被背景遮擋問題
+                        • 新增智慧同步：30分鐘內開啟不重複下載<br>
+                        • 優化刪除邏輯：刪除後自動同步至雲端<br>
+                        • 深色模式 UI 優化
                     </div>
                 </div>
             </div>
@@ -409,11 +394,29 @@
     const versionModal = new bootstrap.Modal(document.getElementById('versionModal'));
     const loadingOverlay = document.getElementById('loadingOverlay');
     
-    checkLock(); loadLocal();
+    checkLock(); 
+    loadLocal();
     initDarkMode();
+    
+    // 智慧同步檢查 (30分鐘冷卻)
+    setTimeout(autoSyncCheck, 1000);
+
     document.getElementById('inputBinId').value = binId;
     document.getElementById('inputApiKey').value = apiKey;
     document.getElementById('addDate').value = new Date().toISOString().split('T')[0];
+
+    function autoSyncCheck() {
+        const lastSyncStr = localStorage.getItem('last_sync_timestamp');
+        const now = Date.now();
+        const COOLDOWN = 30 * 60 * 1000; // 30 mins
+        if (!binId || !apiKey) return;
+        if (!lastSyncStr || (now - parseInt(lastSyncStr) > COOLDOWN)) {
+            console.log("⏳ 執行智慧自動同步...");
+            syncData('download', true); // 靜默下載
+        } else {
+            console.log("✅ 資料尚新，略過同步");
+        }
+    }
 
     function initDarkMode() {
         if (localStorage.getItem('theme') === 'dark') {
@@ -538,25 +541,53 @@
     }
 
     function markAsPaid(id) { if(confirm('已繳款？')) { data.bills.find(b=>b.id===id).status='paid'; saveLocal(); render(); } }
-    function deleteBill(id) { if(confirm('刪除？')) { data.bills=data.bills.filter(b=>b.id!==id); saveLocal(); render(); } }
+    
+    // ✅ 修改後的刪除：自動上傳 (v3.2)
+    function deleteBill(id) { 
+        if(confirm('確定要永久刪除這筆紀錄嗎？')) { 
+            data.bills = data.bills.filter(b => b.id !== id); 
+            saveLocal(); 
+            render(); 
+            // 自動觸發靜默上傳
+            syncData('upload', true); 
+        } 
+    }
+
     function addCardSetting() { const n=document.getElementById('newCardName').value, d=document.getElementById('newCardDay').value; if(n&&d){ data.cards.push({name:n, day:parseInt(d)}); saveLocal(); render(); document.getElementById('newCardName').value=''; } }
     function removeCardSetting(i) { data.cards.splice(i,1); saveLocal(); render(); }
     function renderSettings() { const l=document.getElementById('cardSettingsList'); l.innerHTML=''; data.cards.forEach((c,i)=>l.innerHTML+=`<div class="col-md-6"><div class="p-3 border rounded-3 d-flex justify-content-between align-items-center bg-white"><span class="text-dark"><i class="fas fa-credit-card text-muted me-2"></i>${c.name} (${c.day}號)</span><button class="btn btn-sm text-danger" onclick="removeCardSetting(${i})"><i class="fas fa-times"></i></button></div></div>`); }
     function saveLocal() { localStorage.setItem('myCreditData', JSON.stringify(data)); }
     function loadLocal() { const s=localStorage.getItem('myCreditData'); if(s) { data=JSON.parse(s); if(Array.isArray(data)) data={bills:data,cards:[]}; } render(); }
     function saveKeys() { localStorage.setItem('jsonbin_bin_id', document.getElementById('inputBinId').value); localStorage.setItem('jsonbin_api_key', document.getElementById('inputApiKey').value); alert('✅ 金鑰已儲存'); }
-    async function syncData(m) {
-        if(!binId && !apiKey) return alert('請先設定金鑰');
-        loadingOverlay.style.display='flex';
+    
+    // ✅ 修改後的同步：支援 silent 參數 (v3.2)
+    async function syncData(m, silent = false) {
+        if(!binId && !apiKey) { if(!silent) alert('請先設定金鑰'); return; }
+        if(!silent) loadingOverlay.style.display='flex';
+        const statusText = document.getElementById('syncStatus');
+        if(silent) statusText.textContent = '🔄...';
+
         try {
             const url = `https://api.jsonbin.io/v3/b/${binId}`;
             if(m==='download') {
                 const res = await fetch(url+'/latest', {headers:{'X-Master-Key':apiKey}}); if(!res.ok) throw new Error();
                 const json = await res.json(); data = Array.isArray(json.record) ? {bills:json.record, cards:[]} : json.record;
-                const now = new Date(); localStorage.setItem('last_sync_time', `${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`);
-                saveLocal(); alert('✅ 同步完成');
-            } else { const res = await fetch(url, {method:'PUT', headers:{'Content-Type':'application/json','X-Master-Key':apiKey}, body:JSON.stringify(data)}); if(!res.ok) throw new Error(); alert('☁️ 已備份'); }
-        } catch(e) { alert('同步失敗'); } finally { loadingOverlay.style.display='none'; render(); }
+                const now = new Date(); 
+                localStorage.setItem('last_sync_time', `${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`);
+                localStorage.setItem('last_sync_timestamp', Date.now()); // 紀錄精確時間戳記
+                saveLocal(); 
+                if(!silent) alert('✅ 同步完成');
+            } else { 
+                const res = await fetch(url, {method:'PUT', headers:{'Content-Type':'application/json','X-Master-Key':apiKey}, body:JSON.stringify(data)}); 
+                if(!res.ok) throw new Error(); 
+                if(!silent) alert('☁️ 已備份'); 
+            }
+        } catch(e) { if(!silent) alert('同步失敗'); console.error(e); } 
+        finally { 
+            loadingOverlay.style.display='none'; 
+            render(); 
+            if(silent) setTimeout(() => updateSyncStatus(), 1000);
+        }
     }
     document.getElementById('addForm').addEventListener('submit', function(e){ e.preventDefault(); data.bills.push({id:Date.now(), name:document.getElementById('addName').value, amount:parseInt(document.getElementById('addAmount').value), date:document.getElementById('addDate').value, status:'unpaid'}); saveLocal(); render(); addModal.hide(); this.reset(); });
     function exportToExcel() { if(!data.bills.length)return alert('無資料'); const csv="卡片,金額,日期,狀態\n"+data.bills.map(b=>`"${b.name}",${b.amount},${b.date},${b.status==='paid'?'已繳':'未繳'}`).join('\n'); const l=document.createElement('a'); l.href=URL.createObjectURL(new Blob(["\ufeff"+csv],{type:'text/csv'})); l.download=`帳單.csv`; l.click(); }

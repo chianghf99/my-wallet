@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v2.8.3</title>
+    <title>我的投資組合 | Portfolio v2.9.0</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -52,6 +52,10 @@
         .sort-header { cursor: pointer; user-select: none; }
         .sort-header:hover { color: #374151; }
         .dark .sort-header:hover { color: #e5e7eb; }
+        
+        /* Note Card Style */
+        .note-card { border-left: 4px solid #3b82f6; }
+        .dark .note-card { border-left-color: #60a5fa; }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-200 transition-colors duration-300">
@@ -60,7 +64,7 @@
     <div v-if="!user" class="flex-grow flex flex-col items-center justify-center p-4">
         <div class="zen-card p-8 max-w-sm w-full text-center space-y-6">
             <div class="bg-gray-800 text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto text-2xl"><i class="fa-solid fa-chart-line"></i></div>
-            <div><h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v2.8.3</h1><p class="text-gray-500 dark:text-gray-400 text-sm mt-2">嚴格複式簿記版本：資產變動皆有據可查</p></div>
+            <div><h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v2.9.0</h1><p class="text-gray-500 dark:text-gray-400 text-sm mt-2">安全、即時、跨裝置的投資管理工具</p></div>
             <button @click="login" class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
                 <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5 mr-3" alt="Google">使用 Google 帳號登入
             </button>
@@ -74,7 +78,7 @@
                     <a href="https://chianghf99.github.io/my-wallet/" class="text-gray-400 hover:text-gray-600 dark:hover:text-white transition"><i class="fa-solid fa-home"></i></a>
                     <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                         <span class="hidden sm:inline">我的資產帳本</span>
-                        <span @click="showChangelog=true" class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v2.8.3</span>
+                        <span @click="showChangelog=true" class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v2.9.0</span>
                     </h1>
                 </div>
                 <div class="flex items-center gap-3">
@@ -115,7 +119,6 @@
                         <span v-else class="text-gray-300 dark:text-gray-600">****</span>
                     </div>
                 </div>
-                
                 <div class="zen-card p-5">
                     <div class="flex justify-between items-center mb-1"><div class="text-sm text-gray-500 dark:text-gray-400">台股部位</div><img src="https://flagcdn.com/w40/tw.png" class="w-6 shadow-sm rounded-sm"></div>
                     <div class="text-2xl font-bold dark:text-white"><span v-if="showPrivacy">{{ formatCurrency(twStats.value, 'TWD') }}</span><span v-else>****</span></div>
@@ -130,7 +133,6 @@
                     <div v-else class="mt-1 text-xs text-gray-300">****</div>
                     <div class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 text-sm flex justify-between"><span class="text-gray-500 dark:text-gray-400">損益</span><span v-if="showPrivacy" :class="getPnlClass(twStats.pnl)">{{ formatCurrency(twStats.pnl, 'TWD') }}<span class="text-xs ml-1">({{ getRoi(twStats.cost, twStats.pnl) }})</span></span><span v-else class="text-gray-300 dark:text-gray-600">****</span></div>
                 </div>
-                
                 <div class="zen-card p-5">
                     <div class="flex justify-between items-center mb-1"><div class="text-sm text-gray-500 dark:text-gray-400">美股部位</div><img src="https://flagcdn.com/w40/us.png" class="w-6 shadow-sm rounded-sm"></div>
                     <div class="text-2xl font-bold dark:text-white"><span v-if="showPrivacy">{{ formatCurrency(usStats.value, 'USD') }}</span><span v-else>****</span></div>
@@ -152,6 +154,8 @@
                 <button @click="toggleSection('pie')" :class="activeSection==='pie' ? (isDarkMode ? 'btn-active-dark' : 'btn-active-light') : 'btn-inactive'" class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i class="fa-solid fa-chart-pie mr-2"></i>資產配置</button>
                 <button @click="toggleSection('cash')" :class="activeSection==='cash' ? (isDarkMode ? 'btn-active-dark' : 'btn-active-light') : 'btn-inactive'" class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i class="fa-solid fa-wallet mr-2"></i>資金管理</button>
                 <button @click="toggleSection('transactions')" :class="activeSection==='transactions' ? (isDarkMode ? 'btn-active-dark' : 'btn-active-light') : 'btn-inactive'" class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i class="fa-solid fa-list-ul mr-2"></i>交易紀錄</button>
+                <button @click="toggleSection('notes')" :class="activeSection==='notes' ? (isDarkMode ? 'btn-active-dark' : 'btn-active-light') : 'btn-inactive'" class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i class="fa-solid fa-book mr-2"></i>投資筆記</button>
+                
                 <button @click="toggleSection('dividend')" :class="activeSection==='dividend' ? (isDarkMode ? 'btn-active-dark' : 'btn-active-light') : 'btn-inactive'" class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i class="fa-solid fa-coins mr-2"></i>股息統計</button>
                 <button @click="toggleSection('realized')" :class="activeSection==='realized' ? (isDarkMode ? 'btn-active-dark' : 'btn-active-light') : 'btn-inactive'" class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i class="fa-solid fa-file-invoice-dollar mr-2"></i>已實現損益</button>
             </div>
@@ -159,7 +163,6 @@
             <transition name="collapse">
                 <div v-if="activeSection === 'chart'" class="zen-card p-4 md:p-6 mb-8 relative">
                     <button @click="openHistoryModal" class="absolute top-4 right-4 text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-gray-800 dark:hover:text-white px-2 py-1 rounded transition"><i class="fa-solid fa-clock-rotate-left mr-1"></i>維護歷史資料</button>
-                    
                     <div class="flex flex-wrap gap-3 items-end mb-4 pb-4 border-b border-gray-100 dark:border-gray-700 pt-2">
                         <div><label class="block text-xs font-bold text-gray-500 mb-1">開始</label><input type="date" v-model="chartStartDate" class="zen-input text-sm py-1.5"></div>
                         <div><label class="block text-xs font-bold text-gray-500 mb-1">結束</label><input type="date" v-model="chartEndDate" class="zen-input text-sm py-1.5"></div>
@@ -266,6 +269,30 @@
                     </div>
                 </div>
             </transition>
+            
+            <transition name="collapse">
+                <div v-if="activeSection === 'notes'" class="zen-card p-4 md:p-6 mb-8">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold dark:text-white">投資筆記</h3>
+                        <button @click="openNoteModal(null)" class="bg-gray-800 text-white px-3 py-1 text-sm rounded hover:bg-gray-700 transition"><i class="fa-solid fa-pen-to-square mr-1"></i>新增筆記</button>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div v-for="note in notes" :key="note.id" class="zen-card p-4 note-card relative group hover:shadow-md transition">
+                            <div class="flex justify-between items-start mb-2">
+                                <div class="font-bold text-lg dark:text-white">{{ note.title }}</div>
+                                <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button @click="openNoteModal(note)" class="text-gray-400 hover:text-blue-500"><i class="fa-solid fa-pen"></i></button>
+                                    <button @click="deleteNote(note.id)" class="text-gray-400 hover:text-red-500"><i class="fa-solid fa-trash"></i></button>
+                                </div>
+                            </div>
+                            <div class="text-xs text-gray-400 mb-2">{{ note.date }}</div>
+                            <div class="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap">{{ note.content }}</div>
+                        </div>
+                    </div>
+                    <div v-if="notes.length === 0" class="text-center py-10 text-gray-400">目前沒有筆記，記錄一下投資心得吧！</div>
+                </div>
+            </transition>
 
             <transition name="collapse">
                 <div v-if="activeSection === 'dividend'" class="zen-card p-4 md:p-6 mb-8">
@@ -296,6 +323,18 @@
                 </div>
             </transition>
 
+            <transition name="collapse">
+                <div v-if="activeSection === 'realized'" class="zen-card p-4 md:p-6 mb-8">
+                    <h3 class="font-bold mb-4 dark:text-white text-center">歷史已實現損益</h3>
+                    <div class="grid grid-cols-2 gap-4 mb-4"><div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-center"><div class="text-xs text-gray-500">台股總損益</div><div class="text-lg font-bold" :class="getPnlClass(realizedTotalTw)">{{ formatCurrency(realizedTotalTw, 'TWD') }}</div></div><div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-center"><div class="text-xs text-gray-500">美股總損益</div><div class="text-lg font-bold" :class="getPnlClass(realizedTotalUs)">{{ formatCurrency(realizedTotalUs, 'USD') }}</div></div></div>
+                    <div class="flex flex-wrap gap-3 items-end mb-4 pb-4 border-b border-gray-100 dark:border-gray-700">
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">開始</label><input type="date" v-model="realizedStartDate" class="zen-input text-sm py-1.5"></div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">結束</label><input type="date" v-model="realizedEndDate" class="zen-input text-sm py-1.5"></div>
+                        <button @click="fetchRealizedGains" class="bg-gray-800 text-white px-4 py-1.5 rounded text-sm hover:bg-gray-700 h-9 mb-[1px]">查詢</button>
+                    </div>
+                    <div class="overflow-x-auto"><table class="w-full text-sm text-left"><thead class="bg-gray-100 dark:bg-gray-800 text-gray-500 uppercase font-medium"><tr><th class="px-4 py-2">日期</th><th class="px-4 py-2">標的</th><th class="px-4 py-2 text-right">獲利/虧損</th><th class="px-4 py-2 text-center">操作</th></tr></thead><tbody class="divide-y divide-gray-100 dark:divide-gray-700"><tr v-for="rec in realizedGains" :key="rec.id" class="hover:bg-gray-50 dark:hover:bg-gray-800"><td class="px-4 py-3">{{ rec.date }}</td><td class="px-4 py-3 font-bold">{{ rec.name || rec.symbol }}</td><td class="px-4 py-3 text-right font-bold" :class="getPnlClass(rec.pnl)">{{ formatCurrency(rec.pnl, rec.currency) }}</td><td class="px-4 py-3 text-center"><button @click="deleteRealized(rec.id)" class="text-gray-400 hover:text-red-500"><i class="fa-solid fa-trash-can"></i></button></td></tr></tbody></table></div></div>
+            </transition>
+
             <div class="flex justify-end mb-4">
                 <div class="flex bg-gray-200 dark:bg-gray-700 rounded p-0.5">
                     <button @click="viewMode = 'card'" :class="{'bg-white shadow dark:bg-gray-600': viewMode === 'card'}" class="px-3 py-1 rounded text-xs transition"><i class="fa-solid fa-mobile-alt"></i></button>
@@ -319,17 +358,17 @@
                     <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
                          <div class="relative pl-6">
                             <span class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-blue-500 border-4 border-white dark:border-gray-800"></span>
-                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-blue-600 dark:text-blue-400 text-lg">v2.8.3</span><span class="text-xs text-gray-400">2025/12/19</span></div>
+                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-blue-600 dark:text-blue-400 text-lg">v2.9.0</span><span class="text-xs text-gray-400">2025/12/21</span></div>
                             <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">新增</span><span>歷史資產維護功能 (可刪除特定日期的紀錄)</span></li>
-                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">修復</span><span>新增交易時代號未強制轉大寫的問題 (TQqq Bug)</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">新增</span><span>投資筆記功能 (可新增/編輯/刪除心得)</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">優化</span><span>備份功能升級，包含筆記資料</span></li>
                             </ul>
                         </div>
                          <div class="relative pl-6">
                             <span class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-4 border-white dark:border-gray-800"></span>
-                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-gray-700 dark:text-gray-200">v2.8.2</span><span class="text-xs text-gray-400">2025/12/18</span></div>
+                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-gray-700 dark:text-gray-200">v2.8.3</span><span class="text-xs text-gray-400">2025/12/19</span></div>
                             <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">重構</span><span>移除手動「新增持股」入口，統一由「新增交易」建立</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">新增</span><span>歷史資產維護功能</span></li>
                             </ul>
                         </div>
                     </div>
@@ -337,6 +376,18 @@
             </div>
         </div>
         
+        <div v-if="showNoteModalVisible" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
+                <div class="bg-gray-800 dark:bg-gray-900 text-white px-6 py-4 flex justify-between items-center"><h3 class="font-bold">{{ noteForm.id ? '編輯筆記' : '新增筆記' }}</h3><button @click="closeNoteModal" class="text-gray-300 hover:text-white"><i class="fa-solid fa-times"></i></button></div>
+                <div class="p-6 space-y-4">
+                    <div><label class="block text-xs font-bold text-gray-500 mb-1">標題</label><input type="text" v-model="noteForm.title" class="zen-input" placeholder="例如：台積電法說會心得"></div>
+                    <div><label class="block text-xs font-bold text-gray-500 mb-1">日期</label><input type="date" v-model="noteForm.date" class="zen-input"></div>
+                    <div><label class="block text-xs font-bold text-gray-500 mb-1">內容</label><textarea v-model="noteForm.content" class="zen-input h-32 resize-none" placeholder="寫下你的投資想法..."></textarea></div>
+                </div>
+                <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex justify-end gap-3"><button @click="closeNoteModal" class="px-4 py-2 rounded text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button><button @click="saveNote" class="px-6 py-2 rounded bg-gray-800 text-white font-medium hover:bg-gray-700 transition">儲存</button></div>
+            </div>
+        </div>
+
         <div v-if="showHistoryModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm overflow-hidden flex flex-col max-h-[80vh]">
                 <div class="bg-gray-800 dark:bg-gray-900 text-white px-6 py-4 flex justify-between items-center"><h3 class="font-bold">歷史資產紀錄</h3><button @click="showHistoryModal=false" class="text-gray-300 hover:text-white"><i class="fa-solid fa-times"></i></button></div>
@@ -457,6 +508,11 @@
             const showHistoryModal = ref(false);
             const historyRecords = ref([]);
             
+            // v2.9.0: Notes
+            const notes = ref([]);
+            const showNoteModalVisible = ref(false);
+            const noteForm = ref({ id: null, title: '', date: '', content: '' });
+            
             // Cash Data
             const cashData = ref({ twd: 0, usd: 0 });
 
@@ -487,6 +543,7 @@
             let unsubscribe = null;
             let unsubscribeTrans = null;
             let unsubscribeCash = null;
+            let unsubscribeNotes = null;
 
             const showModal = ref(false);
             const isEditing = ref(false);
@@ -512,13 +569,13 @@
                 const localYearStart = new Date(yearStart.getTime() - yearStart.getTimezoneOffset() * 60000).toISOString().split('T')[0];
                 
                 divEndDate.value = today; divStartDate.value = localYearStart;
-                realizedEndDate.value = today; realizedStartDate.value = localYearStart; // Default Year
-                transEndDate.value = today; transStartDate.value = past90; // Default 3 Months
+                realizedEndDate.value = today; realizedStartDate.value = localYearStart; 
+                transEndDate.value = today; transStartDate.value = past90; 
 
                 auth.onAuthStateChanged((u) => {
                     user.value = u;
-                    if (u) { loadUserData(u.uid); fetchPreviousDayData(u.uid); fetchCash(u.uid); }
-                    else { stocks.value = []; realizedGains.value = []; dividendRecords.value = []; transactionHistory.value = []; cashData.value = {twd:0, usd:0}; }
+                    if (u) { loadUserData(u.uid); fetchPreviousDayData(u.uid); fetchCash(u.uid); fetchNotes(u.uid); }
+                    else { stocks.value = []; realizedGains.value = []; dividendRecords.value = []; transactionHistory.value = []; cashData.value = {twd:0, usd:0}; notes.value = []; }
                 });
                 fetchExchangeRate();
             });
@@ -566,13 +623,30 @@
                         setTimeout(saveDailySnapshot, 1000); 
                     });
             };
+            
+            // v2.9.0: Fetch Notes
+            const fetchNotes = (uid) => {
+                if (unsubscribeNotes) unsubscribeNotes();
+                unsubscribeNotes = db.collection('users').doc(uid).collection('notes').orderBy('date', 'desc')
+                    .onSnapshot(snap => {
+                        notes.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    });
+            };
 
             const login = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(alert);
             const logout = () => auth.signOut();
 
+            // v2.9.0: Export data includes notes
             const exportData = async () => {
                 if (!user.value) return;
-                const obj = { stocks: stocks.value, realized: realizedGains.value, history: (await db.collection('users').doc(user.value.uid).collection('history').orderBy('date').get()).docs.map(d=>d.data()), transactions: transactionHistory.value, cash: cashData.value };
+                const obj = { 
+                    stocks: stocks.value, 
+                    realized: realizedGains.value, 
+                    history: (await db.collection('users').doc(user.value.uid).collection('history').orderBy('date').get()).docs.map(d=>d.data()), 
+                    transactions: transactionHistory.value, 
+                    cash: cashData.value,
+                    notes: notes.value 
+                };
                 const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(obj, null, 2)); a.download = `portfolio_${getLocalDate()}.json`; document.body.appendChild(a); a.click(); a.remove();
             };
 
@@ -613,9 +687,40 @@
             const deleteHistoryRecord = async (date) => {
                 if (!confirm(`確定要刪除 ${date} 的歷史紀錄嗎？`)) return;
                 await db.collection('users').doc(user.value.uid).collection('history').doc(date).delete();
-                // Refresh list and chart
                 await openHistoryModal();
                 drawChart();
+            };
+            
+            // v2.9.0: Note CRUD
+            const openNoteModal = (note) => {
+                if (note) {
+                    noteForm.value = { ...note };
+                } else {
+                    noteForm.value = { id: null, title: '', date: getLocalDate(), content: '' };
+                }
+                showNoteModalVisible.value = true;
+            };
+            const closeNoteModal = () => showNoteModalVisible.value = false;
+            
+            const saveNote = async () => {
+                if (!user.value || !noteForm.value.title) return alert('請輸入標題');
+                const data = {
+                    title: noteForm.value.title,
+                    date: noteForm.value.date || getLocalDate(),
+                    content: noteForm.value.content || '',
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                if (noteForm.value.id) {
+                    await db.collection('users').doc(user.value.uid).collection('notes').doc(noteForm.value.id).update(data);
+                } else {
+                    await db.collection('users').doc(user.value.uid).collection('notes').add(data);
+                }
+                closeNoteModal();
+            };
+            
+            const deleteNote = async (id) => {
+                if(!confirm('確定刪除此筆記？')) return;
+                await db.collection('users').doc(user.value.uid).collection('notes').doc(id).delete();
             };
             
             const deleteTransaction = async (tx) => {
@@ -1020,8 +1125,9 @@
                 transStartDate, transEndDate, sortTransaction, sortDividend, sortedTransactions, sortedDividends,
                 realizedStartDate, realizedEndDate, fetchRealizedGains, cashData,
                 transFilterType, transSearchQuery, jumpToFundHistory,
-                // v2.8.3 Exports
-                showHistoryModal, historyRecords, openHistoryModal, deleteHistoryRecord
+                showHistoryModal, historyRecords, openHistoryModal, deleteHistoryRecord,
+                // v2.9.0 Exports
+                notes, openNoteModal, closeNoteModal, saveNote, deleteNote, showNoteModalVisible, noteForm
             };
         }
     }).mount('#app');

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v2.8.2</title>
+    <title>我的投資組合 | Portfolio v2.8.3</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -60,7 +60,7 @@
     <div v-if="!user" class="flex-grow flex flex-col items-center justify-center p-4">
         <div class="zen-card p-8 max-w-sm w-full text-center space-y-6">
             <div class="bg-gray-800 text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto text-2xl"><i class="fa-solid fa-chart-line"></i></div>
-            <div><h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v2.8.2</h1><p class="text-gray-500 dark:text-gray-400 text-sm mt-2">嚴格複式簿記版本：資產變動皆有據可查</p></div>
+            <div><h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v2.8.3</h1><p class="text-gray-500 dark:text-gray-400 text-sm mt-2">嚴格複式簿記版本：資產變動皆有據可查</p></div>
             <button @click="login" class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
                 <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5 mr-3" alt="Google">使用 Google 帳號登入
             </button>
@@ -74,7 +74,7 @@
                     <a href="https://chianghf99.github.io/my-wallet/" class="text-gray-400 hover:text-gray-600 dark:hover:text-white transition"><i class="fa-solid fa-home"></i></a>
                     <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                         <span class="hidden sm:inline">我的資產帳本</span>
-                        <span @click="showChangelog=true" class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v2.8.2</span>
+                        <span @click="showChangelog=true" class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v2.8.3</span>
                     </h1>
                 </div>
                 <div class="flex items-center gap-3">
@@ -156,7 +156,19 @@
                 <button @click="toggleSection('realized')" :class="activeSection==='realized' ? (isDarkMode ? 'btn-active-dark' : 'btn-active-light') : 'btn-inactive'" class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i class="fa-solid fa-file-invoice-dollar mr-2"></i>已實現損益</button>
             </div>
 
-            <transition name="collapse"><div v-if="activeSection === 'chart'" class="zen-card p-4 md:p-6 mb-8"><div class="flex flex-wrap gap-3 items-end mb-4 pb-4 border-b border-gray-100 dark:border-gray-700"><div><label class="block text-xs font-bold text-gray-500 mb-1">開始</label><input type="date" v-model="chartStartDate" class="zen-input text-sm py-1.5"></div><div><label class="block text-xs font-bold text-gray-500 mb-1">結束</label><input type="date" v-model="chartEndDate" class="zen-input text-sm py-1.5"></div><button @click="drawChart" class="bg-gray-800 text-white px-4 py-1.5 rounded text-sm hover:bg-gray-700 h-9 mb-[1px]">查詢</button></div><div class="h-64 md:h-80 w-full relative"><canvas id="assetChart"></canvas></div></div></transition>
+            <transition name="collapse">
+                <div v-if="activeSection === 'chart'" class="zen-card p-4 md:p-6 mb-8 relative">
+                    <button @click="openHistoryModal" class="absolute top-4 right-4 text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-gray-800 dark:hover:text-white px-2 py-1 rounded transition"><i class="fa-solid fa-clock-rotate-left mr-1"></i>維護歷史資料</button>
+                    
+                    <div class="flex flex-wrap gap-3 items-end mb-4 pb-4 border-b border-gray-100 dark:border-gray-700 pt-2">
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">開始</label><input type="date" v-model="chartStartDate" class="zen-input text-sm py-1.5"></div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">結束</label><input type="date" v-model="chartEndDate" class="zen-input text-sm py-1.5"></div>
+                        <button @click="drawChart" class="bg-gray-800 text-white px-4 py-1.5 rounded text-sm hover:bg-gray-700 h-9 mb-[1px]">查詢</button>
+                    </div>
+                    <div class="h-64 md:h-80 w-full relative"><canvas id="assetChart"></canvas></div>
+                </div>
+            </transition>
+            
             <transition name="collapse"><div v-if="activeSection === 'pie'" class="zen-card p-4 md:p-6 mb-8"><h3 class="font-bold mb-4 dark:text-white text-center">持股占比分析</h3><div class="grid grid-cols-1 md:grid-cols-2 gap-8"><div class="flex flex-col items-center"><h4 class="text-sm font-bold mb-2 flex items-center gap-2"><img src="https://flagcdn.com/w20/tw.png"> 台股配置 (TWD)</h4><div class="w-full max-w-[300px] h-[300px] relative"><canvas id="pieTw"></canvas></div></div><div class="flex flex-col items-center"><h4 class="text-sm font-bold mb-2 flex items-center gap-2"><img src="https://flagcdn.com/w20/us.png"> 美股配置 (USD)</h4><div class="w-full max-w-[300px] h-[300px] relative"><canvas id="pieUs"></canvas></div></div></div></div></transition>
 
             <transition name="collapse">
@@ -284,18 +296,6 @@
                 </div>
             </transition>
 
-            <transition name="collapse">
-                <div v-if="activeSection === 'realized'" class="zen-card p-4 md:p-6 mb-8">
-                    <h3 class="font-bold mb-4 dark:text-white text-center">歷史已實現損益</h3>
-                    <div class="grid grid-cols-2 gap-4 mb-4"><div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-center"><div class="text-xs text-gray-500">台股總損益</div><div class="text-lg font-bold" :class="getPnlClass(realizedTotalTw)">{{ formatCurrency(realizedTotalTw, 'TWD') }}</div></div><div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-center"><div class="text-xs text-gray-500">美股總損益</div><div class="text-lg font-bold" :class="getPnlClass(realizedTotalUs)">{{ formatCurrency(realizedTotalUs, 'USD') }}</div></div></div>
-                    <div class="flex flex-wrap gap-3 items-end mb-4 pb-4 border-b border-gray-100 dark:border-gray-700">
-                        <div><label class="block text-xs font-bold text-gray-500 mb-1">開始</label><input type="date" v-model="realizedStartDate" class="zen-input text-sm py-1.5"></div>
-                        <div><label class="block text-xs font-bold text-gray-500 mb-1">結束</label><input type="date" v-model="realizedEndDate" class="zen-input text-sm py-1.5"></div>
-                        <button @click="fetchRealizedGains" class="bg-gray-800 text-white px-4 py-1.5 rounded text-sm hover:bg-gray-700 h-9 mb-[1px]">查詢</button>
-                    </div>
-                    <div class="overflow-x-auto"><table class="w-full text-sm text-left"><thead class="bg-gray-100 dark:bg-gray-800 text-gray-500 uppercase font-medium"><tr><th class="px-4 py-2">日期</th><th class="px-4 py-2">標的</th><th class="px-4 py-2 text-right">獲利/虧損</th><th class="px-4 py-2 text-center">操作</th></tr></thead><tbody class="divide-y divide-gray-100 dark:divide-gray-700"><tr v-for="rec in realizedGains" :key="rec.id" class="hover:bg-gray-50 dark:hover:bg-gray-800"><td class="px-4 py-3">{{ rec.date }}</td><td class="px-4 py-3 font-bold">{{ rec.name || rec.symbol }}</td><td class="px-4 py-3 text-right font-bold" :class="getPnlClass(rec.pnl)">{{ formatCurrency(rec.pnl, rec.currency) }}</td><td class="px-4 py-3 text-center"><button @click="deleteRealized(rec.id)" class="text-gray-400 hover:text-red-500"><i class="fa-solid fa-trash-can"></i></button></td></tr></tbody></table></div></div>
-            </transition>
-
             <div class="flex justify-end mb-4">
                 <div class="flex bg-gray-200 dark:bg-gray-700 rounded p-0.5">
                     <button @click="viewMode = 'card'" :class="{'bg-white shadow dark:bg-gray-600': viewMode === 'card'}" class="px-3 py-1 rounded text-xs transition"><i class="fa-solid fa-mobile-alt"></i></button>
@@ -319,22 +319,41 @@
                     <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
                          <div class="relative pl-6">
                             <span class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-blue-500 border-4 border-white dark:border-gray-800"></span>
-                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-blue-600 dark:text-blue-400 text-lg">v2.8.2</span><span class="text-xs text-gray-400">2025/12/18</span></div>
+                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-blue-600 dark:text-blue-400 text-lg">v2.8.3</span><span class="text-xs text-gray-400">2025/12/19</span></div>
                             <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">重構</span><span>移除手動「新增持股」入口，統一由「新增交易」建立，確保現金連動</span></li>
-                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">優化</span><span>編輯持股改為「資料校正」模式，並增加警語</span></li>
-                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">安全</span><span>刪除庫存時增加股數檢查與防呆警告</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">新增</span><span>歷史資產維護功能 (可刪除特定日期的紀錄)</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">修復</span><span>新增交易時代號未強制轉大寫的問題 (TQqq Bug)</span></li>
                             </ul>
                         </div>
                          <div class="relative pl-6">
                             <span class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-4 border-white dark:border-gray-800"></span>
-                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-gray-700 dark:text-gray-200">v2.8.1</span><span class="text-xs text-gray-400">2025/12/18</span></div>
+                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-gray-700 dark:text-gray-200">v2.8.2</span><span class="text-xs text-gray-400">2025/12/18</span></div>
                             <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">優化</span><span>晚上 9 點後自動凍結資產走勢，避免美股波動影響</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">重構</span><span>移除手動「新增持股」入口，統一由「新增交易」建立</span></li>
                             </ul>
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+        
+        <div v-if="showHistoryModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm overflow-hidden flex flex-col max-h-[80vh]">
+                <div class="bg-gray-800 dark:bg-gray-900 text-white px-6 py-4 flex justify-between items-center"><h3 class="font-bold">歷史資產紀錄</h3><button @click="showHistoryModal=false" class="text-gray-300 hover:text-white"><i class="fa-solid fa-times"></i></button></div>
+                <div class="p-0 overflow-y-auto flex-grow custom-scrollbar">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-gray-100 dark:bg-gray-700 text-gray-500 uppercase font-medium sticky top-0"><tr><th class="px-6 py-3">日期</th><th class="px-6 py-3 text-right">總資產</th><th class="px-6 py-3 text-center">刪除</th></tr></thead>
+                        <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                            <tr v-for="rec in historyRecords" :key="rec.id" class="hover:bg-gray-50 dark:hover:bg-gray-800">
+                                <td class="px-6 py-3 font-medium">{{ rec.date }}</td>
+                                <td class="px-6 py-3 text-right font-bold">{{ formatCurrency(rec.totalVal, 'TWD') }}</td>
+                                <td class="px-6 py-3 text-center"><button @click="deleteHistoryRecord(rec.date)" class="text-gray-400 hover:text-red-500"><i class="fa-solid fa-trash-can"></i></button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div v-if="historyRecords.length === 0" class="text-center py-8 text-gray-400">無歷史紀錄</div>
+                </div>
+                <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 text-xs text-gray-500 dark:text-gray-400 text-center">刪除後圖表將自動重繪</div>
             </div>
         </div>
         
@@ -433,6 +452,10 @@
             const isDarkMode = ref(localStorage.getItem('darkMode') === 'true');
             const activeSection = ref('');
             const showChangelog = ref(false);
+            
+            // v2.8.3: History Modal
+            const showHistoryModal = ref(false);
+            const historyRecords = ref([]);
             
             // Cash Data
             const cashData = ref({ twd: 0, usd: 0 });
@@ -577,6 +600,22 @@
                     .orderBy('date', 'desc')
                     .get();
                 transactionHistory.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            };
+            
+            // v2.8.3: History Maintenance
+            const openHistoryModal = async () => {
+                if (!user.value) return;
+                const snap = await db.collection('users').doc(user.value.uid).collection('history').orderBy('date', 'desc').get();
+                historyRecords.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                showHistoryModal.value = true;
+            };
+            
+            const deleteHistoryRecord = async (date) => {
+                if (!confirm(`確定要刪除 ${date} 的歷史紀錄嗎？`)) return;
+                await db.collection('users').doc(user.value.uid).collection('history').doc(date).delete();
+                // Refresh list and chart
+                await openHistoryModal();
+                drawChart();
             };
             
             const deleteTransaction = async (tx) => {
@@ -750,7 +789,8 @@
                 const logData = {
                     date: transForm.value.date || getLocalDate(),
                     type: transForm.value.type,
-                    symbol: isFundMode.value ? 'CASH' : transForm.value.symbol,
+                    // v2.8.3 Bug Fix: Force Uppercase
+                    symbol: isFundMode.value ? 'CASH' : transForm.value.symbol.toUpperCase(),
                     name: isFundMode.value ? (transForm.value.name || (transForm.value.type==='deposit'?'入金':'出金')) : transForm.value.name,
                     shares: isFundMode.value || transForm.value.type === 'dividend' ? 0 : transForm.value.shares,
                     price: 0,
@@ -849,17 +889,14 @@
                 closeTransModal();
             };
             
-            // v2.8.2: openModal no longer supports 'Add', only 'Edit'
             const openModal = () => { isEditing.value = false; form.value = { id: Date.now().toString(), symbol: '', name: '', currency: 'TWD', shares: 0, avgCost: 0, currentPrice: 0, dividends: 0, previousClose: 0 }; showModal.value = true; };
             const editStock = (s) => { isEditing.value = true; form.value = {...s}; showModal.value = true; };
             const closeModal = () => showModal.value = false;
             const saveStock = async () => { if (!user.value || !form.value.symbol) return; const d = { ...form.value }; const r = db.collection('users').doc(user.value.uid).collection('stocks'); if (isEditing.value) await r.doc(d.id).update(d); else await r.doc(d.id).set(d); closeModal(); };
             
-            // v2.8.2: Enhanced Delete Safety Check
             const deleteStock = async (stock) => { 
                 if (!user.value) return;
                 
-                // Safety Logic
                 if (stock.shares > 0) {
                     const msg = `⚠️ 警告：您目前還持有 ${stock.shares} 股 ${stock.symbol}！\n\n` + 
                                 `1. 若要賣出變現，請按「新增交易」進行賣出。\n` + 
@@ -900,6 +937,7 @@
             const dividendRangeTw = computed(() => dividendRecords.value.filter(r => r.currency === 'TWD').reduce((acc, cur) => acc + cur.amount, 0));
             const dividendRangeUs = computed(() => dividendRecords.value.filter(r => r.currency === 'USD').reduce((acc, cur) => acc + cur.amount, 0));
 
+            // v2.8.0 Filter Logic
             const sortedTransactions = computed(() => {
                 let data = transactionHistory.value;
                 
@@ -981,7 +1019,9 @@
                 transactionHistory, fetchTransactions, deleteTransaction, deleteDividend, deleteRealized,
                 transStartDate, transEndDate, sortTransaction, sortDividend, sortedTransactions, sortedDividends,
                 realizedStartDate, realizedEndDate, fetchRealizedGains, cashData,
-                transFilterType, transSearchQuery, jumpToFundHistory
+                transFilterType, transSearchQuery, jumpToFundHistory,
+                // v2.8.3 Exports
+                showHistoryModal, historyRecords, openHistoryModal, deleteHistoryRecord
             };
         }
     }).mount('#app');

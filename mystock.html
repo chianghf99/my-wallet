@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v2.9.0</title>
+    <title>我的投資組合 | Portfolio v2.9.2</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -53,7 +53,6 @@
         .sort-header:hover { color: #374151; }
         .dark .sort-header:hover { color: #e5e7eb; }
         
-        /* Note Card Style */
         .note-card { border-left: 4px solid #3b82f6; }
         .dark .note-card { border-left-color: #60a5fa; }
     </style>
@@ -64,7 +63,7 @@
     <div v-if="!user" class="flex-grow flex flex-col items-center justify-center p-4">
         <div class="zen-card p-8 max-w-sm w-full text-center space-y-6">
             <div class="bg-gray-800 text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto text-2xl"><i class="fa-solid fa-chart-line"></i></div>
-            <div><h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v2.9.0</h1><p class="text-gray-500 dark:text-gray-400 text-sm mt-2">安全、即時、跨裝置的投資管理工具</p></div>
+            <div><h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v2.9.2</h1><p class="text-gray-500 dark:text-gray-400 text-sm mt-2">安全、即時、跨裝置的投資管理工具</p></div>
             <button @click="login" class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
                 <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5 mr-3" alt="Google">使用 Google 帳號登入
             </button>
@@ -78,7 +77,7 @@
                     <a href="https://chianghf99.github.io/my-wallet/" class="text-gray-400 hover:text-gray-600 dark:hover:text-white transition"><i class="fa-solid fa-home"></i></a>
                     <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                         <span class="hidden sm:inline">我的資產帳本</span>
-                        <span @click="showChangelog=true" class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v2.9.0</span>
+                        <span @click="showChangelog=true" class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v2.9.2</span>
                     </h1>
                 </div>
                 <div class="flex items-center gap-3">
@@ -155,7 +154,6 @@
                 <button @click="toggleSection('cash')" :class="activeSection==='cash' ? (isDarkMode ? 'btn-active-dark' : 'btn-active-light') : 'btn-inactive'" class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i class="fa-solid fa-wallet mr-2"></i>資金管理</button>
                 <button @click="toggleSection('transactions')" :class="activeSection==='transactions' ? (isDarkMode ? 'btn-active-dark' : 'btn-active-light') : 'btn-inactive'" class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i class="fa-solid fa-list-ul mr-2"></i>交易紀錄</button>
                 <button @click="toggleSection('notes')" :class="activeSection==='notes' ? (isDarkMode ? 'btn-active-dark' : 'btn-active-light') : 'btn-inactive'" class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i class="fa-solid fa-book mr-2"></i>投資筆記</button>
-                
                 <button @click="toggleSection('dividend')" :class="activeSection==='dividend' ? (isDarkMode ? 'btn-active-dark' : 'btn-active-light') : 'btn-inactive'" class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i class="fa-solid fa-coins mr-2"></i>股息統計</button>
                 <button @click="toggleSection('realized')" :class="activeSection==='realized' ? (isDarkMode ? 'btn-active-dark' : 'btn-active-light') : 'btn-inactive'" class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i class="fa-solid fa-file-invoice-dollar mr-2"></i>已實現損益</button>
             </div>
@@ -358,19 +356,40 @@
                     <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
                          <div class="relative pl-6">
                             <span class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-blue-500 border-4 border-white dark:border-gray-800"></span>
-                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-blue-600 dark:text-blue-400 text-lg">v2.9.0</span><span class="text-xs text-gray-400">2025/12/21</span></div>
+                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-blue-600 dark:text-blue-400 text-lg">v2.9.2</span><span class="text-xs text-gray-400">2025/12/23</span></div>
+                            <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">新增</span><span>刪除交易紀錄選項：可選擇「僅刪除紀錄」或「還原現金餘額」</span></li>
+                            </ul>
+                        </div>
+                         <div class="relative pl-6">
+                            <span class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-4 border-white dark:border-gray-800"></span>
+                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-gray-700 dark:text-gray-200">v2.9.0</span><span class="text-xs text-gray-400">2025/12/21</span></div>
                             <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
                                 <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">新增</span><span>投資筆記功能 (可新增/編輯/刪除心得)</span></li>
                                 <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">優化</span><span>備份功能升級，包含筆記資料</span></li>
                             </ul>
                         </div>
-                         <div class="relative pl-6">
-                            <span class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-4 border-white dark:border-gray-800"></span>
-                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-gray-700 dark:text-gray-200">v2.8.3</span><span class="text-xs text-gray-400">2025/12/19</span></div>
-                            <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">新增</span><span>歷史資產維護功能</span></li>
-                            </ul>
-                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div v-if="showDeleteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
+                <div class="bg-gray-800 dark:bg-gray-900 text-white px-6 py-4"><h3 class="font-bold">刪除交易紀錄</h3></div>
+                <div class="p-6">
+                    <p class="text-gray-600 dark:text-gray-300 mb-6 text-center">
+                        <span class="block font-bold mb-2">{{ pendingDeleteTx?.date }} {{ pendingDeleteTx?.name }}</span>
+                        請問您要如何處理此筆交易？
+                    </p>
+                    <div class="space-y-3">
+                        <button @click="executeDelete(true)" class="w-full bg-red-500 hover:bg-red-600 text-white font-medium py-3 rounded-lg transition flex items-center justify-center">
+                            <i class="fa-solid fa-rotate-left mr-2"></i> 刪除並還原現金 <span class="text-xs opacity-75 ml-1">(預設)</span>
+                        </button>
+                        <button @click="executeDelete(false)" class="w-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-medium py-3 rounded-lg transition flex items-center justify-center">
+                            <i class="fa-solid fa-trash mr-2"></i> 僅刪除紀錄 <span class="text-xs opacity-75 ml-1">(不連動餘額)</span>
+                        </button>
+                        <button @click="showDeleteModal=false" class="w-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 py-2 text-sm transition">取消</button>
                     </div>
                 </div>
             </div>
@@ -507,6 +526,10 @@
             // v2.8.3: History Modal
             const showHistoryModal = ref(false);
             const historyRecords = ref([]);
+            
+            // v2.9.2: Delete Modal
+            const showDeleteModal = ref(false);
+            const pendingDeleteTx = ref(null);
             
             // v2.9.0: Notes
             const notes = ref([]);
@@ -723,18 +746,28 @@
                 await db.collection('users').doc(user.value.uid).collection('notes').doc(id).delete();
             };
             
-            const deleteTransaction = async (tx) => {
-                 if (!confirm('確定刪除？(若為出入金/股息，將自動校正現金餘額)')) return;
-                 
-                 if (tx.type === 'deposit') {
-                     await updateCash(tx.currency, -Math.abs(tx.totalAmount)); 
-                 } else if (tx.type === 'withdraw') {
-                     await updateCash(tx.currency, Math.abs(tx.totalAmount)); 
-                 } else if (tx.type === 'dividend') {
-                     await updateCash(tx.currency, -Math.abs(tx.totalAmount));
-                     const stock = stocks.value.find(s => s.symbol === tx.symbol);
-                     if (stock) {
-                        await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ dividends: Math.max(0, (stock.dividends || 0) - tx.amount) });
+            // v2.9.2: Delete Transaction Logic with Modal
+            const deleteTransaction = (tx) => {
+                pendingDeleteTx.value = tx;
+                showDeleteModal.value = true;
+            };
+            
+            const executeDelete = async (revertCash) => {
+                 showDeleteModal.value = false;
+                 const tx = pendingDeleteTx.value;
+                 if (!tx) return;
+
+                 if (revertCash) {
+                     if (tx.type === 'deposit') {
+                         await updateCash(tx.currency, -Math.abs(tx.totalAmount)); 
+                     } else if (tx.type === 'withdraw') {
+                         await updateCash(tx.currency, Math.abs(tx.totalAmount)); 
+                     } else if (tx.type === 'dividend') {
+                         await updateCash(tx.currency, -Math.abs(tx.totalAmount));
+                         const stock = stocks.value.find(s => s.symbol === tx.symbol);
+                         if (stock) {
+                            await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ dividends: Math.max(0, (stock.dividends || 0) - tx.amount) });
+                         }
                      }
                  }
 
@@ -746,6 +779,8 @@
                     await saveDailySnapshot();
                     if (activeSection.value === 'chart') drawChart();
                  }, 500);
+                 
+                 pendingDeleteTx.value = null;
             };
             
             const deleteDividend = async (rec) => {
@@ -1126,6 +1161,8 @@
                 realizedStartDate, realizedEndDate, fetchRealizedGains, cashData,
                 transFilterType, transSearchQuery, jumpToFundHistory,
                 showHistoryModal, historyRecords, openHistoryModal, deleteHistoryRecord,
+                // v2.9.2: New delete logic exports
+                showDeleteModal, pendingDeleteTx, executeDelete, deleteTransaction,
                 // v2.9.0 Exports
                 notes, openNoteModal, closeNoteModal, saveNote, deleteNote, showNoteModalVisible, noteForm
             };

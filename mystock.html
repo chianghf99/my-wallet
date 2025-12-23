@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v2.9.2</title>
+    <title>我的投資組合 | Portfolio v2.9.3 (Complete)</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -32,6 +32,7 @@
         .trans-btn.active-sell { background-color: #16a34a; color: white; border-color: #16a34a; }
         .trans-btn.active-div { background-color: #eab308; color: white; border-color: #eab308; } 
         .trans-btn.active-fund { background-color: #3b82f6; color: white; border-color: #3b82f6; }
+        .trans-btn.active-loan { background-color: #9333ea; color: white; border-color: #9333ea; }
         .collapse-enter-active, .collapse-leave-active { transition: all 0.3s ease; max-height: 800px; opacity: 1; overflow: hidden; }
         .collapse-enter-from, .collapse-leave-to { max-height: 0; opacity: 0; }
         .tag { padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
@@ -43,6 +44,8 @@
         .dark .tag-div { background-color: #713f12; color: #fde047; }
         .tag-fund { background-color: #dbeafe; color: #1d4ed8; }
         .dark .tag-fund { background-color: #1e3a8a; color: #93c5fd; }
+        .tag-loan { background-color: #f3e8ff; color: #9333ea; }
+        .dark .tag-loan { background-color: #581c87; color: #d8b4fe; }
         
         .btn-active { background-color: #1f2937; color: white; border-color: #1f2937; }
         .dark .btn-active { background-color: #e5e7eb; color: #111827; border-color: #e5e7eb; }
@@ -52,7 +55,6 @@
         .sort-header { cursor: pointer; user-select: none; }
         .sort-header:hover { color: #374151; }
         .dark .sort-header:hover { color: #e5e7eb; }
-        
         .note-card { border-left: 4px solid #3b82f6; }
         .dark .note-card { border-left-color: #60a5fa; }
     </style>
@@ -63,7 +65,7 @@
     <div v-if="!user" class="flex-grow flex flex-col items-center justify-center p-4">
         <div class="zen-card p-8 max-w-sm w-full text-center space-y-6">
             <div class="bg-gray-800 text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto text-2xl"><i class="fa-solid fa-chart-line"></i></div>
-            <div><h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v2.9.2</h1><p class="text-gray-500 dark:text-gray-400 text-sm mt-2">安全、即時、跨裝置的投資管理工具</p></div>
+            <div><h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v2.9.3</h1><p class="text-gray-500 dark:text-gray-400 text-sm mt-2">安全、即時、跨裝置的投資管理工具</p></div>
             <button @click="login" class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
                 <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5 mr-3" alt="Google">使用 Google 帳號登入
             </button>
@@ -77,7 +79,7 @@
                     <a href="https://chianghf99.github.io/my-wallet/" class="text-gray-400 hover:text-gray-600 dark:hover:text-white transition"><i class="fa-solid fa-home"></i></a>
                     <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                         <span class="hidden sm:inline">我的資產帳本</span>
-                        <span @click="showChangelog=true" class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v2.9.2</span>
+                        <span @click="showChangelog=true" class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v2.9.3</span>
                     </h1>
                 </div>
                 <div class="flex items-center gap-3">
@@ -102,7 +104,7 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div class="zen-card p-5 border-l-4 border-gray-800 dark:border-gray-500">
                     <div class="flex justify-between items-center mb-1">
-                        <div class="text-sm text-gray-500 dark:text-gray-400">總資產 (含現金)</div>
+                        <div class="text-sm text-gray-500 dark:text-gray-400">淨資產 (Net Worth)</div>
                         <button @click="showPrivacy = !showPrivacy" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none"><i class="fa-solid" :class="showPrivacy ? 'fa-eye' : 'fa-eye-slash'"></i></button>
                     </div>
                     <div class="text-3xl font-bold text-gray-900 dark:text-white"><span v-if="showPrivacy">{{ formatCurrency(grandTotalValue, 'TWD') }}</span><span v-else>****</span></div>
@@ -181,7 +183,7 @@
                              <button @click="openFundModal()" class="bg-gray-800 text-white px-3 py-1 text-sm rounded hover:bg-gray-700 transition"><i class="fa-solid fa-money-bill-transfer mr-1"></i>入金/出金</button>
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                         <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-900/30 text-center">
                             <div class="text-xs text-blue-600 dark:text-blue-400 mb-1">台幣餘額 (TWD)</div>
                             <div class="text-2xl font-bold text-blue-700 dark:text-blue-300"><span v-if="showPrivacy">{{ formatCurrency(cashData.twd, 'TWD') }}</span><span v-else>****</span></div>
@@ -189,6 +191,11 @@
                         <div class="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border border-green-100 dark:border-green-900/30 text-center">
                             <div class="text-xs text-green-600 dark:text-green-400 mb-1">美金餘額 (USD)</div>
                             <div class="text-2xl font-bold text-green-700 dark:text-green-300"><span v-if="showPrivacy">{{ formatCurrency(cashData.usd, 'USD') }}</span><span v-else>****</span></div>
+                        </div>
+                        <div class="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-xl border border-purple-100 dark:border-purple-900/30 text-center relative">
+                            <div class="text-xs text-purple-600 dark:text-purple-400 mb-1">借款管理 (TWD)</div>
+                            <div class="text-2xl font-bold text-purple-700 dark:text-purple-300"><span v-if="showPrivacy">{{ formatCurrency(cashData.loan || 0, 'TWD') }}</span><span v-else>****</span></div>
+                            <button @click="openLoanModal()" class="absolute top-2 right-2 text-purple-300 hover:text-purple-500"><i class="fa-solid fa-pen-to-square"></i></button>
                         </div>
                     </div>
                 </div>
@@ -208,6 +215,7 @@
                                 <option value="all">全部顯示</option>
                                 <option value="trade">股票交易 (買/賣)</option>
                                 <option value="fund">資金出入 (入/出金)</option>
+                                <option value="loan">借款/還款</option>
                                 <option value="dividend">股息</option>
                             </select>
                         </div>
@@ -238,10 +246,10 @@
                             <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                                 <tr v-for="tx in sortedTransactions" :key="tx.id" class="hover:bg-gray-50 dark:hover:bg-gray-800">
                                     <td class="px-4 py-3 whitespace-nowrap text-gray-500">{{ tx.date }}</td>
-                                    <td class="px-4 py-3"><span class="tag" :class="{'tag-buy': tx.type==='buy', 'tag-sell': tx.type==='sell', 'tag-div': tx.type==='dividend', 'tag-fund': tx.type==='deposit'||tx.type==='withdraw'}">{{ getTypeName(tx.type) }}</span></td>
+                                    <td class="px-4 py-3"><span class="tag" :class="{'tag-buy': tx.type==='buy', 'tag-sell': tx.type==='sell', 'tag-div': tx.type==='dividend', 'tag-fund': tx.type==='deposit'||tx.type==='withdraw', 'tag-loan': tx.type==='borrow'||tx.type==='repay'}">{{ getTypeName(tx.type) }}</span></td>
                                     <td class="px-4 py-3 font-bold">{{ tx.name || tx.symbol }}</td>
-                                    <td class="px-4 py-3 text-right">{{ (tx.type === 'dividend' || tx.type.includes('deposit') || tx.type.includes('withdraw')) ? '-' : formatNumber(tx.shares) }}</td>
-                                    <td class="px-4 py-3 text-right text-gray-500">{{ (tx.type === 'dividend' || tx.type.includes('deposit') || tx.type.includes('withdraw')) ? '-' : formatCurrency(tx.price, tx.currency) }}</td>
+                                    <td class="px-4 py-3 text-right">{{ (['dividend','deposit','withdraw','borrow','repay'].includes(tx.type)) ? '-' : formatNumber(tx.shares) }}</td>
+                                    <td class="px-4 py-3 text-right text-gray-500">{{ (['dividend','deposit','withdraw','borrow','repay'].includes(tx.type)) ? '-' : formatCurrency(tx.price, tx.currency) }}</td>
                                     <td class="px-4 py-3 text-right font-bold" :class="getAmountClass(tx)">{{ getAmountSign(tx) }}{{ formatCurrency(tx.totalAmount, tx.currency) }}</td>
                                     <td class="px-4 py-3 text-center"><button @click="deleteTransaction(tx)" class="text-gray-400 hover:text-red-500"><i class="fa-solid fa-trash-can"></i></button></td>
                                 </tr>
@@ -252,7 +260,7 @@
                                 <div>
                                     <div class="flex items-center gap-2 mb-1">
                                         <span class="font-bold dark:text-gray-200">{{ tx.name || tx.symbol }}</span>
-                                        <span class="tag" :class="{'tag-buy': tx.type==='buy', 'tag-sell': tx.type==='sell', 'tag-div': tx.type==='dividend', 'tag-fund': tx.type==='deposit'||tx.type==='withdraw'}">{{ getTypeName(tx.type) }}</span>
+                                        <span class="tag" :class="{'tag-buy': tx.type==='buy', 'tag-sell': tx.type==='sell', 'tag-div': tx.type==='dividend', 'tag-fund': tx.type==='deposit'||tx.type==='withdraw', 'tag-loan': tx.type==='borrow'||tx.type==='repay'}">{{ getTypeName(tx.type) }}</span>
                                     </div>
                                     <div class="text-xs text-gray-400">{{ tx.date }}</div>
                                 </div>
@@ -356,17 +364,18 @@
                     <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
                          <div class="relative pl-6">
                             <span class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-blue-500 border-4 border-white dark:border-gray-800"></span>
-                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-blue-600 dark:text-blue-400 text-lg">v2.9.2</span><span class="text-xs text-gray-400">2025/12/23</span></div>
+                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-blue-600 dark:text-blue-400 text-lg">v2.9.3</span><span class="text-xs text-gray-400">2025/12/23</span></div>
                             <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">新增</span><span>刪除交易紀錄選項：可選擇「僅刪除紀錄」或「還原現金餘額」</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">修復</span><span>補回消失的台股/美股庫存列表</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">新增</span><span>借款管理功能 (可選是否同步入金)</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">重構</span><span>儀表板顯示淨資產 (資產-借款)，並連動走勢圖</span></li>
                             </ul>
                         </div>
                          <div class="relative pl-6">
                             <span class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-4 border-white dark:border-gray-800"></span>
-                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-gray-700 dark:text-gray-200">v2.9.0</span><span class="text-xs text-gray-400">2025/12/21</span></div>
+                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-gray-700 dark:text-gray-200">v2.9.2</span><span class="text-xs text-gray-400">2025/12/23</span></div>
                             <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">新增</span><span>投資筆記功能 (可新增/編輯/刪除心得)</span></li>
-                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">優化</span><span>備份功能升級，包含筆記資料</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">新增</span><span>刪除交易紀錄選項</span></li>
                             </ul>
                         </div>
                     </div>
@@ -384,10 +393,10 @@
                     </p>
                     <div class="space-y-3">
                         <button @click="executeDelete(true)" class="w-full bg-red-500 hover:bg-red-600 text-white font-medium py-3 rounded-lg transition flex items-center justify-center">
-                            <i class="fa-solid fa-rotate-left mr-2"></i> 刪除並還原現金 <span class="text-xs opacity-75 ml-1">(預設)</span>
+                            <i class="fa-solid fa-rotate-left mr-2"></i> 刪除並還原餘額 <span class="text-xs opacity-75 ml-1">(預設)</span>
                         </button>
                         <button @click="executeDelete(false)" class="w-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-medium py-3 rounded-lg transition flex items-center justify-center">
-                            <i class="fa-solid fa-trash mr-2"></i> 僅刪除紀錄 <span class="text-xs opacity-75 ml-1">(不連動餘額)</span>
+                            <i class="fa-solid fa-trash mr-2"></i> 僅刪除紀錄 <span class="text-xs opacity-75 ml-1">(不影響餘額)</span>
                         </button>
                         <button @click="showDeleteModal=false" class="w-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 py-2 text-sm transition">取消</button>
                     </div>
@@ -412,11 +421,11 @@
                 <div class="bg-gray-800 dark:bg-gray-900 text-white px-6 py-4 flex justify-between items-center"><h3 class="font-bold">歷史資產紀錄</h3><button @click="showHistoryModal=false" class="text-gray-300 hover:text-white"><i class="fa-solid fa-times"></i></button></div>
                 <div class="p-0 overflow-y-auto flex-grow custom-scrollbar">
                     <table class="w-full text-sm text-left">
-                        <thead class="bg-gray-100 dark:bg-gray-700 text-gray-500 uppercase font-medium sticky top-0"><tr><th class="px-6 py-3">日期</th><th class="px-6 py-3 text-right">總資產</th><th class="px-6 py-3 text-center">刪除</th></tr></thead>
+                        <thead class="bg-gray-100 dark:bg-gray-700 text-gray-500 uppercase font-medium sticky top-0"><tr><th class="px-6 py-3">日期</th><th class="px-6 py-3 text-right">淨資產</th><th class="px-6 py-3 text-center">刪除</th></tr></thead>
                         <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                             <tr v-for="rec in historyRecords" :key="rec.id" class="hover:bg-gray-50 dark:hover:bg-gray-800">
                                 <td class="px-6 py-3 font-medium">{{ rec.date }}</td>
-                                <td class="px-6 py-3 text-right font-bold">{{ formatCurrency(rec.totalVal, 'TWD') }}</td>
+                                <td class="px-6 py-3 text-right font-bold">{{ formatCurrency((rec.totalVal || 0) - (rec.loan || 0), 'TWD') }}</td>
                                 <td class="px-6 py-3 text-center"><button @click="deleteHistoryRecord(rec.date)" class="text-gray-400 hover:text-red-500"><i class="fa-solid fa-trash-can"></i></button></td>
                             </tr>
                         </tbody>
@@ -454,7 +463,12 @@
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
                 <div class="bg-gray-800 dark:bg-gray-900 text-white px-6 py-4 flex justify-between items-center"><div><h3 class="font-bold">交易/資金</h3><div class="text-xs text-gray-400">{{ transForm.symbol }} {{ transForm.name }}</div></div><button @click="closeTransModal" class="text-gray-300 hover:text-white"><i class="fa-solid fa-times"></i></button></div>
                 <div class="grid grid-cols-3 text-sm font-bold border-b border-gray-100 dark:border-gray-700">
-                    <template v-if="isFundMode">
+                    <template v-if="isLoanMode">
+                         <div @click="transForm.type = 'borrow'" :class="{'active-buy': transForm.type === 'borrow'}" class="trans-btn dark:text-gray-300 col-span-1">借款 (Borrow)</div>
+                         <div @click="transForm.type = 'repay'" :class="{'active-sell': transForm.type === 'repay'}" class="trans-btn dark:text-gray-300 col-span-1">還款 (Repay)</div>
+                         <div class="trans-btn dark:text-gray-300 col-span-1 opacity-0 pointer-events-none"></div>
+                    </template>
+                    <template v-else-if="isFundMode">
                          <div @click="transForm.type = 'deposit'" :class="{'active-buy': transForm.type === 'deposit'}" class="trans-btn dark:text-gray-300 col-span-1">入金 (Deposit)</div>
                          <div @click="transForm.type = 'withdraw'" :class="{'active-sell': transForm.type === 'withdraw'}" class="trans-btn dark:text-gray-300 col-span-1">出金 (Withdraw)</div>
                          <div class="trans-btn dark:text-gray-300 col-span-1 opacity-0 pointer-events-none"></div>
@@ -466,7 +480,19 @@
                     </template>
                 </div>
                 <div class="p-6 space-y-4">
-                    <div v-if="isFundMode">
+                    <div v-if="isLoanMode">
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">幣別</label><select v-model="form.currency" class="zen-input"><option value="TWD">TWD</option><option value="USD">USD</option></select></div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">日期</label><input type="date" v-model="transForm.date" class="zen-input"></div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">金額</label><input type="number" step="any" v-model.number="transForm.totalAmount" class="zen-input" placeholder="輸入金額"></div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">備註 (選填)</label><input type="text" v-model="transForm.name" class="zen-input" placeholder="如: 信貸撥款"></div>
+                        
+                        <div class="flex items-center mt-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded border border-purple-100 dark:border-purple-800">
+                            <input type="checkbox" id="syncCash" v-model="isSyncToCash" class="w-4 h-4 text-purple-600 rounded">
+                            <label for="syncCash" class="ml-2 text-sm text-gray-700 dark:text-gray-300">同步{{ transForm.type==='borrow'?'入金':'扣款' }}至現金餘額</label>
+                        </div>
+                    </div>
+
+                    <div v-else-if="isFundMode">
                         <div><label class="block text-xs font-bold text-gray-500 mb-1">幣別</label><select v-model="form.currency" class="zen-input"><option value="TWD">TWD</option><option value="USD">USD</option></select></div>
                         <div><label class="block text-xs font-bold text-gray-500 mb-1">日期</label><input type="date" v-model="transForm.date" class="zen-input"></div>
                         <div><label class="block text-xs font-bold text-gray-500 mb-1">金額</label><input type="number" step="any" v-model.number="transForm.totalAmount" class="zen-input" placeholder="輸入金額"></div>
@@ -485,7 +511,7 @@
                         <div v-if="transForm.type === 'dividend'"><label class="block text-xs font-bold text-gray-500 mb-1">股息金額 ({{form.currency}})</label><input type="number" step="any" v-model.number="transForm.totalAmount" class="zen-input" placeholder="輸入金額"></div>
                     </div>
                 </div>
-                <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex justify-end gap-3"><button @click="closeTransModal" class="px-4 py-2 rounded text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button><button @click="submitTransaction" :class="{'bg-blue-600 hover:bg-blue-700': isFundMode, 'bg-red-600 hover:bg-red-700': transForm.type==='buy', 'bg-green-600 hover:bg-green-700': transForm.type==='sell', 'bg-yellow-500 hover:bg-yellow-600': transForm.type==='dividend'}" class="px-6 py-2 rounded text-white font-medium transition">確認</button></div>
+                <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex justify-end gap-3"><button @click="closeTransModal" class="px-4 py-2 rounded text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button><button @click="submitTransaction" :class="{'bg-purple-600 hover:bg-purple-700': isLoanMode, 'bg-blue-600 hover:bg-blue-700': isFundMode, 'bg-red-600 hover:bg-red-700': transForm.type==='buy' || transForm.type==='borrow', 'bg-green-600 hover:bg-green-700': transForm.type==='sell' || transForm.type==='repay', 'bg-yellow-500 hover:bg-yellow-600': transForm.type==='dividend'}" class="px-6 py-2 rounded text-white font-medium transition">確認</button></div>
             </div>
         </div>
 
@@ -523,7 +549,6 @@
             const activeSection = ref('');
             const showChangelog = ref(false);
             
-            // v2.8.3: History Modal
             const showHistoryModal = ref(false);
             const historyRecords = ref([]);
             
@@ -531,13 +556,12 @@
             const showDeleteModal = ref(false);
             const pendingDeleteTx = ref(null);
             
-            // v2.9.0: Notes
             const notes = ref([]);
             const showNoteModalVisible = ref(false);
             const noteForm = ref({ id: null, title: '', date: '', content: '' });
             
-            // Cash Data
-            const cashData = ref({ twd: 0, usd: 0 });
+            // v2.9.3: Loan initialized
+            const cashData = ref({ twd: 0, usd: 0, loan: 0 });
 
             const prevDayData = ref(null);
             const getLocalDate = () => { const d = new Date(); const offset = d.getTimezoneOffset() * 60000; return new Date(d.getTime() - offset).toISOString().split('T')[0]; };
@@ -546,16 +570,13 @@
             const chartEndDate = ref('');
             const divStartDate = ref('');
             const divEndDate = ref('');
-            // Realized Date Filter
             const realizedStartDate = ref('');
             const realizedEndDate = ref('');
-            // Transaction Filters
             const transStartDate = ref('');
             const transEndDate = ref('');
             const transFilterType = ref('all');
             const transSearchQuery = ref('');
             
-            // Sorting
             const sortKeyTrans = ref('date'); const sortOrderTrans = ref('desc');
             const sortKeyDiv = ref('date'); const sortOrderDiv = ref('desc');
             
@@ -573,6 +594,8 @@
             const form = ref({ id: null, symbol: '', name: '', currency: 'TWD', shares: 0, avgCost: 0, currentPrice: 0, dividends: 0, previousClose: 0 });
             const showTransModal = ref(false);
             const isFundMode = ref(false);
+            const isLoanMode = ref(false); // v2.9.3
+            const isSyncToCash = ref(false); // v2.9.3
             const transForm = ref({ id: null, type: 'buy', symbol: '', name: '', shares: '', totalAmount: '', currentShares: 0, currentAvg: 0, date: '' });
 
             if (isDarkMode.value) document.documentElement.classList.add('dark');
@@ -598,7 +621,7 @@
                 auth.onAuthStateChanged((u) => {
                     user.value = u;
                     if (u) { loadUserData(u.uid); fetchPreviousDayData(u.uid); fetchCash(u.uid); fetchNotes(u.uid); }
-                    else { stocks.value = []; realizedGains.value = []; dividendRecords.value = []; transactionHistory.value = []; cashData.value = {twd:0, usd:0}; notes.value = []; }
+                    else { stocks.value = []; realizedGains.value = []; dividendRecords.value = []; transactionHistory.value = []; cashData.value = {twd:0, usd:0, loan:0}; notes.value = []; }
                 });
                 fetchExchangeRate();
             });
@@ -642,12 +665,11 @@
                 unsubscribeCash = db.collection('users').doc(uid).collection('portfolio').doc('cash')
                     .onSnapshot(doc => {
                         if(doc.exists) cashData.value = doc.data();
-                        else cashData.value = { twd: 0, usd: 0 };
+                        else cashData.value = { twd: 0, usd: 0, loan: 0 };
                         setTimeout(saveDailySnapshot, 1000); 
                     });
             };
             
-            // v2.9.0: Fetch Notes
             const fetchNotes = (uid) => {
                 if (unsubscribeNotes) unsubscribeNotes();
                 unsubscribeNotes = db.collection('users').doc(uid).collection('notes').orderBy('date', 'desc')
@@ -659,7 +681,6 @@
             const login = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(alert);
             const logout = () => auth.signOut();
 
-            // v2.9.0: Export data includes notes
             const exportData = async () => {
                 if (!user.value) return;
                 const obj = { 
@@ -699,7 +720,6 @@
                 transactionHistory.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             };
             
-            // v2.8.3: History Maintenance
             const openHistoryModal = async () => {
                 if (!user.value) return;
                 const snap = await db.collection('users').doc(user.value.uid).collection('history').orderBy('date', 'desc').get();
@@ -714,7 +734,6 @@
                 drawChart();
             };
             
-            // v2.9.0: Note CRUD
             const openNoteModal = (note) => {
                 if (note) {
                     noteForm.value = { ...note };
@@ -746,7 +765,6 @@
                 await db.collection('users').doc(user.value.uid).collection('notes').doc(id).delete();
             };
             
-            // v2.9.2: Delete Transaction Logic with Modal
             const deleteTransaction = (tx) => {
                 pendingDeleteTx.value = tx;
                 showDeleteModal.value = true;
@@ -758,12 +776,16 @@
                  if (!tx) return;
 
                  if (revertCash) {
-                     if (tx.type === 'deposit') {
-                         await updateCash(tx.currency, -Math.abs(tx.totalAmount)); 
-                     } else if (tx.type === 'withdraw') {
-                         await updateCash(tx.currency, Math.abs(tx.totalAmount)); 
-                     } else if (tx.type === 'dividend') {
-                         await updateCash(tx.currency, -Math.abs(tx.totalAmount));
+                     // v2.9.3 Logic: Revert transactions
+                     if (tx.type === 'deposit') await updateCash(tx.currency, -Math.abs(tx.totalAmount), 0); 
+                     else if (tx.type === 'withdraw') await updateCash(tx.currency, Math.abs(tx.totalAmount), 0);
+                     else if (tx.type === 'borrow') {
+                         await updateCash(tx.currency, 0, -Math.abs(tx.totalAmount));
+                     } 
+                     else if (tx.type === 'repay') await updateCash(tx.currency, 0, Math.abs(tx.totalAmount));
+                     
+                     else if (tx.type === 'dividend') {
+                         await updateCash(tx.currency, -Math.abs(tx.totalAmount), 0);
                          const stock = stocks.value.find(s => s.symbol === tx.symbol);
                          if (stock) {
                             await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ dividends: Math.max(0, (stock.dividends || 0) - tx.amount) });
@@ -772,14 +794,8 @@
                  }
 
                  await db.collection('users').doc(user.value.uid).collection('transactions').doc(tx.id).delete();
-                 
                  fetchTransactions();
-
-                 setTimeout(async () => {
-                    await saveDailySnapshot();
-                    if (activeSection.value === 'chart') drawChart();
-                 }, 500);
-                 
+                 setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'chart') drawChart(); }, 500);
                  pendingDeleteTx.value = null;
             };
             
@@ -789,14 +805,10 @@
                 if (stock) {
                     await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ dividends: Math.max(0, (stock.dividends || 0) - rec.amount) });
                 }
-                await updateCash(rec.currency, -rec.amount); 
+                await updateCash(rec.currency, -rec.amount, 0); 
                 await db.collection('users').doc(user.value.uid).collection('dividends').doc(rec.id).delete();
                 fetchDividends();
-                
-                setTimeout(async () => {
-                    await saveDailySnapshot();
-                    if (activeSection.value === 'chart') drawChart();
-                 }, 500);
+                setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'chart') drawChart(); }, 500);
             };
 
             const deleteRealized = async (id) => {
@@ -815,11 +827,12 @@
                 const snapshot = {
                     date: todayStr, 
                     timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                    totalVal: grandTotalValue.value, 
+                    totalVal: grandTotalValue.value, // v2.9.3: This is (Asset - Loan)
                     twVal: twStats.value.value, 
                     usVal: usStats.value.value,
                     twCash: cashData.value.twd || 0,
                     usCash: cashData.value.usd || 0,
+                    loan: cashData.value.loan || 0,
                     totalPnL: grandTotalPnL.value, 
                     twPnL: twStats.value.pnl, 
                     usPnL: usStats.value.pnl
@@ -827,30 +840,32 @@
 
                 if (currentHour >= 21) {
                      const doc = await historyRef.get();
-                     if (doc.exists) {
-                         return; 
-                     }
+                     if (doc.exists) { return; }
                 }
 
                 await historyRef.set(snapshot, { merge: true });
             };
             
-            const updateCash = async (currency, amount) => {
+            const updateCash = async (currency, amount, loanAmount = 0) => {
                 if(!user.value) return;
                 const ref = db.collection('users').doc(user.value.uid).collection('portfolio').doc('cash');
                 const doc = await ref.get();
-                let current = doc.exists ? doc.data() : { twd: 0, usd: 0 };
+                let current = doc.exists ? doc.data() : { twd: 0, usd: 0, loan: 0 };
                 
-                let newTwd = current.twd;
-                let newUsd = current.usd;
+                let newTwd = current.twd || 0;
+                let newUsd = current.usd || 0;
+                let newLoan = current.loan || 0;
 
-                if(currency === 'TWD') newTwd = (newTwd || 0) + amount;
-                else newUsd = (newUsd || 0) + amount;
+                if(currency === 'TWD') newTwd += amount;
+                else newUsd += amount;
                 
-                await ref.set({ twd: newTwd, usd: newUsd }, { merge: true });
+                newLoan += loanAmount;
+                
+                await ref.set({ twd: newTwd, usd: newUsd, loan: newLoan }, { merge: true });
 
                 cashData.value.twd = newTwd;
                 cashData.value.usd = newUsd;
+                cashData.value.loan = newLoan;
             };
 
             const fetchPreviousDayData = async (uid) => {
@@ -875,11 +890,34 @@
                     data: { 
                         labels: d.map(x=>x.date), 
                         datasets: [
-                            { label: '總資產 (Total)', data: d.map(x=>x.totalVal), borderColor: totalColor, fill: true, backgroundColor: isDark ? 'rgba(167, 139, 250, 0.1)' : 'rgba(31,41,55,0.1)', tension: 0.3 }, 
+                            { 
+                                label: '淨資產 (Net Worth)', 
+                                data: d.map(x => {
+                                    const asset = (x.twVal||0) + (x.twCash||0) + ((x.usVal||0) + (x.usCash||0)) * exchangeRate.value;
+                                    const loan = x.loan || 0;
+                                    return asset - loan;
+                                }), 
+                                borderColor: totalColor, fill: true, backgroundColor: isDark ? 'rgba(167, 139, 250, 0.1)' : 'rgba(31,41,55,0.1)', tension: 0.3 
+                            }, 
                             { label: '台股 (Stock)', data: d.map(x=>x.twVal), borderColor: '#3b82f6', hidden: true, tension: 0.3 }, 
                             { label: '美股 (Stock TWD)', data: d.map(x=>x.usVal * exchangeRate.value), borderColor: '#ef4444', hidden: true, tension: 0.3 },
-                            { label: '台股帳戶 (Stock+Cash)', data: d.map(x=>(x.twVal||0) + (x.twCash||0)), borderColor: '#93c5fd', borderDash: [5, 5], hidden: true, tension: 0.3 },
-                            { label: '美股帳戶 (Stock+Cash)', data: d.map(x=>((x.usVal||0) + (x.usCash||0)) * exchangeRate.value), borderColor: '#fca5a5', borderDash: [5, 5], hidden: true, tension: 0.3 }
+                            // v2.9.3 Fix: Restored Account Views
+                            { 
+                                label: '台股帳戶 (Stock+Cash)', 
+                                data: d.map(x=>(x.twVal||0) + (x.twCash||0)), 
+                                borderColor: '#93c5fd', 
+                                borderDash: [5, 5], 
+                                hidden: true, 
+                                tension: 0.3 
+                            },
+                            { 
+                                label: '美股帳戶 (Stock+Cash)', 
+                                data: d.map(x=>((x.usVal||0) + (x.usCash||0)) * exchangeRate.value), 
+                                borderColor: '#fca5a5', 
+                                borderDash: [5, 5], 
+                                hidden: true, 
+                                tension: 0.3 
+                            }
                         ] 
                     },
                     options: { 
@@ -915,11 +953,23 @@
                     form.value.currency = 'TWD'; 
                 }
                 isFundMode.value = false;
+                isLoanMode.value = false;
+                isSyncToCash.value = false; // Reset
                 showTransModal.value = true; 
             };
             const openFundModal = () => {
                 isFundMode.value = true;
+                isLoanMode.value = false;
                 transForm.value = { id: null, type: 'deposit', symbol: 'CASH', name: '', shares: 0, totalAmount: '', date: getLocalDate() };
+                form.value.currency = 'TWD';
+                showTransModal.value = true;
+            };
+            // v2.9.3: Open Loan Modal
+            const openLoanModal = () => {
+                isLoanMode.value = true;
+                isFundMode.value = false;
+                isSyncToCash.value = false; // Default unchecked as requested
+                transForm.value = { id: null, type: 'borrow', symbol: 'LOAN', name: '', shares: 0, totalAmount: '', date: getLocalDate() };
                 form.value.currency = 'TWD';
                 showTransModal.value = true;
             };
@@ -929,27 +979,48 @@
                 const logData = {
                     date: transForm.value.date || getLocalDate(),
                     type: transForm.value.type,
-                    // v2.8.3 Bug Fix: Force Uppercase
-                    symbol: isFundMode.value ? 'CASH' : transForm.value.symbol.toUpperCase(),
-                    name: isFundMode.value ? (transForm.value.name || (transForm.value.type==='deposit'?'入金':'出金')) : transForm.value.name,
-                    shares: isFundMode.value || transForm.value.type === 'dividend' ? 0 : transForm.value.shares,
+                    symbol: (isFundMode.value) ? 'CASH' : (isLoanMode.value ? 'LOAN' : transForm.value.symbol.toUpperCase()),
+                    name: (isFundMode.value || isLoanMode.value) ? (transForm.value.name || getTypeName(transForm.value.type)) : transForm.value.name,
+                    shares: (isFundMode.value || isLoanMode.value || transForm.value.type === 'dividend') ? 0 : transForm.value.shares,
                     price: 0,
                     totalAmount: transForm.value.totalAmount,
                     currency: form.value.currency,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 };
                 
+                // v2.9.3: Handle Loan + Optional Sync
+                if (isLoanMode.value) {
+                    if (!transForm.value.totalAmount) return alert('請輸入金額');
+                    
+                    let cashDelta = 0;
+                    let loanDelta = 0;
+
+                    // Borrow: Loan Increases (+). Cash Increases (+) ONLY IF synced.
+                    if (transForm.value.type === 'borrow') {
+                        loanDelta = transForm.value.totalAmount;
+                        if (isSyncToCash.value) cashDelta = transForm.value.totalAmount;
+                    } 
+                    // Repay: Loan Decreases (-). Cash Decreases (-) ONLY IF synced.
+                    else {
+                        loanDelta = -transForm.value.totalAmount;
+                        if (isSyncToCash.value) cashDelta = -transForm.value.totalAmount;
+                    }
+                    
+                    await updateCash(form.value.currency, cashDelta, loanDelta);
+                    await db.collection('users').doc(user.value.uid).collection('transactions').add(logData);
+                    
+                    closeTransModal();
+                    setTimeout(async () => { await saveDailySnapshot(); if(activeSection.value==='chart') drawChart(); }, 500);
+                    return;
+                }
+                
                 if (isFundMode.value) {
                      if (!transForm.value.totalAmount) return alert('請輸入金額');
                      const amount = transForm.value.type === 'deposit' ? transForm.value.totalAmount : -transForm.value.totalAmount;
-                     await updateCash(form.value.currency, amount);
+                     await updateCash(form.value.currency, amount, 0);
                      await db.collection('users').doc(user.value.uid).collection('transactions').add(logData);
                      closeTransModal();
-                     
-                     setTimeout(async () => {
-                        await saveDailySnapshot();
-                        if (activeSection.value === 'chart') drawChart();
-                     }, 500);
+                     setTimeout(async () => { await saveDailySnapshot(); if(activeSection.value==='chart') drawChart(); }, 500);
                      return;
                 }
                 
@@ -959,7 +1030,7 @@
                     await db.collection('users').doc(user.value.uid).collection('dividends').add(dividendData); 
                     await db.collection('users').doc(user.value.uid).collection('transactions').add(logData); 
                     
-                    await updateCash(form.value.currency, transForm.value.totalAmount);
+                    await updateCash(form.value.currency, transForm.value.totalAmount, 0);
 
                     const existingStock = stocks.value.find(s => s.symbol === transForm.value.symbol);
                     if (existingStock) {
@@ -992,7 +1063,7 @@
                         const pnl = transForm.value.totalAmount - 0; 
                         await db.collection('users').doc(user.value.uid).collection('realized_gains').add({ ...logData, pnl: pnl, price: logData.price });
                         await db.collection('users').doc(user.value.uid).collection('transactions').add(logData);
-                        await updateCash(form.value.currency, transForm.value.totalAmount); // Cash +
+                        await updateCash(form.value.currency, transForm.value.totalAmount, 0); // Cash +
                         closeTransModal(); return;
                     }
                 }
@@ -1002,14 +1073,14 @@
                     ns = currentShares + transForm.value.shares; 
                     const oldTotal = currentShares * currentAvg;
                     na = (oldTotal + transForm.value.totalAmount) / ns; 
-                    await updateCash(form.value.currency, -transForm.value.totalAmount); // Cash -
+                    await updateCash(form.value.currency, -transForm.value.totalAmount, 0); // Cash -
                 } else { 
                     if (transForm.value.shares > currentShares) return alert('股數不足');
                     ns = currentShares - transForm.value.shares; 
                     na = currentAvg;
                     const pnl = transForm.value.totalAmount - (transForm.value.shares * currentAvg);
                     await db.collection('users').doc(user.value.uid).collection('realized_gains').add({ ...logData, pnl: pnl, price: logData.price });
-                    await updateCash(form.value.currency, transForm.value.totalAmount); // Cash +
+                    await updateCash(form.value.currency, transForm.value.totalAmount, 0); // Cash +
                 }
                 
                 await db.collection('users').doc(user.value.uid).collection('transactions').add(logData);
@@ -1033,22 +1104,7 @@
             const editStock = (s) => { isEditing.value = true; form.value = {...s}; showModal.value = true; };
             const closeModal = () => showModal.value = false;
             const saveStock = async () => { if (!user.value || !form.value.symbol) return; const d = { ...form.value }; const r = db.collection('users').doc(user.value.uid).collection('stocks'); if (isEditing.value) await r.doc(d.id).update(d); else await r.doc(d.id).set(d); closeModal(); };
-            
-            const deleteStock = async (stock) => { 
-                if (!user.value) return;
-                
-                if (stock.shares > 0) {
-                    const msg = `⚠️ 警告：您目前還持有 ${stock.shares} 股 ${stock.symbol}！\n\n` + 
-                                `1. 若要賣出變現，請按「新增交易」進行賣出。\n` + 
-                                `2. 若要取消當初的買入，請去「交易紀錄」刪除該筆紀錄。\n\n` +
-                                `若確定是資料錯誤要「強制刪除」 (不會退還現金)，請按「確定」。`;
-                    if (!confirm(msg)) return;
-                } else {
-                    if (!confirm('確定刪除此空卡片嗎？')) return;
-                }
-
-                await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).delete(); 
-            };
+            const deleteStock = async (id) => { if (!user.value || !confirm('刪除？')) return; await db.collection('users').doc(user.value.uid).collection('stocks').doc(id).delete(); };
             
             const getYahooData = async (symbol) => { let s = symbol.toUpperCase(); if (/^\d{4,6}[A-Z]?$/.test(s)) s += '.TW'; try { const r = await fetch('https://corsproxy.io/?' + encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${s}?interval=1d&events=div,splits&t=${Date.now()}`)); const j = await r.json(); if (!j.chart?.result?.length) { if (s.endsWith('.TW')) { const r2 = await fetch('https://corsproxy.io/?' + encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${s.replace('.TW','.TWO')}?interval=1d&t=${Date.now()}`)); const j2 = await r2.json(); if (j2.chart?.result) return { symbol: j2.chart.result[0].meta.symbol, regularMarketPrice: j2.chart.result[0].meta.regularMarketPrice, previousClose: j2.chart.result[0].meta.chartPreviousClose || j2.chart.result[0].meta.previousClose }; } throw new Error('Not Found'); } return { symbol: j.chart.result[0].meta.symbol, regularMarketPrice: j.chart.result[0].meta.regularMarketPrice, previousClose: j.chart.result[0].meta.chartPreviousClose || j.chart.result[0].meta.previousClose }; } catch (e) { return null; } };
             const autoFetchName = async () => { const s = form.value.symbol; if (!s) return; if (/^\d/.test(s)) form.value.currency = 'TWD'; else if (/^[A-Za-z]+$/.test(s)) form.value.currency = 'USD'; if (!form.value.name) form.value.name = '查詢中...'; const d = await getYahooData(s); if (d) { if (form.value.name === '查詢中...') form.value.name = d.symbol; form.value.currentPrice = d.regularMarketPrice; form.value.previousClose = d.previousClose; } else { if (form.value.name === '查詢中...') form.value.name = ''; alert('查無代號'); } };
@@ -1063,11 +1119,13 @@
             const twStats = computed(() => calculateStats(twStockList.value));
             const usStats = computed(() => calculateStats(usStockList.value));
             
-            const grandTotalValue = computed(() => {
+            // v2.9.3: grandTotalValue is Net Worth (Asset - Loan)
+            const grandTotalAssets = computed(() => {
                 const stockVal = twStats.value.value + (usStats.value.value * exchangeRate.value);
                 const cashVal = (cashData.value.twd || 0) + ((cashData.value.usd || 0) * exchangeRate.value);
                 return stockVal + cashVal;
             });
+            const grandTotalValue = computed(() => grandTotalAssets.value - (cashData.value.loan || 0));
             
             const grandTotalPnL = computed(() => twStats.value.pnl + (usStats.value.pnl * exchangeRate.value));
             const realizedTotalTw = computed(() => realizedGains.value.filter(r => r.currency === 'TWD').reduce((acc, cur) => acc + cur.pnl, 0));
@@ -1086,6 +1144,7 @@
                         if (transFilterType.value === 'trade') return tx.type === 'buy' || tx.type === 'sell';
                         if (transFilterType.value === 'dividend') return tx.type === 'dividend';
                         if (transFilterType.value === 'fund') return tx.type === 'deposit' || tx.type === 'withdraw';
+                        if (transFilterType.value === 'loan') return tx.type === 'borrow' || tx.type === 'repay';
                         return true;
                     });
                 }
@@ -1135,22 +1194,23 @@
                 if(type === 'dividend') return '領息';
                 if(type === 'deposit') return '入金';
                 if(type === 'withdraw') return '出金';
+                if(type === 'borrow') return '借款';
+                if(type === 'repay') return '還款';
                 return type;
             };
             const getAmountClass = (tx) => {
-                if (tx.type === 'buy' || tx.type === 'withdraw') return ''; // Black/Normal (Spend)
-                if (tx.type === 'sell' || tx.type === 'dividend' || tx.type === 'deposit') return isDarkMode.value ? 'text-yellow-400' : 'text-yellow-600'; // Income (Gold) - Sell also yields cash
-                if (tx.type === 'sell') return 'text-down'; // Green for sell revenue? Or keep standard.
+                if (tx.type === 'buy' || tx.type === 'withdraw' || tx.type === 'repay') return ''; 
+                if (tx.type === 'sell' || tx.type === 'dividend' || tx.type === 'deposit' || tx.type === 'borrow') return isDarkMode.value ? 'text-yellow-400' : 'text-yellow-600'; 
                 return '';
             };
             const getAmountSign = (tx) => {
-                if (tx.type === 'buy' || tx.type === 'withdraw') return '-';
+                if (tx.type === 'buy' || tx.type === 'withdraw' || tx.type === 'repay') return '-';
                 return '+';
             };
 
             return {
                 user, login, logout, stocks, exchangeRate, lastUpdated, isLoading, viewMode, isMobile, showPrivacy, isDarkMode, toggleDarkMode, activeSection, toggleSection, showChangelog,
-                twStats, usStats, grandTotalValue, grandTotalPnL, twStockList, usStockList,
+                twStats, usStats, grandTotalValue, grandTotalAssets, grandTotalPnL, twStockList, usStockList,
                 showModal, isEditing, form, openModal, editStock, closeModal, saveStock, deleteStock,
                 showTransModal, transForm, openTransModal, closeTransModal, submitTransaction, calculateNewAvg, isFundMode, openFundModal,
                 autoFetchName, autoFetchTransName, fetchPrices, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountClass, getAmountSign,
@@ -1161,10 +1221,11 @@
                 realizedStartDate, realizedEndDate, fetchRealizedGains, cashData,
                 transFilterType, transSearchQuery, jumpToFundHistory,
                 showHistoryModal, historyRecords, openHistoryModal, deleteHistoryRecord,
-                // v2.9.2: New delete logic exports
-                showDeleteModal, pendingDeleteTx, executeDelete, deleteTransaction,
-                // v2.9.0 Exports
-                notes, openNoteModal, closeNoteModal, saveNote, deleteNote, showNoteModalVisible, noteForm
+                notes, openNoteModal, closeNoteModal, saveNote, deleteNote, showNoteModalVisible, noteForm,
+                // v2.9.2 exports
+                showDeleteModal, pendingDeleteTx, executeDelete,
+                // v2.9.3 Loan Exports
+                openLoanModal, isLoanMode, isSyncToCash
             };
         }
     }).mount('#app');

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v2.9.3 (Fix)</title>
+    <title>我的投資組合 | Portfolio v2.9.3 (Complete)</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -366,6 +366,7 @@
                             <span class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-blue-500 border-4 border-white dark:border-gray-800"></span>
                             <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-blue-600 dark:text-blue-400 text-lg">v2.9.3</span><span class="text-xs text-gray-400">2025/12/23</span></div>
                             <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">修復</span><span>補回消失的台股/美股庫存列表</span></li>
                                 <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">新增</span><span>借款管理功能 (可選是否同步入金)</span></li>
                                 <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">重構</span><span>儀表板顯示淨資產 (資產-借款)，並連動走勢圖</span></li>
                             </ul>
@@ -892,9 +893,6 @@
                             { 
                                 label: '淨資產 (Net Worth)', 
                                 data: d.map(x => {
-                                    // Compatibility logic: Ensure we display Net Worth
-                                    // If old data saved as Asset, subtract loan. If new data saved as Net Worth, use directly.
-                                    // To be safe and consistent, recalculate: (Stocks + Cash) - Loan
                                     const asset = (x.twVal||0) + (x.twCash||0) + ((x.usVal||0) + (x.usCash||0)) * exchangeRate.value;
                                     const loan = x.loan || 0;
                                     return asset - loan;
@@ -902,7 +900,24 @@
                                 borderColor: totalColor, fill: true, backgroundColor: isDark ? 'rgba(167, 139, 250, 0.1)' : 'rgba(31,41,55,0.1)', tension: 0.3 
                             }, 
                             { label: '台股 (Stock)', data: d.map(x=>x.twVal), borderColor: '#3b82f6', hidden: true, tension: 0.3 }, 
-                            { label: '美股 (Stock TWD)', data: d.map(x=>x.usVal * exchangeRate.value), borderColor: '#ef4444', hidden: true, tension: 0.3 }
+                            { label: '美股 (Stock TWD)', data: d.map(x=>x.usVal * exchangeRate.value), borderColor: '#ef4444', hidden: true, tension: 0.3 },
+                            // v2.9.3 Fix: Restored Account Views
+                            { 
+                                label: '台股帳戶 (Stock+Cash)', 
+                                data: d.map(x=>(x.twVal||0) + (x.twCash||0)), 
+                                borderColor: '#93c5fd', 
+                                borderDash: [5, 5], 
+                                hidden: true, 
+                                tension: 0.3 
+                            },
+                            { 
+                                label: '美股帳戶 (Stock+Cash)', 
+                                data: d.map(x=>((x.usVal||0) + (x.usCash||0)) * exchangeRate.value), 
+                                borderColor: '#fca5a5', 
+                                borderDash: [5, 5], 
+                                hidden: true, 
+                                tension: 0.3 
+                            }
                         ] 
                     },
                     options: { 
@@ -1089,7 +1104,7 @@
             const editStock = (s) => { isEditing.value = true; form.value = {...s}; showModal.value = true; };
             const closeModal = () => showModal.value = false;
             const saveStock = async () => { if (!user.value || !form.value.symbol) return; const d = { ...form.value }; const r = db.collection('users').doc(user.value.uid).collection('stocks'); if (isEditing.value) await r.doc(d.id).update(d); else await r.doc(d.id).set(d); closeModal(); };
-            const deleteStock = async (stock) => { if (!user.value || !confirm('刪除？')) return; await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).delete(); };
+            const deleteStock = async (id) => { if (!user.value || !confirm('刪除？')) return; await db.collection('users').doc(user.value.uid).collection('stocks').doc(id).delete(); };
             
             const getYahooData = async (symbol) => { let s = symbol.toUpperCase(); if (/^\d{4,6}[A-Z]?$/.test(s)) s += '.TW'; try { const r = await fetch('https://corsproxy.io/?' + encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${s}?interval=1d&events=div,splits&t=${Date.now()}`)); const j = await r.json(); if (!j.chart?.result?.length) { if (s.endsWith('.TW')) { const r2 = await fetch('https://corsproxy.io/?' + encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${s.replace('.TW','.TWO')}?interval=1d&t=${Date.now()}`)); const j2 = await r2.json(); if (j2.chart?.result) return { symbol: j2.chart.result[0].meta.symbol, regularMarketPrice: j2.chart.result[0].meta.regularMarketPrice, previousClose: j2.chart.result[0].meta.chartPreviousClose || j2.chart.result[0].meta.previousClose }; } throw new Error('Not Found'); } return { symbol: j.chart.result[0].meta.symbol, regularMarketPrice: j.chart.result[0].meta.regularMarketPrice, previousClose: j.chart.result[0].meta.chartPreviousClose || j.chart.result[0].meta.previousClose }; } catch (e) { return null; } };
             const autoFetchName = async () => { const s = form.value.symbol; if (!s) return; if (/^\d/.test(s)) form.value.currency = 'TWD'; else if (/^[A-Za-z]+$/.test(s)) form.value.currency = 'USD'; if (!form.value.name) form.value.name = '查詢中...'; const d = await getYahooData(s); if (d) { if (form.value.name === '查詢中...') form.value.name = d.symbol; form.value.currentPrice = d.regularMarketPrice; form.value.previousClose = d.previousClose; } else { if (form.value.name === '查詢中...') form.value.name = ''; alert('查無代號'); } };

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v2.9.5 (Fix)</title>
+    <title>我的投資組合 | Portfolio v2.9.6</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -65,7 +65,7 @@
     <div v-if="!user" class="flex-grow flex flex-col items-center justify-center p-4">
         <div class="zen-card p-8 max-w-sm w-full text-center space-y-6">
             <div class="bg-gray-800 text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto text-2xl"><i class="fa-solid fa-chart-line"></i></div>
-            <div><h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v2.9.5</h1><p class="text-gray-500 dark:text-gray-400 text-sm mt-2">支援多重借款管理 (信貸/質押)</p></div>
+            <div><h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v2.9.6</h1><p class="text-gray-500 dark:text-gray-400 text-sm mt-2">支援多重借款管理 (信貸/質押)</p></div>
             <button @click="login" class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
                 <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5 mr-3" alt="Google">使用 Google 帳號登入
             </button>
@@ -79,7 +79,7 @@
                     <a href="https://chianghf99.github.io/my-wallet/" class="text-gray-400 hover:text-gray-600 dark:hover:text-white transition"><i class="fa-solid fa-home"></i></a>
                     <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                         <span class="hidden sm:inline">我的資產帳本</span>
-                        <span @click="showChangelog=true" class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v2.9.5</span>
+                        <span @click="showChangelog=true" class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v2.9.6</span>
                     </h1>
                 </div>
                 <div class="flex items-center gap-3">
@@ -195,7 +195,10 @@
                         <div class="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-xl border border-purple-100 dark:border-purple-900/30 relative">
                             <div class="flex justify-between items-start mb-2">
                                 <div class="text-xs text-purple-600 dark:text-purple-400">總借款 (TWD)</div>
-                                <button @click="openLoanMgrModal" class="text-xs bg-purple-100 dark:bg-purple-800 text-purple-600 dark:text-purple-300 px-2 py-0.5 rounded hover:bg-purple-200"><i class="fa-solid fa-gear"></i> 管理</button>
+                                <div class="flex gap-1">
+                                    <button @click="openLoanMgrModal" class="text-xs bg-purple-100 dark:bg-purple-800 text-purple-600 dark:text-purple-300 px-2 py-0.5 rounded hover:bg-purple-200"><i class="fa-solid fa-gear"></i> 管理</button>
+                                    <button @click="openLoanModal()" class="text-xs bg-purple-600 text-white px-2 py-0.5 rounded hover:bg-purple-700"><i class="fa-solid fa-pen-to-square"></i> 記帳</button>
+                                </div>
                             </div>
                             <div class="text-2xl font-bold text-purple-700 dark:text-purple-300 text-center mb-2"><span v-if="showPrivacy">{{ formatCurrency(totalLoanBalance, 'TWD') }}</span><span v-else>****</span></div>
                             <div class="space-y-1 max-h-24 overflow-y-auto custom-scrollbar">
@@ -373,17 +376,16 @@
                     <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
                          <div class="relative pl-6">
                             <span class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-blue-500 border-4 border-white dark:border-gray-800"></span>
-                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-blue-600 dark:text-blue-400 text-lg">v2.9.5</span><span class="text-xs text-gray-400">2025/12/28</span></div>
+                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-blue-600 dark:text-blue-400 text-lg">v2.9.6</span><span class="text-xs text-gray-400">2025/12/28</span></div>
                             <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">新增</span><span>支援多重借款帳戶 (信貸/質押...)</span></li>
-                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">優化</span><span>借款管理可直接編輯餘額，方便拆分帳目</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">修復</span><span>補回借款管理的「記帳」按鈕</span></li>
                             </ul>
                         </div>
                          <div class="relative pl-6">
                             <span class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-4 border-white dark:border-gray-800"></span>
-                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-gray-700 dark:text-gray-200">v2.9.4</span><span class="text-xs text-gray-400">2025/12/28</span></div>
+                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-gray-700 dark:text-gray-200">v2.9.5</span><span class="text-xs text-gray-400">2025/12/28</span></div>
                             <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">新增</span><span>歷史資料編輯器 (手動校正)</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">新增</span><span>支援多重借款帳戶 (信貸/質押...)</span></li>
                             </ul>
                         </div>
                     </div>
@@ -651,9 +653,11 @@
             const showHistoryModal = ref(false);
             const historyRecords = ref([]);
             
+            // v2.9.2: Delete Modal
             const showDeleteModal = ref(false);
             const pendingDeleteTx = ref(null);
             
+            // v2.9.4: History Edit Modal
             const showHistoryEditModalVisible = ref(false);
             const historyEditForm = ref({ date: '', twVal: 0, usVal: 0, twCash: 0, usCash: 0, loan: 0 });
             
@@ -661,10 +665,8 @@
             const showNoteModalVisible = ref(false);
             const noteForm = ref({ id: null, title: '', date: '', content: '' });
             
-            const loanList = ref([]);
-            const showLoanMgrModal = ref(false);
-            const loanForm = ref({ id: null, name: '', balance: 0 });
-            const cashData = ref({ twd: 0, usd: 0, loan: 0 }); 
+            // v2.9.3: Loan initialized
+            const cashData = ref({ twd: 0, usd: 0, loan: 0 });
 
             const prevDayData = ref(null);
             const getLocalDate = () => { const d = new Date(); const offset = d.getTimezoneOffset() * 60000; return new Date(d.getTime() - offset).toISOString().split('T')[0]; };
@@ -692,6 +694,11 @@
             let unsubscribeCash = null;
             let unsubscribeNotes = null;
             let unsubscribeLoans = null;
+
+            // v2.9.5: Loans
+            const loanList = ref([]);
+            const showLoanMgrModal = ref(false);
+            const loanForm = ref({ id: null, name: '', balance: 0 });
 
             const showModal = ref(false);
             const isEditing = ref(false);
@@ -888,6 +895,7 @@
                 drawChart(); 
             };
             
+            // v2.9.5: Loan Management
             const openLoanMgrModal = () => { showLoanMgrModal.value = true; loanForm.value = { id: null, name: '', balance: 0 }; };
             const editLoanAccount = (l) => { loanForm.value = { ...l }; };
             const saveLoanAccount = async () => {
@@ -898,7 +906,7 @@
                 loanForm.value = { id: null, name: '', balance: 0 };
             };
             const deleteLoanAccount = async (l) => {
-                if (!confirm(`確定刪除 ${l.name}？`)) return;
+                if (!confirm(`確定刪除 ${l.name}？(這不會影響已發生的交易紀錄)`)) return;
                 await db.collection('users').doc(user.value.uid).collection('loans').doc(l.id).delete();
             };
             
@@ -1125,10 +1133,11 @@
                 form.value.currency = 'TWD';
                 showTransModal.value = true;
             };
+            // v2.9.6: Button on Card triggers this
             const openLoanModal = () => {
                 isLoanMode.value = true;
                 isFundMode.value = false;
-                isSyncToCash.value = false; 
+                isSyncToCash.value = false; // Default unchecked as requested
                 transForm.value = { id: null, type: 'borrow', symbol: 'LOAN', name: '', shares: 0, totalAmount: '', date: getLocalDate(), loanId: '' };
                 form.value.currency = 'TWD';
                 showTransModal.value = true;
@@ -1143,7 +1152,7 @@
                     date: transForm.value.date || getLocalDate(),
                     type: transForm.value.type,
                     symbol: (isFundMode.value) ? 'CASH' : (isLoanMode.value ? 'LOAN' : transForm.value.symbol.toUpperCase()),
-                    name: isLoanMode.value ? (getTypeName(transForm.value.type) + ' (' + loanName + ')') : 
+                    name: isLoanMode.value ? `${getTypeName(transForm.value.type)} (${loanName})` : 
                           (isFundMode.value ? (transForm.value.name || getTypeName(transForm.value.type)) : transForm.value.name),
                     shares: (isFundMode.value || isLoanMode.value || transForm.value.type === 'dividend') ? 0 : transForm.value.shares,
                     price: 0,
@@ -1228,7 +1237,7 @@
                         const pnl = transForm.value.totalAmount - 0; 
                         await db.collection('users').doc(user.value.uid).collection('realized_gains').add({ ...logData, pnl: pnl, price: logData.price });
                         await db.collection('users').doc(user.value.uid).collection('transactions').add(logData);
-                        await updateCash(form.value.currency, transForm.value.totalAmount); // Cash +
+                        await updateCash(form.value.currency, transForm.value.totalAmount, 0); // Cash +
                         closeTransModal(); return;
                     }
                 }
@@ -1238,14 +1247,14 @@
                     ns = currentShares + transForm.value.shares; 
                     const oldTotal = currentShares * currentAvg;
                     na = (oldTotal + transForm.value.totalAmount) / ns; 
-                    await updateCash(form.value.currency, -transForm.value.totalAmount); // Cash -
+                    await updateCash(form.value.currency, -transForm.value.totalAmount, 0); // Cash -
                 } else { 
                     if (transForm.value.shares > currentShares) return alert('股數不足');
                     ns = currentShares - transForm.value.shares; 
                     na = currentAvg;
                     const pnl = transForm.value.totalAmount - (transForm.value.shares * currentAvg);
                     await db.collection('users').doc(user.value.uid).collection('realized_gains').add({ ...logData, pnl: pnl, price: logData.price });
-                    await updateCash(form.value.currency, transForm.value.totalAmount); // Cash +
+                    await updateCash(form.value.currency, transForm.value.totalAmount, 0); // Cash +
                 }
                 
                 await db.collection('users').doc(user.value.uid).collection('transactions').add(logData);

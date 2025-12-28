@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v2.9.5</title>
+    <title>我的投資組合 | Portfolio v2.9.5 (Fix)</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -350,6 +350,13 @@
                     <div class="overflow-x-auto"><table class="w-full text-sm text-left"><thead class="bg-gray-100 dark:bg-gray-800 text-gray-500 uppercase font-medium"><tr><th class="px-4 py-2">日期</th><th class="px-4 py-2">標的</th><th class="px-4 py-2 text-right">獲利/虧損</th><th class="px-4 py-2 text-center">操作</th></tr></thead><tbody class="divide-y divide-gray-100 dark:divide-gray-700"><tr v-for="rec in realizedGains" :key="rec.id" class="hover:bg-gray-50 dark:hover:bg-gray-800"><td class="px-4 py-3">{{ rec.date }}</td><td class="px-4 py-3 font-bold">{{ rec.name || rec.symbol }}</td><td class="px-4 py-3 text-right font-bold" :class="getPnlClass(rec.pnl)">{{ formatCurrency(rec.pnl, rec.currency) }}</td><td class="px-4 py-3 text-center"><button @click="deleteRealized(rec.id)" class="text-gray-400 hover:text-red-500"><i class="fa-solid fa-trash-can"></i></button></td></tr></tbody></table></div></div>
             </transition>
 
+            <div class="flex justify-end mb-4">
+                <div class="flex bg-gray-200 dark:bg-gray-700 rounded p-0.5">
+                    <button @click="viewMode = 'card'" :class="{'bg-white shadow dark:bg-gray-600': viewMode === 'card'}" class="px-3 py-1 rounded text-xs transition"><i class="fa-solid fa-mobile-alt"></i></button>
+                    <button @click="viewMode = 'table'" :class="{'bg-white shadow dark:bg-gray-600': viewMode === 'table'}" class="px-3 py-1 rounded text-xs transition"><i class="fa-solid fa-table"></i></button>
+                </div>
+            </div>
+
             <div v-if="twStockList.length > 0" class="mb-8"><h2 class="text-lg font-bold mb-3 flex items-center gap-2 dark:text-white"><img src="https://flagcdn.com/w40/tw.png" class="w-5 h-auto rounded-sm shadow-sm"><span>台股庫存</span></h2><div v-if="viewMode === 'table' || (viewMode === 'auto' && !isMobile)" class="zen-card overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm text-left"><thead class="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase font-medium"><tr><th class="px-6 py-4">代號/名稱</th><th class="px-6 py-4 text-right">現價</th><th class="px-6 py-4 text-right">成本/股數</th><th class="px-6 py-4 text-right">市值</th><th class="px-6 py-4 text-right">損益</th><th class="px-6 py-4 text-center">操作</th></tr></thead><tbody class="divide-y divide-gray-100 dark:divide-gray-700"><tr v-for="stock in twStockList" :key="stock.id" class="hover:bg-gray-50 dark:hover:bg-gray-800 transition"><td class="px-6 py-4"><div class="font-bold text-gray-900 dark:text-gray-200">{{ stock.symbol }}</div><div class="text-xs text-gray-500">{{ stock.name }}</div></td><td class="px-6 py-4 text-right font-medium dark:text-gray-300"><div>{{ formatCurrency(stock.currentPrice, 'TWD') }}</div><div class="text-xs" :class="getPnlClass(stock.currentPrice - stock.previousClose)" v-if="stock.previousClose">{{ formatChange(stock.currentPrice - stock.previousClose, stock.previousClose) }}</div></td><td class="px-6 py-4 text-right text-gray-500 dark:text-gray-400"><div v-if="showPrivacy"><div class="font-medium">{{ formatCurrency(stock.avgCost, 'TWD') }}</div><div class="text-xs">x {{ formatNumber(stock.shares) }}</div><div class="text-xs text-gray-400 mt-1 dark:text-gray-500">總: {{ formatCurrency(stock.avgCost * stock.shares, 'TWD') }}</div></div><div v-else>****</div></td><td class="px-6 py-4 text-right font-bold dark:text-gray-200"><span v-if="showPrivacy">{{ formatCurrency(stock.currentPrice * stock.shares, 'TWD') }}</span><span v-else>****</span></td><td class="px-6 py-4 text-right"><div v-if="showPrivacy"><div :class="getPnlClass((stock.currentPrice - stock.avgCost) * stock.shares)">{{ formatCurrency((stock.currentPrice - stock.avgCost) * stock.shares, 'TWD') }}</div><div :class="getPnlClass((stock.currentPrice - stock.avgCost) * stock.shares)" class="text-xs">{{ getRoi(stock.avgCost * stock.shares, (stock.currentPrice - stock.avgCost) * stock.shares) }}</div></div><div v-else class="text-gray-300">****</div></td><td class="px-6 py-4 text-center"><button @click="openTransModal(stock)" class="text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 mx-1"><i class="fa-solid fa-calculator"></i></button><button @click="editStock(stock)" class="text-gray-400 hover:text-blue-600 mx-1"><i class="fa-solid fa-pen"></i></button><button @click="deleteStock(stock)" class="text-gray-400 hover:text-red-600 mx-1"><i class="fa-solid fa-trash"></i></button></td></tr></tbody></table></div></div><div v-if="viewMode === 'card' || (viewMode === 'auto' && isMobile)" class="space-y-3"><div v-for="stock in twStockList" :key="stock.id" class="zen-card p-4 relative"><div class="flex justify-between items-start mb-2" @click="editStock(stock)"><div><span class="text-lg font-bold text-gray-800 dark:text-gray-200">{{ stock.symbol }}</span><div class="text-xs text-gray-500">{{ stock.name }}</div></div><div class="text-right"><div class="text-lg font-bold dark:text-gray-200">{{ formatCurrency(stock.currentPrice, 'TWD') }}</div><div class="text-xs font-bold" :class="getPnlClass(stock.currentPrice - stock.previousClose)" v-if="stock.previousClose">{{ formatChange(stock.currentPrice - stock.previousClose, stock.previousClose) }}</div></div></div><div class="grid grid-cols-2 gap-4 py-2 border-t border-gray-100 dark:border-gray-700" @click="editStock(stock)"><div><div class="text-xs text-gray-400">市值</div><div class="font-medium dark:text-gray-200"><span v-if="showPrivacy">{{ formatCurrency(stock.currentPrice * stock.shares, 'TWD') }}</span><span v-else>****</span></div></div><div class="text-right"><div class="text-xs text-gray-400">損益</div><div v-if="showPrivacy" :class="getPnlClass((stock.currentPrice - stock.avgCost) * stock.shares)" class="font-bold">{{ formatCurrency((stock.currentPrice - stock.avgCost) * stock.shares, 'TWD') }}</div><div v-else class="text-gray-300 font-bold">****</div></div></div><div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-50 dark:border-gray-700"><div class="text-xs text-gray-500"><span v-if="showPrivacy">持倉 {{ formatNumber(stock.shares) }} | 均價 {{ formatCurrency(stock.avgCost, 'TWD') }}</span><span v-else>持倉 **** | 均價 ****</span></div><button @click.stop="openTransModal(stock)" class="text-gray-500 hover:text-gray-900 dark:hover:text-white"><i class="fa-solid fa-calculator"></i> 補登</button></div></div></div></div>
             <div v-if="usStockList.length > 0" class="mb-8"><h2 class="text-lg font-bold mb-3 flex items-center gap-2 dark:text-white"><img src="https://flagcdn.com/w40/us.png" class="w-5 h-auto rounded-sm shadow-sm"><span>美股庫存</span></h2><div v-if="viewMode === 'table' || (viewMode === 'auto' && !isMobile)" class="zen-card overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm text-left"><thead class="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase font-medium"><tr><th class="px-6 py-4">代號/名稱</th><th class="px-6 py-4 text-right">現價</th><th class="px-6 py-4 text-right">成本/股數</th><th class="px-6 py-4 text-right">市值</th><th class="px-6 py-4 text-right">損益</th><th class="px-6 py-4 text-center">操作</th></tr></thead><tbody class="divide-y divide-gray-100 dark:divide-gray-700"><tr v-for="stock in usStockList" :key="stock.id" class="hover:bg-gray-50 dark:hover:bg-gray-800 transition"><td class="px-6 py-4"><div class="font-bold text-gray-900 dark:text-gray-200">{{ stock.symbol }}</div><div class="text-xs text-gray-500">{{ stock.name }}</div></td><td class="px-6 py-4 text-right font-medium dark:text-gray-300"><div>{{ formatCurrency(stock.currentPrice, 'USD') }}</div><div class="text-xs" :class="getPnlClass(stock.currentPrice - stock.previousClose)" v-if="stock.previousClose">{{ formatChange(stock.currentPrice - stock.previousClose, stock.previousClose) }}</div></td><td class="px-6 py-4 text-right text-gray-500 dark:text-gray-400"><div v-if="showPrivacy"><div class="font-medium">{{ formatCurrency(stock.avgCost, 'USD') }}</div><div class="text-xs">x {{ formatNumber(stock.shares) }}</div><div class="text-xs text-gray-400 mt-1 dark:text-gray-500">總: {{ formatCurrency(stock.avgCost * stock.shares, 'USD') }}</div></div><div v-else>****</div></td><td class="px-6 py-4 text-right font-bold dark:text-gray-200"><span v-if="showPrivacy">{{ formatCurrency(stock.currentPrice * stock.shares, 'USD') }}</span><span v-else>****</span></td><td class="px-6 py-4 text-right"><div v-if="showPrivacy"><div :class="getPnlClass((stock.currentPrice - stock.avgCost) * stock.shares)">{{ formatCurrency((stock.currentPrice - stock.avgCost) * stock.shares, 'USD') }}</div><div :class="getPnlClass((stock.currentPrice - stock.avgCost) * stock.shares)" class="text-xs">{{ getRoi(stock.avgCost * stock.shares, (stock.currentPrice - stock.avgCost) * stock.shares) }}</div></div><div v-else class="text-gray-300">****</div></td><td class="px-6 py-4 text-center"><button @click="openTransModal(stock)" class="text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 mx-1"><i class="fa-solid fa-calculator"></i></button><button @click="editStock(stock)" class="text-gray-400 hover:text-blue-600 mx-1"><i class="fa-solid fa-pen"></i></button><button @click="deleteStock(stock.id)" class="text-gray-400 hover:text-red-600 mx-1"><i class="fa-solid fa-trash"></i></button></td></tr></tbody></table></div></div><div v-if="viewMode === 'card' || (viewMode === 'auto' && isMobile)" class="space-y-3"><div v-for="stock in usStockList" :key="stock.id" class="zen-card p-4 relative"><div class="flex justify-between items-start mb-2" @click="editStock(stock)"><div><span class="text-lg font-bold text-gray-800 dark:text-gray-200">{{ stock.symbol }}</span><div class="text-xs text-gray-500">{{ stock.name }}</div></div><div class="text-right"><div class="text-lg font-bold dark:text-gray-200">{{ formatCurrency(stock.currentPrice, 'USD') }}</div><div class="text-xs font-bold" :class="getPnlClass(stock.currentPrice - stock.previousClose)" v-if="stock.previousClose">{{ formatChange(stock.currentPrice - stock.previousClose, stock.previousClose) }}</div></div></div><div class="grid grid-cols-2 gap-4 py-2 border-t border-gray-100 dark:border-gray-700" @click="editStock(stock)"><div><div class="text-xs text-gray-400">市值</div><div class="font-medium dark:text-gray-200"><span v-if="showPrivacy">{{ formatCurrency(stock.currentPrice * stock.shares, 'USD') }}</span><span v-else>****</span></div></div><div class="text-right"><div class="text-xs text-gray-400">損益</div><div v-if="showPrivacy" :class="getPnlClass((stock.currentPrice - stock.avgCost) * stock.shares)" class="font-bold">{{ formatCurrency((stock.currentPrice - stock.avgCost) * stock.shares, 'USD') }}</div><div v-else class="text-gray-300 font-bold">****</div></div></div><div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-50 dark:border-gray-700"><div class="text-xs text-gray-500"><span v-if="showPrivacy">持倉 {{ formatNumber(stock.shares) }} | 均價 {{ formatCurrency(stock.avgCost, 'USD') }}</span><span v-else>持倉 **** | 均價 ****</span></div><button @click.stop="openTransModal(stock)" class="text-gray-500 hover:text-gray-900 dark:hover:text-white"><i class="fa-solid fa-calculator"></i> 補登</button></div></div></div></div>
             
@@ -369,7 +376,7 @@
                             <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-blue-600 dark:text-blue-400 text-lg">v2.9.5</span><span class="text-xs text-gray-400">2025/12/28</span></div>
                             <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
                                 <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">新增</span><span>支援多重借款帳戶 (信貸/質押...)</span></li>
-                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">優化</span><span>借款管理可直接編輯餘額，方便拆分帳目</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">優化</span><span>借款管理可直接編輯餘額，方便拆分帳目</span></li>
                             </ul>
                         </div>
                          <div class="relative pl-6">
@@ -644,11 +651,9 @@
             const showHistoryModal = ref(false);
             const historyRecords = ref([]);
             
-            // v2.9.2: Delete Modal
             const showDeleteModal = ref(false);
             const pendingDeleteTx = ref(null);
             
-            // v2.9.4: History Edit Modal
             const showHistoryEditModalVisible = ref(false);
             const historyEditForm = ref({ date: '', twVal: 0, usVal: 0, twCash: 0, usCash: 0, loan: 0 });
             
@@ -656,8 +661,10 @@
             const showNoteModalVisible = ref(false);
             const noteForm = ref({ id: null, title: '', date: '', content: '' });
             
-            // v2.9.3: Loan initialized
-            const cashData = ref({ twd: 0, usd: 0, loan: 0 });
+            const loanList = ref([]);
+            const showLoanMgrModal = ref(false);
+            const loanForm = ref({ id: null, name: '', balance: 0 });
+            const cashData = ref({ twd: 0, usd: 0, loan: 0 }); 
 
             const prevDayData = ref(null);
             const getLocalDate = () => { const d = new Date(); const offset = d.getTimezoneOffset() * 60000; return new Date(d.getTime() - offset).toISOString().split('T')[0]; };
@@ -691,8 +698,8 @@
             const form = ref({ id: null, symbol: '', name: '', currency: 'TWD', shares: 0, avgCost: 0, currentPrice: 0, dividends: 0, previousClose: 0 });
             const showTransModal = ref(false);
             const isFundMode = ref(false);
-            const isLoanMode = ref(false); // v2.9.3
-            const isSyncToCash = ref(false); // v2.9.3
+            const isLoanMode = ref(false); 
+            const isSyncToCash = ref(false); 
             const transForm = ref({ id: null, type: 'buy', symbol: '', name: '', shares: '', totalAmount: '', currentShares: 0, currentAvg: 0, date: '', loanId: '' });
 
             if (isDarkMode.value) document.documentElement.classList.add('dark');
@@ -764,7 +771,6 @@
                         if(doc.exists) cashData.value = doc.data();
                         else cashData.value = { twd: 0, usd: 0, loan: 0 };
                         
-                        // v2.9.5: Legacy Migration Check
                         if (cashData.value.loan > 0 && loanList.value.length === 0) {
                             setTimeout(() => migrateLegacyLoan(uid, cashData.value.loan), 1000);
                         }
@@ -781,9 +787,9 @@
             };
             
             const migrateLegacyLoan = async (uid, amount) => {
-                if (loanList.value.length > 0) return; // Already exists
+                if (loanList.value.length > 0) return;
                 await db.collection('users').doc(uid).collection('loans').add({ name: '原有借款', balance: amount, currency: 'TWD' });
-                await db.collection('users').doc(uid).collection('portfolio').doc('cash').update({ loan: 0 }); // Clear legacy field
+                await db.collection('users').doc(uid).collection('portfolio').doc('cash').update({ loan: 0 });
             };
             
             const fetchNotes = (uid) => {
@@ -851,7 +857,6 @@
                 drawChart();
             };
             
-            // v2.9.4: Open History Edit Modal
             const openHistoryEditModal = (rec) => {
                 historyEditForm.value = {
                     date: rec.date,
@@ -873,22 +878,16 @@
             const saveHistoryRecord = async () => {
                 if (!user.value) return;
                 const newNetWorth = calculateHistoryNetWorth();
-                
                 await db.collection('users').doc(user.value.uid).collection('history').doc(historyEditForm.value.date).update({
-                    twVal: historyEditForm.value.twVal,
-                    usVal: historyEditForm.value.usVal,
-                    twCash: historyEditForm.value.twCash,
-                    usCash: historyEditForm.value.usCash,
-                    loan: historyEditForm.value.loan,
-                    totalVal: newNetWorth // Update total val to match components
+                    twVal: historyEditForm.value.twVal, usVal: historyEditForm.value.usVal,
+                    twCash: historyEditForm.value.twCash, usCash: historyEditForm.value.usCash,
+                    loan: historyEditForm.value.loan, totalVal: newNetWorth 
                 });
-                
                 showHistoryEditModalVisible.value = false;
-                await openHistoryModal(); // Refresh list
-                drawChart(); // Refresh chart
+                await openHistoryModal(); 
+                drawChart(); 
             };
             
-            // v2.9.5: Loan Management
             const openLoanMgrModal = () => { showLoanMgrModal.value = true; loanForm.value = { id: null, name: '', balance: 0 }; };
             const editLoanAccount = (l) => { loanForm.value = { ...l }; };
             const saveLoanAccount = async () => {
@@ -899,7 +898,7 @@
                 loanForm.value = { id: null, name: '', balance: 0 };
             };
             const deleteLoanAccount = async (l) => {
-                if (!confirm(`確定刪除 ${l.name}？(這不會影響已發生的交易紀錄)`)) return;
+                if (!confirm(`確定刪除 ${l.name}？`)) return;
                 await db.collection('users').doc(user.value.uid).collection('loans').doc(l.id).delete();
             };
             
@@ -945,18 +944,11 @@
                  if (!tx) return;
 
                  if (revertCash) {
-                     // v2.9.3 Logic: Revert transactions
                      if (tx.type === 'deposit') await updateCash(tx.currency, -Math.abs(tx.totalAmount), 0); 
                      else if (tx.type === 'withdraw') await updateCash(tx.currency, Math.abs(tx.totalAmount), 0);
                      else if (tx.type === 'borrow') {
-                         // v2.9.5: Handle loan revert
-                         if (tx.loanId) {
-                             await updateLoanBalance(tx.loanId, -Math.abs(tx.totalAmount));
-                         } else {
-                             // Fallback for legacy loan (v2.9.3)
-                             alert('此為舊版借款紀錄，請手動調整對應帳戶餘額。');
-                         }
-                         // NOTE: We don't revert cash because we don't know if it was synced.
+                         if (tx.loanId) await updateLoanBalance(tx.loanId, -Math.abs(tx.totalAmount));
+                         else alert('此為舊版借款紀錄，請手動調整對應帳戶餘額。');
                      } 
                      else if (tx.type === 'repay') {
                          if (tx.loanId) await updateLoanBalance(tx.loanId, Math.abs(tx.totalAmount));
@@ -999,9 +991,7 @@
                 if (!user.value) return;
                 const todayStr = getLocalDate();
                 const historyRef = db.collection('users').doc(user.value.uid).collection('history').doc(todayStr);
-                
                 const currentHour = new Date().getHours();
-
                 const snapshot = {
                     date: todayStr, 
                     timestamp: firebase.firestore.FieldValue.serverTimestamp(),
@@ -1010,17 +1000,12 @@
                     usVal: usStats.value.value,
                     twCash: cashData.value.twd || 0,
                     usCash: cashData.value.usd || 0,
-                    loan: totalLoanBalance.value, // v2.9.5: Sum of loans
+                    loan: totalLoanBalance.value,
                     totalPnL: grandTotalPnL.value, 
                     twPnL: twStats.value.pnl, 
                     usPnL: usStats.value.pnl
                 };
-
-                if (currentHour >= 21) {
-                     const doc = await historyRef.get();
-                     if (doc.exists) { return; }
-                }
-
+                if (currentHour >= 21) { const doc = await historyRef.get(); if (doc.exists) return; }
                 await historyRef.set(snapshot, { merge: true });
             };
             
@@ -1029,20 +1014,18 @@
                 const ref = db.collection('users').doc(user.value.uid).collection('portfolio').doc('cash');
                 const doc = await ref.get();
                 let current = doc.exists ? doc.data() : { twd: 0, usd: 0, loan: 0 };
-                
                 let newTwd = current.twd || 0;
                 let newUsd = current.usd || 0;
-
+                let newLoan = current.loan || 0;
                 if(currency === 'TWD') newTwd += amount;
                 else newUsd += amount;
-                
-                await ref.set({ twd: newTwd, usd: newUsd }, { merge: true }); // Removed loan field here, managed in subcollection
-
+                newLoan += loanAmount;
+                await ref.set({ twd: newTwd, usd: newUsd, loan: newLoan }, { merge: true });
                 cashData.value.twd = newTwd;
                 cashData.value.usd = newUsd;
+                cashData.value.loan = newLoan;
             };
             
-            // v2.9.5: Update specific loan
             const updateLoanBalance = async (loanId, amount) => {
                 if (!user.value || !loanId) return;
                 const ref = db.collection('users').doc(user.value.uid).collection('loans').doc(loanId);
@@ -1142,7 +1125,6 @@
                 form.value.currency = 'TWD';
                 showTransModal.value = true;
             };
-            // v2.9.5: Open Loan Modal
             const openLoanModal = () => {
                 isLoanMode.value = true;
                 isFundMode.value = false;
@@ -1161,7 +1143,7 @@
                     date: transForm.value.date || getLocalDate(),
                     type: transForm.value.type,
                     symbol: (isFundMode.value) ? 'CASH' : (isLoanMode.value ? 'LOAN' : transForm.value.symbol.toUpperCase()),
-                    name: isLoanMode.value ? `${getTypeName(transForm.value.type)} (${loanName})` : 
+                    name: isLoanMode.value ? (getTypeName(transForm.value.type) + ' (' + loanName + ')') : 
                           (isFundMode.value ? (transForm.value.name || getTypeName(transForm.value.type)) : transForm.value.name),
                     shares: (isFundMode.value || isLoanMode.value || transForm.value.type === 'dividend') ? 0 : transForm.value.shares,
                     price: 0,
@@ -1171,7 +1153,6 @@
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 };
                 
-                // v2.9.5: Handle Loan + Optional Sync
                 if (isLoanMode.value) {
                     if (!transForm.value.totalAmount) return alert('請輸入金額');
                     if (!transForm.value.loanId) return alert('請選擇借款帳戶');
@@ -1179,12 +1160,10 @@
                     let cashDelta = 0;
                     let loanDelta = 0;
 
-                    // Borrow: Loan Increases (+). Cash Increases (+) ONLY IF synced.
                     if (transForm.value.type === 'borrow') {
                         loanDelta = transForm.value.totalAmount;
                         if (isSyncToCash.value) cashDelta = transForm.value.totalAmount;
                     } 
-                    // Repay: Loan Decreases (-). Cash Decreases (-) ONLY IF synced.
                     else {
                         loanDelta = -transForm.value.totalAmount;
                         if (isSyncToCash.value) cashDelta = -transForm.value.totalAmount;

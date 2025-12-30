@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v2.9.10</title>
+    <title>我的投資組合 | Portfolio v2.9.7</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -65,7 +65,7 @@
     <div v-if="!user" class="flex-grow flex flex-col items-center justify-center p-4">
         <div class="zen-card p-8 max-w-sm w-full text-center space-y-6">
             <div class="bg-gray-800 text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto text-2xl"><i class="fa-solid fa-chart-line"></i></div>
-            <div><h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v2.9.10</h1><p class="text-gray-500 dark:text-gray-400 text-sm mt-2">穩定核心版：多重借款 + 智慧搜尋</p></div>
+            <div><h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v2.9.7</h1><p class="text-gray-500 dark:text-gray-400 text-sm mt-2">安全、即時、跨裝置的投資管理工具</p></div>
             <button @click="login" class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
                 <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5 mr-3" alt="Google">使用 Google 帳號登入
             </button>
@@ -79,7 +79,7 @@
                     <a href="https://chianghf99.github.io/my-wallet/" class="text-gray-400 hover:text-gray-600 dark:hover:text-white transition"><i class="fa-solid fa-home"></i></a>
                     <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                         <span class="hidden sm:inline">我的資產帳本</span>
-                        <span @click="showChangelog=true" class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v2.9.10</span>
+                        <span @click="showChangelog=true" class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v2.9.7</span>
                     </h1>
                 </div>
                 <div class="flex items-center gap-3">
@@ -360,8 +360,13 @@
                 </div>
             </div>
 
-            <div v-if="twStockList.length > 0" class="mb-8"><h2 class="text-lg font-bold mb-3 flex items-center gap-2 dark:text-white"><img src="https://flagcdn.com/w40/tw.png" class="w-5 h-auto rounded-sm shadow-sm"><span>台股庫存</span></h2><div v-if="viewMode === 'table' || (viewMode === 'auto' && !isMobile)" class="zen-card overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm text-left"><thead class="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase font-medium"><tr><th class="px-6 py-4">代號/名稱</th><th class="px-6 py-4 text-right">現價</th><th class="px-6 py-4 text-right">成本/股數</th><th class="px-6 py-4 text-right">市值</th><th class="px-6 py-4 text-right">損益</th><th class="px-6 py-4 text-center">操作</th></tr></thead><tbody class="divide-y divide-gray-100 dark:divide-gray-700"><tr v-for="stock in twStockList" :key="stock.id" class="hover:bg-gray-50 dark:hover:bg-gray-800 transition"><td class="px-6 py-4"><div class="font-bold text-gray-900 dark:text-gray-200">{{ stock.name }}</div><div class="text-xs text-gray-500">{{ stock.symbol }}</div></td><td class="px-6 py-4 text-right font-medium dark:text-gray-300"><div>{{ formatCurrency(stock.currentPrice, 'TWD') }}</div><div class="text-xs" :class="getPnlClass(stock.currentPrice - stock.previousClose)" v-if="stock.previousClose">{{ formatChange(stock.currentPrice - stock.previousClose, stock.previousClose) }}</div></td><td class="px-6 py-4 text-right text-gray-500 dark:text-gray-400"><div v-if="showPrivacy"><div class="font-medium">{{ formatCurrency(stock.avgCost, 'TWD') }}</div><div class="text-xs">x {{ formatNumber(stock.shares) }}</div><div class="text-xs text-gray-400 mt-1 dark:text-gray-500">總: {{ formatCurrency(stock.avgCost * stock.shares, 'TWD') }}</div></div><div v-else>****</div></td><td class="px-6 py-4 text-right font-bold dark:text-gray-200"><span v-if="showPrivacy">{{ formatCurrency(stock.currentPrice * stock.shares, 'TWD') }}</span><span v-else>****</span></td><td class="px-6 py-4 text-right"><div v-if="showPrivacy"><div :class="getPnlClass((stock.currentPrice - stock.avgCost) * stock.shares)">{{ formatCurrency((stock.currentPrice - stock.avgCost) * stock.shares, 'TWD') }}</div><div :class="getPnlClass((stock.currentPrice - stock.avgCost) * stock.shares)" class="text-xs">{{ getRoi(stock.avgCost * stock.shares, (stock.currentPrice - stock.avgCost) * stock.shares) }}</div></div><div v-else class="text-gray-300">****</div></td><td class="px-6 py-4 text-center"><button @click="openTransModal(stock)" class="text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 mx-1"><i class="fa-solid fa-calculator"></i></button><button @click="editStock(stock)" class="text-gray-400 hover:text-blue-600 mx-1"><i class="fa-solid fa-pen"></i></button><button @click="deleteStock(stock)" class="text-gray-400 hover:text-red-600 mx-1"><i class="fa-solid fa-trash"></i></button></td></tr></tbody></table></div></div><div v-if="viewMode === 'card' || (viewMode === 'auto' && isMobile)" class="space-y-3"><div v-for="stock in twStockList" :key="stock.id" class="zen-card p-4 relative"><div class="flex justify-between items-start mb-2" @click="editStock(stock)"><div><span class="text-lg font-bold text-gray-800 dark:text-gray-200">{{ stock.name }}</span><div class="text-xs text-gray-500">{{ stock.symbol }}</div></div><div class="text-right"><div class="text-lg font-bold dark:text-gray-200">{{ formatCurrency(stock.currentPrice, 'TWD') }}</div><div class="text-xs font-bold" :class="getPnlClass(stock.currentPrice - stock.previousClose)" v-if="stock.previousClose">{{ formatChange(stock.currentPrice - stock.previousClose, stock.previousClose) }}</div></div></div><div class="grid grid-cols-2 gap-4 py-2 border-t border-gray-100 dark:border-gray-700" @click="editStock(stock)"><div><div class="text-xs text-gray-400">市值</div><div class="font-medium dark:text-gray-200"><span v-if="showPrivacy">{{ formatCurrency(stock.currentPrice * stock.shares, 'TWD') }}</span><span v-else>****</span></div></div><div class="text-right"><div class="text-xs text-gray-400">損益</div><div v-if="showPrivacy" :class="getPnlClass((stock.currentPrice - stock.avgCost) * stock.shares)" class="font-bold">{{ formatCurrency((stock.currentPrice - stock.avgCost) * stock.shares, 'TWD') }}</div><div v-else class="text-gray-300 font-bold">****</div></div></div><div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-50 dark:border-gray-700"><div class="text-xs text-gray-500"><span v-if="showPrivacy">持倉 {{ formatNumber(stock.shares) }} | 均價 {{ formatCurrency(stock.avgCost, 'TWD') }}</span><span v-else>持倉 **** | 均價 ****</span></div><button @click.stop="openTransModal(stock)" class="text-gray-500 hover:text-gray-900 dark:hover:text-white"><i class="fa-solid fa-calculator"></i> 補登</button></div></div></div></div>
-            <div v-if="usStockList.length > 0" class="mb-8"><h2 class="text-lg font-bold mb-3 flex items-center gap-2 dark:text-white"><img src="https://flagcdn.com/w40/us.png" class="w-5 h-auto rounded-sm shadow-sm"><span>美股庫存</span></h2><div v-if="viewMode === 'table' || (viewMode === 'auto' && !isMobile)" class="zen-card overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm text-left"><thead class="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase font-medium"><tr><th class="px-6 py-4">代號/名稱</th><th class="px-6 py-4 text-right">現價</th><th class="px-6 py-4 text-right">成本/股數</th><th class="px-6 py-4 text-right">市值</th><th class="px-6 py-4 text-right">損益</th><th class="px-6 py-4 text-center">操作</th></tr></thead><tbody class="divide-y divide-gray-100 dark:divide-gray-700"><tr v-for="stock in usStockList" :key="stock.id" class="hover:bg-gray-50 dark:hover:bg-gray-800 transition"><td class="px-6 py-4"><div class="font-bold text-gray-900 dark:text-gray-200">{{ stock.name }}</div><div class="text-xs text-gray-500">{{ stock.symbol }}</div></td><td class="px-6 py-4 text-right font-medium dark:text-gray-300"><div>{{ formatCurrency(stock.currentPrice, 'USD') }}</div><div class="text-xs" :class="getPnlClass(stock.currentPrice - stock.previousClose)" v-if="stock.previousClose">{{ formatChange(stock.currentPrice - stock.previousClose, stock.previousClose) }}</div></td><td class="px-6 py-4 text-right text-gray-500 dark:text-gray-400"><div v-if="showPrivacy"><div class="font-medium">{{ formatCurrency(stock.avgCost, 'USD') }}</div><div class="text-xs">x {{ formatNumber(stock.shares) }}</div><div class="text-xs text-gray-400 mt-1 dark:text-gray-500">總: {{ formatCurrency(stock.avgCost * stock.shares, 'USD') }}</div></div><div v-else>****</div></td><td class="px-6 py-4 text-right font-bold dark:text-gray-200"><span v-if="showPrivacy">{{ formatCurrency(stock.currentPrice * stock.shares, 'USD') }}</span><span v-else>****</span></td><td class="px-6 py-4 text-right"><div v-if="showPrivacy"><div :class="getPnlClass((stock.currentPrice - stock.avgCost) * stock.shares)">{{ formatCurrency((stock.currentPrice - stock.avgCost) * stock.shares, 'USD') }}</div><div :class="getPnlClass((stock.currentPrice - stock.avgCost) * stock.shares)" class="text-xs">{{ getRoi(stock.avgCost * stock.shares, (stock.currentPrice - stock.avgCost) * stock.shares) }}</div></div><div v-else class="text-gray-300">****</div></td><td class="px-6 py-4 text-center"><button @click="openTransModal(stock)" class="text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 mx-1"><i class="fa-solid fa-calculator"></i></button><button @click="editStock(stock)" class="text-gray-400 hover:text-blue-600 mx-1"><i class="fa-solid fa-pen"></i></button><button @click="deleteStock(stock.id)" class="text-gray-400 hover:text-red-600 mx-1"><i class="fa-solid fa-trash"></i></button></td></tr></tbody></table></div></div><div v-if="viewMode === 'card' || (viewMode === 'auto' && isMobile)" class="space-y-3"><div v-for="stock in usStockList" :key="stock.id" class="zen-card p-4 relative"><div class="flex justify-between items-start mb-2" @click="editStock(stock)"><div><span class="text-lg font-bold text-gray-800 dark:text-gray-200">{{ stock.name }}</span><div class="text-xs text-gray-500">{{ stock.symbol }}</div></div><div class="text-right"><div class="text-lg font-bold dark:text-gray-200">{{ formatCurrency(stock.currentPrice, 'USD') }}</div><div class="text-xs font-bold" :class="getPnlClass(stock.currentPrice - stock.previousClose)" v-if="stock.previousClose">{{ formatChange(stock.currentPrice - stock.previousClose, stock.previousClose) }}</div></div></div><div class="grid grid-cols-2 gap-4 py-2 border-t border-gray-100 dark:border-gray-700" @click="editStock(stock)"><div><div class="text-xs text-gray-400">市值</div><div class="font-medium dark:text-gray-200"><span v-if="showPrivacy">{{ formatCurrency(stock.currentPrice * stock.shares, 'USD') }}</span><span v-else>****</span></div></div><div class="text-right"><div class="text-xs text-gray-400">損益</div><div v-if="showPrivacy" :class="getPnlClass((stock.currentPrice - stock.avgCost) * stock.shares)" class="font-bold">{{ formatCurrency((stock.currentPrice - stock.avgCost) * stock.shares, 'USD') }}</div><div v-else class="text-gray-300 font-bold">****</div></div></div><div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-50 dark:border-gray-700"><div class="text-xs text-gray-500"><span v-if="showPrivacy">持倉 {{ formatNumber(stock.shares) }} | 均價 {{ formatCurrency(stock.avgCost, 'USD') }}</span><span v-else>持倉 **** | 均價 ****</span></div><button @click.stop="openTransModal(stock)" class="text-gray-500 hover:text-gray-900 dark:hover:text-white"><i class="fa-solid fa-calculator"></i> 補登</button></div></div></div></div>
+            <div v-if="twStockList.length > 0" class="mb-8"><h2 class="text-lg font-bold mb-3 flex items-center gap-2 dark:text-white"><img src="https://flagcdn.com/w40/tw.png" class="w-5 h-auto rounded-sm shadow-sm"><span>台股庫存</span></h2><div v-if="viewMode === 'table' || (viewMode === 'auto' && !isMobile)" class="zen-card overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm text-left"><thead class="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase font-medium"><tr><th class="px-6 py-4">代號/名稱</th><th class="px-6 py-4 text-right">現價</th><th class="px-6 py-4 text-right">成本/股數</th><th class="px-6 py-4 text-right">市值</th><th class="px-6 py-4 text-right">損益</th><th class="px-6 py-4 text-center">操作</th></tr></thead><tbody class="divide-y divide-gray-100 dark:divide-gray-700"><tr v-for="stock in twStockList" :key="stock.id" class="hover:bg-gray-50 dark:hover:bg-gray-800 transition"><td class="px-6 py-4"><div class="font-bold text-gray-900 dark:text-gray-200">{{ stock.name }}</div><div class="text-xs text-gray-500">{{ stock.symbol }}</div></td><td class="px-6 py-4 text-right font-medium dark:text-gray-300"><div>{{ formatCurrency(stock.currentPrice, 'TWD') }}</div><div class="text-xs" :class="getPnlClass(stock.currentPrice - stock.previousClose)" v-if="stock.previousClose">{{ formatChange(stock.currentPrice - stock.previousClose, stock.previousClose) }}</div></td><td class="px-6 py-4 text-right text-gray-500 dark:text-gray-400"><div v-if="showPrivacy"><div class="font-medium">{{ formatCurrency(stock.avgCost, 'TWD') }}</div><div class="text-xs">x {{ formatNumber(stock.shares) }}</div><div class="text-xs text-gray-400 mt-1 dark:text-gray-500">總: {{ formatCurrency(stock.avgCost * stock.shares, 'TWD') }}</div></div><div v-else>****</div></td><td class="px-6 py-4 text-right font-bold dark:text-gray-200"><span v-if="showPrivacy">{{ formatCurrency(stock.currentPrice * stock.shares, 'TWD') }}</span><span v-else>****</span></td><td class="px-6 py-4 text-right"><div v-if="showPrivacy"><div :class="getPnlClass((stock.currentPrice - stock.avgCost) * stock.shares)">{{ formatCurrency((stock.currentPrice - stock.avgCost) * stock.shares, 'TWD') }}</div><div :class="getPnlClass((stock.currentPrice - stock.avgCost) * stock.shares)" class="text-xs">{{ getRoi(stock.avgCost * stock.shares, (stock.currentPrice - stock.avgCost) * stock.shares) }}</div></div><div v-else class="text-gray-300">****</div></td><td class="px-6 py-4 text-center"><button @click="openTransModal(stock)" class="text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 mx-1"><i class="fa-solid fa-calculator"></i></button><button @click="editStock(stock)" class="text-gray-400 hover:text-blue-600 mx-1"><i class="fa-solid fa-pen"></i></button><button @click="deleteStock(stock)" class="text-gray-400 hover:text-red-600 mx-1"><i class="fa-solid fa-trash"></i></button></td></tr></tbody></table></div></div>
+            
+            <div v-if="viewMode === 'card' || (viewMode === 'auto' && isMobile)" class="space-y-3"><div v-for="stock in twStockList" :key="stock.id" class="zen-card p-4 relative"><div class="flex justify-between items-start mb-2" @click="editStock(stock)"><div><span class="text-lg font-bold text-gray-800 dark:text-gray-200">{{ stock.name }}</span><div class="text-xs text-gray-500">{{ stock.symbol }}</div></div><div class="text-right"><div class="text-lg font-bold dark:text-gray-200">{{ formatCurrency(stock.currentPrice, 'TWD') }}</div><div class="text-xs font-bold" :class="getPnlClass(stock.currentPrice - stock.previousClose)" v-if="stock.previousClose">{{ formatChange(stock.currentPrice - stock.previousClose, stock.previousClose) }}</div></div></div><div class="grid grid-cols-2 gap-4 py-2 border-t border-gray-100 dark:border-gray-700" @click="editStock(stock)"><div><div class="text-xs text-gray-400">市值</div><div class="font-medium dark:text-gray-200"><span v-if="showPrivacy">{{ formatCurrency(stock.currentPrice * stock.shares, 'TWD') }}</span><span v-else>****</span></div></div><div class="text-right"><div class="text-xs text-gray-400">損益</div><div v-if="showPrivacy" :class="getPnlClass((stock.currentPrice - stock.avgCost) * stock.shares)" class="font-bold">{{ formatCurrency((stock.currentPrice - stock.avgCost) * stock.shares, 'TWD') }}</div><div v-else class="text-gray-300 font-bold">****</div></div></div><div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-50 dark:border-gray-700"><div class="text-xs text-gray-500"><span v-if="showPrivacy">持倉 {{ formatNumber(stock.shares) }} | 均價 {{ formatCurrency(stock.avgCost, 'TWD') }}</span><span v-else>持倉 **** | 均價 ****</span></div><button @click.stop="openTransModal(stock)" class="text-gray-500 hover:text-gray-900 dark:hover:text-white"><i class="fa-solid fa-calculator"></i> 補登</button></div></div></div></div>
+            
+            <div v-if="usStockList.length > 0" class="mb-8"><h2 class="text-lg font-bold mb-3 flex items-center gap-2 dark:text-white"><img src="https://flagcdn.com/w40/us.png" class="w-5 h-auto rounded-sm shadow-sm"><span>美股庫存</span></h2><div v-if="viewMode === 'table' || (viewMode === 'auto' && !isMobile)" class="zen-card overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm text-left"><thead class="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase font-medium"><tr><th class="px-6 py-4">代號/名稱</th><th class="px-6 py-4 text-right">現價</th><th class="px-6 py-4 text-right">成本/股數</th><th class="px-6 py-4 text-right">市值</th><th class="px-6 py-4 text-right">損益</th><th class="px-6 py-4 text-center">操作</th></tr></thead><tbody class="divide-y divide-gray-100 dark:divide-gray-700"><tr v-for="stock in usStockList" :key="stock.id" class="hover:bg-gray-50 dark:hover:bg-gray-800 transition"><td class="px-6 py-4"><div class="font-bold text-gray-900 dark:text-gray-200">{{ stock.name }}</div><div class="text-xs text-gray-500">{{ stock.symbol }}</div></td><td class="px-6 py-4 text-right font-medium dark:text-gray-300"><div>{{ formatCurrency(stock.currentPrice, 'USD') }}</div><div class="text-xs" :class="getPnlClass(stock.currentPrice - stock.previousClose)" v-if="stock.previousClose">{{ formatChange(stock.currentPrice - stock.previousClose, stock.previousClose) }}</div></td><td class="px-6 py-4 text-right text-gray-500 dark:text-gray-400"><div v-if="showPrivacy"><div class="font-medium">{{ formatCurrency(stock.avgCost, 'USD') }}</div><div class="text-xs">x {{ formatNumber(stock.shares) }}</div><div class="text-xs text-gray-400 mt-1 dark:text-gray-500">總: {{ formatCurrency(stock.avgCost * stock.shares, 'USD') }}</div></div><div v-else>****</div></td><td class="px-6 py-4 text-right font-bold dark:text-gray-200"><span v-if="showPrivacy">{{ formatCurrency(stock.currentPrice * stock.shares, 'USD') }}</span><span v-else>****</span></td><td class="px-6 py-4 text-right"><div v-if="showPrivacy"><div :class="getPnlClass((stock.currentPrice - stock.avgCost) * stock.shares)">{{ formatCurrency((stock.currentPrice - stock.avgCost) * stock.shares, 'USD') }}</div><div :class="getPnlClass((stock.currentPrice - stock.avgCost) * stock.shares)" class="text-xs">{{ getRoi(stock.avgCost * stock.shares, (stock.currentPrice - stock.avgCost) * stock.shares) }}</div></div><div v-else class="text-gray-300">****</div></td><td class="px-6 py-4 text-center"><button @click="openTransModal(stock)" class="text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 mx-1"><i class="fa-solid fa-calculator"></i></button><button @click="editStock(stock)" class="text-gray-400 hover:text-blue-600 mx-1"><i class="fa-solid fa-pen"></i></button><button @click="deleteStock(stock.id)" class="text-gray-400 hover:text-red-600 mx-1"><i class="fa-solid fa-trash"></i></button></td></tr></tbody></table></div></div>
+            
+            <div v-if="viewMode === 'card' || (viewMode === 'auto' && isMobile)" class="space-y-3"><div v-for="stock in usStockList" :key="stock.id" class="zen-card p-4 relative"><div class="flex justify-between items-start mb-2" @click="editStock(stock)"><div><span class="text-lg font-bold text-gray-800 dark:text-gray-200">{{ stock.name }}</span><div class="text-xs text-gray-500">{{ stock.symbol }}</div></div><div class="text-right"><div class="text-lg font-bold dark:text-gray-200">{{ formatCurrency(stock.currentPrice, 'USD') }}</div><div class="text-xs font-bold" :class="getPnlClass(stock.currentPrice - stock.previousClose)" v-if="stock.previousClose">{{ formatChange(stock.currentPrice - stock.previousClose, stock.previousClose) }}</div></div></div><div class="grid grid-cols-2 gap-4 py-2 border-t border-gray-100 dark:border-gray-700" @click="editStock(stock)"><div><div class="text-xs text-gray-400">市值</div><div class="font-medium dark:text-gray-200"><span v-if="showPrivacy">{{ formatCurrency(stock.currentPrice * stock.shares, 'USD') }}</span><span v-else>****</span></div></div><div class="text-right"><div class="text-xs text-gray-400">損益</div><div v-if="showPrivacy" :class="getPnlClass((stock.currentPrice - stock.avgCost) * stock.shares)" class="font-bold">{{ formatCurrency((stock.currentPrice - stock.avgCost) * stock.shares, 'USD') }}</div><div v-else class="text-gray-300 font-bold">****</div></div></div><div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-50 dark:border-gray-700"><div class="text-xs text-gray-500"><span v-if="showPrivacy">持倉 {{ formatNumber(stock.shares) }} | 均價 {{ formatCurrency(stock.avgCost, 'USD') }}</span><span v-else>持倉 **** | 均價 ****</span></div><button @click.stop="openTransModal(stock)" class="text-gray-500 hover:text-gray-900 dark:hover:text-white"><i class="fa-solid fa-calculator"></i> 補登</button></div></div></div></div>
             
             <div v-if="stocks.length === 0 && !isLoading" class="text-center py-10 text-gray-400 zen-card dark:text-gray-500">目前沒有任何持股資料，請點擊上方「新增」按鈕。</div>
         </div>
@@ -376,10 +381,16 @@
                     <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
                          <div class="relative pl-6">
                             <span class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-blue-500 border-4 border-white dark:border-gray-800"></span>
-                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-blue-600 dark:text-blue-400 text-lg">v2.9.10</span><span class="text-xs text-gray-400">2025/12/31</span></div>
+                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-blue-600 dark:text-blue-400 text-lg">v2.9.7</span><span class="text-xs text-gray-400">2025/12/31</span></div>
                             <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">重構</span><span>修正程式碼結構，確保穩定執行</span></li>
-                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">整合</span><span>v2.9 系列功能全數到齊</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">優化</span><span>庫存列表顯示調整：名稱改為大字，代號改為小字</span></li>
+                            </ul>
+                        </div>
+                         <div class="relative pl-6">
+                            <span class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-4 border-white dark:border-gray-800"></span>
+                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-gray-700 dark:text-gray-200">v2.9.6</span><span class="text-xs text-gray-400">2025/12/28</span></div>
+                            <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">修復</span><span>補回借款管理的「記帳」按鈕</span></li>
                             </ul>
                         </div>
                     </div>
@@ -630,34 +641,8 @@
     const db = firebase.firestore();
     const auth = firebase.auth();
 
-    // Move helper functions outside to clean up setup()
-    const getLocalDate = () => { const d = new Date(); const offset = d.getTimezoneOffset() * 60000; return new Date(d.getTime() - offset).toISOString().split('T')[0]; };
-    const formatNumber = (n) => !n && n!==0 ? '-' : new Intl.NumberFormat('en-US', { maximumFractionDigits: 5 }).format(n);
-    const formatCurrency = (n, c) => { return (c === 'TWD' ? 'NT$ ' : '$ ') + new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n); };
-    const getPnlClass = (v) => v >= 0 ? 'text-up' : 'text-down';
-    const getRoi = (c, p) => c === 0 ? '0%' : (p>0?'+':'')+(p/c*100).toFixed(2) + '%';
-    const formatChange = (diff, prev) => { const pct = (diff / prev) * 100; return (diff > 0 ? '+' : '') + diff.toFixed(2) + ' (' + (pct > 0 ? '+' : '') + pct.toFixed(2) + '%)'; };
-    const getTypeName = (type) => {
-        if(type === 'buy') return '買入'; if(type === 'sell') return '賣出'; if(type === 'dividend') return '領息';
-        if(type === 'deposit') return '入金'; if(type === 'withdraw') return '出金';
-        if(type === 'borrow') return '借款'; if(type === 'repay') return '還款';
-        return type;
-    };
-    const getAmountClass = (tx) => {
-        const isDark = document.documentElement.classList.contains('dark');
-        if (tx.type === 'buy' || tx.type === 'withdraw' || tx.type === 'repay') return ''; 
-        if (tx.type === 'sell' || tx.type === 'dividend' || tx.type === 'deposit' || tx.type === 'borrow') return isDark ? 'text-yellow-400' : 'text-yellow-600'; 
-        return '';
-    };
-    const getAmountSign = (tx) => {
-        if (tx.type === 'buy' || tx.type === 'withdraw' || tx.type === 'repay') return '-';
-        return '+';
-    };
-    const getYahooData = async (symbol) => { let s = symbol.toUpperCase(); if (/^\d{4,6}[A-Z]?$/.test(s)) s += '.TW'; try { const r = await fetch('https://corsproxy.io/?' + encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${s}?interval=1d&events=div,splits&t=${Date.now()}`)); const j = await r.json(); if (!j.chart?.result?.length) { if (s.endsWith('.TW')) { const r2 = await fetch('https://corsproxy.io/?' + encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${s.replace('.TW','.TWO')}?interval=1d&t=${Date.now()}`)); const j2 = await r2.json(); if (j2.chart?.result) return { symbol: j2.chart.result[0].meta.symbol, regularMarketPrice: j2.chart.result[0].meta.regularMarketPrice, previousClose: j2.chart.result[0].meta.chartPreviousClose || j2.chart.result[0].meta.previousClose }; } throw new Error('Not Found'); } return { symbol: j.chart.result[0].meta.symbol, regularMarketPrice: j.chart.result[0].meta.regularMarketPrice, previousClose: j.chart.result[0].meta.chartPreviousClose || j.chart.result[0].meta.previousClose }; } catch (e) { return null; } };
-
     createApp({
         setup() {
-            // --- 1. Refs (State) ---
             const user = ref(null);
             const stocks = ref([]);
             const exchangeRate = ref(32.5);
@@ -670,40 +655,27 @@
             const activeSection = ref('');
             const showChangelog = ref(false);
             
-            // Modals
             const showHistoryModal = ref(false);
             const historyRecords = ref([]);
+            
+            // v2.9.2: Delete Modal
             const showDeleteModal = ref(false);
             const pendingDeleteTx = ref(null);
+            
+            // v2.9.4: History Edit Modal
             const showHistoryEditModalVisible = ref(false);
             const historyEditForm = ref({ date: '', twVal: 0, usVal: 0, twCash: 0, usCash: 0, loan: 0 });
             
-            const showNoteModalVisible = ref(false);
             const notes = ref([]);
+            const showNoteModalVisible = ref(false);
             const noteForm = ref({ id: null, title: '', date: '', content: '' });
-
-            const showModal = ref(false);
-            const isEditing = ref(false);
-            const form = ref({ id: null, symbol: '', name: '', currency: 'TWD', shares: 0, avgCost: 0, currentPrice: 0, dividends: 0, previousClose: 0 });
-
-            const showTransModal = ref(false);
-            const isFundMode = ref(false);
-            const isLoanMode = ref(false);
-            const isSyncToCash = ref(false);
-            const transForm = ref({ id: null, type: 'buy', symbol: '', name: '', shares: '', totalAmount: '', currentShares: 0, currentAvg: 0, date: '', loanId: '' });
-
-            const showLoanMgrModal = ref(false);
-            const loanList = ref([]);
-            const loanForm = ref({ id: null, name: '', balance: 0 });
             
-            // Data
+            // v2.9.3: Loan initialized
             const cashData = ref({ twd: 0, usd: 0, loan: 0 });
+
             const prevDayData = ref(null);
-            const realizedGains = ref([]);
-            const dividendRecords = ref([]);
-            const transactionHistory = ref([]);
+            const getLocalDate = () => { const d = new Date(); const offset = d.getTimezoneOffset() * 60000; return new Date(d.getTime() - offset).toISOString().split('T')[0]; };
             
-            // Filters
             const chartStartDate = ref('');
             const chartEndDate = ref('');
             const divStartDate = ref('');
@@ -719,68 +691,83 @@
             const sortKeyDiv = ref('date'); const sortOrderDiv = ref('desc');
             
             let chartInstance = null, pieTwInstance = null, pieUsInstance = null;
-            let unsubscribe = null, unsubscribeTrans = null, unsubscribeCash = null, unsubscribeNotes = null, unsubscribeLoans = null;
+            const realizedGains = ref([]);
+            const dividendRecords = ref([]);
+            const transactionHistory = ref([]);
+            let unsubscribe = null;
+            let unsubscribeTrans = null;
+            let unsubscribeCash = null;
+            let unsubscribeNotes = null;
+            let unsubscribeLoans = null;
+
+            // v2.9.5: Loans
+            const loanList = ref([]);
+            const showLoanMgrModal = ref(false);
+            const loanForm = ref({ id: null, name: '', balance: 0 });
+
+            const showModal = ref(false);
+            const isEditing = ref(false);
+            const form = ref({ id: null, symbol: '', name: '', currency: 'TWD', shares: 0, avgCost: 0, currentPrice: 0, dividends: 0, previousClose: 0 });
+            const showTransModal = ref(false);
+            const isFundMode = ref(false);
+            const isLoanMode = ref(false); 
+            const isSyncToCash = ref(false); 
+            const transForm = ref({ id: null, type: 'buy', symbol: '', name: '', shares: '', totalAmount: '', currentShares: 0, currentAvg: 0, date: '', loanId: '' });
 
             if (isDarkMode.value) document.documentElement.classList.add('dark');
             window.addEventListener('resize', () => isMobile.value = window.innerWidth < 768);
 
-            // --- 2. Computed Properties ---
-            const sortedStocks = computed(() => [...stocks.value].sort((a, b) => (b.currentPrice * b.shares * (b.currency === 'USD' ? exchangeRate.value : 1)) - (a.currentPrice * a.shares * (a.currency === 'USD' ? exchangeRate.value : 1))));
-            const twStockList = computed(() => sortedStocks.value.filter(s => s.currency === 'TWD'));
-            const usStockList = computed(() => sortedStocks.value.filter(s => s.currency === 'USD'));
-            
-            function calculateStats(subset) { let v = 0, c = 0, d = 0; subset.forEach(s => { v += s.currentPrice * s.shares; c += s.avgCost * s.shares; d += (s.dividends || 0); }); return { value: v, cost: c, dividend: d, pnl: v - c }; }
-            const twStats = computed(() => calculateStats(twStockList.value));
-            const usStats = computed(() => calculateStats(usStockList.value));
+            onMounted(() => {
+                const today = getLocalDate();
+                const d = new Date(); d.setDate(d.getDate() - 30);
+                const past = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+                const d90 = new Date(); d90.setDate(d90.getDate() - 90);
+                const past90 = new Date(d90.getTime() - d90.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+                
+                chartEndDate.value = today;
+                chartStartDate.value = past;
+                
+                const yearStart = new Date(new Date().getFullYear(), 0, 1);
+                const localYearStart = new Date(yearStart.getTime() - yearStart.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+                
+                divEndDate.value = today; divStartDate.value = localYearStart;
+                realizedEndDate.value = today; realizedStartDate.value = localYearStart; 
+                transEndDate.value = today; transStartDate.value = past90; 
 
-            const totalLoanBalance = computed(() => loanList.value.reduce((acc, cur) => acc + (cur.balance || 0), 0));
-            const grandTotalAssets = computed(() => {
-                const stockVal = twStats.value.value + (usStats.value.value * exchangeRate.value);
-                const cashVal = (cashData.value.twd || 0) + ((cashData.value.usd || 0) * exchangeRate.value);
-                return stockVal + cashVal;
-            });
-            const grandTotalValue = computed(() => grandTotalAssets.value - totalLoanBalance.value);
-            const grandTotalPnL = computed(() => twStats.value.pnl + (usStats.value.pnl * exchangeRate.value));
-            
-            const realizedTotalTw = computed(() => realizedGains.value.filter(r => r.currency === 'TWD').reduce((acc, cur) => acc + cur.pnl, 0));
-            const realizedTotalUs = computed(() => realizedGains.value.filter(r => r.currency === 'USD').reduce((acc, cur) => acc + cur.pnl, 0));
-            const dividendRangeTw = computed(() => dividendRecords.value.filter(r => r.currency === 'TWD').reduce((acc, cur) => acc + cur.amount, 0));
-            const dividendRangeUs = computed(() => dividendRecords.value.filter(r => r.currency === 'USD').reduce((acc, cur) => acc + cur.amount, 0));
-
-            const sortedTransactions = computed(() => {
-                let data = transactionHistory.value;
-                if (transFilterType.value !== 'all') {
-                    data = data.filter(tx => {
-                        if (transFilterType.value === 'trade') return tx.type === 'buy' || tx.type === 'sell';
-                        if (transFilterType.value === 'dividend') return tx.type === 'dividend';
-                        if (transFilterType.value === 'fund') return tx.type === 'deposit' || tx.type === 'withdraw';
-                        if (transFilterType.value === 'loan') return tx.type === 'borrow' || tx.type === 'repay';
-                        return true;
-                    });
-                }
-                if (transSearchQuery.value) {
-                    const q = transSearchQuery.value.toUpperCase();
-                    data = data.filter(tx => (tx.symbol && tx.symbol.toUpperCase().includes(q)) || (tx.name && tx.name.includes(q)));
-                }
-                return data.slice().sort((a, b) => {
-                    let modifier = sortOrderTrans.value === 'desc' ? -1 : 1;
-                    if (sortKeyTrans.value === 'date') return (new Date(a.date) - new Date(b.date)) * modifier;
-                    return 0;
+                auth.onAuthStateChanged((u) => {
+                    user.value = u;
+                    if (u) { loadUserData(u.uid); fetchPreviousDayData(u.uid); fetchCash(u.uid); fetchNotes(u.uid); fetchLoans(u.uid); }
+                    else { stocks.value = []; realizedGains.value = []; dividendRecords.value = []; transactionHistory.value = []; cashData.value = {twd:0, usd:0, loan:0}; notes.value = []; loanList.value = []; }
                 });
+                fetchExchangeRate();
             });
 
-            const sortedDividends = computed(() => {
-                return dividendRecords.value.slice().sort((a, b) => {
-                    let modifier = sortOrderDiv.value === 'desc' ? -1 : 1;
-                    if (sortKeyDiv.value === 'date') return (new Date(a.date) - new Date(b.date)) * modifier;
-                    return 0;
-                });
-            });
-
-            // --- 4. Methods ---
             const toggleDarkMode = () => { isDarkMode.value = !isDarkMode.value; localStorage.setItem('darkMode', isDarkMode.value); document.documentElement.classList.toggle('dark'); };
-            const jumpToFundHistory = () => { transFilterType.value = 'fund'; toggleSection('transactions'); setTimeout(() => { document.querySelector('.zen-card.mb-8').scrollIntoView({ behavior: 'smooth' }); }, 300); };
             
+            watch(isDarkMode, () => {
+                if (activeSection.value === 'chart') setTimeout(drawChart, 100);
+            });
+
+            const toggleSection = (s) => { 
+                if (activeSection.value === s) activeSection.value = ''; 
+                else { 
+                    activeSection.value = s; 
+                    if (s === 'chart') setTimeout(drawChart, 100); 
+                    if (s === 'pie') setTimeout(drawPieCharts, 100); 
+                    if (s === 'realized') fetchRealizedGains();
+                    if (s === 'dividend') fetchDividends(); 
+                    if (s === 'transactions') fetchTransactions();
+                }
+            };
+            
+            const jumpToFundHistory = () => {
+                transFilterType.value = 'fund';
+                toggleSection('transactions');
+                setTimeout(() => {
+                     document.querySelector('.zen-card.mb-8').scrollIntoView({ behavior: 'smooth' });
+                }, 300);
+            };
+
             const loadUserData = (uid) => {
                 if (unsubscribe) unsubscribe();
                 unsubscribe = db.collection('users').doc(uid).collection('stocks').onSnapshot(snap => {
@@ -788,152 +775,135 @@
                     if (stocks.value.length > 0) saveDailySnapshot();
                 });
             };
+            
             const fetchCash = (uid) => {
                 if(unsubscribeCash) unsubscribeCash();
-                unsubscribeCash = db.collection('users').doc(uid).collection('portfolio').doc('cash').onSnapshot(doc => {
-                    if(doc.exists) cashData.value = doc.data();
-                    else cashData.value = { twd: 0, usd: 0, loan: 0 };
-                    if (cashData.value.loan > 0 && loanList.value.length === 0) setTimeout(() => migrateLegacyLoan(uid, cashData.value.loan), 1000);
-                    setTimeout(saveDailySnapshot, 1000); 
+                unsubscribeCash = db.collection('users').doc(uid).collection('portfolio').doc('cash')
+                    .onSnapshot(doc => {
+                        if(doc.exists) cashData.value = doc.data();
+                        else cashData.value = { twd: 0, usd: 0, loan: 0 };
+                        
+                        if (cashData.value.loan > 0 && loanList.value.length === 0) {
+                            setTimeout(() => migrateLegacyLoan(uid, cashData.value.loan), 1000);
+                        }
+                        
+                        setTimeout(saveDailySnapshot, 1000); 
+                    });
+            };
+            
+            const fetchLoans = (uid) => {
+                if (unsubscribeLoans) unsubscribeLoans();
+                unsubscribeLoans = db.collection('users').doc(uid).collection('loans').onSnapshot(snap => {
+                    loanList.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                 });
             };
-            const fetchLoans = (uid) => { if (unsubscribeLoans) unsubscribeLoans(); unsubscribeLoans = db.collection('users').doc(uid).collection('loans').onSnapshot(snap => { loanList.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); }); };
-            const fetchNotes = (uid) => { if (unsubscribeNotes) unsubscribeNotes(); unsubscribeNotes = db.collection('users').doc(uid).collection('notes').orderBy('date', 'desc').onSnapshot(snap => { notes.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); }); };
-            const fetchPreviousDayData = async (uid) => { const todayStr = getLocalDate(); const snap = await db.collection('users').doc(uid).collection('history').orderBy('date', 'desc').limit(2).get(); if (snap.empty) return; const docs = snap.docs.map(d => d.data()); if (docs[0].date !== todayStr) prevDayData.value = docs[0]; else if (docs.length > 1) prevDayData.value = docs[1]; };
             
+            const migrateLegacyLoan = async (uid, amount) => {
+                if (loanList.value.length > 0) return;
+                await db.collection('users').doc(uid).collection('loans').add({ name: '原有借款', balance: amount, currency: 'TWD' });
+                await db.collection('users').doc(uid).collection('portfolio').doc('cash').update({ loan: 0 });
+            };
+            
+            const fetchNotes = (uid) => {
+                if (unsubscribeNotes) unsubscribeNotes();
+                unsubscribeNotes = db.collection('users').doc(uid).collection('notes').orderBy('date', 'desc')
+                    .onSnapshot(snap => {
+                        notes.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    });
+            };
+
             const login = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(alert);
             const logout = () => auth.signOut();
-            
-            const fetchPrices = async () => { if (!user.value || stocks.value.length === 0) return; isLoading.value = true; const updates = stocks.value.map(async (s) => { const d = await getYahooData(s.symbol); return d ? { id: s.id, price: d.regularMarketPrice, prev: d.previousClose } : null; }); const res = await Promise.all(updates); const batch = db.batch(); let has = false; const ref = db.collection('users').doc(user.value.uid).collection('stocks'); res.forEach(r => { if (r) { batch.update(ref.doc(r.id), { currentPrice: r.price, previousClose: r.prev }); has = true; } }); if (has) await batch.commit(); setTimeout(saveDailySnapshot, 500); lastUpdated.value = `${new Date().getHours()}:${String(new Date().getMinutes()).padStart(2, '0')}`; isLoading.value = false; };
-            const fetchExchangeRate = async () => { try { const r = await fetch('https://api.exchangerate-api.com/v4/latest/USD'); const d = await r.json(); exchangeRate.value = d.rates.TWD; } catch(e){} };
 
-            const openTransModal = (s, type='buy') => { 
-                if (s) {
-                    transForm.value = { id: s.id, type: 'buy', symbol: s.symbol, name: s.name, shares: '', totalAmount: '', currentShares: s.shares, currentAvg: s.avgCost, date: getLocalDate() }; 
-                    form.value.currency = s.currency;
-                } else {
-                    transForm.value = { id: null, type: type, symbol: '', name: '', shares: '', totalAmount: '', currentShares: 0, currentAvg: 0, date: getLocalDate() };
-                    form.value.currency = 'TWD'; 
-                }
-                isFundMode.value = false; isLoanMode.value = false; isSyncToCash.value = false; showTransModal.value = true; 
-            };
-            const openFundModal = () => { isFundMode.value = true; isLoanMode.value = false; transForm.value = { id: null, type: 'deposit', symbol: 'CASH', name: '', shares: 0, totalAmount: '', date: getLocalDate() }; form.value.currency = 'TWD'; showTransModal.value = true; };
-            const openLoanModal = () => { isLoanMode.value = true; isFundMode.value = false; isSyncToCash.value = false; transForm.value = { id: null, type: 'borrow', symbol: 'LOAN', name: '', shares: 0, totalAmount: '', date: getLocalDate(), loanId: '' }; form.value.currency = 'TWD'; showTransModal.value = true; };
-            const closeTransModal = () => showTransModal.value = false;
-
-            const autoFetchName = async () => { const s = form.value.symbol; if (!s) return; if (/^\d/.test(s)) form.value.currency = 'TWD'; else if (/^[A-Za-z]+$/.test(s)) form.value.currency = 'USD'; if (!form.value.name) form.value.name = '查詢中...'; const d = await getYahooData(s); if (d) { if (form.value.name === '查詢中...') form.value.name = d.symbol; form.value.currentPrice = d.regularMarketPrice; form.value.previousClose = d.previousClose; } else { if (form.value.name === '查詢中...') form.value.name = ''; alert('查無代號'); } };
-            
-            const autoFetchTransName = async () => { 
-                const s = transForm.value.symbol; 
-                if (!s) return; 
-                // 1. Check Local Inventory (Priority)
-                const localStock = stocks.value.find(st => st.symbol && st.symbol.toUpperCase() === s.toUpperCase());
-                if (localStock) {
-                    transForm.value.name = localStock.name;
-                    form.value.currency = localStock.currency;
-                    return; 
-                }
-                // 2. Fallback to API
-                if (/^\d/.test(s)) form.value.currency = 'TWD'; 
-                else if (/^[A-Za-z]+$/.test(s)) form.value.currency = 'USD'; 
-                if (!transForm.value.name) transForm.value.name = '查詢中...'; 
-                const d = await getYahooData(s); 
-                if (d) { 
-                    if (transForm.value.name === '查詢中...') transForm.value.name = d.symbol; 
-                } else { 
-                    if (transForm.value.name === '查詢中...') transForm.value.name = ''; 
-                } 
-            };
-
-            const submitTransaction = async () => {
-                const selectedLoan = isLoanMode.value ? loanList.value.find(l => l.id === transForm.value.loanId) : null;
-                const loanName = selectedLoan ? selectedLoan.name : '';
-                const logData = {
-                    date: transForm.value.date || getLocalDate(),
-                    type: transForm.value.type,
-                    symbol: (isFundMode.value) ? 'CASH' : (isLoanMode.value ? 'LOAN' : (transForm.value.symbol ? transForm.value.symbol.toUpperCase() : '')),
-                    name: isLoanMode.value ? `${getTypeName(transForm.value.type)} (${loanName})` : (isFundMode.value ? (transForm.value.name || getTypeName(transForm.value.type)) : transForm.value.name),
-                    shares: (isFundMode.value || isLoanMode.value || transForm.value.type === 'dividend') ? 0 : transForm.value.shares,
-                    price: 0,
-                    totalAmount: transForm.value.totalAmount,
-                    currency: form.value.currency,
-                    loanId: isLoanMode.value ? transForm.value.loanId : null,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            const exportData = async () => {
+                if (!user.value) return;
+                const obj = { 
+                    stocks: stocks.value, 
+                    realized: realizedGains.value, 
+                    history: (await db.collection('users').doc(user.value.uid).collection('history').orderBy('date').get()).docs.map(d=>d.data()), 
+                    transactions: transactionHistory.value, 
+                    cash: cashData.value,
+                    notes: notes.value,
+                    loans: loanList.value
                 };
-                
-                if (isLoanMode.value) {
-                    if (!transForm.value.totalAmount) return alert('請輸入金額');
-                    if (!transForm.value.loanId) return alert('請選擇借款帳戶');
-                    let cashDelta = 0; let loanDelta = 0;
-                    if (transForm.value.type === 'borrow') { loanDelta = transForm.value.totalAmount; if (isSyncToCash.value) cashDelta = transForm.value.totalAmount; } 
-                    else { loanDelta = -transForm.value.totalAmount; if (isSyncToCash.value) cashDelta = -transForm.value.totalAmount; }
-                    await updateLoanBalance(transForm.value.loanId, loanDelta);
-                    if (isSyncToCash.value) await updateCash(form.value.currency, cashDelta, 0);
-                    await db.collection('users').doc(user.value.uid).collection('transactions').add(logData);
-                    closeTransModal(); setTimeout(async () => { await saveDailySnapshot(); if(activeSection.value==='chart') drawChart(); }, 500); return;
-                }
-                
-                if (isFundMode.value) {
-                     if (!transForm.value.totalAmount) return alert('請輸入金額');
-                     const amount = transForm.value.type === 'deposit' ? transForm.value.totalAmount : -transForm.value.totalAmount;
-                     await updateCash(form.value.currency, amount, 0);
-                     await db.collection('users').doc(user.value.uid).collection('transactions').add(logData);
-                     closeTransModal(); setTimeout(async () => { await saveDailySnapshot(); if(activeSection.value==='chart') drawChart(); }, 500); return;
-                }
-                if (transForm.value.type === 'dividend') {
-                    if (!transForm.value.totalAmount) return alert('請輸入金額');
-                    const dividendData = { ...logData, amount: transForm.value.totalAmount };
-                    await db.collection('users').doc(user.value.uid).collection('dividends').add(dividendData); 
-                    await db.collection('users').doc(user.value.uid).collection('transactions').add(logData); 
-                    await updateCash(form.value.currency, transForm.value.totalAmount, 0);
-                    const existingStock = stocks.value.find(s => s.symbol === transForm.value.symbol);
-                    if (existingStock) await db.collection('users').doc(user.value.uid).collection('stocks').doc(existingStock.id).update({ dividends: (existingStock.dividends || 0) + transForm.value.totalAmount });
-                    closeTransModal(); setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'chart') drawChart(); }, 500); return;
-                }
-                if (!transForm.value.shares || !transForm.value.totalAmount) return alert('請輸入完整資訊');
-                logData.price = transForm.value.totalAmount / transForm.value.shares;
-                let stockId = transForm.value.id; let currentShares = transForm.value.currentShares; let currentAvg = transForm.value.currentAvg;
-                if (!stockId) {
-                    const existing = stocks.value.find(s => s.symbol === transForm.value.symbol);
-                    if (existing) { stockId = existing.id; currentShares = existing.shares; currentAvg = existing.avgCost; } 
-                    else if (transForm.value.type === 'buy') {
-                        const newDoc = await db.collection('users').doc(user.value.uid).collection('stocks').add({ symbol: transForm.value.symbol, name: transForm.value.name, currency: form.value.currency, shares: 0, avgCost: 0, currentPrice: 0, dividends: 0 });
-                        stockId = newDoc.id;
-                    } else {
-                        const pnl = transForm.value.totalAmount - 0; 
-                        await db.collection('users').doc(user.value.uid).collection('realized_gains').add({ ...logData, pnl: pnl, price: logData.price });
-                        await db.collection('users').doc(user.value.uid).collection('transactions').add(logData);
-                        await updateCash(form.value.currency, transForm.value.totalAmount, 0); 
-                        closeTransModal(); return;
-                    }
-                }
-                let ns = 0, na = 0;
-                if (transForm.value.type === 'buy') { 
-                    ns = currentShares + transForm.value.shares; 
-                    const oldTotal = currentShares * currentAvg; na = (oldTotal + transForm.value.totalAmount) / ns; 
-                    await updateCash(form.value.currency, -transForm.value.totalAmount, 0); 
-                } else { 
-                    if (transForm.value.shares > currentShares) return alert('股數不足');
-                    ns = currentShares - transForm.value.shares; na = currentAvg;
-                    const pnl = transForm.value.totalAmount - (transForm.value.shares * currentAvg);
-                    await db.collection('users').doc(user.value.uid).collection('realized_gains').add({ ...logData, pnl: pnl, price: logData.price });
-                    await updateCash(form.value.currency, transForm.value.totalAmount, 0); 
-                }
-                await db.collection('users').doc(user.value.uid).collection('transactions').add(logData);
-                if (stockId) {
-                    const ref = db.collection('users').doc(user.value.uid).collection('stocks').doc(stockId);
-                    await ref.update({ shares: ns, avgCost: na });
-                    if (ns === 0 && confirm('股數歸零，是否刪除此庫存項目？')) await ref.delete();
-                }
-                setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'transactions') fetchTransactions(); if (activeSection.value === 'chart') drawChart(); }, 500);
-                closeTransModal();
+                const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(obj, null, 2)); a.download = `portfolio_${getLocalDate()}.json`; document.body.appendChild(a); a.click(); a.remove();
             };
 
-            const openModal = () => { isEditing.value = false; form.value = { id: Date.now().toString(), symbol: '', name: '', currency: 'TWD', shares: 0, avgCost: 0, currentPrice: 0, dividends: 0, previousClose: 0 }; showModal.value = true; };
-            const editStock = (s) => { isEditing.value = true; form.value = {...s}; showModal.value = true; };
-            const closeModal = () => showModal.value = false;
-            const saveStock = async () => { if (!user.value || !form.value.symbol) return; const d = { ...form.value }; const r = db.collection('users').doc(user.value.uid).collection('stocks'); if (isEditing.value) await r.doc(d.id).update(d); else await r.doc(d.id).set(d); closeModal(); };
-            const deleteStock = async (id) => { if (!user.value || !confirm('刪除？')) return; await db.collection('users').doc(user.value.uid).collection('stocks').doc(id).delete(); };
+            const fetchRealizedGains = async () => { 
+                if (!user.value) return; 
+                const snap = await db.collection('users').doc(user.value.uid).collection('realized_gains')
+                    .where('date', '>=', realizedStartDate.value)
+                    .where('date', '<=', realizedEndDate.value)
+                    .orderBy('date', 'desc').get();
+                realizedGains.value = snap.docs.map(d => ({id: d.id, ...d.data()})); 
+            };
+            
+            const fetchDividends = async () => {
+                if (!user.value) return;
+                const snap = await db.collection('users').doc(user.value.uid).collection('dividends')
+                    .where('date', '>=', divStartDate.value).where('date', '<=', divEndDate.value).orderBy('date', 'desc').get();
+                dividendRecords.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            };
+            
+            const fetchTransactions = async () => {
+                if (!user.value) return;
+                const snap = await db.collection('users').doc(user.value.uid).collection('transactions')
+                    .where('date', '>=', transStartDate.value)
+                    .where('date', '<=', transEndDate.value)
+                    .orderBy('date', 'desc')
+                    .get();
+                transactionHistory.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            };
+            
+            const openHistoryModal = async () => {
+                if (!user.value) return;
+                const snap = await db.collection('users').doc(user.value.uid).collection('history').orderBy('date', 'desc').get();
+                historyRecords.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                showHistoryModal.value = true;
+            };
+            
+            const deleteHistoryRecord = async (date) => {
+                if (!confirm(`確定要刪除 ${date} 的歷史紀錄嗎？`)) return;
+                await db.collection('users').doc(user.value.uid).collection('history').doc(date).delete();
+                await openHistoryModal();
+                drawChart();
+            };
+            
+            const openHistoryEditModal = (rec) => {
+                historyEditForm.value = {
+                    date: rec.date,
+                    twVal: rec.twVal || 0,
+                    usVal: rec.usVal || 0,
+                    twCash: rec.twCash || 0,
+                    usCash: rec.usCash || 0,
+                    loan: rec.loan || 0
+                };
+                showHistoryEditModalVisible.value = true;
+            };
+            
+            const calculateHistoryNetWorth = () => {
+                const asset = (historyEditForm.value.twVal || 0) + (historyEditForm.value.twCash || 0) + ((historyEditForm.value.usVal || 0) + (historyEditForm.value.usCash || 0)) * exchangeRate.value;
+                const loan = historyEditForm.value.loan || 0;
+                return asset - loan;
+            };
+            
+            const saveHistoryRecord = async () => {
+                if (!user.value) return;
+                const newNetWorth = calculateHistoryNetWorth();
+                
+                await db.collection('users').doc(user.value.uid).collection('history').doc(historyEditForm.value.date).update({
+                    twVal: historyEditForm.value.twVal,
+                    usVal: historyEditForm.value.usVal,
+                    twCash: historyEditForm.value.twCash,
+                    usCash: historyEditForm.value.usCash,
+                    loan: historyEditForm.value.loan,
+                    totalVal: newNetWorth // Update total val to match components
+                });
+                
+                showHistoryEditModalVisible.value = false;
+                await openHistoryModal(); // Refresh list
+                drawChart(); // Refresh chart
+            };
             
             const openLoanMgrModal = () => { showLoanMgrModal.value = true; loanForm.value = { id: null, name: '', balance: 0 }; };
             const editLoanAccount = (l) => { loanForm.value = { ...l }; };
@@ -944,16 +914,152 @@
                 else await db.collection('users').doc(user.value.uid).collection('loans').add(data);
                 loanForm.value = { id: null, name: '', balance: 0 };
             };
-            const deleteLoanAccount = async (l) => { if (!confirm(`確定刪除 ${l.name}？`)) return; await db.collection('users').doc(user.value.uid).collection('loans').doc(l.id).delete(); };
-            
-            const migrateLegacyLoan = async (uid, amount) => {
-                if (loanList.value.length > 0) return;
-                await db.collection('users').doc(uid).collection('loans').add({ name: '原有借款', balance: amount, currency: 'TWD' });
-                await db.collection('users').doc(uid).collection('portfolio').doc('cash').update({ loan: 0 });
+            const deleteLoanAccount = async (l) => {
+                if (!confirm(`確定刪除 ${l.name}？(這不會影響已發生的交易紀錄)`)) return;
+                await db.collection('users').doc(user.value.uid).collection('loans').doc(l.id).delete();
             };
             
-            const sortTransaction = (key) => { if (sortKeyTrans.value === key) sortOrderTrans.value = sortOrderTrans.value === 'asc' ? 'desc' : 'asc'; else { sortKeyTrans.value = key; sortOrderTrans.value = 'desc'; } };
-            const sortDividend = (key) => { if (sortKeyDiv.value === key) sortOrderDiv.value = sortOrderDiv.value === 'asc' ? 'desc' : 'asc'; else { sortKeyDiv.value = key; sortOrderDiv.value = 'desc'; } };
+            const openNoteModal = (note) => {
+                if (note) {
+                    noteForm.value = { ...note };
+                } else {
+                    noteForm.value = { id: null, title: '', date: getLocalDate(), content: '' };
+                }
+                showNoteModalVisible.value = true;
+            };
+            const closeNoteModal = () => showNoteModalVisible.value = false;
+            
+            const saveNote = async () => {
+                if (!user.value || !noteForm.value.title) return alert('請輸入標題');
+                const data = {
+                    title: noteForm.value.title,
+                    date: noteForm.value.date || getLocalDate(),
+                    content: noteForm.value.content || '',
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                if (noteForm.value.id) {
+                    await db.collection('users').doc(user.value.uid).collection('notes').doc(noteForm.value.id).update(data);
+                } else {
+                    await db.collection('users').doc(user.value.uid).collection('notes').add(data);
+                }
+                closeNoteModal();
+            };
+            
+            const deleteNote = async (id) => {
+                if(!confirm('確定刪除此筆記？')) return;
+                await db.collection('users').doc(user.value.uid).collection('notes').doc(id).delete();
+            };
+            
+            const deleteTransaction = (tx) => {
+                pendingDeleteTx.value = tx;
+                showDeleteModal.value = true;
+            };
+            
+            const executeDelete = async (revertCash) => {
+                 showDeleteModal.value = false;
+                 const tx = pendingDeleteTx.value;
+                 if (!tx) return;
+
+                 if (revertCash) {
+                     if (tx.type === 'deposit') await updateCash(tx.currency, -Math.abs(tx.totalAmount), 0); 
+                     else if (tx.type === 'withdraw') await updateCash(tx.currency, Math.abs(tx.totalAmount), 0);
+                     else if (tx.type === 'borrow') {
+                         if (tx.loanId) await updateLoanBalance(tx.loanId, -Math.abs(tx.totalAmount));
+                         else alert('此為舊版借款紀錄，請手動調整對應帳戶餘額。');
+                     } 
+                     else if (tx.type === 'repay') {
+                         if (tx.loanId) await updateLoanBalance(tx.loanId, Math.abs(tx.totalAmount));
+                     }
+                     
+                     else if (tx.type === 'dividend') {
+                         await updateCash(tx.currency, -Math.abs(tx.totalAmount), 0);
+                         const stock = stocks.value.find(s => s.symbol === tx.symbol);
+                         if (stock) {
+                            await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ dividends: Math.max(0, (stock.dividends || 0) - rec.amount) });
+                         }
+                     }
+                 }
+
+                 await db.collection('users').doc(user.value.uid).collection('transactions').doc(tx.id).delete();
+                 fetchTransactions();
+                 setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'chart') drawChart(); }, 500);
+                 pendingDeleteTx.value = null;
+            };
+            
+            const deleteDividend = async (rec) => {
+                if(!confirm('刪除股息？(現金將自動扣回)')) return;
+                const stock = stocks.value.find(s => s.symbol === rec.symbol);
+                if (stock) {
+                    await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ dividends: Math.max(0, (stock.dividends || 0) - rec.amount) });
+                }
+                await updateCash(rec.currency, -rec.amount, 0); 
+                await db.collection('users').doc(user.value.uid).collection('dividends').doc(rec.id).delete();
+                fetchDividends();
+                setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'chart') drawChart(); }, 500);
+            };
+
+            const deleteRealized = async (id) => {
+                if(!confirm('刪除？')) return;
+                await db.collection('users').doc(user.value.uid).collection('realized_gains').doc(id).delete();
+                fetchRealizedGains();
+            };
+
+            const saveDailySnapshot = async () => {
+                if (!user.value) return;
+                const todayStr = getLocalDate();
+                const historyRef = db.collection('users').doc(user.value.uid).collection('history').doc(todayStr);
+                const currentHour = new Date().getHours();
+                const snapshot = {
+                    date: todayStr, 
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    totalVal: grandTotalValue.value,
+                    twVal: twStats.value.value, 
+                    usVal: usStats.value.value,
+                    twCash: cashData.value.twd || 0,
+                    usCash: cashData.value.usd || 0,
+                    loan: totalLoanBalance.value,
+                    totalPnL: grandTotalPnL.value, 
+                    twPnL: twStats.value.pnl, 
+                    usPnL: usStats.value.pnl
+                };
+                if (currentHour >= 21) { const doc = await historyRef.get(); if (doc.exists) return; }
+                await historyRef.set(snapshot, { merge: true });
+            };
+            
+            const updateCash = async (currency, amount, loanAmount = 0) => {
+                if(!user.value) return;
+                const ref = db.collection('users').doc(user.value.uid).collection('portfolio').doc('cash');
+                const doc = await ref.get();
+                let current = doc.exists ? doc.data() : { twd: 0, usd: 0, loan: 0 };
+                let newTwd = current.twd || 0;
+                let newUsd = current.usd || 0;
+                let newLoan = current.loan || 0;
+                if(currency === 'TWD') newTwd += amount;
+                else newUsd += amount;
+                newLoan += loanAmount;
+                await ref.set({ twd: newTwd, usd: newUsd, loan: newLoan }, { merge: true });
+                cashData.value.twd = newTwd;
+                cashData.value.usd = newUsd;
+                cashData.value.loan = newLoan;
+            };
+            
+            const updateLoanBalance = async (loanId, amount) => {
+                if (!user.value || !loanId) return;
+                const ref = db.collection('users').doc(user.value.uid).collection('loans').doc(loanId);
+                const doc = await ref.get();
+                if (doc.exists) {
+                    const newBal = (doc.data().balance || 0) + amount;
+                    await ref.update({ balance: newBal });
+                }
+            };
+
+            const fetchPreviousDayData = async (uid) => {
+                const todayStr = getLocalDate();
+                const snap = await db.collection('users').doc(uid).collection('history').orderBy('date', 'desc').limit(2).get();
+                if (snap.empty) return;
+                const docs = snap.docs.map(d => d.data());
+                if (docs[0].date !== todayStr) prevDayData.value = docs[0]; else if (docs.length > 1) prevDayData.value = docs[1];
+            };
 
             const drawChart = async () => {
                 if (!user.value || !document.getElementById('assetChart')) return;
@@ -999,19 +1105,301 @@
                     }
                 });
             };
+            
+            const drawPieCharts = () => {
+                if(pieTwInstance) pieTwInstance.destroy(); if(pieUsInstance) pieUsInstance.destroy();
+                const tooltipOptions = { callbacks: { label: function(c) { 
+                    const l = c.label || ''; const v = c.raw; const t = c.chart._metasets[c.datasetIndex].total; const p = t > 0 ? ((v/t)*100).toFixed(1)+'%' : '0%'; 
+                    const fv = c.chart.canvas.id === 'pieTw' ? formatCurrency(v, 'TWD') : formatCurrency(v, 'USD'); return `${l}: ${fv} (${p})`; 
+                }}};
+                if(document.getElementById('pieTw') && twStockList.value.length) pieTwInstance = new Chart(document.getElementById('pieTw'), { type: 'doughnut', data: { labels: twStockList.value.map(s=>s.name || s.symbol), datasets: [{ data: twStockList.value.map(s=>s.currentPrice*s.shares), backgroundColor: ['#3b82f6','#2563eb','#1d4ed8','#60a5fa','#93c5fd'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { tooltip: tooltipOptions } } });
+                if(document.getElementById('pieUs') && usStockList.value.length) pieUsInstance = new Chart(document.getElementById('pieUs'), { type: 'doughnut', data: { labels: usStockList.value.map(s=>s.name || s.symbol), datasets: [{ data: usStockList.value.map(s=>s.currentPrice*s.shares), backgroundColor: ['#ef4444','#dc2626','#b91c1c','#f87171','#fca5a5'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { tooltip: tooltipOptions } } });
+            };
 
-            onMounted(() => {
-                chartEndDate.value = getLocalDate();
-                const d = new Date(); d.setDate(d.getDate() - 30); chartStartDate.value = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
-                const yearStart = new Date(new Date().getFullYear(), 0, 1); const localYearStart = new Date(yearStart.getTime() - yearStart.getTimezoneOffset() * 60000).toISOString().split('T')[0];
-                divEndDate.value = getLocalDate(); divStartDate.value = localYearStart; realizedEndDate.value = getLocalDate(); realizedStartDate.value = localYearStart; transEndDate.value = getLocalDate(); transStartDate.value = chartStartDate.value;
+            const calculateNewAvg = () => { 
+                if (transForm.value.type !== 'buy' || !transForm.value.shares || !transForm.value.totalAmount) return transForm.value.currentAvg; 
+                const old = transForm.value.currentShares * transForm.value.currentAvg; 
+                return (old + transForm.value.totalAmount) / (transForm.value.currentShares + transForm.value.shares); 
+            };
+
+            const openTransModal = (s, type='buy') => { 
+                if (s) {
+                    transForm.value = { id: s.id, type: 'buy', symbol: s.symbol, name: s.name, shares: '', totalAmount: '', currentShares: s.shares, currentAvg: s.avgCost, date: getLocalDate() }; 
+                    form.value.currency = s.currency;
+                } else {
+                    transForm.value = { id: null, type: type, symbol: '', name: '', shares: '', totalAmount: '', currentShares: 0, currentAvg: 0, date: getLocalDate() };
+                    form.value.currency = 'TWD'; 
+                }
+                isFundMode.value = false;
+                isLoanMode.value = false;
+                isSyncToCash.value = false; // Reset
+                showTransModal.value = true; 
+            };
+            const openFundModal = () => {
+                isFundMode.value = true;
+                isLoanMode.value = false;
+                transForm.value = { id: null, type: 'deposit', symbol: 'CASH', name: '', shares: 0, totalAmount: '', date: getLocalDate() };
+                form.value.currency = 'TWD';
+                showTransModal.value = true;
+            };
+            // v2.9.6: Button on Card triggers this
+            const openLoanModal = () => {
+                isLoanMode.value = true;
+                isFundMode.value = false;
+                isSyncToCash.value = false; // Default unchecked as requested
+                transForm.value = { id: null, type: 'borrow', symbol: 'LOAN', name: '', shares: 0, totalAmount: '', date: getLocalDate(), loanId: '' };
+                form.value.currency = 'TWD';
+                showTransModal.value = true;
+            };
+            const closeTransModal = () => showTransModal.value = false;
+
+            const submitTransaction = async () => {
+                const selectedLoan = isLoanMode.value ? loanList.value.find(l => l.id === transForm.value.loanId) : null;
+                const loanName = selectedLoan ? selectedLoan.name : '';
+
+                const logData = {
+                    date: transForm.value.date || getLocalDate(),
+                    type: transForm.value.type,
+                    symbol: (isFundMode.value) ? 'CASH' : (isLoanMode.value ? 'LOAN' : transForm.value.symbol.toUpperCase()),
+                    name: isLoanMode.value ? `${getTypeName(transForm.value.type)} (${loanName})` : 
+                          (isFundMode.value ? (transForm.value.name || getTypeName(transForm.value.type)) : transForm.value.name),
+                    shares: (isFundMode.value || isLoanMode.value || transForm.value.type === 'dividend') ? 0 : transForm.value.shares,
+                    price: 0,
+                    totalAmount: transForm.value.totalAmount,
+                    currency: form.value.currency,
+                    loanId: isLoanMode.value ? transForm.value.loanId : null,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                
+                // v2.9.5: Handle Loan + Optional Sync
+                if (isLoanMode.value) {
+                    if (!transForm.value.totalAmount) return alert('請輸入金額');
+                    if (!transForm.value.loanId) return alert('請選擇借款帳戶');
+                    
+                    let cashDelta = 0;
+                    let loanDelta = 0;
+
+                    // Borrow: Loan Increases (+). Cash Increases (+) ONLY IF synced.
+                    if (transForm.value.type === 'borrow') {
+                        loanDelta = transForm.value.totalAmount;
+                        if (isSyncToCash.value) cashDelta = transForm.value.totalAmount;
+                    } 
+                    // Repay: Loan Decreases (-). Cash Decreases (-) ONLY IF synced.
+                    else {
+                        loanDelta = -transForm.value.totalAmount;
+                        if (isSyncToCash.value) cashDelta = -transForm.value.totalAmount;
+                    }
+                    
+                    await updateLoanBalance(transForm.value.loanId, loanDelta);
+                    if (isSyncToCash.value) await updateCash(form.value.currency, cashDelta, 0);
+                    
+                    await db.collection('users').doc(user.value.uid).collection('transactions').add(logData);
+                    
+                    closeTransModal();
+                    setTimeout(async () => { await saveDailySnapshot(); if(activeSection.value==='chart') drawChart(); }, 500);
+                    return;
+                }
+                
+                if (isFundMode.value) {
+                     if (!transForm.value.totalAmount) return alert('請輸入金額');
+                     const amount = transForm.value.type === 'deposit' ? transForm.value.totalAmount : -transForm.value.totalAmount;
+                     await updateCash(form.value.currency, amount, 0);
+                     await db.collection('users').doc(user.value.uid).collection('transactions').add(logData);
+                     closeTransModal();
+                     setTimeout(async () => { await saveDailySnapshot(); if(activeSection.value==='chart') drawChart(); }, 500);
+                     return;
+                }
+                
+                if (transForm.value.type === 'dividend') {
+                    if (!transForm.value.totalAmount) return alert('請輸入金額');
+                    const dividendData = { ...logData, amount: transForm.value.totalAmount };
+                    await db.collection('users').doc(user.value.uid).collection('dividends').add(dividendData); 
+                    await db.collection('users').doc(user.value.uid).collection('transactions').add(logData); 
+                    
+                    await updateCash(form.value.currency, transForm.value.totalAmount, 0);
+
+                    const existingStock = stocks.value.find(s => s.symbol === transForm.value.symbol);
+                    if (existingStock) {
+                        await db.collection('users').doc(user.value.uid).collection('stocks').doc(existingStock.id).update({ dividends: (existingStock.dividends || 0) + transForm.value.totalAmount });
+                    }
+                    closeTransModal();
+                    
+                    setTimeout(async () => {
+                        await saveDailySnapshot();
+                        if (activeSection.value === 'chart') drawChart();
+                    }, 500);
+                    return;
+                }
+
+                if (!transForm.value.shares || !transForm.value.totalAmount) return alert('請輸入完整資訊');
+                logData.price = transForm.value.totalAmount / transForm.value.shares;
+                
+                let stockId = transForm.value.id;
+                let currentShares = transForm.value.currentShares;
+                let currentAvg = transForm.value.currentAvg;
+
+                if (!stockId) {
+                    const existing = stocks.value.find(s => s.symbol === transForm.value.symbol);
+                    if (existing) {
+                        stockId = existing.id; currentShares = existing.shares; currentAvg = existing.avgCost;
+                    } else if (transForm.value.type === 'buy') {
+                        const newDoc = await db.collection('users').doc(user.value.uid).collection('stocks').add({ symbol: transForm.value.symbol, name: transForm.value.name, currency: form.value.currency, shares: 0, avgCost: 0, currentPrice: 0, dividends: 0 });
+                        stockId = newDoc.id;
+                    } else {
+                        const pnl = transForm.value.totalAmount - 0; 
+                        await db.collection('users').doc(user.value.uid).collection('realized_gains').add({ ...logData, pnl: pnl, price: logData.price });
+                        await db.collection('users').doc(user.value.uid).collection('transactions').add(logData);
+                        await updateCash(form.value.currency, transForm.value.totalAmount, 0); // Cash +
+                        closeTransModal(); return;
+                    }
+                }
+
+                let ns = 0, na = 0;
+                if (transForm.value.type === 'buy') { 
+                    ns = currentShares + transForm.value.shares; 
+                    const oldTotal = currentShares * currentAvg;
+                    na = (oldTotal + transForm.value.totalAmount) / ns; 
+                    await updateCash(form.value.currency, -transForm.value.totalAmount, 0); // Cash -
+                } else { 
+                    if (transForm.value.shares > currentShares) return alert('股數不足');
+                    ns = currentShares - transForm.value.shares; 
+                    na = currentAvg;
+                    const pnl = transForm.value.totalAmount - (transForm.value.shares * currentAvg);
+                    await db.collection('users').doc(user.value.uid).collection('realized_gains').add({ ...logData, pnl: pnl, price: logData.price });
+                    await updateCash(form.value.currency, transForm.value.totalAmount, 0); // Cash +
+                }
+                
+                await db.collection('users').doc(user.value.uid).collection('transactions').add(logData);
+                
+                if (stockId) {
+                    const ref = db.collection('users').doc(user.value.uid).collection('stocks').doc(stockId);
+                    await ref.update({ shares: ns, avgCost: na });
+                    if (ns === 0 && confirm('股數歸零，是否刪除此庫存項目？')) await ref.delete();
+                }
+                
+                setTimeout(async () => {
+                    await saveDailySnapshot(); 
+                    if (activeSection.value === 'transactions') fetchTransactions();
+                    if (activeSection.value === 'chart') drawChart();
+                }, 500);
+                
+                closeTransModal();
+            };
+            
+            const openModal = () => { isEditing.value = false; form.value = { id: Date.now().toString(), symbol: '', name: '', currency: 'TWD', shares: 0, avgCost: 0, currentPrice: 0, dividends: 0, previousClose: 0 }; showModal.value = true; };
+            const editStock = (s) => { isEditing.value = true; form.value = {...s}; showModal.value = true; };
+            const closeModal = () => showModal.value = false;
+            const saveStock = async () => { if (!user.value || !form.value.symbol) return; const d = { ...form.value }; const r = db.collection('users').doc(user.value.uid).collection('stocks'); if (isEditing.value) await r.doc(d.id).update(d); else await r.doc(d.id).set(d); closeModal(); };
+            const deleteStock = async (stock) => { if (!user.value || !confirm('刪除？')) return; await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).delete(); };
+            
+            const getYahooData = async (symbol) => { let s = symbol.toUpperCase(); if (/^\d{4,6}[A-Z]?$/.test(s)) s += '.TW'; try { const r = await fetch('https://corsproxy.io/?' + encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${s}?interval=1d&events=div,splits&t=${Date.now()}`)); const j = await r.json(); if (!j.chart?.result?.length) { if (s.endsWith('.TW')) { const r2 = await fetch('https://corsproxy.io/?' + encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${s.replace('.TW','.TWO')}?interval=1d&t=${Date.now()}`)); const j2 = await r2.json(); if (j2.chart?.result) return { symbol: j2.chart.result[0].meta.symbol, regularMarketPrice: j2.chart.result[0].meta.regularMarketPrice, previousClose: j2.chart.result[0].meta.chartPreviousClose || j2.chart.result[0].meta.previousClose }; } throw new Error('Not Found'); } return { symbol: j.chart.result[0].meta.symbol, regularMarketPrice: j.chart.result[0].meta.regularMarketPrice, previousClose: j.chart.result[0].meta.chartPreviousClose || j.chart.result[0].meta.previousClose }; } catch (e) { return null; } };
+            const autoFetchName = async () => { const s = form.value.symbol; if (!s) return; if (/^\d/.test(s)) form.value.currency = 'TWD'; else if (/^[A-Za-z]+$/.test(s)) form.value.currency = 'USD'; if (!form.value.name) form.value.name = '查詢中...'; const d = await getYahooData(s); if (d) { if (form.value.name === '查詢中...') form.value.name = d.symbol; form.value.currentPrice = d.regularMarketPrice; form.value.previousClose = d.previousClose; } else { if (form.value.name === '查詢中...') form.value.name = ''; alert('查無代號'); } };
+            const autoFetchTransName = async () => { const s = transForm.value.symbol; if (!s) return; if (/^\d/.test(s)) form.value.currency = 'TWD'; else if (/^[A-Za-z]+$/.test(s)) form.value.currency = 'USD'; if (!transForm.value.name) transForm.value.name = '查詢中...'; const d = await getYahooData(s); if (d) { if (transForm.value.name === '查詢中...') transForm.value.name = d.symbol; } else { if (transForm.value.name === '查詢中...') transForm.value.name = ''; } };
+
+            const fetchPrices = async () => { if (!user.value || stocks.value.length === 0) return; isLoading.value = true; const updates = stocks.value.map(async (s) => { const d = await getYahooData(s.symbol); return d ? { id: s.id, price: d.regularMarketPrice, prev: d.previousClose } : null; }); const res = await Promise.all(updates); const batch = db.batch(); let has = false; const ref = db.collection('users').doc(user.value.uid).collection('stocks'); res.forEach(r => { if (r) { batch.update(ref.doc(r.id), { currentPrice: r.price, previousClose: r.prev }); has = true; } }); if (has) await batch.commit(); setTimeout(saveDailySnapshot, 500); lastUpdated.value = `${new Date().getHours()}:${String(new Date().getMinutes()).padStart(2, '0')}`; isLoading.value = false; };
+            const fetchExchangeRate = async () => { try { const r = await fetch('https://api.exchangerate-api.com/v4/latest/USD'); const d = await r.json(); exchangeRate.value = d.rates.TWD; } catch(e){} };
+
+            const sortedStocks = computed(() => [...stocks.value].sort((a, b) => (b.currentPrice * b.shares * (b.currency === 'USD' ? exchangeRate.value : 1)) - (a.currentPrice * a.shares * (a.currency === 'USD' ? exchangeRate.value : 1))));
+            const twStockList = computed(() => sortedStocks.value.filter(s => s.currency === 'TWD'));
+            const usStockList = computed(() => sortedStocks.value.filter(s => s.currency === 'USD'));
+            const twStats = computed(() => calculateStats(twStockList.value));
+            const usStats = computed(() => calculateStats(usStockList.value));
+            
+            // v2.9.5: grandTotalValue is Net Worth (Asset - TotalLoan)
+            const totalLoanBalance = computed(() => loanList.value.reduce((acc, cur) => acc + (cur.balance || 0), 0));
+            const grandTotalAssets = computed(() => {
+                const stockVal = twStats.value.value + (usStats.value.value * exchangeRate.value);
+                const cashVal = (cashData.value.twd || 0) + ((cashData.value.usd || 0) * exchangeRate.value);
+                return stockVal + cashVal;
             });
+            const grandTotalValue = computed(() => grandTotalAssets.value - totalLoanBalance.value);
+            
+            const grandTotalPnL = computed(() => twStats.value.pnl + (usStats.value.pnl * exchangeRate.value));
+            const realizedTotalTw = computed(() => realizedGains.value.filter(r => r.currency === 'TWD').reduce((acc, cur) => acc + cur.pnl, 0));
+            const realizedTotalUs = computed(() => realizedGains.value.filter(r => r.currency === 'USD').reduce((acc, cur) => acc + cur.pnl, 0));
+            const dividendYearlyTw = computed(() => dividendRecords.value.filter(r => r.currency === 'TWD' && r.date.startsWith(new Date().getFullYear().toString())).reduce((acc, cur) => acc + cur.amount, 0));
+            const dividendYearlyUs = computed(() => dividendRecords.value.filter(r => r.currency === 'USD' && r.date.startsWith(new Date().getFullYear().toString())).reduce((acc, cur) => acc + cur.amount, 0));
+            const dividendRangeTw = computed(() => dividendRecords.value.filter(r => r.currency === 'TWD').reduce((acc, cur) => acc + cur.amount, 0));
+            const dividendRangeUs = computed(() => dividendRecords.value.filter(r => r.currency === 'USD').reduce((acc, cur) => acc + cur.amount, 0));
+
+            // v2.8.0 Filter Logic
+            const sortedTransactions = computed(() => {
+                let data = transactionHistory.value;
+                
+                if (transFilterType.value !== 'all') {
+                    data = data.filter(tx => {
+                        if (transFilterType.value === 'trade') return tx.type === 'buy' || tx.type === 'sell';
+                        if (transFilterType.value === 'dividend') return tx.type === 'dividend';
+                        if (transFilterType.value === 'fund') return tx.type === 'deposit' || tx.type === 'withdraw';
+                        if (transFilterType.value === 'loan') return tx.type === 'borrow' || tx.type === 'repay';
+                        return true;
+                    });
+                }
+                
+                if (transSearchQuery.value) {
+                    const q = transSearchQuery.value.toUpperCase();
+                    data = data.filter(tx => (tx.symbol && tx.symbol.toUpperCase().includes(q)) || (tx.name && tx.name.includes(q)));
+                }
+
+                return data.slice().sort((a, b) => {
+                    let modifier = sortOrderTrans.value === 'desc' ? -1 : 1;
+                    if (sortKeyTrans.value === 'date') return (new Date(a.date) - new Date(b.date)) * modifier;
+                    if (sortKeyTrans.value === 'type') return a.type.localeCompare(b.type) * modifier;
+                    if (sortKeyTrans.value === 'symbol') return (a.name || a.symbol).localeCompare(b.name || b.symbol) * modifier;
+                    return 0;
+                });
+            });
+
+            const sortedDividends = computed(() => {
+                return dividendRecords.value.slice().sort((a, b) => {
+                    let modifier = sortOrderDiv.value === 'desc' ? -1 : 1;
+                    if (sortKeyDiv.value === 'date') return (new Date(a.date) - new Date(b.date)) * modifier;
+                    if (sortKeyDiv.value === 'symbol') return (a.name || a.symbol).localeCompare(b.name || b.symbol) * modifier;
+                    if (sortKeyDiv.value === 'amount') return (a.amount - b.amount) * modifier;
+                    return 0;
+                });
+            });
+
+            const sortTransaction = (key) => {
+                if (sortKeyTrans.value === key) sortOrderTrans.value = sortOrderTrans.value === 'asc' ? 'desc' : 'asc';
+                else { sortKeyTrans.value = key; sortOrderTrans.value = 'desc'; }
+            };
+            const sortDividend = (key) => {
+                if (sortKeyDiv.value === key) sortOrderDiv.value = sortOrderDiv.value === 'asc' ? 'desc' : 'asc';
+                else { sortKeyDiv.value = key; sortOrderDiv.value = 'desc'; }
+            };
+
+            function calculateStats(subset) { let v = 0, c = 0, d = 0; subset.forEach(s => { v += s.currentPrice * s.shares; c += s.avgCost * s.shares; d += (s.dividends || 0); }); return { value: v, cost: c, dividend: d, pnl: v - c }; }
+            const formatNumber = (n) => !n && n!==0 ? '-' : new Intl.NumberFormat('en-US', { maximumFractionDigits: 5 }).format(n);
+            const formatCurrency = (n, c) => { return (c === 'TWD' ? 'NT$ ' : '$ ') + new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n); };
+            const getPnlClass = (v) => v >= 0 ? 'text-up' : 'text-down';
+            const getRoi = (c, p) => c === 0 ? '0%' : (p>0?'+':'')+(p/c*100).toFixed(2) + '%';
+            const formatChange = (diff, prev) => { const pct = (diff / prev) * 100; return (diff > 0 ? '+' : '') + diff.toFixed(2) + ' (' + (pct > 0 ? '+' : '') + pct.toFixed(2) + '%)'; };
+            const getTypeName = (type) => {
+                if(type === 'buy') return '買入';
+                if(type === 'sell') return '賣出';
+                if(type === 'dividend') return '領息';
+                if(type === 'deposit') return '入金';
+                if(type === 'withdraw') return '出金';
+                if(type === 'borrow') return '借款';
+                if(type === 'repay') return '還款';
+                return type;
+            };
+            const getAmountClass = (tx) => {
+                if (tx.type === 'buy' || tx.type === 'withdraw' || tx.type === 'repay') return ''; 
+                if (tx.type === 'sell' || tx.type === 'dividend' || tx.type === 'deposit' || tx.type === 'borrow') return isDarkMode.value ? 'text-yellow-400' : 'text-yellow-600'; 
+                return '';
+            };
+            const getAmountSign = (tx) => {
+                if (tx.type === 'buy' || tx.type === 'withdraw' || tx.type === 'repay') return '-';
+                return '+';
+            };
 
             return {
                 user, login, logout, stocks, exchangeRate, lastUpdated, isLoading, viewMode, isMobile, showPrivacy, isDarkMode, toggleDarkMode, activeSection, toggleSection, showChangelog,
                 twStats, usStats, grandTotalValue, grandTotalAssets, grandTotalPnL, twStockList, usStockList,
                 showModal, isEditing, form, openModal, editStock, closeModal, saveStock, deleteStock,
-                showTransModal, transForm, openTransModal, closeTransModal, submitTransaction, isFundMode, openFundModal,
+                showTransModal, transForm, openTransModal, closeTransModal, submitTransaction, calculateNewAvg, isFundMode, openFundModal,
                 autoFetchName, autoFetchTransName, fetchPrices, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountClass, getAmountSign,
                 chartStartDate, chartEndDate, drawChart, prevDayData, exportData, realizedGains, realizedTotalTw, realizedTotalUs,
                 divStartDate, divEndDate, fetchDividends, dividendRecords, dividendYearlyTw, dividendYearlyUs, dividendRangeTw, dividendRangeUs,
@@ -1021,11 +1409,11 @@
                 transFilterType, transSearchQuery, jumpToFundHistory,
                 showHistoryModal, historyRecords, openHistoryModal, deleteHistoryRecord,
                 notes, openNoteModal, closeNoteModal, saveNote, deleteNote, showNoteModalVisible, noteForm,
-                // v2.9.2
+                // v2.9.2 exports
                 showDeleteModal, pendingDeleteTx, executeDelete,
-                // v2.9.4
+                // v2.9.4 History Edit
                 showHistoryEditModalVisible, openHistoryEditModal, saveHistoryRecord, historyEditForm, calculateHistoryNetWorth,
-                // v2.9.5
+                // v2.9.5 Loan Management
                 loanList, totalLoanBalance, showLoanMgrModal, loanForm, openLoanMgrModal, editLoanAccount, saveLoanAccount, deleteLoanAccount, openLoanModal, isLoanMode, isSyncToCash
             };
         }

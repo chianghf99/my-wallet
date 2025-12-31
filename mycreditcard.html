@@ -161,7 +161,7 @@
     <button class="side-btn" onclick="switchPage('settings')"><i class="fas fa-cog"></i> 設定</button>
     <div style="margin-top: auto;">
         <div class="version-link" onclick="showVersionModal()">
-            <i class="fas fa-info-circle me-1"></i> 版本 v3.2
+            <i class="fas fa-info-circle me-1"></i> 版本 v3.3
         </div>
     </div>
 </div>
@@ -293,7 +293,12 @@
             <div class="col-md-6">
                 <div class="card border-0 shadow-sm rounded-4 h-100">
                     <div class="card-body">
-                        <h6 class="fw-bold mb-3"><i class="fas fa-cloud text-primary me-2"></i>雲端同步</h6>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="fw-bold mb-0"><i class="fas fa-cloud text-primary me-2"></i>雲端同步</h6>
+                            <button class="btn btn-sm btn-outline-info rounded-pill px-3" onclick="showHelpModal()">
+                                <i class="fas fa-question-circle me-1"></i> 金鑰在哪?
+                            </button>
+                        </div>
                         <input type="text" class="form-control bg-light border-0 mb-2" id="inputBinId" placeholder="Bin ID">
                         <input type="password" class="form-control bg-light border-0 mb-3" id="inputApiKey" placeholder="API Key">
                         <button class="btn btn-primary w-100 rounded-pill" onclick="saveKeys()">儲存金鑰</button>
@@ -316,7 +321,7 @@
         </div>
         <div class="text-center mt-4">
             <div class="version-link text-muted" onclick="showVersionModal()">
-                <i class="fas fa-info-circle me-1"></i> 卡片管家 Pro v3.2
+                <i class="fas fa-info-circle me-1"></i> 卡片管家 Pro v3.3
             </div>
         </div>
     </div>
@@ -355,12 +360,38 @@
             <div class="modal-body rounded-bottom-4" style="max-height: 400px; overflow-y: auto;">
                 <div class="changelog-item">
                     <div class="changelog-date">2025/12/17</div>
-                    <div class="changelog-ver">v3.2</div>
+                    <div class="changelog-ver">v3.3</div>
                     <div class="changelog-desc">
-                        • 新增智慧同步：30分鐘內開啟不重複下載<br>
-                        • 優化刪除邏輯：刪除後自動同步至雲端<br>
-                        • 深色模式 UI 優化
+                        • 新增「金鑰說明」教學，不怕忘記設定<br>
+                        • 延續智慧同步與自動刪除功能
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="helpModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow">
+            <div class="modal-header border-0"><h5 class="modal-title fw-bold">☁️ 雲端金鑰說明</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="mb-4">
+                    <h6 class="fw-bold text-success mb-2">💡 方法一：看電腦 (推薦)</h6>
+                    <p class="small opacity-75 mb-0">這是最快的方法！因為您的電腦機器人已經設定好了，兩邊必須用同一組金鑰才能同步。</p>
+                    <div class="bg-light p-3 rounded-3 mt-2 border">
+                        <ol class="small mb-0 ps-3">
+                            <li>打開電腦上的 <code>BillBot</code> 資料夾</li>
+                            <li>找到 <code>config.json</code> 檔案</li>
+                            <li>用記事本打開它</li>
+                            <li>複製裡面的 <code>bin_id</code> 和 <code>api_key</code></li>
+                        </ol>
+                    </div>
+                </div>
+                <div>
+                    <h6 class="fw-bold text-secondary mb-2">🔌 方法二：重新申請</h6>
+                    <p class="small opacity-75">如果您是第一次使用，或想建立全新的資料庫。</p>
+                    <a href="https://jsonbin.io/login" target="_blank" class="btn btn-outline-primary w-100 btn-sm">前往 JSONBin 官網</a>
                 </div>
             </div>
         </div>
@@ -392,27 +423,29 @@
 
     const addModal = new bootstrap.Modal(document.getElementById('addModal'));
     const versionModal = new bootstrap.Modal(document.getElementById('versionModal'));
+    const helpModal = new bootstrap.Modal(document.getElementById('helpModal')); // ✅ 新增
     const loadingOverlay = document.getElementById('loadingOverlay');
     
     checkLock(); 
     loadLocal();
     initDarkMode();
     
-    // 智慧同步檢查 (30分鐘冷卻)
     setTimeout(autoSyncCheck, 1000);
 
     document.getElementById('inputBinId').value = binId;
     document.getElementById('inputApiKey').value = apiKey;
     document.getElementById('addDate').value = new Date().toISOString().split('T')[0];
 
+    function showHelpModal() { helpModal.show(); } // ✅ 新增
+
     function autoSyncCheck() {
         const lastSyncStr = localStorage.getItem('last_sync_timestamp');
         const now = Date.now();
-        const COOLDOWN = 30 * 60 * 1000; // 30 mins
+        const COOLDOWN = 30 * 60 * 1000; 
         if (!binId || !apiKey) return;
         if (!lastSyncStr || (now - parseInt(lastSyncStr) > COOLDOWN)) {
             console.log("⏳ 執行智慧自動同步...");
-            syncData('download', true); // 靜默下載
+            syncData('download', true);
         } else {
             console.log("✅ 資料尚新，略過同步");
         }
@@ -525,30 +558,13 @@
         data.bills.push(newBill); saveLocal(); render(); syncData('upload');
     }
 
-    let cardChart, monthChart;
-    function updateCharts() {
-        const ctxCard = document.getElementById('cardChart').getContext('2d'), ctxMonth = document.getElementById('monthChart').getContext('2d');
-        const currentYear = new Date().getFullYear();
-        const yearBills = data.bills.filter(b => new Date(b.date).getFullYear() === currentYear && b.status !== 'skipped');
-        const yearTotal = yearBills.reduce((sum, b) => sum + b.amount, 0);
-        document.getElementById('yearlyTotal').textContent = '$' + yearTotal.toLocaleString();
-        const cardMap = {}, monthMap = new Array(12).fill(0);
-        yearBills.forEach(b => { let name = b.name.substring(0, 2); cardMap[name] = (cardMap[name] || 0) + b.amount; monthMap[new Date(b.date).getMonth()] += b.amount; });
-        if(cardChart) cardChart.destroy();
-        cardChart = new Chart(ctxCard, { type: 'doughnut', data: { labels: Object.keys(cardMap), datasets: [{ data: Object.values(cardMap), backgroundColor: ['#667eea','#764ba2','#48bb78','#f6ad55','#f56565','#ed64a6'], borderWidth: 0 }] }, options: { plugins: { legend: { position: 'right', labels: { color: document.body.getAttribute('data-theme')==='dark'?'#f7fafc':'#666' } } }, maintainAspectRatio: false } });
-        if(monthChart) monthChart.destroy();
-        monthChart = new Chart(ctxMonth, { type: 'bar', data: { labels: ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'], datasets: [{ label: '支出', data: monthMap, backgroundColor: '#667eea', borderRadius: 4 }] }, options: { scales: { y: { beginAtZero: true, grid: { color: document.body.getAttribute('data-theme')==='dark'?'rgba(255,255,255,0.1)':'rgba(0,0,0,0.05)' }, ticks: { color: document.body.getAttribute('data-theme')==='dark'?'#a0aec0':'#666' } }, x: { grid: { display: false }, ticks: { color: document.body.getAttribute('data-theme')==='dark'?'#a0aec0':'#666' } } }, plugins: { legend: { display: false } }, maintainAspectRatio: false } });
-    }
-
     function markAsPaid(id) { if(confirm('已繳款？')) { data.bills.find(b=>b.id===id).status='paid'; saveLocal(); render(); } }
     
-    // ✅ 修改後的刪除：自動上傳 (v3.2)
     function deleteBill(id) { 
         if(confirm('確定要永久刪除這筆紀錄嗎？')) { 
             data.bills = data.bills.filter(b => b.id !== id); 
             saveLocal(); 
             render(); 
-            // 自動觸發靜默上傳
             syncData('upload', true); 
         } 
     }
@@ -560,7 +576,6 @@
     function loadLocal() { const s=localStorage.getItem('myCreditData'); if(s) { data=JSON.parse(s); if(Array.isArray(data)) data={bills:data,cards:[]}; } render(); }
     function saveKeys() { localStorage.setItem('jsonbin_bin_id', document.getElementById('inputBinId').value); localStorage.setItem('jsonbin_api_key', document.getElementById('inputApiKey').value); alert('✅ 金鑰已儲存'); }
     
-    // ✅ 修改後的同步：支援 silent 參數 (v3.2)
     async function syncData(m, silent = false) {
         if(!binId && !apiKey) { if(!silent) alert('請先設定金鑰'); return; }
         if(!silent) loadingOverlay.style.display='flex';
@@ -574,7 +589,7 @@
                 const json = await res.json(); data = Array.isArray(json.record) ? {bills:json.record, cards:[]} : json.record;
                 const now = new Date(); 
                 localStorage.setItem('last_sync_time', `${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`);
-                localStorage.setItem('last_sync_timestamp', Date.now()); // 紀錄精確時間戳記
+                localStorage.setItem('last_sync_timestamp', Date.now()); 
                 saveLocal(); 
                 if(!silent) alert('✅ 同步完成');
             } else { 

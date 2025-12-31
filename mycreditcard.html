@@ -161,7 +161,7 @@
     <button class="side-btn" onclick="switchPage('settings')"><i class="fas fa-cog"></i> 設定</button>
     <div style="margin-top: auto;">
         <div class="version-link" onclick="showVersionModal()">
-            <i class="fas fa-info-circle me-1"></i> 版本 v3.3
+            <i class="fas fa-info-circle me-1"></i> 版本 v3.4
         </div>
     </div>
 </div>
@@ -230,12 +230,32 @@
 
 <div id="page-analysis" class="page-section">
     <div class="container px-3 pt-4">
-        <h5 class="fw-bold mb-4 px-1">年度消費分析</h5>
+        <h5 class="fw-bold mb-3 px-1">消費分析</h5>
+        
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-body p-3">
+                <div class="row g-2 align-items-center">
+                    <div class="col-5">
+                        <label class="small text-muted ms-1">開始日期</label>
+                        <input type="date" id="analysisStart" class="form-control form-control-sm rounded-pill border-0 bg-light">
+                    </div>
+                    <div class="col-5">
+                        <label class="small text-muted ms-1">結束日期</label>
+                        <input type="date" id="analysisEnd" class="form-control form-control-sm rounded-pill border-0 bg-light">
+                    </div>
+                    <div class="col-2 text-end">
+                        <label class="small text-muted opacity-0">.</label>
+                        <button onclick="updateCharts()" class="btn btn-sm btn-primary w-100 rounded-pill"><i class="fas fa-search"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="row g-4">
             <div class="col-md-4">
                 <div class="card border-0 shadow-sm rounded-4 h-100">
                     <div class="card-body text-center py-5 d-flex flex-column justify-content-center">
-                        <small class="text-muted text-uppercase mb-2">今年度累計消費</small>
+                        <small class="text-muted text-uppercase mb-2">區間累計消費</small>
                         <h2 class="fw-bold text-primary display-5" id="yearlyTotal">$0</h2>
                     </div>
                 </div>
@@ -243,7 +263,7 @@
             <div class="col-md-8">
                 <div class="card border-0 shadow-sm rounded-4 h-100">
                     <div class="card-body">
-                        <h6 class="fw-bold mb-3 small text-muted">每月支出趨勢</h6>
+                        <h6 class="fw-bold mb-3 small text-muted">支出趨勢</h6>
                         <div style="height: 300px;"><canvas id="monthChart"></canvas></div>
                     </div>
                 </div>
@@ -321,7 +341,7 @@
         </div>
         <div class="text-center mt-4">
             <div class="version-link text-muted" onclick="showVersionModal()">
-                <i class="fas fa-info-circle me-1"></i> 卡片管家 Pro v3.3
+                <i class="fas fa-info-circle me-1"></i> 卡片管家 Pro v3.4
             </div>
         </div>
     </div>
@@ -360,10 +380,11 @@
             <div class="modal-body rounded-bottom-4" style="max-height: 400px; overflow-y: auto;">
                 <div class="changelog-item">
                     <div class="changelog-date">2025/12/17</div>
-                    <div class="changelog-ver">v3.3</div>
+                    <div class="changelog-ver">v3.4</div>
                     <div class="changelog-desc">
-                        • 新增「金鑰說明」教學，不怕忘記設定<br>
-                        • 延續智慧同步與自動刪除功能
+                        • 新增統計分析日期篩選 (區間查詢)<br>
+                        • 優化圖表顯示邏輯<br>
+                        • 包含所有 v3.3 的優化功能
                     </div>
                 </div>
             </div>
@@ -423,7 +444,7 @@
 
     const addModal = new bootstrap.Modal(document.getElementById('addModal'));
     const versionModal = new bootstrap.Modal(document.getElementById('versionModal'));
-    const helpModal = new bootstrap.Modal(document.getElementById('helpModal')); // ✅ 新增
+    const helpModal = new bootstrap.Modal(document.getElementById('helpModal'));
     const loadingOverlay = document.getElementById('loadingOverlay');
     
     checkLock(); 
@@ -435,8 +456,14 @@
     document.getElementById('inputBinId').value = binId;
     document.getElementById('inputApiKey').value = apiKey;
     document.getElementById('addDate').value = new Date().toISOString().split('T')[0];
+    
+    // 初始化日期篩選器預設值 (今年1/1 - 今天)
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), 0, 1);
+    document.getElementById('analysisStart').value = firstDay.toISOString().split('T')[0];
+    document.getElementById('analysisEnd').value = today.toISOString().split('T')[0];
 
-    function showHelpModal() { helpModal.show(); } // ✅ 新增
+    function showHelpModal() { helpModal.show(); }
 
     function autoSyncCheck() {
         const lastSyncStr = localStorage.getItem('last_sync_timestamp');
@@ -606,6 +633,96 @@
     }
     document.getElementById('addForm').addEventListener('submit', function(e){ e.preventDefault(); data.bills.push({id:Date.now(), name:document.getElementById('addName').value, amount:parseInt(document.getElementById('addAmount').value), date:document.getElementById('addDate').value, status:'unpaid'}); saveLocal(); render(); addModal.hide(); this.reset(); });
     function exportToExcel() { if(!data.bills.length)return alert('無資料'); const csv="卡片,金額,日期,狀態\n"+data.bills.map(b=>`"${b.name}",${b.amount},${b.date},${b.status==='paid'?'已繳':'未繳'}`).join('\n'); const l=document.createElement('a'); l.href=URL.createObjectURL(new Blob(["\ufeff"+csv],{type:'text/csv'})); l.download=`帳單.csv`; l.click(); }
+
+    // ✅ v3.4 更新：動態分析邏輯
+    let cardChart, monthChart;
+    function updateCharts() {
+        const ctxCard = document.getElementById('cardChart').getContext('2d');
+        const ctxMonth = document.getElementById('monthChart').getContext('2d');
+        
+        const startStr = document.getElementById('analysisStart').value;
+        const endStr = document.getElementById('analysisEnd').value;
+
+        // 1. 篩選資料 (範圍內 + 非略過)
+        const targetBills = data.bills.filter(b => {
+            return b.date >= startStr && b.date <= endStr && b.status !== 'skipped';
+        });
+        
+        // 2. 計算總額
+        const total = targetBills.reduce((sum, b) => sum + b.amount, 0);
+        document.getElementById('yearlyTotal').textContent = '$' + total.toLocaleString();
+        
+        // 3. 準備圖表數據
+        const cardMap = {};
+        const timeMap = {}; // 用來存 "YYYY-MM" 的金額
+
+        targetBills.forEach(b => {
+            // 圓餅圖：銀行分類
+            let name = b.name.substring(0, 2);
+            cardMap[name] = (cardMap[name] || 0) + b.amount;
+            
+            // 長條圖：月份趨勢
+            const monthKey = b.date.substring(0, 7); // 取 "2025-01"
+            timeMap[monthKey] = (timeMap[monthKey] || 0) + b.amount;
+        });
+
+        // 4. 繪製圓餅圖
+        if(cardChart) cardChart.destroy();
+        cardChart = new Chart(ctxCard, {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(cardMap),
+                datasets: [{
+                    data: Object.values(cardMap),
+                    backgroundColor: ['#667eea','#764ba2','#48bb78','#f6ad55','#f56565','#ed64a6'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: { color: document.body.getAttribute('data-theme')==='dark'?'#f7fafc':'#666' }
+                    }
+                },
+                maintainAspectRatio: false
+            }
+        });
+
+        // 5. 繪製長條圖 (動態排序)
+        const sortedKeys = Object.keys(timeMap).sort(); // 確保日期由小到大
+        const monthLabels = sortedKeys; 
+        const monthData = sortedKeys.map(k => timeMap[k]);
+
+        if(monthChart) monthChart.destroy();
+        monthChart = new Chart(ctxMonth, {
+            type: 'bar',
+            data: {
+                labels: monthLabels,
+                datasets: [{
+                    label: '支出',
+                    data: monthData,
+                    backgroundColor: '#667eea',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: document.body.getAttribute('data-theme')==='dark'?'rgba(255,255,255,0.1)':'rgba(0,0,0,0.05)' },
+                        ticks: { color: document.body.getAttribute('data-theme')==='dark'?'#a0aec0':'#666' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: document.body.getAttribute('data-theme')==='dark'?'#a0aec0':'#666' }
+                    }
+                },
+                plugins: { legend: { display: false } },
+                maintainAspectRatio: false
+            }
+        });
+    }
 </script>
 </body>
 </html>

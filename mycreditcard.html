@@ -161,7 +161,7 @@
     <button class="side-btn" onclick="switchPage('settings')"><i class="fas fa-cog"></i> 設定</button>
     <div style="margin-top: auto;">
         <div class="version-link" onclick="showVersionModal()">
-            <i class="fas fa-info-circle me-1"></i> 版本 v3.4
+            <i class="fas fa-info-circle me-1"></i> 版本 v3.5
         </div>
     </div>
 </div>
@@ -341,7 +341,7 @@
         </div>
         <div class="text-center mt-4">
             <div class="version-link text-muted" onclick="showVersionModal()">
-                <i class="fas fa-info-circle me-1"></i> 卡片管家 Pro v3.4
+                <i class="fas fa-info-circle me-1"></i> 卡片管家 Pro v3.5
             </div>
         </div>
     </div>
@@ -380,11 +380,10 @@
             <div class="modal-body rounded-bottom-4" style="max-height: 400px; overflow-y: auto;">
                 <div class="changelog-item">
                     <div class="changelog-date">2025/12/17</div>
-                    <div class="changelog-ver">v3.4</div>
+                    <div class="changelog-ver">v3.5</div>
                     <div class="changelog-desc">
-                        • 新增統計分析日期篩選 (區間查詢)<br>
-                        • 優化圖表顯示邏輯<br>
-                        • 包含所有 v3.3 的優化功能
+                        • 新增「繳費後同步提醒」，防止資料遺失<br>
+                        • 包含 v3.4 所有分析功能
                     </div>
                 </div>
             </div>
@@ -457,7 +456,6 @@
     document.getElementById('inputApiKey').value = apiKey;
     document.getElementById('addDate').value = new Date().toISOString().split('T')[0];
     
-    // 初始化日期篩選器預設值 (今年1/1 - 今天)
     const today = new Date();
     const firstDay = new Date(today.getFullYear(), 0, 1);
     document.getElementById('analysisStart').value = firstDay.toISOString().split('T')[0];
@@ -585,7 +583,23 @@
         data.bills.push(newBill); saveLocal(); render(); syncData('upload');
     }
 
-    function markAsPaid(id) { if(confirm('已繳款？')) { data.bills.find(b=>b.id===id).status='paid'; saveLocal(); render(); } }
+    // ✅ v3.5 更新：繳款後詢問是否同步
+    function markAsPaid(id) {
+        if(confirm('確定這筆帳單「已繳款」嗎？')) {
+            // 1. 本地更新
+            const bill = data.bills.find(b => b.id === id);
+            bill.status = 'paid';
+            saveLocal();
+            render();
+
+            // 2. 詢問同步 (避免資料遺失)
+            setTimeout(() => {
+                if(confirm('💰 繳費完成！\n\n為了避免資料遺失，是否立刻「同步」到雲端？')) {
+                    syncData('upload');
+                }
+            }, 50);
+        }
+    }
     
     function deleteBill(id) { 
         if(confirm('確定要永久刪除這筆紀錄嗎？')) { 
@@ -634,7 +648,6 @@
     document.getElementById('addForm').addEventListener('submit', function(e){ e.preventDefault(); data.bills.push({id:Date.now(), name:document.getElementById('addName').value, amount:parseInt(document.getElementById('addAmount').value), date:document.getElementById('addDate').value, status:'unpaid'}); saveLocal(); render(); addModal.hide(); this.reset(); });
     function exportToExcel() { if(!data.bills.length)return alert('無資料'); const csv="卡片,金額,日期,狀態\n"+data.bills.map(b=>`"${b.name}",${b.amount},${b.date},${b.status==='paid'?'已繳':'未繳'}`).join('\n'); const l=document.createElement('a'); l.href=URL.createObjectURL(new Blob(["\ufeff"+csv],{type:'text/csv'})); l.download=`帳單.csv`; l.click(); }
 
-    // ✅ v3.4 更新：動態分析邏輯
     let cardChart, monthChart;
     function updateCharts() {
         const ctxCard = document.getElementById('cardChart').getContext('2d');
@@ -643,30 +656,24 @@
         const startStr = document.getElementById('analysisStart').value;
         const endStr = document.getElementById('analysisEnd').value;
 
-        // 1. 篩選資料 (範圍內 + 非略過)
         const targetBills = data.bills.filter(b => {
             return b.date >= startStr && b.date <= endStr && b.status !== 'skipped';
         });
         
-        // 2. 計算總額
         const total = targetBills.reduce((sum, b) => sum + b.amount, 0);
         document.getElementById('yearlyTotal').textContent = '$' + total.toLocaleString();
         
-        // 3. 準備圖表數據
         const cardMap = {};
-        const timeMap = {}; // 用來存 "YYYY-MM" 的金額
+        const timeMap = {}; 
 
         targetBills.forEach(b => {
-            // 圓餅圖：銀行分類
             let name = b.name.substring(0, 2);
             cardMap[name] = (cardMap[name] || 0) + b.amount;
             
-            // 長條圖：月份趨勢
-            const monthKey = b.date.substring(0, 7); // 取 "2025-01"
+            const monthKey = b.date.substring(0, 7); 
             timeMap[monthKey] = (timeMap[monthKey] || 0) + b.amount;
         });
 
-        // 4. 繪製圓餅圖
         if(cardChart) cardChart.destroy();
         cardChart = new Chart(ctxCard, {
             type: 'doughnut',
@@ -689,8 +696,7 @@
             }
         });
 
-        // 5. 繪製長條圖 (動態排序)
-        const sortedKeys = Object.keys(timeMap).sort(); // 確保日期由小到大
+        const sortedKeys = Object.keys(timeMap).sort(); 
         const monthLabels = sortedKeys; 
         const monthData = sortedKeys.map(k => timeMap[k]);
 

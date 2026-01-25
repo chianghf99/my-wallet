@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v3.2.1</title>
+    <title>我的投資組合 | Portfolio v3.3.4</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -93,7 +93,7 @@
     <div v-if="!user" class="flex-grow flex flex-col items-center justify-center p-4">
         <div class="zen-card p-8 max-w-sm w-full text-center space-y-6">
             <div class="bg-gray-800 text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto text-2xl"><i class="fa-solid fa-chart-line"></i></div>
-            <div><h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v3.2.1</h1><p class="text-gray-500 dark:text-gray-400 text-sm mt-2">v3.2.1 (隱私保護與備份優化)</p></div>
+            <div><h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v3.3.4</h1><p class="text-gray-500 dark:text-gray-400 text-sm mt-2">v3.3.4 (高報酬率 XIRR 修正)</p></div>
             <button @click="login" class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
                 <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5 mr-3" alt="Google">使用 Google 帳號登入
             </button>
@@ -107,7 +107,7 @@
                     <a href="https://chianghf99.github.io/my-wallet/" class="text-gray-400 hover:text-gray-600 dark:hover:text-white transition"><i class="fa-solid fa-home"></i></a>
                     <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                         <span class="hidden sm:inline">我的資產帳本</span>
-                        <span @click="showChangelog=true" class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v3.2.1</span>
+                        <span @click="showChangelog=true" class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v3.3.4</span>
                     </h1>
                 </div>
                 <div class="flex items-center gap-3">
@@ -145,10 +145,28 @@
                         <span v-else class="text-gray-400">-</span>
                     </div>
                     <div v-else class="mt-1 text-xs text-gray-300">****</div>
-                    <div class="flex justify-between mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 text-sm">
-                        <span class="text-gray-500 dark:text-gray-400">總未實現損益</span>
-                        <span v-if="showPrivacy" :class="getPnlClass(grandTotalPnL)">{{ formatCurrency(grandTotalPnL, 'TWD') }}<span class="text-xs ml-1">({{ getRoi(grandTotalValue - grandTotalPnL, grandTotalPnL) }})</span></span>
-                        <span v-else class="text-gray-300 dark:text-gray-600">****</span>
+                    
+                    <div class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 space-y-1">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-500 dark:text-gray-400">總未實現損益</span>
+                            <span v-if="showPrivacy" :class="getPnlClass(grandTotalPnL)">{{ formatCurrency(grandTotalPnL, 'TWD') }}<span class="text-xs ml-1">({{ getRoi(grandTotalValue - grandTotalPnL, grandTotalPnL) }})</span></span>
+                            <span v-else class="text-gray-300 dark:text-gray-600">****</span>
+                        </div>
+                        <div class="flex justify-between text-xs items-center">
+                            <div class="text-gray-400 group relative cursor-help">
+                                年化報酬率 (XIRR) <i class="fa-regular fa-circle-question ml-0.5"></i>
+                                <div class="absolute bottom-full left-0 mb-2 hidden group-hover:block bg-gray-800 text-white text-xs p-3 rounded whitespace-nowrap z-10 shadow-lg leading-relaxed border border-gray-600">
+                                    <div class="font-bold border-b border-gray-600 pb-1 mb-1 text-yellow-400">計算參數診斷</div>
+                                    起算日期：{{ xirrStartDate }}<br>
+                                    初始本金：{{ xirrStartVal }}<br>
+                                    目前終值：{{ xirrEndVal }}<br>
+                                    金流筆數：{{ xirrFlowCount }}<br>
+                                    <span class="opacity-70 text-[10px]">(若本金為0，請檢查歷史紀錄)</span>
+                                </div>
+                            </div>
+                            <span v-if="showPrivacy" :class="getPnlClass(xirrValue)" class="font-medium">{{ xirrValue }}%</span>
+                            <span v-else class="text-gray-300 dark:text-gray-600">****</span>
+                        </div>
                     </div>
                 </div>
                 <div class="zen-card p-5">
@@ -481,6 +499,41 @@
                     <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
                         
                         <div class="relative pl-6">
+                            <span class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-purple-600 border-4 border-white dark:border-gray-800"></span>
+                            <div class="flex justify-between items-baseline mb-2">
+                                <span class="font-bold text-purple-700 dark:text-purple-400 text-lg">v3.3.4</span>
+                                <span class="text-xs text-gray-400">2026/01/25</span>
+                            </div>
+                            <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">修正</span><span>高報酬 XIRR：修復短期獲利過高 (如 >100%) 導致演算法發散而顯示 0% 的問題。</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">相容</span><span>iOS 日期：解決 Safari 瀏覽器無法正確解析 "YYYY-MM-DD" 日期格式的問題。</span></li>
+                            </ul>
+                        </div>
+
+                        <div class="relative pl-6">
+                            <span class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-purple-500 border-4 border-white dark:border-gray-800"></span>
+                            <div class="flex justify-between items-baseline mb-2">
+                                <span class="font-bold text-purple-600 dark:text-purple-400 text-lg">v3.3.2</span>
+                                <span class="text-xs text-gray-400">2026/01/25</span>
+                            </div>
+                            <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">除錯</span><span>XIRR 診斷模式：滑鼠移至「年化報酬率」問號處，可查看詳細計算參數 (初始本金/終值)。</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">修正</span><span>數值格式：修復歷史紀錄中的數值若含逗號會導致計算錯誤的問題。</span></li>
+                            </ul>
+                        </div>
+
+                        <div class="relative pl-6">
+                            <span class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-green-500 border-4 border-white dark:border-gray-800"></span>
+                            <div class="flex justify-between items-baseline mb-2">
+                                <span class="font-bold text-green-600 dark:text-green-400 text-lg">v3.3.0</span>
+                                <span class="text-xs text-gray-400">2026/01/25</span>
+                            </div>
+                            <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">新增</span><span>年化報酬率 (XIRR)：自動計算資金運用的真實效率，以最早歷史紀錄為計算基準。</span></li>
+                            </ul>
+                        </div>
+
+                        <div class="relative pl-6">
                             <span class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-red-500 border-4 border-white dark:border-gray-800"></span>
                             <div class="flex justify-between items-baseline mb-2">
                                 <span class="font-bold text-red-600 dark:text-red-400 text-lg">v3.2.1</span>
@@ -641,7 +694,14 @@
             const activeSection = ref('');
             const showChangelog = ref(false);
             
-            // Stock Notes (v2.9.20)
+            // XIRR 變數
+            const xirrValue = ref(0.0);
+            const xirrStartDate = ref('-');
+            const xirrStartVal = ref(0);
+            const xirrEndVal = ref(0);
+            const xirrFlowCount = ref(0);
+
+            // Stock Notes
             const showStockNoteModal = ref(false);
             const stockNoteForm = ref({ id: '', symbol: '', name: '', content: '' });
             
@@ -679,7 +739,6 @@
             
             let chartInstance = null, pieTwInstance = null, pieUsInstance = null;
             
-            // 已實現損益變數
             const realizedGains = ref([]); 
             const realizedSearchQuery = ref(''); 
             const sortKeyRealized = ref('date');
@@ -706,7 +765,6 @@
                 if (savedPrivacySetting === 'true') { defaultPrivacyHidden.value = true; showPrivacy.value = false; } 
                 else { defaultPrivacyHidden.value = false; showPrivacy.value = true; }
                 
-                // 年份自動化 (v3.2.0)
                 const currentY = new Date().getFullYear();
                 const years = [];
                 for(let y = 2024; y <= currentY + 1; y++) {
@@ -736,11 +794,11 @@
                 fetchExchangeRate();
             });
 
-            // --- 3. 計算屬性 (Computed) ---
+            // --- 3. 計算屬性 ---
             const sortedRealizedGains = computed(() => {
                 let data = realizedGains.value.slice();
                 if (realizedSearchQuery.value) {
-                    const q = realizedSearchQuery.value.toUpperCase(); // v3.2.0 搜尋修正
+                    const q = realizedSearchQuery.value.toUpperCase();
                     data = data.filter(r => (r.symbol && r.symbol.toUpperCase().includes(q)) || (r.name && r.name.toUpperCase().includes(q)));
                 }
                 data.sort((a, b) => {
@@ -788,7 +846,7 @@
                     });
                 }
                 if (transSearchQuery.value) { 
-                    const q = transSearchQuery.value.toUpperCase(); // v3.2.0 搜尋修正
+                    const q = transSearchQuery.value.toUpperCase(); 
                     data = data.filter(tx => (tx.symbol && tx.symbol.toUpperCase().includes(q)) || (tx.name && tx.name.toUpperCase().includes(q))); 
                 }
                 if (transStartDate.value) data = data.filter(tx => tx.date >= transStartDate.value);
@@ -797,6 +855,11 @@
             });
 
             const sortedDividends = computed(() => { return dividendRecords.value.slice().sort((a, b) => { let modifier = sortOrderDiv.value === 'desc' ? -1 : 1; if (sortKeyDiv.value === 'date') return (new Date(a.date) - new Date(b.date)) * modifier; if (sortKeyDiv.value === 'symbol') return (a.name || a.symbol).localeCompare(b.name || b.symbol) * modifier; if (sortKeyDiv.value === 'amount') return (a.amount - b.amount) * modifier; return 0; }); });
+            
+            // 觸發計算
+            watch(grandTotalValue, () => {
+                if (grandTotalValue.value > 0) setTimeout(computeSystemXirr, 2000); 
+            });
 
             // --- 4. 輔助函數 ---
             const sortRealized = (key) => { if (sortKeyRealized.value === key) sortOrderRealized.value = sortOrderRealized.value === 'asc' ? 'desc' : 'asc'; else { sortKeyRealized.value = key; sortOrderRealized.value = 'desc'; } };
@@ -859,10 +922,8 @@
             
             const triggerImport = () => { fileInput.value.click(); };
             
-            // v3.2.1 修正還原 Bug
             const handleImport = async (event) => { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = async (e) => { try { const json = JSON.parse(e.target.result); if (!confirm(`警告：這將使用備份檔案中的資料更新您的資產紀錄。\n\n若 ID 相同將覆蓋舊資料，ID 不同則新增。\n\n確定要執行還原嗎？`)) { event.target.value = ''; return; } isLoading.value = true; const uid = user.value.uid; const batchLimit = 400; const restoreCollection = async (colName, dataArr) => { if (!dataArr || !Array.isArray(dataArr)) return; const chunks = []; for (let i = 0; i < dataArr.length; i += batchLimit) { chunks.push(dataArr.slice(i, i + batchLimit)); } for (const chunk of chunks) { const batch = db.batch(); chunk.forEach(item => { if (item.id) { const docRef = db.collection('users').doc(uid).collection(colName).doc(item.id); const { id, ...data } = item; batch.set(docRef, data, { merge: true }); } }); await batch.commit(); } }; await restoreCollection('stocks', json.stocks); await restoreCollection('transactions', json.transactions); await restoreCollection('realized_gains', json.realized); await restoreCollection('dividends', json.dividends); await restoreCollection('notes', json.notes); await restoreCollection('loans', json.loans); if (json.history && Array.isArray(json.history)) { const chunks = []; for (let i = 0; i < json.history.length; i += batchLimit) { chunks.push(json.history.slice(i, i + batchLimit)); } for (const chunk of chunks) { const batch = db.batch(); chunk.forEach(h => { if (h.date) { const docRef = db.collection('users').doc(uid).collection('history').doc(h.date); batch.set(docRef, h, { merge: true }); } }); await batch.commit(); } } if (json.cash) { await db.collection('users').doc(uid).collection('portfolio').doc('cash').set(json.cash, { merge: true }); } alert('還原成功！頁面將重新整理。'); location.reload(); } catch (err) { console.error(err); alert('還原失敗：檔案格式錯誤或網路問題。'); isLoading.value = false; } }; reader.readAsText(file); };
 
-            // v3.2.1 新增：清除所有資料
             const clearAllUserData = async () => {
                 if (!user.value) return;
                 if (!confirm('⚠️ 嚴重警告\n\n您確定要「永久刪除」此帳號下的所有資產資料嗎？\n\n此操作將清空：\n- 所有庫存與交易紀錄\n- 歷史淨值與股息\n- 筆記與借款設定\n\n資料一旦刪除將「無法復原」！')) return;
@@ -889,13 +950,18 @@
 
             const fetchRealizedGains = async () => { if (!user.value) return; const snap = await db.collection('users').doc(user.value.uid).collection('realized_gains').where('date', '>=', realizedStartDate.value).where('date', '<=', realizedEndDate.value).orderBy('date', 'desc').get(); realizedGains.value = snap.docs.map(d => ({id: d.id, ...d.data()})); };
             const fetchDividends = async () => { if (!user.value) return; const snap = await db.collection('users').doc(user.value.uid).collection('dividends').where('date', '>=', divStartDate.value).where('date', '<=', divEndDate.value).orderBy('date', 'desc').get(); dividendRecords.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); };
-            const fetchTransactions = async () => { if (!user.value) return; const snap = await db.collection('users').doc(user.value.uid).collection('transactions').where('date', '>=', transStartDate.value).where('date', '<=', transEndDate.value).orderBy('date', 'desc').get(); transactionHistory.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); };
+            const fetchTransactions = async () => { 
+                if (!user.value) return; 
+                const snap = await db.collection('users').doc(user.value.uid).collection('transactions').where('date', '>=', transStartDate.value).where('date', '<=', transEndDate.value).orderBy('date', 'desc').get(); 
+                transactionHistory.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); 
+                computeSystemXirr();
+            };
             
             const openHistoryModal = async () => { if (!user.value) return; showHistoryModal.value = true; const start = `${historyFilterYear.value}-01-01`; const end = `${historyFilterYear.value}-12-31`; const snap = await db.collection('users').doc(user.value.uid).collection('history').where('date', '>=', start).where('date', '<=', end).orderBy('date', 'desc').get(); historyRecords.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); };
-            const deleteHistoryRecord = async (date) => { if (!confirm(`確定要刪除 ${date} 的歷史紀錄嗎？`)) return; await db.collection('users').doc(user.value.uid).collection('history').doc(date).delete(); await openHistoryModal(); drawChart(); };
+            const deleteHistoryRecord = async (date) => { if (!confirm(`確定要刪除 ${date} 的歷史紀錄嗎？`)) return; await db.collection('users').doc(user.value.uid).collection('history').doc(date).delete(); await openHistoryModal(); drawChart(); setTimeout(computeSystemXirr, 500); };
             const openHistoryEditModal = (rec) => { historyEditForm.value = { date: rec.date, twVal: rec.twVal || 0, usVal: rec.usVal || 0, twCash: rec.twCash || 0, usCash: rec.usCash || 0, loan: rec.loan || 0 }; showHistoryEditModalVisible.value = true; };
             const calculateHistoryNetWorth = () => { const asset = (historyEditForm.value.twVal || 0) + (historyEditForm.value.twCash || 0) + ((historyEditForm.value.usVal || 0) + (historyEditForm.value.usCash || 0)) * exchangeRate.value; const loan = historyEditForm.value.loan || 0; return asset - loan; };
-            const saveHistoryRecord = async () => { if (!user.value) return; const newNetWorth = calculateHistoryNetWorth(); await db.collection('users').doc(user.value.uid).collection('history').doc(historyEditForm.value.date).update({ twVal: historyEditForm.value.twVal, usVal: historyEditForm.value.usVal, twCash: historyEditForm.value.twCash, usCash: historyEditForm.value.usCash, loan: historyEditForm.value.loan, totalVal: newNetWorth }); showHistoryEditModalVisible.value = false; await openHistoryModal(); drawChart(); };
+            const saveHistoryRecord = async () => { if (!user.value) return; const newNetWorth = calculateHistoryNetWorth(); await db.collection('users').doc(user.value.uid).collection('history').doc(historyEditForm.value.date).update({ twVal: historyEditForm.value.twVal, usVal: historyEditForm.value.usVal, twCash: historyEditForm.value.twCash, usCash: historyEditForm.value.usCash, loan: historyEditForm.value.loan, totalVal: newNetWorth }); showHistoryEditModalVisible.value = false; await openHistoryModal(); drawChart(); setTimeout(computeSystemXirr, 500); };
             const openLoanMgrModal = () => { showLoanMgrModal.value = true; loanForm.value = { id: null, name: '', balance: 0 }; };
             const editLoanAccount = (l) => { loanForm.value = { ...l }; };
             const saveLoanAccount = async () => { if (!user.value || !loanForm.value.name) return alert('請輸入名稱'); const data = { name: loanForm.value.name, balance: loanForm.value.balance || 0, currency: 'TWD' }; if (loanForm.value.id) await db.collection('users').doc(user.value.uid).collection('loans').doc(loanForm.value.id).update(data); else await db.collection('users').doc(user.value.uid).collection('loans').add(data); loanForm.value = { id: null, name: '', balance: 0 }; };
@@ -906,13 +972,11 @@
             const deleteNote = async (id) => { if(!confirm('確定刪除此筆記？')) return; await db.collection('users').doc(user.value.uid).collection('notes').doc(id).delete(); };
             const deleteTransaction = (tx) => { pendingDeleteTx.value = tx; showDeleteModal.value = true; };
             
-            // v3.2.0 修正領息刪除邏輯
             const executeDelete = async (revertCash) => { showDeleteModal.value = false; const tx = pendingDeleteTx.value; if (!tx) return; if (revertCash) { if (tx.type === 'deposit') await updateCash(tx.currency, -Math.abs(tx.totalAmount), 0); else if (tx.type === 'withdraw') await updateCash(tx.currency, Math.abs(tx.totalAmount), 0); else if (tx.type === 'borrow') { if (tx.loanId) await updateLoanBalance(tx.loanId, -Math.abs(tx.totalAmount)); else alert('此為舊版借款紀錄，請手動調整對應帳戶餘額。'); } else if (tx.type === 'repay') { if (tx.loanId) await updateLoanBalance(tx.loanId, Math.abs(tx.totalAmount)); } else if (tx.type === 'dividend') { await updateCash(tx.currency, -Math.abs(tx.totalAmount), 0); const stock = stocks.value.find(s => s.symbol === tx.symbol); if (stock) { await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ dividends: Math.max(0, (stock.dividends || 0) - tx.totalAmount) }); } } } await db.collection('users').doc(user.value.uid).collection('transactions').doc(tx.id).delete(); fetchTransactions(); setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'transactions') fetchTransactions();if (activeSection.value === 'realized') fetchRealizedGains(); if (activeSection.value === 'chart') drawChart(); }, 500); pendingDeleteTx.value = null; };
             const deleteDividend = async (rec) => { if(!confirm('刪除股息？(現金將自動扣回)')) return; const stock = stocks.value.find(s => s.symbol === rec.symbol); if (stock) { await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ dividends: Math.max(0, (stock.dividends || 0) - rec.amount) }); } await updateCash(rec.currency, -rec.amount, 0); await db.collection('users').doc(user.value.uid).collection('dividends').doc(rec.id).delete(); fetchDividends(); setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'chart') drawChart(); }, 500); };
             const deleteRealized = async (id) => { if(!confirm('刪除？')) return; await db.collection('users').doc(user.value.uid).collection('realized_gains').doc(id).delete(); fetchRealizedGains(); };
-            const saveDailySnapshot = async () => { if (!user.value) return; const todayStr = getLocalDate(); const historyRef = db.collection('users').doc(user.value.uid).collection('history').doc(todayStr); const currentHour = new Date().getHours(); const snapshot = { date: todayStr, timestamp: firebase.firestore.FieldValue.serverTimestamp(), totalVal: grandTotalValue.value, twVal: twStats.value.value, usVal: usStats.value.value, twCash: cashData.value.twd || 0, usCash: cashData.value.usd || 0, loan: totalLoanBalance.value, totalPnL: grandTotalPnL.value, twPnL: twStats.value.pnl, usPnL: usStats.value.pnl }; if (currentHour >= 21) { const doc = await historyRef.get(); if (doc.exists) { return; } } await historyRef.set(snapshot, { merge: true }); };
+            const saveDailySnapshot = async () => { if (!user.value) return; const todayStr = getLocalDate(); const historyRef = db.collection('users').doc(user.value.uid).collection('history').doc(todayStr); const currentHour = new Date().getHours(); const snapshot = { date: todayStr, timestamp: firebase.firestore.FieldValue.serverTimestamp(), totalVal: grandTotalValue.value, twVal: twStats.value.value, usVal: usStats.value.value, twCash: cashData.value.twd || 0, usCash: cashData.value.usd || 0, loan: totalLoanBalance.value, totalPnL: grandTotalPnL.value, twPnL: twStats.value.pnl, usPnL: usStats.value.pnl }; if (currentHour >= 21) { const doc = await historyRef.get(); if (doc.exists) { return; } } await historyRef.set(snapshot, { merge: true }); setTimeout(computeSystemXirr, 1000); };
             
-            // v3.2.0 安全更新現金邏輯
             const updateCash = async (currency, amount, loanAmount = 0) => {
                 if (!user.value) return;
                 const ref = db.collection('users').doc(user.value.uid).collection('portfolio').doc('cash');
@@ -977,7 +1041,7 @@
                     } 
                     await updateLoanBalance(transForm.value.loanId, loanDelta); 
                     if (isSyncToCash.value) {
-                        await updateCash(form.value.currency, cashDelta, 0); // v3.2.0 還款同步
+                        await updateCash(form.value.currency, cashDelta, 0);
                     }
                     await db.collection('users').doc(user.value.uid).collection('transactions').add(logData); 
                     closeTransModal(); 
@@ -997,7 +1061,6 @@
                 await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).delete(); 
             };
             
-            // v2.9.20: Stock Notes Logic
             const openStockNoteModal = (stock) => {
                 stockNoteForm.value = {
                     id: stock.id,
@@ -1015,6 +1078,125 @@
                 });
                 alert('✅ 筆記已儲存');
                 showStockNoteModal.value = false;
+            };
+
+            // v3.3.3: 日期解析輔助
+            const parseDate = (str) => {
+                if(!str) return new Date();
+                return new Date(str.replace(/-/g, '/'));
+            };
+
+            // v3.3.4: XIRR 核心邏輯
+            const calcXIRR = (transactions) => {
+                if (transactions.length < 2) return 0;
+                transactions.sort((a, b) => a.dateObj - b.dateObj);
+                
+                if (transactions.length === 2) {
+                    const start = transactions[0];
+                    const end = transactions[1];
+                    if (start.amount >= 0 || end.amount <= 0) return 0; 
+                    
+                    const days = (end.dateObj - start.dateObj) / (1000 * 60 * 60 * 24);
+                    if (days <= 0) return 0;
+                    
+                    const ratio = end.amount / Math.abs(start.amount);
+                    const rate = Math.pow(ratio, 365 / days) - 1;
+                    return isNaN(rate) ? 0 : rate * 100;
+                }
+
+                const guesses = [0.1, -0.1, 0.5, -0.5, 0.9, 2.0, 5.0, 10.0]; 
+                const tol = 1e-6;
+                const maxIter = 50;
+
+                for (let guess of guesses) {
+                    let rate = guess;
+                    for (let i = 0; i < maxIter; i++) {
+                        let fValue = 0;
+                        let fDerivative = 0;
+                        for (const t of transactions) {
+                            const days = (t.dateObj - transactions[0].dateObj) / (1000 * 60 * 60 * 24);
+                            const factor = Math.pow(1 + rate, days / 365);
+                            if (factor === 0) continue; 
+                            fValue += t.amount / factor;
+                            fDerivative -= (days / 365) * t.amount / (factor * (1 + rate));
+                        }
+                        
+                        if (Math.abs(fValue) < tol) return rate * 100; 
+                        if (Math.abs(fDerivative) < 1e-9) break; 
+                        
+                        const newRate = rate - fValue / fDerivative;
+                        if (Math.abs(newRate - rate) < tol) return newRate * 100;
+                        
+                        rate = newRate;
+                        if (isNaN(rate) || Math.abs(rate) > 10000) break;
+                        if (rate <= -1) rate = -0.99; 
+                    }
+                }
+                
+                // Last Resort
+                const totalIn = transactions.filter(t => t.amount < 0).reduce((a,b)=>a+b.amount,0);
+                const totalOut = transactions.filter(t => t.amount > 0).reduce((a,b)=>a+b.amount,0);
+                const totalDays = (transactions[transactions.length-1].dateObj - transactions[0].dateObj) / (1000*60*60*24);
+                if (Math.abs(totalIn) > 0 && totalDays > 0) {
+                    const simpleRoi = (totalOut / Math.abs(totalIn)) - 1;
+                    const simpleAnnual = Math.pow(1 + simpleRoi, 365/totalDays) - 1;
+                    return simpleAnnual * 100;
+                }
+
+                return 0; 
+            };
+
+            // v3.3.5: 修復 Firestore Index 當機錯誤
+            const computeSystemXirr = async () => {
+                if (!user.value || grandTotalValue.value === 0) return;
+                
+                try {
+                    const historySnap = await db.collection('users').doc(user.value.uid).collection('history').orderBy('date', 'asc').limit(1).get();
+                    if (historySnap.empty) { xirrValue.value = 0; xirrStartDate.value = '-'; return; }
+                    
+                    const startData = historySnap.docs[0].data();
+                    const startDate = startData.date;
+                    
+                    let rawVal = startData.totalVal;
+                    if (typeof rawVal === 'string') rawVal = rawVal.replace(/,/g, '');
+                    const startNetWorth = Number(rawVal) || 0;
+                    
+                    xirrStartDate.value = startDate;
+                    xirrStartVal.value = formatCurrency(startNetWorth, 'TWD'); 
+                    xirrEndVal.value = formatCurrency(grandTotalValue.value, 'TWD'); 
+
+                    // [v3.3.5 修正] 移除 .where('type') 以避免需要複合索引導致當機
+                    // 改用 client-side 過濾
+                    const txSnap = await db.collection('users').doc(user.value.uid).collection('transactions')
+                        .where('date', '>', startDate)
+                        .get();
+
+                    const flows = [];
+                    flows.push({ amount: -Math.abs(startNetWorth), dateObj: parseDate(startDate) });
+
+                    txSnap.docs.forEach(doc => {
+                        const t = doc.data();
+                        // 只取 deposit / withdraw
+                        if (t.type === 'deposit' || t.type === 'withdraw') {
+                            const amt = t.currency === 'USD' ? t.totalAmount * exchangeRate.value : t.totalAmount;
+                            if (t.type === 'deposit') {
+                                flows.push({ amount: -Math.abs(amt), dateObj: parseDate(t.date) });
+                            } else if (t.type === 'withdraw') {
+                                flows.push({ amount: Math.abs(amt), dateObj: parseDate(t.date) });
+                            }
+                        }
+                    });
+
+                    flows.push({ amount: grandTotalValue.value, dateObj: new Date() });
+
+                    xirrFlowCount.value = flows.length;
+
+                    const result = calcXIRR(flows);
+                    xirrValue.value = (typeof result === 'number') ? result.toFixed(2) : result;
+                } catch (e) {
+                    console.error("XIRR Error:", e);
+                    xirrValue.value = "Err";
+                }
             };
 
             const getYahooData = async (symbol) => { let s = symbol.toUpperCase(); if (/^\d{4,6}[A-Z]?$/.test(s)) s += '.TW'; try { const r = await fetch('https://corsproxy.io/?' + encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${s}?interval=1d&events=div,splits&t=${Date.now()}`)); const j = await r.json(); if (!j.chart?.result?.length) { if (s.endsWith('.TW')) { const r2 = await fetch('https://corsproxy.io/?' + encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${s.replace('.TW','.TWO')}?interval=1d&t=${Date.now()}`)); const j2 = await r2.json(); if (j2.chart?.result) return { symbol: j2.chart.result[0].meta.symbol, regularMarketPrice: j2.chart.result[0].meta.regularMarketPrice, previousClose: j2.chart.result[0].meta.chartPreviousClose || j2.chart.result[0].meta.previousClose }; } throw new Error('Not Found'); } return { symbol: j.chart.result[0].meta.symbol, regularMarketPrice: j.chart.result[0].meta.regularMarketPrice, previousClose: j.chart.result[0].meta.chartPreviousClose || j.chart.result[0].meta.previousClose }; } catch (e) { return null; } };
@@ -1068,11 +1250,14 @@
                 // v2.9.18: Chart & History
                 setChartRange, currentRange, historyFilterYear, availableYears,
                 // v2.9.20: Stock Notes
-                openStockNoteModal, showStockNoteModal, stockNoteForm, saveStockNote
+                openStockNoteModal, showStockNoteModal, stockNoteForm, saveStockNote,
+                // v3.3.5: XIRR (Index Bug Fix)
+                xirrValue, xirrStartDate, computeSystemXirr, xirrStartVal, xirrEndVal, xirrFlowCount
             };
         }
     }).mount('#app');
 </script>
-
+    
 </body>
 </html>
+

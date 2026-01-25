@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v3.2.0</title>
+    <title>我的投資組合 | Portfolio v3.2.1</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -93,7 +93,7 @@
     <div v-if="!user" class="flex-grow flex flex-col items-center justify-center p-4">
         <div class="zen-card p-8 max-w-sm w-full text-center space-y-6">
             <div class="bg-gray-800 text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto text-2xl"><i class="fa-solid fa-chart-line"></i></div>
-            <div><h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v3.2.0</h1><p class="text-gray-500 dark:text-gray-400 text-sm mt-2">v3.2.0 (系統穩定性優化)</p></div>
+            <div><h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v3.2.1</h1><p class="text-gray-500 dark:text-gray-400 text-sm mt-2">v3.2.1 (隱私保護與備份優化)</p></div>
             <button @click="login" class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
                 <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5 mr-3" alt="Google">使用 Google 帳號登入
             </button>
@@ -107,7 +107,7 @@
                     <a href="https://chianghf99.github.io/my-wallet/" class="text-gray-400 hover:text-gray-600 dark:hover:text-white transition"><i class="fa-solid fa-home"></i></a>
                     <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                         <span class="hidden sm:inline">我的資產帳本</span>
-                        <span @click="showChangelog=true" class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v3.2.0</span>
+                        <span @click="showChangelog=true" class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v3.2.1</span>
                     </h1>
                 </div>
                 <div class="flex items-center gap-3">
@@ -481,6 +481,18 @@
                     <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
                         
                         <div class="relative pl-6">
+                            <span class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-red-500 border-4 border-white dark:border-gray-800"></span>
+                            <div class="flex justify-between items-baseline mb-2">
+                                <span class="font-bold text-red-600 dark:text-red-400 text-lg">v3.2.1</span>
+                                <span class="text-xs text-gray-400">2026/01/25</span>
+                            </div>
+                            <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">新增</span><span>資料清除：新增「清除所有資料」功能，可一鍵重置帳號。</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">優化</span><span>備份還原：修復歷史紀錄備份在資料量大時的還原錯誤。</span></li>
+                            </ul>
+                        </div>
+
+                        <div class="relative pl-6">
                             <span class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-blue-500 border-4 border-white dark:border-gray-800"></span>
                             <div class="flex justify-between items-baseline mb-2">
                                 <span class="font-bold text-blue-600 dark:text-blue-400 text-lg">v3.2.0</span>
@@ -567,6 +579,16 @@
                     </div>
 
                     <hr class="border-gray-100 dark:border-gray-700">
+
+                    <div class="space-y-2">
+                        <div class="text-xs font-bold text-red-500 uppercase">危險操作</div>
+                        <button @click="clearAllUserData" class="w-full text-left px-4 py-3 bg-red-50 dark:bg-red-900/20 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition flex items-center group">
+                            <i class="fa-solid fa-radiation text-red-600 dark:text-red-400 w-6 group-hover:scale-110 transition-transform"></i>
+                            <span class="text-red-700 dark:text-red-300 text-sm font-medium">清除所有資料 <span class="text-xs opacity-75 ml-1">(無法復原)</span></span>
+                        </button>
+                    </div>
+
+                    <hr class="border-gray-100 dark:border-gray-700">
                     <button @click="logout" class="w-full py-2.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition font-medium flex items-center justify-center"><i class="fa-solid fa-sign-out-alt mr-2"></i>登出帳號</button>
                 </div>
             </div>
@@ -604,7 +626,7 @@
 
     createApp({
         setup() {
-            // ... (Variable Definitions) ...
+            // --- 1. 變數定義區 ---
             const user = ref(null);
             const stocks = ref([]);
             const exchangeRate = ref(32.5);
@@ -641,6 +663,7 @@
             const loanForm = ref({ id: null, name: '', balance: 0 });
             const cashData = ref({ twd: 0, usd: 0, loan: 0 });
             const prevDayData = ref(null);
+            
             const getLocalDate = () => { const d = new Date(); const offset = d.getTimezoneOffset() * 60000; return new Date(d.getTime() - offset).toISOString().split('T')[0]; };
             
             const fileInput = ref(null);
@@ -656,96 +679,15 @@
             
             let chartInstance = null, pieTwInstance = null, pieUsInstance = null;
             
-            // --- [修正重點] 已實現損益：變數定義 (必須放在 computed 之前) ---
-            const realizedGains = ref([]); // 原始資料
-            const realizedSearchQuery = ref(''); // 搜尋字串
+            // 已實現損益變數
+            const realizedGains = ref([]); 
+            const realizedSearchQuery = ref(''); 
             const sortKeyRealized = ref('date');
             const sortOrderRealized = ref('desc');
-
-            // 排序切換函式
-            const sortRealized = (key) => {
-                if (sortKeyRealized.value === key) {
-                    sortOrderRealized.value = sortOrderRealized.value === 'asc' ? 'desc' : 'asc';
-                } else {
-                    sortKeyRealized.value = key;
-                    sortOrderRealized.value = 'desc';
-                }
-            };
-
-            // 計算屬性：處理篩選與排序後的資料
-            const sortedRealizedGains = computed(() => {
-                let data = realizedGains.value.slice();
-                
-                // 1. 搜尋過濾
-                if (realizedSearchQuery.value) {
-                    const q = realizedSearchQuery.value.toUpperCase();
-                    data = data.filter(r => 
-                        (r.symbol && r.symbol.toUpperCase().includes(q)) ||  
-                        (r.name && r.name.toUpperCase().includes(q)) 
-                    );
-                }
-
-                // 2. 排序邏輯
-                data.sort((a, b) => {
-                    let modifier = sortOrderRealized.value === 'desc' ? -1 : 1;
-                    if (sortKeyRealized.value === 'date') return (new Date(a.date) - new Date(b.date)) * modifier;
-                    if (sortKeyRealized.value === 'symbol') return (a.name || a.symbol).localeCompare(b.name || b.symbol) * modifier;
-                    if (sortKeyRealized.value === 'pnl') return (a.pnl - b.pnl) * modifier;
-                    return 0;
-                });
-                return data;
-            });
-            // --- [v3.1.0 新增] 已實現損益的分頁與日期篩選 ---
-            const realizedRange = ref('YTD'); // 預設選中今年
+            const realizedRange = ref('YTD'); 
             const currentPage = ref(1);
-            const itemsPerPage = ref(10); // 每頁顯示 10 筆
+            const itemsPerPage = ref(10); 
 
-            // 1. 分頁後的資料 (給表格顯示用)
-            const paginatedRealizedGains = computed(() => {
-                const start = (currentPage.value - 1) * itemsPerPage.value;
-                return sortedRealizedGains.value.slice(start, start + itemsPerPage.value);
-            });
-
-            // 2. 總頁數計算
-            const totalRealizedPages = computed(() => {
-                return Math.ceil(sortedRealizedGains.value.length / itemsPerPage.value) || 1;
-            });
-
-            // 3. 換頁函式
-            const changePage = (page) => {
-                if (page >= 1 && page <= totalRealizedPages.value) {
-                    currentPage.value = page;
-                }
-            };
-
-            // 4. 監聽搜尋關鍵字：當搜尋時，自動跳回第 1 頁
-            watch(realizedSearchQuery, () => { currentPage.value = 1; });
-
-            // 5. 快速日期範圍設定
-            const setRealizedRange = (range) => {
-                realizedRange.value = range;
-                const today = getLocalDate();
-                const y = new Date().getFullYear();
-                
-                if (range === 'YTD') { // 今年
-                    realizedStartDate.value = `${y}-01-01`;
-                    realizedEndDate.value = today;
-                } else if (range === 'LAST_YEAR') { // 去年
-                    realizedStartDate.value = `${y-1}-01-01`;
-                    realizedEndDate.value = `${y-1}-12-31`;
-                } else if (range === '3M') { // 近3月
-                    const d = new Date(); d.setMonth(d.getMonth() - 3);
-                    realizedStartDate.value = d.toISOString().split('T')[0];
-                    realizedEndDate.value = today;
-                } else if (range === 'ALL') { // 全部
-                    realizedStartDate.value = '2020-01-01';
-                    realizedEndDate.value = today;
-                }
-                
-                fetchRealizedGains(); // 設定完日期後自動查詢
-                currentPage.value = 1; // 重設回第 1 頁
-            };
-            // --- [v3.1.0 結束] ---
             const dividendRecords = ref([]);
             const transactionHistory = ref([]);
             let unsubscribe = null, unsubscribeTrans = null, unsubscribeCash = null, unsubscribeNotes = null, unsubscribeLoans = null;
@@ -758,11 +700,13 @@
             if (isDarkMode.value) document.documentElement.classList.add('dark');
             window.addEventListener('resize', () => isMobile.value = window.innerWidth < 768);
 
+            // --- 2. 初始化與監聽 ---
             onMounted(() => {
                 const savedPrivacySetting = localStorage.getItem('app_default_privacy_hidden');
                 if (savedPrivacySetting === 'true') { defaultPrivacyHidden.value = true; showPrivacy.value = false; } 
                 else { defaultPrivacyHidden.value = false; showPrivacy.value = true; }
                 
+                // 年份自動化 (v3.2.0)
                 const currentY = new Date().getFullYear();
                 const years = [];
                 for(let y = 2024; y <= currentY + 1; y++) {
@@ -780,7 +724,6 @@
                 const localYearStart = new Date(yearStart.getTime() - yearStart.getTimezoneOffset() * 60000).toISOString().split('T')[0];
                 
                 chartEndDate.value = today; chartStartDate.value = past;
-                
                 divEndDate.value = today; divStartDate.value = localYearStart;
                 realizedEndDate.value = today; realizedStartDate.value = localYearStart; 
                 transEndDate.value = today; transStartDate.value = past90; 
@@ -793,7 +736,83 @@
                 fetchExchangeRate();
             });
 
-            // ... (All Helper functions like Chart Range, Dark Mode, etc. kept same) ...
+            // --- 3. 計算屬性 (Computed) ---
+            const sortedRealizedGains = computed(() => {
+                let data = realizedGains.value.slice();
+                if (realizedSearchQuery.value) {
+                    const q = realizedSearchQuery.value.toUpperCase(); // v3.2.0 搜尋修正
+                    data = data.filter(r => (r.symbol && r.symbol.toUpperCase().includes(q)) || (r.name && r.name.toUpperCase().includes(q)));
+                }
+                data.sort((a, b) => {
+                    let modifier = sortOrderRealized.value === 'desc' ? -1 : 1;
+                    if (sortKeyRealized.value === 'date') return (new Date(a.date) - new Date(b.date)) * modifier;
+                    if (sortKeyRealized.value === 'symbol') return (a.name || a.symbol).localeCompare(b.name || b.symbol) * modifier;
+                    if (sortKeyRealized.value === 'pnl') return (a.pnl - b.pnl) * modifier;
+                    return 0;
+                });
+                return data;
+            });
+
+            const paginatedRealizedGains = computed(() => {
+                const start = (currentPage.value - 1) * itemsPerPage.value;
+                return sortedRealizedGains.value.slice(start, start + itemsPerPage.value);
+            });
+
+            const totalRealizedPages = computed(() => { return Math.ceil(sortedRealizedGains.value.length / itemsPerPage.value) || 1; });
+
+            const sortedStocks = computed(() => [...stocks.value].sort((a, b) => (b.currentPrice * b.shares * (b.currency === 'USD' ? exchangeRate.value : 1)) - (a.currentPrice * a.shares * (a.currency === 'USD' ? exchangeRate.value : 1))));
+            const twStockList = computed(() => sortedStocks.value.filter(s => s.currency === 'TWD'));
+            const usStockList = computed(() => sortedStocks.value.filter(s => s.currency === 'USD'));
+            const twStats = computed(() => calculateStats(twStockList.value));
+            const usStats = computed(() => calculateStats(usStockList.value));
+            const totalLoanBalance = computed(() => loanList.value.reduce((acc, cur) => acc + (cur.balance || 0), 0));
+            const grandTotalAssets = computed(() => { const stockVal = twStats.value.value + (usStats.value.value * exchangeRate.value); const cashVal = (cashData.value.twd || 0) + ((cashData.value.usd || 0) * exchangeRate.value); return stockVal + cashVal; });
+            const grandTotalValue = computed(() => grandTotalAssets.value - totalLoanBalance.value);
+            const grandTotalPnL = computed(() => twStats.value.pnl + (usStats.value.pnl * exchangeRate.value));
+            const realizedTotalTw = computed(() => sortedRealizedGains.value.filter(r => r.currency === 'TWD').reduce((acc, cur) => acc + cur.pnl, 0));
+            const realizedTotalUs = computed(() => sortedRealizedGains.value.filter(r => r.currency === 'USD').reduce((acc, cur) => acc + cur.pnl, 0));            
+            const dividendYearlyTw = computed(() => dividendRecords.value.filter(r => r.currency === 'TWD' && r.date.startsWith(new Date().getFullYear().toString())).reduce((acc, cur) => acc + cur.amount, 0));
+            const dividendYearlyUs = computed(() => dividendRecords.value.filter(r => r.currency === 'USD' && r.date.startsWith(new Date().getFullYear().toString())).reduce((acc, cur) => acc + cur.amount, 0));
+            const dividendRangeTw = computed(() => dividendRecords.value.filter(r => r.currency === 'TWD').reduce((acc, cur) => acc + cur.amount, 0));
+            const dividendRangeUs = computed(() => dividendRecords.value.filter(r => r.currency === 'USD').reduce((acc, cur) => acc + cur.amount, 0));
+
+            const sortedTransactions = computed(() => {
+                let data = transactionHistory.value;
+                if (transFilterType.value !== 'all') {
+                    data = data.filter(tx => {
+                        if (transFilterType.value === 'trade') return tx.type === 'buy' || tx.type === 'sell';
+                        if (transFilterType.value === 'dividend') return tx.type === 'dividend';
+                        if (transFilterType.value === 'fund') return tx.type === 'deposit' || tx.type === 'withdraw';
+                        if (transFilterType.value === 'loan') return tx.type === 'borrow' || tx.type === 'repay';
+                        return true;
+                    });
+                }
+                if (transSearchQuery.value) { 
+                    const q = transSearchQuery.value.toUpperCase(); // v3.2.0 搜尋修正
+                    data = data.filter(tx => (tx.symbol && tx.symbol.toUpperCase().includes(q)) || (tx.name && tx.name.toUpperCase().includes(q))); 
+                }
+                if (transStartDate.value) data = data.filter(tx => tx.date >= transStartDate.value);
+                if (transEndDate.value) data = data.filter(tx => tx.date <= transEndDate.value);
+                return data.slice().sort((a, b) => { let modifier = sortOrderTrans.value === 'desc' ? -1 : 1; if (sortKeyTrans.value === 'date') return (new Date(a.date) - new Date(b.date)) * modifier; if (sortKeyTrans.value === 'type') return a.type.localeCompare(b.type) * modifier; if (sortKeyTrans.value === 'symbol') return (a.name || a.symbol).localeCompare(b.name || b.symbol) * modifier; return 0; });
+            });
+
+            const sortedDividends = computed(() => { return dividendRecords.value.slice().sort((a, b) => { let modifier = sortOrderDiv.value === 'desc' ? -1 : 1; if (sortKeyDiv.value === 'date') return (new Date(a.date) - new Date(b.date)) * modifier; if (sortKeyDiv.value === 'symbol') return (a.name || a.symbol).localeCompare(b.name || b.symbol) * modifier; if (sortKeyDiv.value === 'amount') return (a.amount - b.amount) * modifier; return 0; }); });
+
+            // --- 4. 輔助函數 ---
+            const sortRealized = (key) => { if (sortKeyRealized.value === key) sortOrderRealized.value = sortOrderRealized.value === 'asc' ? 'desc' : 'asc'; else { sortKeyRealized.value = key; sortOrderRealized.value = 'desc'; } };
+            const changePage = (page) => { if (page >= 1 && page <= totalRealizedPages.value) currentPage.value = page; };
+            watch(realizedSearchQuery, () => { currentPage.value = 1; });
+            const setRealizedRange = (range) => {
+                realizedRange.value = range;
+                const today = getLocalDate();
+                const y = new Date().getFullYear();
+                if (range === 'YTD') { realizedStartDate.value = `${y}-01-01`; realizedEndDate.value = today; } 
+                else if (range === 'LAST_YEAR') { realizedStartDate.value = `${y-1}-01-01`; realizedEndDate.value = `${y-1}-12-31`; } 
+                else if (range === '3M') { const d = new Date(); d.setMonth(d.getMonth() - 3); realizedStartDate.value = d.toISOString().split('T')[0]; realizedEndDate.value = today; } 
+                else if (range === 'ALL') { realizedStartDate.value = '2020-01-01'; realizedEndDate.value = today; }
+                fetchRealizedGains(); currentPage.value = 1;
+            };
+
             const setChartRange = (range) => {
                 currentRange.value = range;
                 const end = new Date();
@@ -825,7 +844,7 @@
                     if (s === 'transactions') fetchTransactions();
                 }
             };
-            const jumpToFundHistory = () => { /* Now scrolls to bottom of cash card */ setTimeout(() => { document.querySelector('.zen-card.mb-8 h4').scrollIntoView({ behavior: 'smooth' }); }, 100); };
+            const jumpToFundHistory = () => { setTimeout(() => { document.querySelector('.zen-card.mb-8 h4').scrollIntoView({ behavior: 'smooth' }); }, 100); };
             const loadUserData = (uid) => { if (unsubscribe) unsubscribe(); unsubscribe = db.collection('users').doc(uid).collection('stocks').onSnapshot(snap => { stocks.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); if (stocks.value.length > 0) saveDailySnapshot(); }); };
             const fetchCash = (uid) => { if(unsubscribeCash) unsubscribeCash(); unsubscribeCash = db.collection('users').doc(uid).collection('portfolio').doc('cash').onSnapshot(doc => { if(doc.exists) cashData.value = doc.data(); else cashData.value = { twd: 0, usd: 0, loan: 0 }; if (cashData.value.loan > 0 && loanList.value.length === 0) { setTimeout(() => migrateLegacyLoan(uid, cashData.value.loan), 1000); } setTimeout(saveDailySnapshot, 1000); }); };
             const fetchLoans = (uid) => { if (unsubscribeLoans) unsubscribeLoans(); unsubscribeLoans = db.collection('users').doc(uid).collection('loans').onSnapshot(snap => { loanList.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); }); };
@@ -834,11 +853,39 @@
             const login = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(alert);
             const logout = () => auth.signOut();
 
+            // --- 5. 匯出/匯入/清除 ---
             const exportData = async () => { if (!user.value) return; const uid = user.value.uid; const allStocks = await db.collection('users').doc(uid).collection('stocks').get(); const allTrans = await db.collection('users').doc(uid).collection('transactions').get(); const allRealized = await db.collection('users').doc(uid).collection('realized_gains').get(); const allDividends = await db.collection('users').doc(uid).collection('dividends').get(); const allHistory = await db.collection('users').doc(uid).collection('history').orderBy('date').get(); const allNotes = await db.collection('users').doc(uid).collection('notes').get(); const allLoans = await db.collection('users').doc(uid).collection('loans').get(); const cashDoc = await db.collection('users').doc(uid).collection('portfolio').doc('cash').get(); const obj = { stocks: allStocks.docs.map(d=>({id: d.id, ...d.data()})), transactions: allTrans.docs.map(d=>({id: d.id, ...d.data()})), realized: allRealized.docs.map(d=>({id: d.id, ...d.data()})), dividends: allDividends.docs.map(d=>({id: d.id, ...d.data()})), history: allHistory.docs.map(d=>d.data()), cash: cashDoc.exists ? cashDoc.data() : {twd:0, usd:0, loan:0}, notes: allNotes.docs.map(d=>({id: d.id, ...d.data()})), loans: allLoans.docs.map(d=>({id: d.id, ...d.data()})) }; const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(obj, null, 2)); a.download = `portfolio_FULL_BACKUP_${getLocalDate()}.json`; document.body.appendChild(a); a.click(); a.remove(); };
             const exportToExcel = async () => { if (!user.value) return; if (typeof XLSX === 'undefined') { alert('Excel 元件載入失敗，請檢查網路連線。'); return; } const uid = user.value.uid; const wb = XLSX.utils.book_new(); const summaryData = [ ['項目', '金額 (TWD)', '金額 (USD)'], ['總淨資產 (Net Worth)', grandTotalValue.value, grandTotalValue.value / exchangeRate.value], ['台股部位', twStats.value.value, twStats.value.value / exchangeRate.value], ['美股部位', usStats.value.value * exchangeRate.value, usStats.value.value], ['台幣現金', cashData.value.twd, cashData.value.twd / exchangeRate.value], ['美金現金', cashData.value.usd * exchangeRate.value, cashData.value.usd], ['總負債 (Loans)', totalLoanBalance.value, totalLoanBalance.value / exchangeRate.value], ['未實現損益', grandTotalPnL.value, grandTotalPnL.value / exchangeRate.value], ['匯率 (USD/TWD)', exchangeRate.value, ''] ]; XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryData), "總覽 Summary"); const sSnap = await db.collection('users').doc(uid).collection('stocks').get(); const stockData = sSnap.docs.map(d => d.data()).map(s => ({ 代號: s.symbol, 名稱: s.name, 幣別: s.currency, 股數: s.shares, 平均成本: s.avgCost, 現價: s.currentPrice, 市值: s.shares * s.currentPrice, 損益: (s.currentPrice - s.avgCost) * s.shares })); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(stockData), "庫存 Stocks"); const tSnap = await db.collection('users').doc(uid).collection('transactions').orderBy('date', 'desc').get(); const txData = tSnap.docs.map(d => d.data()); const wsTrans = XLSX.utils.json_to_sheet(txData.map(t => ({ 日期: t.date, 類別: getTypeName(t.type), 代號: t.symbol, 名稱: t.name, 股數: t.shares, 總金額: t.totalAmount, 幣別: t.currency, 備註: t.memo || '' }))); XLSX.utils.book_append_sheet(wb, wsTrans, "交易紀錄 Transactions"); const hSnap = await db.collection('users').doc(uid).collection('history').orderBy('date', 'desc').get(); const histData = hSnap.docs.map(d => d.data()); const wsHist = XLSX.utils.json_to_sheet(histData.map(h => ({ 日期: h.date, 淨資產: h.totalVal, 總資產: (h.totalVal || 0) + (h.loan || 0), 負債: h.loan, 台股: h.twVal, 美股USD: h.usVal, 台幣現金: h.twCash || 0, 美金現金: h.usCash || 0 }))); XLSX.utils.book_append_sheet(wb, wsHist, "歷史淨值 History"); const rSnap = await db.collection('users').doc(uid).collection('realized_gains').orderBy('date', 'desc').get(); const realData = rSnap.docs.map(d => d.data()); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(realData), "已實現損益 Realized"); const dSnap = await db.collection('users').doc(uid).collection('dividends').orderBy('date', 'desc').get(); const divData = dSnap.docs.map(d => d.data()); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(divData), "股息 Dividends"); const lSnap = await db.collection('users').doc(uid).collection('loans').get(); const loanData = lSnap.docs.map(d => d.data()); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(loanData), "借款 Loans"); const nSnap = await db.collection('users').doc(uid).collection('notes').get(); const noteData = nSnap.docs.map(d => d.data()); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(noteData), "筆記 Notes"); XLSX.writeFile(wb, `Portfolio_FULL_Export_${getLocalDate()}.xlsx`); };
             
             const triggerImport = () => { fileInput.value.click(); };
-            const handleImport = async (event) => { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = async (e) => { try { const json = JSON.parse(e.target.result); if (!confirm(`警告：這將使用備份檔案中的資料更新您的資產紀錄。\n\n若 ID 相同將覆蓋舊資料，ID 不同則新增。\n\n確定要執行還原嗎？`)) { event.target.value = ''; return; } isLoading.value = true; const uid = user.value.uid; const batchLimit = 400; const restoreCollection = async (colName, dataArr) => { if (!dataArr || !Array.isArray(dataArr)) return; const chunks = []; for (let i = 0; i < dataArr.length; i += batchLimit) { chunks.push(dataArr.slice(i, i + batchLimit)); } for (const chunk of chunks) { const batch = db.batch(); chunk.forEach(item => { if (item.id) { const docRef = db.collection('users').doc(uid).collection(colName).doc(item.id); const { id, ...data } = item; batch.set(docRef, data, { merge: true }); } }); await batch.commit(); } }; await restoreCollection('stocks', json.stocks); await restoreCollection('transactions', json.transactions); await restoreCollection('realized_gains', json.realized); await restoreCollection('dividends', json.dividends); await restoreCollection('notes', json.notes); await restoreCollection('loans', json.loans); if (json.history && Array.isArray(json.history)) { const batch = db.batch(); json.history.forEach(h => { if (h.date) { const docRef = db.collection('users').doc(uid).collection('history').doc(h.date); batch.set(docRef, h, { merge: true }); } }); await batch.commit(); } if (json.cash) { await db.collection('users').doc(uid).collection('portfolio').doc('cash').set(json.cash, { merge: true }); } alert('還原成功！頁面將重新整理。'); location.reload(); } catch (err) { console.error(err); alert('還原失敗：檔案格式錯誤或網路問題。'); isLoading.value = false; } }; reader.readAsText(file); };
+            
+            // v3.2.1 修正還原 Bug
+            const handleImport = async (event) => { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = async (e) => { try { const json = JSON.parse(e.target.result); if (!confirm(`警告：這將使用備份檔案中的資料更新您的資產紀錄。\n\n若 ID 相同將覆蓋舊資料，ID 不同則新增。\n\n確定要執行還原嗎？`)) { event.target.value = ''; return; } isLoading.value = true; const uid = user.value.uid; const batchLimit = 400; const restoreCollection = async (colName, dataArr) => { if (!dataArr || !Array.isArray(dataArr)) return; const chunks = []; for (let i = 0; i < dataArr.length; i += batchLimit) { chunks.push(dataArr.slice(i, i + batchLimit)); } for (const chunk of chunks) { const batch = db.batch(); chunk.forEach(item => { if (item.id) { const docRef = db.collection('users').doc(uid).collection(colName).doc(item.id); const { id, ...data } = item; batch.set(docRef, data, { merge: true }); } }); await batch.commit(); } }; await restoreCollection('stocks', json.stocks); await restoreCollection('transactions', json.transactions); await restoreCollection('realized_gains', json.realized); await restoreCollection('dividends', json.dividends); await restoreCollection('notes', json.notes); await restoreCollection('loans', json.loans); if (json.history && Array.isArray(json.history)) { const chunks = []; for (let i = 0; i < json.history.length; i += batchLimit) { chunks.push(json.history.slice(i, i + batchLimit)); } for (const chunk of chunks) { const batch = db.batch(); chunk.forEach(h => { if (h.date) { const docRef = db.collection('users').doc(uid).collection('history').doc(h.date); batch.set(docRef, h, { merge: true }); } }); await batch.commit(); } } if (json.cash) { await db.collection('users').doc(uid).collection('portfolio').doc('cash').set(json.cash, { merge: true }); } alert('還原成功！頁面將重新整理。'); location.reload(); } catch (err) { console.error(err); alert('還原失敗：檔案格式錯誤或網路問題。'); isLoading.value = false; } }; reader.readAsText(file); };
+
+            // v3.2.1 新增：清除所有資料
+            const clearAllUserData = async () => {
+                if (!user.value) return;
+                if (!confirm('⚠️ 嚴重警告\n\n您確定要「永久刪除」此帳號下的所有資產資料嗎？\n\n此操作將清空：\n- 所有庫存與交易紀錄\n- 歷史淨值與股息\n- 筆記與借款設定\n\n資料一旦刪除將「無法復原」！')) return;
+                const input = prompt('請輸入 "DELETE" (全大寫) 以確認刪除操作：');
+                if (input !== 'DELETE') return alert('驗證碼錯誤，已取消刪除。');
+                isLoading.value = true;
+                const uid = user.value.uid;
+                const collections = ['stocks', 'transactions', 'realized_gains', 'dividends', 'history', 'notes', 'loans'];
+                try {
+                    for (const colName of collections) {
+                        const snapshot = await db.collection('users').doc(uid).collection(colName).get();
+                        if (snapshot.empty) continue;
+                        const batchLimit = 400;
+                        const chunks = [];
+                        const docs = snapshot.docs;
+                        for (let i = 0; i < docs.length; i += batchLimit) { chunks.push(docs.slice(i, i + batchLimit)); }
+                        for (const chunk of chunks) { const batch = db.batch(); chunk.forEach(doc => batch.delete(doc.ref)); await batch.commit(); }
+                    }
+                    await db.collection('users').doc(uid).collection('portfolio').doc('cash').delete();
+                    alert('所有資料已成功清除，系統將自動登出。');
+                    logout();
+                } catch (err) { console.error(err); alert('刪除失敗，請稍後再試：' + err.message); } finally { isLoading.value = false; }
+            };
 
             const fetchRealizedGains = async () => { if (!user.value) return; const snap = await db.collection('users').doc(user.value.uid).collection('realized_gains').where('date', '>=', realizedStartDate.value).where('date', '<=', realizedEndDate.value).orderBy('date', 'desc').get(); realizedGains.value = snap.docs.map(d => ({id: d.id, ...d.data()})); };
             const fetchDividends = async () => { if (!user.value) return; const snap = await db.collection('users').doc(user.value.uid).collection('dividends').where('date', '>=', divStartDate.value).where('date', '<=', divEndDate.value).orderBy('date', 'desc').get(); dividendRecords.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); };
@@ -858,10 +905,14 @@
             const saveNote = async () => { if (!user.value || !noteForm.value.title) return alert('請輸入標題'); const data = { title: noteForm.value.title, date: noteForm.value.date || getLocalDate(), content: noteForm.value.content || '', timestamp: firebase.firestore.FieldValue.serverTimestamp() }; if (noteForm.value.id) { await db.collection('users').doc(user.value.uid).collection('notes').doc(noteForm.value.id).update(data); } else { await db.collection('users').doc(user.value.uid).collection('notes').add(data); } closeNoteModal(); };
             const deleteNote = async (id) => { if(!confirm('確定刪除此筆記？')) return; await db.collection('users').doc(user.value.uid).collection('notes').doc(id).delete(); };
             const deleteTransaction = (tx) => { pendingDeleteTx.value = tx; showDeleteModal.value = true; };
+            
+            // v3.2.0 修正領息刪除邏輯
             const executeDelete = async (revertCash) => { showDeleteModal.value = false; const tx = pendingDeleteTx.value; if (!tx) return; if (revertCash) { if (tx.type === 'deposit') await updateCash(tx.currency, -Math.abs(tx.totalAmount), 0); else if (tx.type === 'withdraw') await updateCash(tx.currency, Math.abs(tx.totalAmount), 0); else if (tx.type === 'borrow') { if (tx.loanId) await updateLoanBalance(tx.loanId, -Math.abs(tx.totalAmount)); else alert('此為舊版借款紀錄，請手動調整對應帳戶餘額。'); } else if (tx.type === 'repay') { if (tx.loanId) await updateLoanBalance(tx.loanId, Math.abs(tx.totalAmount)); } else if (tx.type === 'dividend') { await updateCash(tx.currency, -Math.abs(tx.totalAmount), 0); const stock = stocks.value.find(s => s.symbol === tx.symbol); if (stock) { await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ dividends: Math.max(0, (stock.dividends || 0) - tx.totalAmount) }); } } } await db.collection('users').doc(user.value.uid).collection('transactions').doc(tx.id).delete(); fetchTransactions(); setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'transactions') fetchTransactions();if (activeSection.value === 'realized') fetchRealizedGains(); if (activeSection.value === 'chart') drawChart(); }, 500); pendingDeleteTx.value = null; };
             const deleteDividend = async (rec) => { if(!confirm('刪除股息？(現金將自動扣回)')) return; const stock = stocks.value.find(s => s.symbol === rec.symbol); if (stock) { await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ dividends: Math.max(0, (stock.dividends || 0) - rec.amount) }); } await updateCash(rec.currency, -rec.amount, 0); await db.collection('users').doc(user.value.uid).collection('dividends').doc(rec.id).delete(); fetchDividends(); setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'chart') drawChart(); }, 500); };
             const deleteRealized = async (id) => { if(!confirm('刪除？')) return; await db.collection('users').doc(user.value.uid).collection('realized_gains').doc(id).delete(); fetchRealizedGains(); };
             const saveDailySnapshot = async () => { if (!user.value) return; const todayStr = getLocalDate(); const historyRef = db.collection('users').doc(user.value.uid).collection('history').doc(todayStr); const currentHour = new Date().getHours(); const snapshot = { date: todayStr, timestamp: firebase.firestore.FieldValue.serverTimestamp(), totalVal: grandTotalValue.value, twVal: twStats.value.value, usVal: usStats.value.value, twCash: cashData.value.twd || 0, usCash: cashData.value.usd || 0, loan: totalLoanBalance.value, totalPnL: grandTotalPnL.value, twPnL: twStats.value.pnl, usPnL: usStats.value.pnl }; if (currentHour >= 21) { const doc = await historyRef.get(); if (doc.exists) { return; } } await historyRef.set(snapshot, { merge: true }); };
+            
+            // v3.2.0 安全更新現金邏輯
             const updateCash = async (currency, amount, loanAmount = 0) => {
                 if (!user.value) return;
                 const ref = db.collection('users').doc(user.value.uid).collection('portfolio').doc('cash');
@@ -874,10 +925,7 @@
                 if (!doc.exists) {
                     await ref.set({ twd: newTwd, usd: newUsd, loan: 0 });
                 } else {
-                    await ref.update({ 
-                        twd: newTwd, 
-                        usd: newUsd 
-                    });
+                    await ref.update({ twd: newTwd, usd: newUsd });
                 }
                 cashData.value.twd = newTwd;
                 cashData.value.usd = newUsd;
@@ -929,7 +977,7 @@
                     } 
                     await updateLoanBalance(transForm.value.loanId, loanDelta); 
                     if (isSyncToCash.value) {
-                        await updateCash(form.value.currency, cashDelta, 0);
+                        await updateCash(form.value.currency, cashDelta, 0); // v3.2.0 還款同步
                     }
                     await db.collection('users').doc(user.value.uid).collection('transactions').add(logData); 
                     closeTransModal(); 
@@ -943,7 +991,6 @@
             const closeModal = () => showModal.value = false;
             const saveStock = async () => { if (!user.value || !form.value.symbol) return; const d = { ...form.value }; const r = db.collection('users').doc(user.value.uid).collection('stocks'); if (isEditing.value) await r.doc(d.id).update(d); else await r.doc(d.id).set(d); closeModal(); };
             
-            // v2.9.20: Delete with detailed warning
             const deleteStock = async (stock) => { 
                 if (!user.value) return; 
                 if (!confirm(`⚠️ 刪除警告\n\n您確定要刪除「${stock.name} (${stock.symbol})」的庫存資料嗎？\n\n請注意：\n1. 這只是「刪除資料」，並非賣出股票。\n2. 此操作不會產生交易紀錄，也不會變動現金餘額。\n3. 若您實際上已賣出，請按「取消」，並使用「補登 > 賣出」功能。`)) return; 
@@ -976,46 +1023,6 @@
             const fetchPrices = async () => { if (!user.value || stocks.value.length === 0) return; isLoading.value = true; const updates = stocks.value.map(async (s) => { const d = await getYahooData(s.symbol); return d ? { id: s.id, price: d.regularMarketPrice, prev: d.previousClose } : null; }); const res = await Promise.all(updates); const batch = db.batch(); let has = false; const ref = db.collection('users').doc(user.value.uid).collection('stocks'); res.forEach(r => { if (r) { batch.update(ref.doc(r.id), { currentPrice: r.price, previousClose: r.prev }); has = true; } }); if (has) await batch.commit(); setTimeout(saveDailySnapshot, 500); lastUpdated.value = `${new Date().getHours()}:${String(new Date().getMinutes()).padStart(2, '0')}`; isLoading.value = false; };
             const fetchExchangeRate = async () => { try { const r = await fetch('https://api.exchangerate-api.com/v4/latest/USD'); const d = await r.json(); exchangeRate.value = d.rates.TWD; } catch(e){} };
 
-            const sortedStocks = computed(() => [...stocks.value].sort((a, b) => (b.currentPrice * b.shares * (b.currency === 'USD' ? exchangeRate.value : 1)) - (a.currentPrice * a.shares * (a.currency === 'USD' ? exchangeRate.value : 1))));
-            const twStockList = computed(() => sortedStocks.value.filter(s => s.currency === 'TWD'));
-            const usStockList = computed(() => sortedStocks.value.filter(s => s.currency === 'USD'));
-            const twStats = computed(() => calculateStats(twStockList.value));
-            const usStats = computed(() => calculateStats(usStockList.value));
-            const totalLoanBalance = computed(() => loanList.value.reduce((acc, cur) => acc + (cur.balance || 0), 0));
-            const grandTotalAssets = computed(() => { const stockVal = twStats.value.value + (usStats.value.value * exchangeRate.value); const cashVal = (cashData.value.twd || 0) + ((cashData.value.usd || 0) * exchangeRate.value); return stockVal + cashVal; });
-            const grandTotalValue = computed(() => grandTotalAssets.value - totalLoanBalance.value);
-            const grandTotalPnL = computed(() => twStats.value.pnl + (usStats.value.pnl * exchangeRate.value));
-            const realizedTotalTw = computed(() => sortedRealizedGains.value.filter(r => r.currency === 'TWD').reduce((acc, cur) => acc + cur.pnl, 0));
-            const realizedTotalUs = computed(() => sortedRealizedGains.value.filter(r => r.currency === 'USD').reduce((acc, cur) => acc + cur.pnl, 0));            const dividendYearlyTw = computed(() => dividendRecords.value.filter(r => r.currency === 'TWD' && r.date.startsWith(new Date().getFullYear().toString())).reduce((acc, cur) => acc + cur.amount, 0));
-            const dividendYearlyUs = computed(() => dividendRecords.value.filter(r => r.currency === 'USD' && r.date.startsWith(new Date().getFullYear().toString())).reduce((acc, cur) => acc + cur.amount, 0));
-            const dividendRangeTw = computed(() => dividendRecords.value.filter(r => r.currency === 'TWD').reduce((acc, cur) => acc + cur.amount, 0));
-            const dividendRangeUs = computed(() => dividendRecords.value.filter(r => r.currency === 'USD').reduce((acc, cur) => acc + cur.amount, 0));
-
-            const sortedTransactions = computed(() => {
-                let data = transactionHistory.value;
-                if (transFilterType.value !== 'all') {
-                    data = data.filter(tx => {
-                        if (transFilterType.value === 'trade') return tx.type === 'buy' || tx.type === 'sell';
-                        if (transFilterType.value === 'dividend') return tx.type === 'dividend';
-                        if (transFilterType.value === 'fund') return tx.type === 'deposit' || tx.type === 'withdraw';
-                        if (transFilterType.value === 'loan') return tx.type === 'borrow' || tx.type === 'repay';
-                        return true;
-                    });
-                }
-                if (transSearchQuery.value) { 
-                    const q = transSearchQuery.value.toUpperCase(); 
-                    data = data.filter(tx => 
-                        (tx.symbol && tx.symbol.toUpperCase().includes(q)) || 
-                        (tx.name && tx.name.toUpperCase().includes(q)) 
-                    ); 
-                }
-                if (transStartDate.value) data = data.filter(tx => tx.date >= transStartDate.value);
-                if (transEndDate.value) data = data.filter(tx => tx.date <= transEndDate.value);
-                return data.slice().sort((a, b) => { let modifier = sortOrderTrans.value === 'desc' ? -1 : 1; if (sortKeyTrans.value === 'date') return (new Date(a.date) - new Date(b.date)) * modifier; if (sortKeyTrans.value === 'type') return a.type.localeCompare(b.type) * modifier; if (sortKeyTrans.value === 'symbol') return (a.name || a.symbol).localeCompare(b.name || b.symbol) * modifier; return 0; });
-            });
-
-            const sortedDividends = computed(() => { return dividendRecords.value.slice().sort((a, b) => { let modifier = sortOrderDiv.value === 'desc' ? -1 : 1; if (sortKeyDiv.value === 'date') return (new Date(a.date) - new Date(b.date)) * modifier; if (sortKeyDiv.value === 'symbol') return (a.name || a.symbol).localeCompare(b.name || b.symbol) * modifier; if (sortKeyDiv.value === 'amount') return (a.amount - b.amount) * modifier; return 0; }); });
-
             const sortTransaction = (key) => { if (sortKeyTrans.value === key) sortOrderTrans.value = sortOrderTrans.value === 'asc' ? 'desc' : 'asc'; else { sortKeyTrans.value = key; sortOrderTrans.value = 'desc'; } };
             const sortDividend = (key) => { if (sortKeyDiv.value === key) sortOrderDiv.value = sortOrderDiv.value === 'asc' ? 'desc' : 'asc'; else { sortKeyDiv.value = key; sortOrderDiv.value = 'desc'; } };
 
@@ -1030,6 +1037,7 @@
             const getAmountSign = (tx) => { if (tx.type === 'buy' || tx.type === 'withdraw' || tx.type === 'repay') return '-'; return '+'; };
 
             return {
+                clearAllUserData, // v3.2.1
                 user, login, logout, stocks, exchangeRate, lastUpdated, isLoading, viewMode, isMobile, showPrivacy, isDarkMode, toggleDarkMode, activeSection, toggleSection, showChangelog,
                 twStats, usStats, grandTotalValue, grandTotalAssets, grandTotalPnL, twStockList, usStockList,
                 showModal, isEditing, form, openModal, editStock, closeModal, saveStock, deleteStock,
@@ -1068,4 +1076,3 @@
 
 </body>
 </html>
-

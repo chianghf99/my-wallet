@@ -469,32 +469,60 @@
         <div v-if="showChangelog" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col max-h-[80vh]">
                 <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
-                    <h3 class="font-bold text-lg text-gray-800 dark:text-white flex items-center gap-2"><i class="fa-solid fa-clock-rotate-left text-blue-500"></i> 更新日誌</h3>
-                    <button @click="showChangelog=false" class="w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 transition"><i class="fa-solid fa-times"></i></button>
+                    <h3 class="font-bold text-lg text-gray-800 dark:text-white flex items-center gap-2">
+                        <i class="fa-solid fa-clock-rotate-left text-blue-500"></i> 更新日誌
+                    </h3>
+                    <button @click="showChangelog=false" class="w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 transition">
+                        <i class="fa-solid fa-times"></i>
+                    </button>
                 </div>
+                
                 <div class="p-6 overflow-y-auto custom-scrollbar">
                     <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
-                         <div class="relative pl-6">
-                             <span class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-blue-500 border-4 border-white dark:border-gray-800"></span>
-                             <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-blue-600 dark:text-blue-400 text-lg">v3.2.0</span><span class="text-xs text-gray-400">2026/01/25</span></div>
-                             <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                                 <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">修正</span><span>還款同步功能：修復還款時勾選同步卻未扣除現金的 Bug。</span></li>
-                                 <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">修正</span><span>領息刪除邏輯：修復刪除交易紀錄時無法正確扣回個股股息總額的問題。</span></li>
-                                 <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">優化</span><span>搜尋不分大小寫：現在搜尋功能會自動忽略標的名稱的大小寫差異。</span></li>
-                                 <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">自動化</span><span>年份維護：歷史紀錄選單現在會根據當前年份自動更新，無需手動修改代碼。</span></li>
-                             </ul>
-                         </div>
+                        
+                        <div class="relative pl-6">
                             <span class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-blue-500 border-4 border-white dark:border-gray-800"></span>
-                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-blue-600 dark:text-blue-400 text-lg">v3.1.0</span><span class="text-xs text-gray-400">2026/01/24</span></div>
+                            <div class="flex justify-between items-baseline mb-2">
+                                <span class="font-bold text-blue-600 dark:text-blue-400 text-lg">v3.2.0</span>
+                                <span class="text-xs text-gray-400">2026/01/25</span>
+                            </div>
                             <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                                <li class="flex items-start gap-2">
-                                    <span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">v3.1.0</span>
-                                    <span>新增已實現損益的「分頁功能」與「快速日期篩選 (今年/去年/全部)」。</span>
-                                </li>
-                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">新增</span><span>借還款備註修復：現在可以正確顯示借款/還款時填寫的備註資訊 (顯示在交易名稱後方)。</span></li>
-                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">優化</span><span>系統穩定性回歸：以 v2.9.20 為核心基底，確保功能穩定不崩潰。</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">修正</span><span>還款同步：修復還款勾選同步時，未正確扣除現金的 Bug。</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">修正</span><span>領息刪除：修復刪除領息紀錄時，無法正確扣回個股累積股息的問題。</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">優化</span><span>搜尋升級：交易紀錄與損益搜尋全面支援「不分大小寫」。</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">自動</span><span>年份維護：歷史紀錄選單自動抓取年份，無需每年手動修改。</span></li>
                             </ul>
                         </div>
+
+                        <div class="relative pl-6">
+                            <span class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-4 border-white dark:border-gray-800"></span>
+                            <div class="flex justify-between items-baseline mb-2">
+                                <span class="font-bold text-gray-700 dark:text-gray-300 text-lg">v3.1.0</span>
+                                <span class="text-xs text-gray-400">2026/01/25</span>
+                            </div>
+                            <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">新增</span><span>已實現損益：新增「分頁功能」與「快速日期篩選 (今年/去年)」。</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">新增</span><span>借還款備註：修復備註顯示位置，現在會正確顯示在名稱後方。</span></li>
+                                <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400">核心</span><span>系統回歸：以 v2.9.20 為穩定基底重新構建。</span></li>
+                            </ul>
+                        </div>
+
+                        <div class="relative pl-6">
+                            <span class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-4 border-white dark:border-gray-800"></span>
+                            <div class="flex justify-between items-baseline mb-2">
+                                <span class="font-bold text-gray-500 dark:text-gray-400 text-lg">v2.9.x</span>
+                                <span class="text-xs text-gray-400">歷史紀錄</span>
+                            </div>
+                            <div class="bg-gray-50 dark:bg-gray-700/50 rounded p-3 text-xs text-gray-500 dark:text-gray-400 space-y-1.5">
+                                <div class="flex gap-2"><span class="font-bold">v2.9.20</span><span>新增「個股筆記」功能</span></div>
+                                <div class="flex gap-2"><span class="font-bold">v2.9.18</span><span>新增「圖表區間」與「歷史年份」篩選</span></div>
+                                <div class="flex gap-2"><span class="font-bold">v2.9.17</span><span>新增「JSON 資料還原」備份功能</span></div>
+                                <div class="flex gap-2"><span class="font-bold">v2.9.15</span><span>新增「偏好設定」(如預設隱藏金額)</span></div>
+                                <div class="flex gap-2"><span class="font-bold">v2.9.12</span><span>新增「匯出 Excel」報表</span></div>
+                                <div class="flex gap-2"><span class="font-bold">v2.9.05</span><span>新增「借款帳戶管理」系統</span></div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>
@@ -1040,3 +1068,4 @@
 
 </body>
 </html>
+

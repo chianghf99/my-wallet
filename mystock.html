@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v3.1.0</title>
+    <title>我的投資組合 | Portfolio v3.2.0</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -93,7 +93,7 @@
     <div v-if="!user" class="flex-grow flex flex-col items-center justify-center p-4">
         <div class="zen-card p-8 max-w-sm w-full text-center space-y-6">
             <div class="bg-gray-800 text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto text-2xl"><i class="fa-solid fa-chart-line"></i></div>
-            <div><h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v3.1.0</h1><p class="text-gray-500 dark:text-gray-400 text-sm mt-2">v3.1.0 (新增損益篩選與分頁)</p></div>
+            <div><h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v3.2.0</h1><p class="text-gray-500 dark:text-gray-400 text-sm mt-2">v3.2.0 (系統穩定性優化)</p></div>
             <button @click="login" class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
                 <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5 mr-3" alt="Google">使用 Google 帳號登入
             </button>
@@ -107,7 +107,7 @@
                     <a href="https://chianghf99.github.io/my-wallet/" class="text-gray-400 hover:text-gray-600 dark:hover:text-white transition"><i class="fa-solid fa-home"></i></a>
                     <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                         <span class="hidden sm:inline">我的資產帳本</span>
-                        <span @click="showChangelog=true" class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v3.1.0</span>
+                        <span @click="showChangelog=true" class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v3.2.0</span>
                     </h1>
                 </div>
                 <div class="flex items-center gap-3">
@@ -475,8 +475,17 @@
                 <div class="p-6 overflow-y-auto custom-scrollbar">
                     <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
                          <div class="relative pl-6">
+                             <span class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-blue-500 border-4 border-white dark:border-gray-800"></span>
+                             <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-blue-600 dark:text-blue-400 text-lg">v3.2.0</span><span class="text-xs text-gray-400">2026/01/25</span></div>
+                             <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                                 <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">修正</span><span>還款同步功能：修復還款時勾選同步卻未扣除現金的 Bug。</span></li>
+                                 <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">修正</span><span>領息刪除邏輯：修復刪除交易紀錄時無法正確扣回個股股息總額的問題。</span></li>
+                                 <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">優化</span><span>搜尋不分大小寫：現在搜尋功能會自動忽略標的名稱的大小寫差異。</span></li>
+                                 <li class="flex items-start gap-2"><span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">自動化</span><span>年份維護：歷史紀錄選單現在會根據當前年份自動更新，無需手動修改代碼。</span></li>
+                             </ul>
+                         </div>
                             <span class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-blue-500 border-4 border-white dark:border-gray-800"></span>
-                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-blue-600 dark:text-blue-400 text-lg">v3.1.0</span><span class="text-xs text-gray-400">2026/01/25</span></div>
+                            <div class="flex justify-between items-baseline mb-2"><span class="font-bold text-blue-600 dark:text-blue-400 text-lg">v3.1.0</span><span class="text-xs text-gray-400">2026/01/24</span></div>
                             <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
                                 <li class="flex items-start gap-2">
                                     <span class="mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">v3.1.0</span>
@@ -590,7 +599,7 @@
             const showHistoryModal = ref(false);
             const historyRecords = ref([]);
             const historyFilterYear = ref(new Date().getFullYear());
-            const availableYears = ref([2024, 2025, 2026, 2027]);
+            const availableYears = ref([]);
             
             const showDeleteModal = ref(false);
             const pendingDeleteTx = ref(null);
@@ -642,7 +651,10 @@
                 // 1. 搜尋過濾
                 if (realizedSearchQuery.value) {
                     const q = realizedSearchQuery.value.toUpperCase();
-                    data = data.filter(r => (r.symbol && r.symbol.toUpperCase().includes(q)) || (r.name && r.name.includes(q)));
+                    data = data.filter(r => 
+                        (r.symbol && r.symbol.toUpperCase().includes(q)) ||  
+                        (r.name && r.name.toUpperCase().includes(q)) 
+                    );
                 }
 
                 // 2. 排序邏輯
@@ -725,7 +737,9 @@
                 
                 const currentY = new Date().getFullYear();
                 const years = [];
-                for(let y = 2024; y <= currentY + 1; y++) years.push(y);
+                for(let y = 2024; y <= currentY + 1; y++) {
+                    years.push(y);
+                }
                 availableYears.value = years.sort((a,b) => b-a);
                 historyFilterYear.value = currentY;
 
@@ -816,11 +830,30 @@
             const saveNote = async () => { if (!user.value || !noteForm.value.title) return alert('請輸入標題'); const data = { title: noteForm.value.title, date: noteForm.value.date || getLocalDate(), content: noteForm.value.content || '', timestamp: firebase.firestore.FieldValue.serverTimestamp() }; if (noteForm.value.id) { await db.collection('users').doc(user.value.uid).collection('notes').doc(noteForm.value.id).update(data); } else { await db.collection('users').doc(user.value.uid).collection('notes').add(data); } closeNoteModal(); };
             const deleteNote = async (id) => { if(!confirm('確定刪除此筆記？')) return; await db.collection('users').doc(user.value.uid).collection('notes').doc(id).delete(); };
             const deleteTransaction = (tx) => { pendingDeleteTx.value = tx; showDeleteModal.value = true; };
-            const executeDelete = async (revertCash) => { showDeleteModal.value = false; const tx = pendingDeleteTx.value; if (!tx) return; if (revertCash) { if (tx.type === 'deposit') await updateCash(tx.currency, -Math.abs(tx.totalAmount), 0); else if (tx.type === 'withdraw') await updateCash(tx.currency, Math.abs(tx.totalAmount), 0); else if (tx.type === 'borrow') { if (tx.loanId) await updateLoanBalance(tx.loanId, -Math.abs(tx.totalAmount)); else alert('此為舊版借款紀錄，請手動調整對應帳戶餘額。'); } else if (tx.type === 'repay') { if (tx.loanId) await updateLoanBalance(tx.loanId, Math.abs(tx.totalAmount)); } else if (tx.type === 'dividend') { await updateCash(tx.currency, -Math.abs(tx.totalAmount), 0); const stock = stocks.value.find(s => s.symbol === tx.symbol); if (stock) { await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ dividends: Math.max(0, (stock.dividends || 0) - tx.totalAmount) }); } } } await db.collection('users').doc(user.value.uid).collection('transactions').doc(tx.id).delete(); fetchTransactions(); setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'chart') drawChart(); }, 500); pendingDeleteTx.value = null; };
+            const executeDelete = async (revertCash) => { showDeleteModal.value = false; const tx = pendingDeleteTx.value; if (!tx) return; if (revertCash) { if (tx.type === 'deposit') await updateCash(tx.currency, -Math.abs(tx.totalAmount), 0); else if (tx.type === 'withdraw') await updateCash(tx.currency, Math.abs(tx.totalAmount), 0); else if (tx.type === 'borrow') { if (tx.loanId) await updateLoanBalance(tx.loanId, -Math.abs(tx.totalAmount)); else alert('此為舊版借款紀錄，請手動調整對應帳戶餘額。'); } else if (tx.type === 'repay') { if (tx.loanId) await updateLoanBalance(tx.loanId, Math.abs(tx.totalAmount)); } else if (tx.type === 'dividend') { await updateCash(tx.currency, -Math.abs(tx.totalAmount), 0); const stock = stocks.value.find(s => s.symbol === tx.symbol); if (stock) { await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ dividends: Math.max(0, (stock.dividends || 0) - tx.totalAmount) }); } } } await db.collection('users').doc(user.value.uid).collection('transactions').doc(tx.id).delete(); fetchTransactions(); setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'transactions') fetchTransactions();if (activeSection.value === 'realized') fetchRealizedGains(); if (activeSection.value === 'chart') drawChart(); }, 500); pendingDeleteTx.value = null; };
             const deleteDividend = async (rec) => { if(!confirm('刪除股息？(現金將自動扣回)')) return; const stock = stocks.value.find(s => s.symbol === rec.symbol); if (stock) { await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ dividends: Math.max(0, (stock.dividends || 0) - rec.amount) }); } await updateCash(rec.currency, -rec.amount, 0); await db.collection('users').doc(user.value.uid).collection('dividends').doc(rec.id).delete(); fetchDividends(); setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'chart') drawChart(); }, 500); };
             const deleteRealized = async (id) => { if(!confirm('刪除？')) return; await db.collection('users').doc(user.value.uid).collection('realized_gains').doc(id).delete(); fetchRealizedGains(); };
             const saveDailySnapshot = async () => { if (!user.value) return; const todayStr = getLocalDate(); const historyRef = db.collection('users').doc(user.value.uid).collection('history').doc(todayStr); const currentHour = new Date().getHours(); const snapshot = { date: todayStr, timestamp: firebase.firestore.FieldValue.serverTimestamp(), totalVal: grandTotalValue.value, twVal: twStats.value.value, usVal: usStats.value.value, twCash: cashData.value.twd || 0, usCash: cashData.value.usd || 0, loan: totalLoanBalance.value, totalPnL: grandTotalPnL.value, twPnL: twStats.value.pnl, usPnL: usStats.value.pnl }; if (currentHour >= 21) { const doc = await historyRef.get(); if (doc.exists) { return; } } await historyRef.set(snapshot, { merge: true }); };
-            const updateCash = async (currency, amount, loanAmount = 0) => { if(!user.value) return; const ref = db.collection('users').doc(user.value.uid).collection('portfolio').doc('cash'); const doc = await ref.get(); let current = doc.exists ? doc.data() : { twd: 0, usd: 0, loan: 0 }; let newTwd = current.twd || 0; let newUsd = current.usd || 0; if(currency === 'TWD') newTwd += amount; else newUsd += amount; await ref.set({ twd: newTwd, usd: newUsd }, { merge: true }); cashData.value.twd = newTwd; cashData.value.usd = newUsd; };
+            const updateCash = async (currency, amount, loanAmount = 0) => {
+                if (!user.value) return;
+                const ref = db.collection('users').doc(user.value.uid).collection('portfolio').doc('cash');
+                const doc = await ref.get();
+                let current = doc.exists ? doc.data() : { twd: 0, usd: 0, loan: 0 };
+                let newTwd = current.twd || 0;
+                let newUsd = current.usd || 0;
+                if (currency === 'TWD') newTwd += amount;
+                else newUsd += amount;
+                if (!doc.exists) {
+                    await ref.set({ twd: newTwd, usd: newUsd, loan: 0 });
+                } else {
+                    await ref.update({ 
+                        twd: newTwd, 
+                        usd: newUsd 
+                    });
+                }
+                cashData.value.twd = newTwd;
+                cashData.value.usd = newUsd;
+            };
             const updateLoanBalance = async (loanId, amount) => { if (!user.value || !loanId) return; const ref = db.collection('users').doc(user.value.uid).collection('loans').doc(loanId); const doc = await ref.get(); if (doc.exists) { const newBal = (doc.data().balance || 0) + amount; await ref.update({ balance: newBal }); } };
             const fetchPreviousDayData = async (uid) => { const todayStr = getLocalDate(); const snap = await db.collection('users').doc(uid).collection('history').orderBy('date', 'desc').limit(2).get(); if (snap.empty) return; const docs = snap.docs.map(d => d.data()); if (docs[0].date !== todayStr) prevDayData.value = docs[0]; else if (docs.length > 1) prevDayData.value = docs[1]; };
             
@@ -867,7 +900,9 @@
                         if (isSyncToCash.value) cashDelta = -transForm.value.totalAmount; 
                     } 
                     await updateLoanBalance(transForm.value.loanId, loanDelta); 
-                    if (isSyncToCash.value) await updateCash(form.value.currency, cashDelta, 0); 
+                    if (isSyncToCash.value) {
+                        await updateCash(form.value.currency, cashDelta, 0);
+                    }
                     await db.collection('users').doc(user.value.uid).collection('transactions').add(logData); 
                     closeTransModal(); 
                     setTimeout(async () => { await saveDailySnapshot(); if(activeSection.value==='chart') drawChart(); }, 500); 
@@ -903,6 +938,7 @@
                 await db.collection('users').doc(user.value.uid).collection('stocks').doc(stockNoteForm.value.id).update({
                     note: stockNoteForm.value.content
                 });
+                alert('✅ 筆記已儲存');
                 showStockNoteModal.value = false;
             };
 
@@ -938,7 +974,13 @@
                         return true;
                     });
                 }
-                if (transSearchQuery.value) { const q = transSearchQuery.value.toUpperCase(); data = data.filter(tx => (tx.symbol && tx.symbol.toUpperCase().includes(q)) || (tx.name && tx.name.includes(q))); }
+                if (transSearchQuery.value) { 
+                    const q = transSearchQuery.value.toUpperCase(); 
+                    data = data.filter(tx => 
+                        (tx.symbol && tx.symbol.toUpperCase().includes(q)) || 
+                        (tx.name && tx.name.toUpperCase().includes(q)) 
+                    ); 
+                }
                 if (transStartDate.value) data = data.filter(tx => tx.date >= transStartDate.value);
                 if (transEndDate.value) data = data.filter(tx => tx.date <= transEndDate.value);
                 return data.slice().sort((a, b) => { let modifier = sortOrderTrans.value === 'desc' ? -1 : 1; if (sortKeyTrans.value === 'date') return (new Date(a.date) - new Date(b.date)) * modifier; if (sortKeyTrans.value === 'type') return a.type.localeCompare(b.type) * modifier; if (sortKeyTrans.value === 'symbol') return (a.name || a.symbol).localeCompare(b.name || b.symbol) * modifier; return 0; });

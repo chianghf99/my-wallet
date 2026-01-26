@@ -234,11 +234,29 @@
             
             <transition name="collapse"><div v-if="activeSection === 'pie'" class="zen-card p-4 md:p-6 mb-8"><h3 class="font-bold mb-4 dark:text-white text-center">持股占比分析</h3><div class="grid grid-cols-1 md:grid-cols-2 gap-8"><div class="flex flex-col items-center"><h4 class="text-sm font-bold mb-2 flex items-center gap-2"><img src="https://flagcdn.com/w20/tw.png"> 台股配置 (TWD)</h4><div class="w-full max-w-[300px] h-[300px] relative"><canvas id="pieTw"></canvas></div></div><div class="flex flex-col items-center"><h4 class="text-sm font-bold mb-2 flex items-center gap-2"><img src="https://flagcdn.com/w20/us.png"> 美股配置 (USD)</h4><div class="w-full max-w-[300px] h-[300px] relative"><canvas id="pieUs"></canvas></div></div></div></div></transition>
 
-            <transition name="collapse">
+<transition name="collapse">
                 <div v-if="activeSection === 'cash'" class="zen-card p-4 md:p-6 mb-8">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="font-bold dark:text-white">資金管理</h3>
-                        <div class="flex gap-2">
+                        <div class="flex items-center gap-2">
+                             <div class="group relative">
+                                <i class="fa-regular fa-circle-question text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 cursor-help text-sm"></i>
+                                <div class="absolute bottom-full right-0 mb-2 hidden group-hover:block bg-gray-800 text-white text-xs p-3 rounded w-60 z-20 shadow-xl border border-gray-600 text-left leading-relaxed">
+                                    <div class="font-bold text-yellow-400 mb-1 border-b border-gray-600 pb-1">💡 如何正確計算 ROE？</div>
+                                    <div class="space-y-2">
+                                        <div>
+                                            <span class="font-bold text-blue-300">自有資金</span> (薪水/獎金)：<br>
+                                            請按 <span class="bg-gray-700 px-1 rounded">入金/出金</span>。<br>
+                                            <span class="text-gray-400">※ 會增加本金，稍微稀釋報酬率。</span>
+                                        </div>
+                                        <div>
+                                            <span class="font-bold text-purple-300">借貸資金</span> (信貸/質押)：<br>
+                                            請按 <span class="bg-gray-700 px-1 rounded">借款/還款</span> 並勾選同步。<br>
+                                            <span class="text-gray-400">※ 不算本金，可反映高槓桿 ROE。</span>
+                                        </div>
+                                    </div>
+                                </div>
+                             </div>
                              <button @click="openFundModal()" class="bg-gray-800 text-white px-3 py-1 text-sm rounded hover:bg-gray-700 transition"><i class="fa-solid fa-money-bill-transfer mr-1"></i>入金/出金</button>
                         </div>
                     </div>
@@ -1260,4 +1278,3 @@
     
 </body>
 </html>
-

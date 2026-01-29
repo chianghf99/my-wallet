@@ -1379,7 +1379,42 @@
                 }
             };
 
-            const getYahooData = async (symbol) => { let s = symbol.toUpperCase(); if (/^\d{4,6}[A-Z]?$/.test(s)) s += '.TW'; try { const r = await fetch('https://corsproxy.io/?' + encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${s}?interval=1d&events=div,splits&t=${Date.now()}`)); const j = await r.json(); if (!j.chart?.result?.length) { if (s.endsWith('.TW')) { const r2 = await fetch('https://corsproxy.io/?' + encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${s.replace('.TW','.TWO')}?interval=1d&t=${Date.now()}`)); const j2 = await r2.json(); if (j2.chart?.result) return { symbol: j2.chart.result[0].meta.symbol, regularMarketPrice: j2.chart.result[0].meta.regularMarketPrice, previousClose: j2.chart.result[0].meta.chartPreviousClose || j2.chart.result[0].meta.previousClose }; } throw new Error('Not Found'); } return { symbol: j.chart.result[0].meta.symbol, regularMarketPrice: j.chart.result[0].meta.regularMarketPrice, previousClose: j.chart.result[0].meta.chartPreviousClose || j.chart.result[0].meta.previousClose }; } catch (e) { return null; } };
+            const getYahooData = async (symbol) => { 
+                let s = symbol.toUpperCase(); 
+                if (/^\d{4,6}[A-Z]?$/.test(s)) s += '.TW'; 
+                const proxyUrl = 'https://api.allorigins.win/raw?url=';
+                 try { 
+                    const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${s}?interval=1d&events=div,splits&t=${Date.now()}`;
+                    const r = await fetch(proxyUrl + encodeURIComponent(targetUrl)); 
+                    if (!r.ok) throw new Error('Network response was not ok');
+                    const j = await r.json(); 
+                    if (!j.chart?.result?.length) { 
+                        if (s.endsWith('.TW')) { 
+                            const targetUrl2 = `https://query1.finance.yahoo.com/v8/finance/chart/${s.replace('.TW','.TWO')}?interval=1d&t=${Date.now()}`;
+                            const r2 = await fetch(proxyUrl + encodeURIComponent(targetUrl2)); 
+                            const j2 = await r2.json(); 
+                            if (j2.chart?.result) {
+                                return { 
+                                    symbol: j2.chart.result[0].meta.symbol, 
+                                    regularMarketPrice: j2.chart.result[0].meta.regularMarketPrice, 
+                                    previousClose: j2.chart.result[0].meta.chartPreviousClose || j2.chart.result[0].meta.previousClose 
+                                }; 
+                            }
+                        } 
+                        throw new Error('Not Found'); 
+                    } 
+                    
+                    return { 
+                        symbol: j.chart.result[0].meta.symbol, 
+                        regularMarketPrice: j.chart.result[0].meta.regularMarketPrice, 
+                        previousClose: j.chart.result[0].meta.chartPreviousClose || j.chart.result[0].meta.previousClose 
+                    }; 
+                } catch (e) { 
+                    console.error('Fetch error:', e); // 在 Console 印出錯誤方便除錯
+                    return null; 
+                } 
+            };
+            
             const autoFetchName = async () => { const s = form.value.symbol; if (!s) return; if (/^\d/.test(s)) form.value.currency = 'TWD'; else if (/^[A-Za-z]+$/.test(s)) form.value.currency = 'USD'; if (!form.value.name) form.value.name = '查詢中...'; const d = await getYahooData(s); if (d) { if (form.value.name === '查詢中...') form.value.name = d.symbol; form.value.currentPrice = d.regularMarketPrice; form.value.previousClose = d.previousClose; } else { if (form.value.name === '查詢中...') form.value.name = ''; alert('查無代號'); } };
             const autoFetchTransName = async () => { const s = transForm.value.symbol; if (!s) return; const localStock = stocks.value.find(st => st.symbol && st.symbol.toUpperCase() === s.toUpperCase()); if (localStock) { transForm.value.name = localStock.name; form.value.currency = localStock.currency; return; } if (/^\d/.test(s)) form.value.currency = 'TWD'; else if (/^[A-Za-z]+$/.test(s)) form.value.currency = 'USD'; if (!transForm.value.name) transForm.value.name = '查詢中...'; const d = await getYahooData(s); if (d) { if (transForm.value.name === '查詢中...') transForm.value.name = d.symbol; } else { if (transForm.value.name === '查詢中...') transForm.value.name = ''; } };
             const fetchPrices = async () => { if (!user.value || stocks.value.length === 0) return; isLoading.value = true; const updates = stocks.value.map(async (s) => { const d = await getYahooData(s.symbol); return d ? { id: s.id, price: d.regularMarketPrice, prev: d.previousClose } : null; }); const res = await Promise.all(updates); const batch = db.batch(); let has = false; const ref = db.collection('users').doc(user.value.uid).collection('stocks'); res.forEach(r => { if (r) { batch.update(ref.doc(r.id), { currentPrice: r.price, previousClose: r.prev }); has = true; } }); if (has) await batch.commit(); setTimeout(saveDailySnapshot, 500); lastUpdated.value = `${new Date().getHours()}:${String(new Date().getMinutes()).padStart(2, '0')}`; isLoading.value = false; };
@@ -1440,3 +1475,4 @@
     
 </body>
 </html>
+

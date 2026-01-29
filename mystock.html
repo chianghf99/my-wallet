@@ -1379,40 +1379,75 @@
                 }
             };
 
+            // ★★★ 強韌版 getYahooData (自動切換代理伺服器) ★★★
             const getYahooData = async (symbol) => { 
                 let s = symbol.toUpperCase(); 
                 if (/^\d{4,6}[A-Z]?$/.test(s)) s += '.TW'; 
-                const proxyUrl = 'https://api.allorigins.win/raw?url=';
-                 try { 
-                    const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${s}?interval=1d&events=div,splits&t=${Date.now()}`;
-                    const r = await fetch(proxyUrl + encodeURIComponent(targetUrl)); 
-                    if (!r.ok) throw new Error('Network response was not ok');
-                    const j = await r.json(); 
-                    if (!j.chart?.result?.length) { 
-                        if (s.endsWith('.TW')) { 
-                            const targetUrl2 = `https://query1.finance.yahoo.com/v8/finance/chart/${s.replace('.TW','.TWO')}?interval=1d&t=${Date.now()}`;
-                            const r2 = await fetch(proxyUrl + encodeURIComponent(targetUrl2)); 
-                            const j2 = await r2.json(); 
-                            if (j2.chart?.result) {
-                                return { 
-                                    symbol: j2.chart.result[0].meta.symbol, 
-                                    regularMarketPrice: j2.chart.result[0].meta.regularMarketPrice, 
-                                    previousClose: j2.chart.result[0].meta.chartPreviousClose || j2.chart.result[0].meta.previousClose 
-                                }; 
-                            }
+                
+                // 定義代理伺服器清單 (優先順序)
+                // 1. ThingProxy (通常較穩)
+                // 2. CodeTabs (備用)
+                // 3. CorsProxy (原本的，可能被封)
+                // 4. AllOrigins (剛試過，不穩)
+                const proxies = [
+                    'https://thingproxy.freeboard.io/fetch/',
+                    'https://api.codetabs.com/v1/proxy?quest=',
+                    'https://corsproxy.io/?',
+                    'https://api.allorigins.win/raw?url='
+                ];
+
+                const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${s}?interval=1d&events=div,splits&t=${Date.now()}`;
+
+                // 迴圈嘗試每一個代理伺服器
+                for (const proxy of proxies) {
+                    try {
+                        const url = proxy + encodeURIComponent(targetUrl);
+                        const r = await fetch(url); 
+                        
+                        // 如果這個代理掛了 (403, 500, 520...)，就拋出錯誤讓迴圈跑下一個
+                        if (!r.ok) throw new Error(`Proxy ${proxy} failed with ${r.status}`);
+                        
+                        const j = await r.json(); 
+                        
+                        // 檢查資料是否為空 (例如上櫃股票用 .TW 查不到)
+                        if (!j.chart?.result?.length) { 
+                            // 如果是 .TW 查不到，嘗試切換成 .TWO (僅針對當前有效的 Proxy 試)
+                            if (s.endsWith('.TW')) { 
+                                const s2 = s.replace('.TW','.TWO');
+                                const targetUrl2 = `https://query1.finance.yahoo.com/v8/finance/chart/${s2}?interval=1d&t=${Date.now()}`;
+                                const r2 = await fetch(proxy + encodeURIComponent(targetUrl2)); // 用同一個 Proxy 試 .TWO
+                                const j2 = await r2.json(); 
+                                if (j2.chart?.result) {
+                                    return { 
+                                        symbol: j2.chart.result[0].meta.symbol, 
+                                        regularMarketPrice: j2.chart.result[0].meta.regularMarketPrice, 
+                                        previousClose: j2.chart.result[0].meta.chartPreviousClose || j2.chart.result[0].meta.previousClose 
+                                    }; 
+                                }
+                            } 
+                            // 真的查不到 (不是 Proxy 問題，是代號錯)
+                            throw new Error('Not Found in Yahoo'); 
                         } 
-                        throw new Error('Not Found'); 
+                        
+                        // 成功抓到資料！回傳並結束函數
+                        return { 
+                            symbol: j.chart.result[0].meta.symbol, 
+                            regularMarketPrice: j.chart.result[0].meta.regularMarketPrice, 
+                            previousClose: j.chart.result[0].meta.chartPreviousClose || j.chart.result[0].meta.previousClose 
+                        }; 
+
+                    } catch (e) { 
+                        // 在 Console 印出失敗訊息，並繼續嘗試下一個 Proxy
+                        console.warn(`Retry: ${proxy} failed for ${s}. Error: ${e.message}`);
+                        
+                        // 如果是 "Not Found" 代表 Yahoo 回傳空，不需要換 Proxy，直接回傳 null
+                        if (e.message === 'Not Found in Yahoo') return null;
                     } 
-                    
-                    return { 
-                        symbol: j.chart.result[0].meta.symbol, 
-                        regularMarketPrice: j.chart.result[0].meta.regularMarketPrice, 
-                        previousClose: j.chart.result[0].meta.chartPreviousClose || j.chart.result[0].meta.previousClose 
-                    }; 
-                } catch (e) { 
-                    console.error('Fetch error:', e); // 在 Console 印出錯誤方便除錯
-                    return null; 
-                } 
+                }
+                
+                // 如果全部 Proxy 都失敗
+                console.error(`All proxies failed for ${s}`);
+                return null; 
             };
             
             const autoFetchName = async () => { const s = form.value.symbol; if (!s) return; if (/^\d/.test(s)) form.value.currency = 'TWD'; else if (/^[A-Za-z]+$/.test(s)) form.value.currency = 'USD'; if (!form.value.name) form.value.name = '查詢中...'; const d = await getYahooData(s); if (d) { if (form.value.name === '查詢中...') form.value.name = d.symbol; form.value.currentPrice = d.regularMarketPrice; form.value.previousClose = d.previousClose; } else { if (form.value.name === '查詢中...') form.value.name = ''; alert('查無代號'); } };
@@ -1475,4 +1510,5 @@
     
 </body>
 </html>
+
 

@@ -1679,36 +1679,41 @@
                 }
             };
 
-            // ★★★ 嚴格即時版 getYahooData (修正週一美股誤判問題) ★★★
+            // ★★★ 最終微調版 getYahooData (修正週一收盤後仍顯示舊價問題) ★★★
             const getYahooData = async (symbol) => { 
                 let s = symbol.toUpperCase();
                 
                 let yahooSymbol = s;
                 let googleSymbol = s;
+                let expectedCurrency = 'TWD';
                 
                 if (/^\d{4,6}[A-Z]?$/.test(s)) {
                     yahooSymbol = s + '.TW';
                     googleSymbol = s + ':TPE';
+                } else {
+                    expectedCurrency = 'USD';
                 }
 
                 const myGasProxy = 'https://script.google.com/macros/s/AKfycbyN4Yib6hdb01-XHP7jlAHFuSkqBd7iqqRd80pDeMia_SpJQ7SM6MPxhaBwF6vJ-kY/exec?url=';
 
-                // [修正] 資料新鮮度檢查 (加入週一寬限邏輯)
+                // [修正] 資料新鮮度檢查 (加入 9 點開盤判斷)
                 const isDataStale = (timestamp) => {
                     if (!timestamp) return true;
                     const dataTime = timestamp * 1000;
-                    const now = Date.now();
-                    const hoursDiff = (now - dataTime) / (1000 * 60 * 60);
-                    const day = new Date().getDay(); // 0=週日, 1=週一, ... 6=週六
-                    
-                    // 規則 A: 如果是「週一」，容忍度放寬到 80 小時 (包含週末 + 時差)
-                    // 這樣週一還沒開盤前，能正常顯示上週五的美股/台股收盤價
-                    if (day === 1) {
-                        return hoursDiff > 80;
-                    }
+                    const now = new Date();
+                    const hoursDiff = (now.getTime() - dataTime) / (1000 * 60 * 60);
+                    const day = now.getDay(); 
+                    const hour = now.getHours();
 
-                    // 規則 B: 其他平日 (週二~週五)，維持嚴格的 18 小時檢查
-                    // 確保不會抓到昨天的舊資料 (針對台股 4768 這種情況)
+                    // 1. 早上 9 點前 (開盤前)：不管多舊都接受 (顯示昨收)
+                    if (hour < 9) return false;
+
+                    // 2. 早上 9 點後 (開盤後)：嚴格檢查
+                    // 週一：如果距離上一次更新超過 68 小時 (代表還是週五的資料)，視為過期
+                    // (週五 13:30 -> 週一 09:00 約 67.5 小時，所以設 68 很安全)
+                    if (day === 1) return hoursDiff > 68;
+
+                    // 平日 (週二~週五)：如果超過 18 小時沒更新，視為過期 (強迫抓今天的新價)
                     const isWeekday = day >= 2 && day <= 5;
                     return isWeekday && hoursDiff > 18;
                 };
@@ -1721,6 +1726,11 @@
                     const url = myGasProxy + encodeURIComponent(targetUrl);
                     const r = await fetch(url);
                     const html = await r.text();
+
+                    // 幣別檢查 (防止 4768 抓到日股)
+                    if (expectedCurrency === 'TWD' && !html.includes('TWD') && !html.includes('NT$')) {
+                        throw new Error('Currency mismatch');
+                    }
 
                     const priceMatch = html.match(/<div class="YMlKec fxKbKc">([^<]+)<\/div>/);
                     const prevMatch = html.match(/<div class="P6K39c">([^<]+)<\/div>/); 
@@ -1740,14 +1750,14 @@
                         }
                     }
                 } catch (e) {
-                    console.warn(`Google Finance failed for ${s}, trying Yahoo...`);
+                    // console.warn(`Google failed for ${s}`);
                 }
 
                 // =========================================================
-                // 🛑 共用函式：Yahoo 資料解析與驗證
+                // 🛑 共用函式：Yahoo 資料解析
                 // =========================================================
                 const fetchYahoo = async (targetSymbol) => {
-                    // 使用 1分鐘線 (interval=1m) 抓最新盤
+                    // 抓取 1 分鐘線
                     const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${targetSymbol}?range=1d&interval=1m&events=div,splits&t=${Date.now()}`;
                     const url = myGasProxy + encodeURIComponent(targetUrl);
                     const r = await fetch(url);
@@ -1760,7 +1770,7 @@
                         let lastTime = meta.regularMarketTime;
                         let lastPrice = meta.regularMarketPrice;
 
-                        // K 線雙重確認機制
+                        // K 線雙重確認
                         const quotes = res.indicators?.quote?.[0];
                         if (quotes?.close?.length > 0) {
                             for (let i = quotes.close.length - 1; i >= 0; i--) {
@@ -1775,9 +1785,10 @@
                             }
                         }
 
-                        // 檢查是否過期
+                        // [關鍵] 這裡會觸發新的 isDataStale 邏輯
                         if (isDataStale(lastTime)) {
-                            throw new Error(`Data stale. Time: ${new Date(lastTime*1000).toLocaleString()}`);
+                            // 這裡會把時間轉成人類可讀格式印出來，方便除錯
+                            throw new Error(`Data stale (Time: ${new Date(lastTime*1000).toLocaleString()})`);
                         }
 
                         return { 
@@ -1786,7 +1797,7 @@
                             previousClose: meta.chartPreviousClose || meta.previousClose 
                         };
                     }
-                    throw new Error("No data in result");
+                    throw new Error("No data");
                 };
 
                 // =========================================================
@@ -1795,7 +1806,7 @@
                 try {
                     return await fetchYahoo(yahooSymbol);
                 } catch (e) {
-                    console.warn(`Yahoo API (.TW) failed or stale for ${s}: ${e.message}`);
+                    console.warn(`Yahoo .TW failed for ${s} (${e.message}), try .TWO...`);
                 }
 
                 // =========================================================
@@ -1806,14 +1817,13 @@
                         const twoSymbol = yahooSymbol.replace('.TW', '.TWO');
                         return await fetchYahoo(twoSymbol);
                     } catch (e) {
-                        console.error(`Yahoo API (.TWO) also failed for ${s}: ${e.message}`);
+                        console.error(`Yahoo .TWO also failed for ${s}: ${e.message}`);
                     }
                 }
 
                 console.error(`All sources failed for ${s}`);
                 return null; 
             };
-            
             const autoFetchName = async () => { const s = form.value.symbol; if (!s) return; if (/^\d/.test(s)) form.value.currency = 'TWD'; else if (/^[A-Za-z]+$/.test(s)) form.value.currency = 'USD'; if (!form.value.name) form.value.name = '查詢中...'; const d = await getYahooData(s); if (d) { if (form.value.name === '查詢中...') form.value.name = d.symbol; form.value.currentPrice = d.regularMarketPrice; form.value.previousClose = d.previousClose; } else { if (form.value.name === '查詢中...') form.value.name = ''; alert('查無代號'); } };
             const autoFetchTransName = async () => { const s = transForm.value.symbol; if (!s) return; const localStock = stocks.value.find(st => st.symbol && st.symbol.toUpperCase() === s.toUpperCase()); if (localStock) { transForm.value.name = localStock.name; form.value.currency = localStock.currency; return; } if (/^\d/.test(s)) form.value.currency = 'TWD'; else if (/^[A-Za-z]+$/.test(s)) form.value.currency = 'USD'; if (!transForm.value.name) transForm.value.name = '查詢中...'; const d = await getYahooData(s); if (d) { if (transForm.value.name === '查詢中...') transForm.value.name = d.symbol; } else { if (transForm.value.name === '查詢中...') transForm.value.name = ''; } };
             // [修改] 序列化更新股價 (失敗時紅色驚嘆號不消失)

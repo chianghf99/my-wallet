@@ -1679,7 +1679,7 @@
                 }
             };
 
-            // ★★★ 最終微調版 getYahooData (修正週一收盤後仍顯示舊價問題) ★★★
+            // ★★★ 最終版 getYahooData (Google 優先 + 官方 MIS 備援) ★★★
             const getYahooData = async (symbol) => { 
                 let s = symbol.toUpperCase();
                 
@@ -1687,6 +1687,7 @@
                 let googleSymbol = s;
                 let expectedCurrency = 'TWD';
                 
+                // 區分美股與台股代號格式
                 if (/^\d{4,6}[A-Z]?$/.test(s)) {
                     yahooSymbol = s + '.TW';
                     googleSymbol = s + ':TPE';
@@ -1696,30 +1697,31 @@
 
                 const myGasProxy = 'https://script.google.com/macros/s/AKfycbyN4Yib6hdb01-XHP7jlAHFuSkqBd7iqqRd80pDeMia_SpJQ7SM6MPxhaBwF6vJ-kY/exec?url=';
 
-                // [修正] 資料新鮮度檢查 (加入 9 點開盤判斷)
+                // [資料新鮮度檢查]
                 const isDataStale = (timestamp) => {
                     if (!timestamp) return true;
-                    const dataTime = timestamp * 1000;
+                    // 統一轉成毫秒
+                    const dataTime = (timestamp < 10000000000) ? timestamp * 1000 : timestamp;
+                    
                     const now = new Date();
                     const hoursDiff = (now.getTime() - dataTime) / (1000 * 60 * 60);
                     const day = now.getDay(); 
                     const hour = now.getHours();
 
-                    // 1. 早上 9 點前 (開盤前)：不管多舊都接受 (顯示昨收)
+                    // 1. 早上 9 點前 (開盤前)：顯示昨收，不算過期
                     if (hour < 9) return false;
 
                     // 2. 早上 9 點後 (開盤後)：嚴格檢查
-                    // 週一：如果距離上一次更新超過 68 小時 (代表還是週五的資料)，視為過期
-                    // (週五 13:30 -> 週一 09:00 約 67.5 小時，所以設 68 很安全)
+                    // 週一：允許 68 小時內的資料 (週五收盤價)
                     if (day === 1) return hoursDiff > 68;
 
-                    // 平日 (週二~週五)：如果超過 18 小時沒更新，視為過期 (強迫抓今天的新價)
+                    // 平日：超過 18 小時沒更新視為過期
                     const isWeekday = day >= 2 && day <= 5;
                     return isWeekday && hoursDiff > 18;
                 };
 
                 // =========================================================
-                // 🛑 第一關：Google Finance
+                // 🛑 第一關：Google Finance (優先使用)
                 // =========================================================
                 try {
                     const targetUrl = `https://www.google.com/finance/quote/${googleSymbol}`;
@@ -1727,7 +1729,6 @@
                     const r = await fetch(url);
                     const html = await r.text();
 
-                    // 幣別檢查 (防止 4768 抓到日股)
                     if (expectedCurrency === 'TWD' && !html.includes('TWD') && !html.includes('NT$')) {
                         throw new Error('Currency mismatch');
                     }
@@ -1750,78 +1751,106 @@
                         }
                     }
                 } catch (e) {
-                    // console.warn(`Google failed for ${s}`);
+                    // Google 失敗，安靜地進入第二關
                 }
 
                 // =========================================================
-                // 🛑 共用函式：Yahoo 資料解析
+                // 🛑 第二關：備用數據源 (台股用 MIS 官方，美股用 Yahoo v7)
                 // =========================================================
-                const fetchYahoo = async (targetSymbol) => {
-                    // 抓取 1 分鐘線
-                    const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${targetSymbol}?range=1d&interval=1m&events=div,splits&t=${Date.now()}`;
-                    const url = myGasProxy + encodeURIComponent(targetUrl);
-                    const r = await fetch(url);
-                    const j = await r.json();
+                const fetchBackup = async (targetSymbol) => {
+                    
+                    // A. 台股專用：證交所/櫃買中心 官方 MIS API
+                    if (targetSymbol.endsWith('.TW') || targetSymbol.endsWith('.TWO')) {
+                        try {
+                            // 轉換代號格式： 2330.TW -> tse_2330.tw / 4768.TWO -> otc_4768.tw
+                            let misSymbol = "";
+                            if (targetSymbol.endsWith('.TWO')) {
+                                misSymbol = `otc_${targetSymbol.replace('.TWO', '')}.tw`;
+                            } else {
+                                misSymbol = `tse_${targetSymbol.replace('.TW', '')}.tw`;
+                            }
 
-                    if (j.chart?.result?.length) {
-                        const res = j.chart.result[0];
-                        const meta = res.meta;
-                        
-                        let lastTime = meta.regularMarketTime;
-                        let lastPrice = meta.regularMarketPrice;
+                            const misUrl = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=${misSymbol}&json=1&delay=0&t=${Date.now()}`;
+                            const url = myGasProxy + encodeURIComponent(misUrl);
+                            
+                            const r = await fetch(url);
+                            const j = await r.json();
 
-                        // K 線雙重確認
-                        const quotes = res.indicators?.quote?.[0];
-                        if (quotes?.close?.length > 0) {
-                            for (let i = quotes.close.length - 1; i >= 0; i--) {
-                                if (quotes.close[i] != null) {
-                                    const candleTime = res.timestamp[i];
-                                    if (candleTime > lastTime) {
-                                        lastTime = candleTime;
-                                        lastPrice = quotes.close[i];
-                                    }
-                                    break;
+                            if (j.msgArray && j.msgArray.length > 0) {
+                                const data = j.msgArray[0];
+                                
+                                // z:成交價, y:昨收, pz:試撮價
+                                let currentPrice = data.z;
+                                let prevClose = data.y;
+
+                                // 如果還沒成交 (z='-')，改用試撮價或昨收
+                                if (currentPrice === '-') {
+                                    if (data.pz !== '-') currentPrice = data.pz;
+                                    else currentPrice = prevClose;
+                                }
+                                
+                                const finalPrice = parseFloat(currentPrice);
+                                const finalPrev = parseFloat(prevClose);
+
+                                if (!isNaN(finalPrice)) {
+                                    // 官方資料視為即時有效
+                                    return { 
+                                        symbol: targetSymbol, 
+                                        regularMarketPrice: finalPrice, 
+                                        previousClose: finalPrev 
+                                    };
                                 }
                             }
+                        } catch (twErr) {
+                            console.warn(`[MIS Fail] ${targetSymbol}`, twErr);
                         }
-
-                        // [關鍵] 這裡會觸發新的 isDataStale 邏輯
-                        if (isDataStale(lastTime)) {
-                            // 這裡會把時間轉成人類可讀格式印出來，方便除錯
-                            throw new Error(`Data stale (Time: ${new Date(lastTime*1000).toLocaleString()})`);
-                        }
-
-                        return { 
-                            symbol: meta.symbol, 
-                            regularMarketPrice: lastPrice, 
-                            previousClose: meta.chartPreviousClose || meta.previousClose 
-                        };
                     }
-                    throw new Error("No data");
+
+                    // B. 非台股 (美股等)：使用 Yahoo Global v7 Quote
+                    try {
+                        const targetUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${targetSymbol}`;
+                        const url = myGasProxy + encodeURIComponent(targetUrl);
+                        const r = await fetch(url);
+                        const j = await r.json();
+                        const result = j.quoteResponse?.result;
+                        
+                        if (result && result.length > 0) {
+                            const data = result[0];
+                            const lastTime = data.regularMarketTime;
+
+                            // 守門員檢查
+                            if (isDataStale(lastTime)) {
+                                throw new Error(`Data stale`);
+                            }
+
+                            return { 
+                                symbol: data.symbol, 
+                                regularMarketPrice: data.regularMarketPrice, 
+                                previousClose: data.regularMarketPreviousClose 
+                            };
+                        }
+                    } catch (e) {
+                         // 最後也都失敗
+                    }
+                    throw new Error("All sources failed");
                 };
 
                 // =========================================================
-                // 🛑 第二關：Yahoo Finance (上市 .TW)
+                // 執行備用方案 (自動處理上市上櫃切換)
                 // =========================================================
                 try {
-                    return await fetchYahoo(yahooSymbol);
+                    return await fetchBackup(yahooSymbol);
                 } catch (e) {
-                    console.warn(`Yahoo .TW failed for ${s} (${e.message}), try .TWO...`);
-                }
-
-                // =========================================================
-                // 🛑 第三關：Yahoo Finance (上櫃 .TWO)
-                // =========================================================
-                if (yahooSymbol.endsWith('.TW')) {
-                    try {
-                        const twoSymbol = yahooSymbol.replace('.TW', '.TWO');
-                        return await fetchYahoo(twoSymbol);
-                    } catch (e) {
-                        console.error(`Yahoo .TWO also failed for ${s}: ${e.message}`);
+                    // 如果原本是用 .TW 失敗，且是上櫃格式，試試看 .TWO
+                    if (yahooSymbol.endsWith('.TW')) {
+                        try {
+                            const twoSymbol = yahooSymbol.replace('.TW', '.TWO');
+                            return await fetchBackup(twoSymbol);
+                        } catch (e2) {
+                            console.error(`Final fail for ${s}`);
+                        }
                     }
                 }
-
-                console.error(`All sources failed for ${s}`);
                 return null; 
             };
             const autoFetchName = async () => { const s = form.value.symbol; if (!s) return; if (/^\d/.test(s)) form.value.currency = 'TWD'; else if (/^[A-Za-z]+$/.test(s)) form.value.currency = 'USD'; if (!form.value.name) form.value.name = '查詢中...'; const d = await getYahooData(s); if (d) { if (form.value.name === '查詢中...') form.value.name = d.symbol; form.value.currentPrice = d.regularMarketPrice; form.value.previousClose = d.previousClose; } else { if (form.value.name === '查詢中...') form.value.name = ''; alert('查無代號'); } };
@@ -1871,7 +1900,9 @@
                             stockStates.value[stock.id] = null; 
                         }
                         // 注意：這裡移除了 error 的清除邏輯，所以紅色驚嘆號會一直顯示
-                    }, 3000);
+                    }, 300000);
+                    
+                    await new Promise(r => setTimeout(r, 1000));
                 }
 
                 if (hasUpdates) {
@@ -1917,7 +1948,7 @@
                     if (stockStates.value[stock.id] === 'success') {
                         stockStates.value[stock.id] = null;
                     }
-                }, 3000);
+                }, 300000);
             };
             const fetchExchangeRate = async () => { try { const r = await fetch('https://api.exchangerate-api.com/v4/latest/USD'); const d = await r.json(); exchangeRate.value = d.rates.TWD; } catch(e){} };
 

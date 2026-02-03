@@ -123,9 +123,28 @@
             <div class="border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 transition-colors">
                 <div class="max-w-6xl mx-auto px-4 py-2 flex justify-between items-center">
                     <div class="text-xs text-gray-500 dark:text-gray-400">USD/TWD: {{ exchangeRate.toFixed(2) }} <span class="hidden sm:inline"> | 更新: {{ lastUpdated }}</span></div>
-                    <div class="flex gap-2">
-                        <button @click="fetchPrices" class="px-3 py-1 text-xs sm:text-sm rounded bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition"><i class="fa-solid fa-sync-alt mr-1" :class="{'fa-spin': isLoading}"></i> 更新</button>
-                        <button @click="openTransModal(null)" class="bg-gray-800 text-white px-3 py-1 text-xs sm:text-sm rounded hover:bg-gray-700 transition shadow"><i class="fa-solid fa-plus"></i> 新增交易</button>
+                    <div class="flex gap-2 items-center">
+                        <button @click="fetchPrices('TW')" 
+                                :disabled="loadingTarget !== null" 
+                                class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-slate-600 rounded-md shadow hover:bg-slate-500 disabled:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                            
+                            <i class="fa-solid fa-rotate" :class="{'fa-spin': loadingTarget === 'TW'}"></i>
+                            <span>{{ loadingTarget === 'TW' ? '更新中...' : '更新台股' }}</span>
+                        </button>
+                    
+                        <button @click="fetchPrices('US')" 
+                                :disabled="loadingTarget !== null" 
+                                class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-slate-700 rounded-md shadow hover:bg-slate-600 disabled:bg-slate-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                            
+                            <i class="fa-solid fa-rotate" :class="{'fa-spin': loadingTarget === 'US'}"></i>
+                            <span>{{ loadingTarget === 'US' ? '更新中...' : '更新美股' }}</span>
+                        </button>
+                    
+                        <button @click="openTransModal(null)" 
+                                class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-gray-800 rounded-md shadow hover:bg-gray-700 transition-all ml-auto sm:ml-0">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>新增交易</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1134,7 +1153,8 @@
             const stocks = ref([]);
             const exchangeRate = ref(32.5);
             const lastUpdated = ref('-');
-            const isLoading = ref(false);
+            const loadingTarget = ref(null);
+            const isLoading = computed(() => loadingTarget.value !== null);
             const viewMode = ref('auto');
             const isMobile = ref(window.innerWidth < 768);
             const showPrivacy = ref(false);
@@ -1854,20 +1874,43 @@
             };
             const autoFetchName = async () => { const s = form.value.symbol; if (!s) return; if (/^\d/.test(s)) form.value.currency = 'TWD'; else if (/^[A-Za-z]+$/.test(s)) form.value.currency = 'USD'; if (!form.value.name) form.value.name = '查詢中...'; const d = await getYahooData(s); if (d) { if (form.value.name === '查詢中...') form.value.name = d.symbol; form.value.currentPrice = d.regularMarketPrice; form.value.previousClose = d.previousClose; } else { if (form.value.name === '查詢中...') form.value.name = ''; alert('查無代號'); } };
             const autoFetchTransName = async () => { const s = transForm.value.symbol; if (!s) return; const localStock = stocks.value.find(st => st.symbol && st.symbol.toUpperCase() === s.toUpperCase()); if (localStock) { transForm.value.name = localStock.name; form.value.currency = localStock.currency; return; } if (/^\d/.test(s)) form.value.currency = 'TWD'; else if (/^[A-Za-z]+$/.test(s)) form.value.currency = 'USD'; if (!transForm.value.name) transForm.value.name = '查詢中...'; const d = await getYahooData(s); if (d) { if (transForm.value.name === '查詢中...') transForm.value.name = d.symbol; } else { if (transForm.value.name === '查詢中...') transForm.value.name = ''; } };
-            // [修改] 序列化更新股價 (失敗時紅色驚嘆號不消失)
-            const fetchPrices = async () => {
+            // 批次更新股價 (支援分流：'TW' 台股 / 'US' 美股)
+            // [主程式] 批次更新股價 (支援分流：'TW' 台股 / 'US' 美股)
+            const fetchPrices = async (marketType) => {
+                // 基本檢查
                 if (!user.value || stocks.value.length === 0) return;
-                isLoading.value = true;
+                
+                // 1. 根據按鈕類型篩選股票
+                const targetStocks = stocks.value.filter(stock => {
+                    const s = stock.symbol.toUpperCase();
+                    // 判斷是否為台股格式 (4-6位數字，或是結尾有 .TW/.TWO)
+                    const isTwStock = /^\d{4,6}[A-Z]?$/.test(s) || s.endsWith('.TW') || s.endsWith('.TWO');
+                    
+                    if (marketType === 'TW') return isTwStock;   // 按「台股」：只回傳台股
+                    if (marketType === 'US') return !isTwStock;  // 按「美股」：只回傳非台股
+                    return true; // 防呆：如果沒傳參數，就全部更新
+                });
+
+                // 如果該分類沒有股票，跳出提示並結束
+                if (targetStocks.length === 0) {
+                    alert(marketType === 'TW' ? "您的清單中沒有台股" : "您的清單中沒有美股");
+                    return;
+                }
+
+                // 設定現在正在忙碌的對象 (讓按鈕開始轉圈圈)
+                loadingTarget.value = marketType;
                 
                 const batch = db.batch();
                 let hasUpdates = false;
                 let successCount = 0;
                 let failCount = 0;
 
-                for (const stock of stocks.value) {
-                    stockStates.value[stock.id] = 'loading'; // 開始轉圈圈
+                // 2. 只針對篩選後的清單跑迴圈
+                for (const stock of targetStocks) {
+                    stockStates.value[stock.id] = 'loading'; // 該股票顯示轉圈圈
 
                     try {
+                        // 呼叫 getYahooData (Google優先 -> MIS/Yahoo備援)
                         const data = await getYahooData(stock.symbol);
                         
                         if (data) {
@@ -1890,29 +1933,33 @@
                     } catch (err) {
                         console.error(`Update failed for ${stock.symbol}`, err);
                         failCount++;
-                        stockStates.value[stock.id] = 'error'; // 紅色驚嘆號
+                        stockStates.value[stock.id] = 'error';
                     }
 
-                    // [修改重點] 3秒後只消除「成功」的圖示，失敗的保留
+                    // 3秒後消除「成功」圖示 (失敗的驚嘆號保留)
                     setTimeout(() => {
                         if (stockStates.value[stock.id] === 'success') {
                             stockStates.value[stock.id] = null; 
                         }
-                        // 注意：這裡移除了 error 的清除邏輯，所以紅色驚嘆號會一直顯示
                     }, 300000);
-                    
-                    await new Promise(r => setTimeout(r, 1000));
+
+                    // ★★★【關鍵】強制休息 1 秒，防止被證交所/Yahoo 鎖 IP ★★★
+                    await new Promise(r => setTimeout(r, 1000)); 
                 }
 
+                // 如果有資料更新，寫入資料庫並儲存快照
                 if (hasUpdates) {
                     await batch.commit();
                     setTimeout(saveDailySnapshot, 500);
                 }
                 
                 lastUpdated.value = `${new Date().getHours()}:${String(new Date().getMinutes()).padStart(2, '0')}`;
-                isLoading.value = false;
+                
+                // 更新結束，重置按鈕狀態
+                loadingTarget.value = null;
 
-                alert(`更新完成！\n\n✅ 成功: ${successCount} 筆\n❌ 失敗: ${failCount} 筆`);
+                const typeName = marketType === 'TW' ? '台股' : (marketType === 'US' ? '美股' : '全部');
+                alert(`${typeName} 更新完成！\n\n✅ 成功: ${successCount} 筆\n❌ 失敗: ${failCount} 筆`);
             };
             // [修改] 單一股票更新 (失敗時紅色驚嘆號不消失)
             const updateSingleStock = async (stock) => {
@@ -2000,7 +2047,7 @@
                 // v3.3.5: XIRR (Index Bug Fix)
                 xirrValue, xirrStartDate, computeSystemXirr, xirrStartVal, xirrEndVal, xirrFlowCount, repaySource, 
                 // v3.5.0
-                updateSingleStock, stockStates
+                updateSingleStock, stockStates, loadingTarget
                 
             };
         }

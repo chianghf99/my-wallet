@@ -1965,12 +1965,12 @@
                         stockStates.value[stock.id] = 'error';
                     }
 
-                    // 3秒後消除「成功」圖示
+                    // 300秒後消除「成功」圖示
                     setTimeout(() => {
                         if (stockStates.value[stock.id] === 'success') {
                             stockStates.value[stock.id] = null; 
                         }
-                    }, 3000);
+                    }, 300000);
 
                     // ★★★【關鍵】強制休息 1 秒，防止被鎖 IP ★★★
                     await new Promise(r => setTimeout(r, 1000)); 
@@ -2085,3 +2085,4 @@
     
 </body>
 </html>
+

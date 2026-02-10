@@ -200,7 +200,7 @@
                         <span v-else class="text-gray-400">-</span>
                     </div>
                     <div v-else class="mt-1 text-xs text-gray-300">****</div>
-                    <div class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 text-sm flex justify-between"><span class="text-gray-500 dark:text-gray-400">損益</span><span v-if="showPrivacy" :class="getPnlClass(twStats.pnl)">{{ formatCurrency(twStats.pnl, 'TWD') }}<span class="text-xs ml-1">({{ getRoi(twStats.cost, twStats.pnl) }})</span></span><span v-else class="text-gray-300 dark:text-gray-600">****</span></div>
+                    <div class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 text-sm flex justify-between"><span class="text-gray-500 dark:text-gray-400">未實現損益</span><span v-if="showPrivacy" :class="getPnlClass(twStats.pnl)">{{ formatCurrency(twStats.pnl, 'TWD') }}<span class="text-xs ml-1">({{ getRoi(twStats.cost, twStats.pnl) }})</span></span><span v-else class="text-gray-300 dark:text-gray-600">****</span></div>
                 </div>
                 <div class="zen-card p-5">
                     <div class="flex justify-between items-center mb-1"><div class="text-sm text-gray-500 dark:text-gray-400">美股部位</div><img src="https://flagcdn.com/w40/us.png" class="w-6 shadow-sm rounded-sm"></div>
@@ -214,7 +214,7 @@
                         <span v-else class="text-gray-400">-</span>
                     </div>
                     <div v-else class="mt-1 text-xs text-gray-300">****</div>
-                    <div class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 text-sm flex justify-between"><span class="text-gray-500 dark:text-gray-400">損益</span><span v-if="showPrivacy" :class="getPnlClass(usStats.pnl)">{{ formatCurrency(usStats.pnl, 'USD') }}<span class="text-xs ml-1">({{ getRoi(usStats.cost, usStats.pnl) }})</span></span><span v-else class="text-gray-300 dark:text-gray-600">****</span></div>
+                    <div class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 text-sm flex justify-between"><span class="text-gray-500 dark:text-gray-400">未實現損益</span><span v-if="showPrivacy" :class="getPnlClass(usStats.pnl)">{{ formatCurrency(usStats.pnl, 'USD') }}<span class="text-xs ml-1">({{ getRoi(usStats.cost, usStats.pnl) }})</span></span><span v-else class="text-gray-300 dark:text-gray-600">****</span></div>
                 </div>
             </div>
             <div class="flex flex-wrap gap-2 justify-center mb-6">
@@ -529,7 +529,7 @@
                                     <th class="px-6 py-4 text-right">現價</th>
                                     <th class="px-6 py-4 text-right">成本/股數</th>
                                     <th class="px-6 py-4 text-right">市值</th>
-                                    <th class="px-6 py-4 text-right">損益</th>
+                                    <th class="px-6 py-4 text-right">未實現損益</th>
                                     <th class="px-6 py-4 text-center">操作</th>
                                 </tr>
                             </thead>
@@ -621,7 +621,7 @@
                                 </div>
                             </div>
                             <div class="text-right">
-                                <div class="text-xs text-gray-400">損益</div>
+                                <div class="text-xs text-gray-400">未實現損益</div>
                                 <div v-if="showPrivacy" :class="getPnlClass((stock.currentPrice - stock.avgCost) * stock.shares)" class="font-bold">
                                     {{ formatCurrency((stock.currentPrice - stock.avgCost) * stock.shares, 'TWD') }}
                                 </div>
@@ -674,7 +674,7 @@
                                     <th class="px-6 py-4 text-right">現價</th>
                                     <th class="px-6 py-4 text-right">成本/股數</th>
                                     <th class="px-6 py-4 text-right">市值</th>
-                                    <th class="px-6 py-4 text-right">損益</th>
+                                    <th class="px-6 py-4 text-right">未實現損益</th>
                                     <th class="px-6 py-4 text-center">操作</th>
                                 </tr>
                             </thead>
@@ -766,7 +766,7 @@
                                 </div>
                             </div>
                             <div class="text-right">
-                                <div class="text-xs text-gray-400">損益</div>
+                                <div class="text-xs text-gray-400">未實現損益</div>
                                 <div v-if="showPrivacy" :class="getPnlClass((stock.currentPrice - stock.avgCost) * stock.shares)" class="font-bold">
                                     {{ formatCurrency((stock.currentPrice - stock.avgCost) * stock.shares, 'USD') }}
                                 </div>
@@ -2085,4 +2085,5 @@
     
 </body>
 </html>
+
 

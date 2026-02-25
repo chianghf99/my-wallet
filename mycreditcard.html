@@ -23,13 +23,12 @@
             --sidebar-bg: #ffffff;
         }
 
-        /* 🌙 深色模式變數 */
         [data-theme="dark"] {
-            --bg-color: #111827;       /* 極深藍黑 */
-            --card-bg: #1f2937;        /* 深灰藍 */
-            --input-bg: #374151;       /* 淺灰 */
-            --text-color: #f9fafb;     /* 亮白 */
-            --text-muted: #9ca3af;     /* 淺灰 */
+            --bg-color: #111827;
+            --card-bg: #1f2937;
+            --input-bg: #374151;
+            --text-color: #f9fafb;
+            --text-muted: #9ca3af;
             --border-color: #374151;
             --shadow-color: rgba(0,0,0,0.3);
             --sidebar-bg: #1f2937;
@@ -37,7 +36,6 @@
 
         body { background-color: var(--bg-color); color: var(--text-color); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif; padding-bottom: 90px; user-select: none; -webkit-user-select: none; transition: background-color 0.3s, color 0.3s; }
         
-        /* 強制覆蓋 Bootstrap */
         [data-theme="dark"] .bg-light { background-color: var(--input-bg) !important; }
         [data-theme="dark"] .bg-white { background-color: var(--card-bg) !important; }
         [data-theme="dark"] .text-dark { color: var(--text-color) !important; }
@@ -68,12 +66,10 @@
         
         .form-control, .form-select { background-color: var(--input-bg); color: var(--text-color); border: 1px solid var(--border-color); }
         .form-control:focus, .form-select:focus { background-color: var(--input-bg); color: var(--text-color); border-color: #667eea; box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.25); }
-        .form-control::placeholder { color: var(--text-muted); opacity: 0.7; }
         
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; width: 100%;
-            background: var(--card-bg); 
-            border-top: 1px solid var(--border-color); padding: 12px 0;
+            background: var(--card-bg); border-top: 1px solid var(--border-color); padding: 12px 0;
             display: flex; justify-content: space-around; z-index: 1000;
             padding-bottom: max(12px, env(safe-area-inset-bottom));
             transition: background-color 0.3s;
@@ -102,18 +98,9 @@
             .side-btn:hover { background: rgba(102, 126, 234, 0.1); color: #667eea; }
             .side-btn.active { background: rgba(102, 126, 234, 0.1); color: #667eea; font-weight: 600; }
             .container { max-width: 1000px !important; padding-top: 30px; }
-            .header-card { border-radius: 20px; margin-top: 0; padding: 40px; display: flex; align-items: center; justify-content: space-between; text-align: left; }
-            .header-card .text-center { text-align: left !important; }
-            .header-card .d-flex.justify-content-center { justify-content: flex-end !important; }
         }
 
         .version-link { color: var(--text-muted); font-size: 0.8rem; padding: 10px; cursor: pointer; transition: 0.2s; text-decoration: none; display: inline-block; }
-        .version-link:hover { color: #667eea; }
-        .changelog-item { position: relative; padding-left: 20px; margin-bottom: 15px; border-left: 2px solid var(--border-color); }
-        .changelog-date { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 2px; }
-        .changelog-ver { font-weight: bold; color: var(--text-color); font-size: 0.95rem; }
-        .changelog-desc { font-size: 0.9rem; color: var(--text-muted); line-height: 1.5; }
-
         .badge-pill { padding: 5px 10px; border-radius: 20px; font-weight: normal; font-size: 0.75rem; }
         .bg-urgent { background: rgba(220, 38, 38, 0.15); color: #ef4444; }
         .bg-soon { background: rgba(217, 119, 6, 0.15); color: #f59e0b; }
@@ -124,14 +111,17 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
         #pinOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); z-index: 99999; display: none; flex-direction: column; justify-content: center; align-items: center; color: var(--text-color); }
-        .key-btn { width: 70px; height: 70px; border-radius: 35px; background: var(--input-bg); border: 1px solid var(--border-color); font-size: 1.5rem; font-weight: 500; color: var(--text-color); display: flex; align-items: center; justify-content: center; margin: 0 auto; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .key-btn:active { background: var(--border-color); }
+        .key-btn { width: 70px; height: 70px; border-radius: 35px; background: var(--input-bg); border: 1px solid var(--border-color); font-size: 1.5rem; font-weight: 500; color: var(--text-color); display: flex; align-items: center; justify-content: center; margin: 0 auto; }
         .pin-dots { display: flex; gap: 15px; margin-bottom: 40px; }
         .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--input-bg); border: 1px solid var(--border-color); transition: 0.2s; }
         .dot.active { background: #764ba2; border-color: #764ba2; transform: scale(1.2); }
         .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; width: 280px; }
         
         #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 9998; display: none; flex-direction: column; justify-content: center; align-items: center; color: white; }
+        
+        .changelog-item { position: relative; padding-left: 20px; margin-bottom: 15px; border-left: 2px solid var(--border-color); }
+        .changelog-date { font-size: 0.75rem; color: var(--text-muted); }
+        .changelog-ver { font-weight: bold; color: var(--text-color); }
     </style>
 </head>
 <body>
@@ -161,7 +151,7 @@
     <button class="side-btn" onclick="switchPage('settings')"><i class="fas fa-cog"></i> 設定</button>
     <div style="margin-top: auto;">
         <div class="version-link" onclick="showVersionModal()">
-            <i class="fas fa-info-circle me-1"></i> 版本 v3.5
+            <i class="fas fa-info-circle me-1"></i> 版本 v3.8
         </div>
     </div>
 </div>
@@ -176,35 +166,25 @@
                     <button class="btn btn-sm text-white p-0" onclick="goToHome()" title="回首頁"><i class="fas fa-home" style="font-size: 1.2rem;"></i></button>
                 </div>
             </div>
-            
             <div class="text-center mt-3">
                 <small class="opacity-75 text-uppercase ls-1">本月待繳總額</small>
                 <h1 class="display-3 fw-bold mb-0 mt-1" id="displayTotal">$0</h1>
             </div>
         </div>
-        
         <div class="d-flex justify-content-center gap-3 mt-4 computer-actions">
             <button class="btn btn-light rounded-circle shadow-sm" style="width: 50px; height: 50px;" onclick="syncData('download')" title="同步"><i class="fas fa-sync-alt text-primary"></i></button>
-            <button class="btn btn-light rounded-circle shadow-sm" style="width: 50px; height: 50px;" onclick="syncData('upload')" title="存檔"><i class="fas fa-cloud-upload-alt text-primary"></i></button>
+            <button class="btn btn-light rounded-circle shadow-sm" style="width: 50px; height: 50px;" onclick="syncData('upload')" title="手動存檔"><i class="fas fa-cloud-upload-alt text-primary"></i></button>
             <button class="btn btn-light rounded-circle shadow-sm" style="width: 50px; height: 50px;" onclick="exportToExcel()" title="匯出"><i class="fas fa-file-csv text-success"></i></button>
         </div>
     </div>
-
     <div class="container px-3">
         <div id="statementAlerts"></div>
         <div class="d-flex justify-content-between align-items-center mb-3 px-1">
             <h6 class="fw-bold text-secondary mb-0">待繳帳單</h6>
             <button class="btn btn-sm btn-light text-primary rounded-pill px-3 fw-bold shadow-sm" onclick="showAddModal()"><i class="fas fa-plus small me-1"></i> 新增</button>
         </div>
-        <div class="row">
-            <div class="col-12">
-                <div id="unpaidList"></div>
-                <div id="emptyMsg" class="text-center py-5 text-muted" style="display:none;">
-                    <div class="mb-3"><i class="fas fa-check-circle fa-3x text-success opacity-25"></i></div>
-                    <p>太棒了！目前沒有待繳帳單</p>
-                </div>
-            </div>
-        </div>
+        <div id="unpaidList"></div>
+        <div id="emptyMsg" class="text-center py-5 text-muted" style="display:none;"><p>太棒了！目前沒有待繳帳單</p></div>
     </div>
 </div>
 
@@ -212,69 +192,35 @@
     <div class="container px-3 pt-4">
         <h5 class="fw-bold mb-4 px-1">繳款歷史紀錄</h5>
         <div class="row g-2 mb-4">
-            <div class="col-8">
-                <input type="text" id="historySearch" class="form-control rounded-pill" placeholder="🔍 搜尋銀行名稱..." onkeyup="renderHistory()">
-            </div>
-            <div class="col-4">
-                <select id="historyYearMonth" class="form-select rounded-pill" onchange="renderHistory()">
-                    <option value="all">全部</option>
-                </select>
-            </div>
+            <div class="col-8"><input type="text" id="historySearch" class="form-control rounded-pill" placeholder="🔍 搜尋..." onkeyup="renderHistory()"></div>
+            <div class="col-4"><select id="historyYearMonth" class="form-select rounded-pill" onchange="renderHistory()"><option value="all">全部</option></select></div>
         </div>
         <div id="paidList"></div>
-        <div id="historyEmptyMsg" class="text-center py-5 text-muted" style="display:none;">
-            <p>查無符合的紀錄</p>
-        </div>
+        <div id="historyEmptyMsg" class="text-center py-5 text-muted" style="display:none;"><p>查無紀錄</p></div>
     </div>
 </div>
 
 <div id="page-analysis" class="page-section">
     <div class="container px-3 pt-4">
         <h5 class="fw-bold mb-3 px-1">消費分析</h5>
-        
         <div class="card border-0 shadow-sm rounded-4 mb-4">
             <div class="card-body p-3">
                 <div class="row g-2 align-items-center">
-                    <div class="col-5">
-                        <label class="small text-muted ms-1">開始日期</label>
-                        <input type="date" id="analysisStart" class="form-control form-control-sm rounded-pill border-0 bg-light">
-                    </div>
-                    <div class="col-5">
-                        <label class="small text-muted ms-1">結束日期</label>
-                        <input type="date" id="analysisEnd" class="form-control form-control-sm rounded-pill border-0 bg-light">
-                    </div>
-                    <div class="col-2 text-end">
-                        <label class="small text-muted opacity-0">.</label>
-                        <button onclick="updateCharts()" class="btn btn-sm btn-primary w-100 rounded-pill"><i class="fas fa-search"></i></button>
-                    </div>
+                    <div class="col-5"><input type="date" id="analysisStart" class="form-control form-control-sm rounded-pill border-0 bg-light"></div>
+                    <div class="col-5"><input type="date" id="analysisEnd" class="form-control form-control-sm rounded-pill border-0 bg-light"></div>
+                    <div class="col-2"><button onclick="updateCharts()" class="btn btn-sm btn-primary w-100 rounded-pill"><i class="fas fa-search"></i></button></div>
                 </div>
             </div>
         </div>
-
         <div class="row g-4">
             <div class="col-md-4">
-                <div class="card border-0 shadow-sm rounded-4 h-100">
-                    <div class="card-body text-center py-5 d-flex flex-column justify-content-center">
-                        <small class="text-muted text-uppercase mb-2">區間累計消費</small>
-                        <h2 class="fw-bold text-primary display-5" id="yearlyTotal">$0</h2>
-                    </div>
-                </div>
+                <div class="card border-0 shadow-sm rounded-4 h-100"><div class="card-body text-center py-5"><small class="text-muted">區間總計</small><h2 class="fw-bold text-primary display-5" id="yearlyTotal">$0</h2></div></div>
             </div>
             <div class="col-md-8">
-                <div class="card border-0 shadow-sm rounded-4 h-100">
-                    <div class="card-body">
-                        <h6 class="fw-bold mb-3 small text-muted">支出趨勢</h6>
-                        <div style="height: 300px;"><canvas id="monthChart"></canvas></div>
-                    </div>
-                </div>
+                <div class="card border-0 shadow-sm rounded-4 h-100"><div class="card-body"><h6 class="fw-bold mb-3 small text-muted">趨勢</h6><div style="height: 300px;"><canvas id="monthChart"></canvas></div></div></div>
             </div>
             <div class="col-12">
-                <div class="card border-0 shadow-sm rounded-4">
-                    <div class="card-body">
-                        <h6 class="fw-bold mb-3 small text-muted">各銀行佔比</h6>
-                        <div style="height: 300px; position: relative;"><canvas id="cardChart"></canvas></div>
-                    </div>
-                </div>
+                <div class="card border-0 shadow-sm rounded-4"><div class="card-body"><h6 class="fw-bold mb-3 small text-muted">佔比</h6><div style="height: 300px; position: relative;"><canvas id="cardChart"></canvas></div></div></div>
             </div>
         </div>
     </div>
@@ -287,61 +233,34 @@
             <div class="col-12">
                 <div class="card border-0 shadow-sm rounded-4">
                     <div class="card-body d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="fw-bold mb-1"><i class="fas fa-moon text-secondary me-2"></i>深色模式</h6>
-                            <small class="text-muted">切換至暗色主題</small>
-                        </div>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="darkModeSwitch" onchange="toggleDarkMode()">
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-6">
-                <div class="card border-0 shadow-sm rounded-4 h-100">
-                    <div class="card-body">
-                        <h6 class="fw-bold mb-3"><i class="fas fa-lock text-warning me-2"></i>安全鎖</h6>
-                        <div class="input-group mb-2">
-                            <input type="tel" class="form-control" id="newAppPin" placeholder="設定 6 位數密碼" maxlength="6">
-                            <button class="btn btn-dark" onclick="setAppPin()">設定</button>
-                        </div>
-                        <button class="btn btn-sm text-danger p-0" onclick="clearAppPin()">清除密碼</button>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card border-0 shadow-sm rounded-4 h-100">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h6 class="fw-bold mb-0"><i class="fas fa-cloud text-primary me-2"></i>雲端同步</h6>
-                            <button class="btn btn-sm btn-outline-info rounded-pill px-3" onclick="showHelpModal()">
-                                <i class="fas fa-question-circle me-1"></i> 金鑰在哪?
-                            </button>
-                        </div>
-                        <input type="text" class="form-control bg-light border-0 mb-2" id="inputBinId" placeholder="Bin ID">
-                        <input type="password" class="form-control bg-light border-0 mb-3" id="inputApiKey" placeholder="API Key">
-                        <button class="btn btn-primary w-100 rounded-pill" onclick="saveKeys()">儲存金鑰</button>
+                        <div><h6 class="fw-bold mb-1">深色模式</h6><small class="text-muted">切換主題</small></div>
+                        <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="darkModeSwitch" onchange="toggleDarkMode()"></div>
                     </div>
                 </div>
             </div>
             <div class="col-12">
-                <div class="card border-0 shadow-sm rounded-4">
+                <div class="card border-0 shadow-sm rounded-4" id="cardEditorCard">
                     <div class="card-body">
-                        <h6 class="fw-bold mb-3"><i class="fas fa-calendar-alt text-success me-2"></i>出帳日提醒</h6>
-                        <div class="input-group mb-3">
-                            <input type="text" class="form-control" id="newCardName" placeholder="銀行 (如: 玉山)">
-                            <input type="number" class="form-control" id="newCardDay" placeholder="日" style="max-width: 70px;">
-                            <button class="btn btn-outline-primary" onclick="addCardSetting()"><i class="fas fa-plus"></i></button>
+                        <h6 class="fw-bold mb-3" id="editorTitle"><i class="fas fa-calendar-alt text-success me-2"></i>卡片設定</h6>
+                        <div class="row g-2 mb-3">
+                            <div class="col-12 col-md-4"><input type="text" class="form-control" id="newCardName" placeholder="銀行"></div>
+                            <div class="col-4 col-md-2"><input type="number" class="form-control" id="newCardDay" placeholder="日"></div>
+                            <div class="col-8 col-md-4"><input type="text" class="form-control" id="newCardAutopay" placeholder="扣款帳戶" list="bankAccountsList"><datalist id="bankAccountsList"></datalist></div>
+                            <div class="col-12 col-md-2 d-flex gap-2">
+                                <button class="btn btn-primary w-100" id="saveCardBtn" onclick="addCardSetting()">新增</button>
+                                <button class="btn btn-outline-secondary d-none" id="cancelEditBtn" onclick="cancelCardEdit()">取消</button>
+                            </div>
                         </div>
+                        <div id="autoSyncLabel" class="small text-muted mb-2 text-end d-none">☁️ 雲端同步中...</div>
                         <div id="cardSettingsList" class="row g-2"></div>
                     </div>
                 </div>
             </div>
-        </div>
-        <div class="text-center mt-4">
-            <div class="version-link text-muted" onclick="showVersionModal()">
-                <i class="fas fa-info-circle me-1"></i> 卡片管家 Pro v3.5
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm rounded-4 h-100"><div class="card-body"><h6>安全鎖</h6><input type="tel" class="form-control mb-2" id="newAppPin" placeholder="6 位數" maxlength="6"><button class="btn btn-dark w-100" onclick="setAppPin()">設定</button></div></div>
+            </div>
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm rounded-4 h-100"><div class="card-body"><h6>雲端金鑰</h6><input type="text" class="form-control bg-light mb-2" id="inputBinId" placeholder="Bin ID"><input type="password" class="form-control bg-light mb-3" id="inputApiKey" placeholder="API Key"><button class="btn btn-primary w-100" onclick="saveKeys()">儲存金鑰</button></div></div>
             </div>
         </div>
     </div>
@@ -354,64 +273,22 @@
     <button class="nav-btn" onclick="switchPage('settings')"><i class="fas fa-cog"></i> 設定</button>
 </div>
 
-<div class="modal fade" id="addModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 rounded-4 shadow">
-            <div class="modal-header border-0"><h5 class="modal-title fw-bold">記一筆</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
-            <div class="modal-body">
-                <form id="addForm">
-                    <input type="text" class="form-control form-control-lg mb-2" id="addName" placeholder="卡片名稱" required>
-                    <input type="number" class="form-control form-control-lg mb-2" id="addAmount" placeholder="$ 金額" required>
-                    <input type="date" class="form-control form-control-lg mb-3" id="addDate" required>
-                    <button type="submit" class="btn btn-primary w-100 btn-lg rounded-pill">確定新增</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
+<div class="modal fade" id="addModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body"><form id="addForm"><input type="text" class="form-control mb-2" id="addName" placeholder="卡片名稱" required><input type="number" class="form-control mb-2" id="addAmount" placeholder="金額" required><input type="date" class="form-control mb-3" id="addDate" required><button type="submit" class="btn btn-primary w-100 rounded-pill">確定</button></form></div></div></div></div>
 
 <div class="modal fade" id="versionModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-sm">
-        <div class="modal-content border-0 rounded-4 shadow">
-            <div class="modal-header border-0">
-                <h5 class="modal-title fw-bold"><i class="fas fa-history text-primary me-2"></i>更新日誌</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body rounded-bottom-4" style="max-height: 400px; overflow-y: auto;">
+        <div class="modal-content border-0 rounded-4">
+            <div class="modal-header border-0"><h5 class="modal-title fw-bold">更新日誌</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body" style="max-height: 400px; overflow-y: auto;">
                 <div class="changelog-item">
-                    <div class="changelog-date">2025/12/17</div>
-                    <div class="changelog-ver">v3.5</div>
-                    <div class="changelog-desc">
-                        • 新增「繳費後同步提醒」，防止資料遺失<br>
-                        • 包含 v3.4 所有分析功能
-                    </div>
+                    <div class="changelog-date">2026/02/25</div>
+                    <div class="changelog-ver">v3.8</div>
+                    <div class="changelog-desc">• 💎 **設定頁面「自動存檔」**：新增或編輯卡片後會自動同步至雲端，防止忘記按存檔導致資料遺失。</div>
                 </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="modal fade" id="helpModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 rounded-4 shadow">
-            <div class="modal-header border-0"><h5 class="modal-title fw-bold">☁️ 雲端金鑰說明</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
-            <div class="modal-body">
-                <div class="mb-4">
-                    <h6 class="fw-bold text-success mb-2">💡 方法一：看電腦 (推薦)</h6>
-                    <p class="small opacity-75 mb-0">這是最快的方法！因為您的電腦機器人已經設定好了，兩邊必須用同一組金鑰才能同步。</p>
-                    <div class="bg-light p-3 rounded-3 mt-2 border">
-                        <ol class="small mb-0 ps-3">
-                            <li>打開電腦上的 <code>BillBot</code> 資料夾</li>
-                            <li>找到 <code>config.json</code> 檔案</li>
-                            <li>用記事本打開它</li>
-                            <li>複製裡面的 <code>bin_id</code> 和 <code>api_key</code></li>
-                        </ol>
-                    </div>
-                </div>
-                <div>
-                    <h6 class="fw-bold text-secondary mb-2">🔌 方法二：重新申請</h6>
-                    <p class="small opacity-75">如果您是第一次使用，或想建立全新的資料庫。</p>
-                    <a href="https://jsonbin.io/login" target="_blank" class="btn btn-outline-primary w-100 btn-sm">前往 JSONBin 官網</a>
+                <div class="changelog-item">
+                    <div class="changelog-date">2026/02/25</div>
+                    <div class="changelog-ver">v3.7</div>
+                    <div class="changelog-desc">• 新增卡片編輯功能、修正警報邏輯。</div>
                 </div>
             </div>
         </div>
@@ -425,6 +302,7 @@
     let apiKey = localStorage.getItem('jsonbin_api_key') || '';
     let isPrivacyOn = false;
     let pinBuffer = "";
+    let editCardIndex = -1;
     const HOME_URL = "https://chianghf99.github.io/my-wallet/";
 
     function goToHome() { window.location.href = HOME_URL; }
@@ -438,63 +316,24 @@
         }
     }
     function updateDots() { for(let i=1; i<=6; i++) document.getElementById('d'+i).classList.toggle('active', i<=pinBuffer.length); }
-    function setAppPin() { const v = document.getElementById('newAppPin').value; if(v.length === 6 && !isNaN(v)) { localStorage.setItem('app_pin', v); alert('✅ 密碼已設定'); document.getElementById('newAppPin').value=''; } else alert('請輸入 6 位數字'); }
-    function clearAppPin() { if(confirm('確定移除密碼鎖？')) { localStorage.removeItem('app_pin'); alert('已移除'); } }
+    function setAppPin() { const v = document.getElementById('newAppPin').value; if(v.length === 6 && !isNaN(v)) { localStorage.setItem('app_pin', v); alert('✅ 已設定'); } }
+    function clearAppPin() { if(confirm('確定移除密碼鎖？')) { localStorage.removeItem('app_pin'); } }
 
     const addModal = new bootstrap.Modal(document.getElementById('addModal'));
     const versionModal = new bootstrap.Modal(document.getElementById('versionModal'));
-    const helpModal = new bootstrap.Modal(document.getElementById('helpModal'));
     const loadingOverlay = document.getElementById('loadingOverlay');
     
-    checkLock(); 
-    loadLocal();
-    initDarkMode();
-    
-    setTimeout(autoSyncCheck, 1000);
-
-    document.getElementById('inputBinId').value = binId;
-    document.getElementById('inputApiKey').value = apiKey;
-    document.getElementById('addDate').value = new Date().toISOString().split('T')[0];
-    
-    const today = new Date();
-    const firstDay = new Date(today.getFullYear(), 0, 1);
-    document.getElementById('analysisStart').value = firstDay.toISOString().split('T')[0];
-    document.getElementById('analysisEnd').value = today.toISOString().split('T')[0];
-
-    function showHelpModal() { helpModal.show(); }
+    checkLock(); loadLocal(); initDarkMode(); setTimeout(autoSyncCheck, 1000);
 
     function autoSyncCheck() {
         const lastSyncStr = localStorage.getItem('last_sync_timestamp');
         const now = Date.now();
-        const COOLDOWN = 30 * 60 * 1000; 
         if (!binId || !apiKey) return;
-        if (!lastSyncStr || (now - parseInt(lastSyncStr) > COOLDOWN)) {
-            console.log("⏳ 執行智慧自動同步...");
-            syncData('download', true);
-        } else {
-            console.log("✅ 資料尚新，略過同步");
-        }
+        if (!lastSyncStr || (now - parseInt(lastSyncStr) > 1800000)) syncData('download', true);
     }
 
-    function initDarkMode() {
-        if (localStorage.getItem('theme') === 'dark') {
-            document.body.setAttribute('data-theme', 'dark');
-            document.getElementById('darkModeSwitch').checked = true;
-        }
-    }
-    function toggleDarkMode() {
-        if (document.getElementById('darkModeSwitch').checked) {
-            document.body.setAttribute('data-theme', 'dark');
-            localStorage.setItem('theme', 'dark');
-        } else {
-            document.body.removeAttribute('data-theme');
-            localStorage.setItem('theme', 'light');
-        }
-    }
-
-    function showVersionModal() { versionModal.show(); }
-    function updateSyncStatus() { const t = localStorage.getItem('last_sync_time'); document.getElementById('syncStatus').textContent = t ? t : '未同步'; }
-    function togglePrivacy() { isPrivacyOn = !isPrivacyOn; document.getElementById('privacyIcon').className = isPrivacyOn ? 'fas fa-eye' : 'fas fa-eye-slash'; renderTotal(); }
+    function initDarkMode() { if (localStorage.getItem('theme') === 'dark') { document.body.setAttribute('data-theme', 'dark'); document.getElementById('darkModeSwitch').checked = true; } }
+    function toggleDarkMode() { const isDark = document.getElementById('darkModeSwitch').checked; document.body.toggleAttribute('data-theme', isDark); localStorage.setItem('theme', isDark ? 'dark' : 'light'); }
 
     function switchPage(p) {
         document.querySelectorAll('.page-section').forEach(el => el.classList.remove('active'));
@@ -503,50 +342,41 @@
         document.querySelectorAll(`[onclick="switchPage('${p}')"]`).forEach(el => el.classList.add('active'));
         if(p === 'analysis') updateCharts();
         if(p === 'history') { updateHistoryFilterOptions(); renderHistory(); }
-        if(p === 'dashboard') window.scrollTo(0,0);
     }
 
-    function updateHistoryFilterOptions() {
-        const select = document.getElementById('historyYearMonth');
-        const currentVal = select.value;
-        const years = new Set();
-        data.bills.forEach(b => { if(b.status === 'paid' || b.status === 'skipped') years.add(b.date.substring(0, 7)); });
-        const sortedYears = Array.from(years).sort().reverse();
-        let html = '<option value="all">全部時間</option>';
-        sortedYears.forEach(ym => { html += `<option value="${ym}">${ym}</option>`; });
-        select.innerHTML = html;
-        select.value = currentVal;
-    }
-
-    function renderHistory() {
-        const pList = document.getElementById('paidList'), emptyMsg = document.getElementById('historyEmptyMsg');
-        const searchTerm = document.getElementById('historySearch').value.toLowerCase();
-        const filterYM = document.getElementById('historyYearMonth').value;
-        pList.innerHTML = '';
-        const paids = data.bills.filter(b => (b.status === 'paid' || b.status === 'skipped')).sort((a,b) => new Date(b.date) - new Date(a.date));
-        let hasData = false;
-        paids.forEach(b => {
-            if (searchTerm && !b.name.toLowerCase().includes(searchTerm)) return;
-            if (filterYM !== 'all' && !b.date.startsWith(filterYM)) return;
-            hasData = true;
-            let statusBadge = b.status === 'skipped' ? '<span class="badge bg-secondary">略過</span>' : '';
-            let textClass = b.status === 'skipped' ? 'text-muted text-decoration-line-through' : 'text-decoration-line-through';
-            pList.innerHTML += `<div class="bill-item d-flex align-items-center justify-content-between opacity-75"><div class="d-flex align-items-center"><div class="fw-bold text-secondary ps-2">${b.name} ${statusBadge}</div><div class="small text-muted ms-2">${b.date}</div></div><div class="text-end"><div class="${textClass}">$${b.amount.toLocaleString()}</div><div onclick="deleteBill(${b.id})" class="text-danger small" style="cursor:pointer;">刪除</div></div></div>`;
-        });
-        emptyMsg.style.display = hasData ? 'none' : 'block';
+    function updateDatalist() {
+        const list = document.getElementById('bankAccountsList');
+        const accounts = new Set();
+        data.cards.forEach(c => { if(c.autopayFrom) accounts.add(c.autopayFrom); });
+        list.innerHTML = Array.from(accounts).map(a => `<option value="${a}">`).join('');
     }
 
     function render() {
         const uList = document.getElementById('unpaidList'), emptyMsg = document.getElementById('emptyMsg');
         uList.innerHTML = '';
         const unpaids = data.bills.filter(b => b.status === 'unpaid').sort((a,b) => new Date(a.date) - new Date(b.date));
+        
         unpaids.forEach(b => {
             const d = Math.ceil((new Date(b.date) - new Date().setHours(0,0,0,0)) / 86400000);
             let badgeClass = d < 0 ? 'bg-urgent' : d <= 3 ? 'bg-soon' : 'bg-normal';
-            let badgeText = d < 0 ? `過期 ${Math.abs(d)} 天` : `剩 ${d} 天`;
-            uList.innerHTML += `<div class="bill-item d-flex align-items-center justify-content-between"><div class="d-flex align-items-center"><div class="bill-icon"><i class="${getBankIcon(b.name)}"></i></div><div><div class="fw-bold text-dark">${b.name}</div><div class="small text-secondary">${b.date.slice(5)} 截止</div></div></div><div class="text-end"><div class="fw-bold mb-1 text-dark" style="font-size: 1.1rem;">$${b.amount.toLocaleString()}</div><div class="badge-pill ${badgeClass} d-inline-block mb-1">${badgeText}</div><div onclick="markAsPaid(${b.id})" class="text-success small cursor-pointer"><i class="far fa-check-circle"></i> 標記已繳</div></div></div>`;
+            const cardSetting = data.cards.find(c => b.name.includes(c.name));
+            const autopayText = cardSetting && cardSetting.autopayFrom ? `<div class="small text-primary mt-1"><i class="fas fa-university me-1"></i>${cardSetting.autopayFrom} 扣款</div>` : '';
+
+            uList.innerHTML += `
+                <div class="bill-item d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center">
+                        <div class="bill-icon"><i class="${getBankIcon(b.name)}"></i></div>
+                        <div><div class="fw-bold text-dark">${b.name}</div><div class="small text-secondary">${b.date.slice(5)} 截止</div>${autopayText}</div>
+                    </div>
+                    <div class="text-end">
+                        <div class="fw-bold mb-1 text-dark" style="font-size: 1.1rem;">$${b.amount.toLocaleString()}</div>
+                        <div class="badge-pill ${badgeClass} d-inline-block mb-1">${d < 0 ? '過期' : '剩'} ${Math.abs(d)} 天</div>
+                        <div onclick="markAsPaid(${b.id})" class="text-success small cursor-pointer"><i class="far fa-check-circle"></i> 標記已繳</div>
+                    </div>
+                </div>`;
         });
-        renderTotal(); emptyMsg.style.display = unpaids.length ? 'none' : 'block'; checkAlerts(); renderSettings(); updateSyncStatus(); renderHistory();
+        renderTotal(); emptyMsg.style.display = unpaids.length ? 'none' : 'block'; 
+        checkAlerts(); renderSettings(); updateSyncStatus(); renderHistory(); updateDatalist();
     }
 
     function getBankIcon(name) {
@@ -555,180 +385,149 @@
         if(name.includes('國泰')) return 'fas fa-leaf';
         if(name.includes('台新')) return 'fas fa-dog';
         if(name.includes('永豐')) return 'fas fa-coins';
-        if(name.includes('彰化') || name.includes('彰銀')) return 'fas fa-landmark';
+        if(name.includes('中信')) return 'fas fa-shield-alt';
+        if(name.includes('聯邦')) return 'fas fa-landmark';
         return 'fas fa-credit-card';
     }
 
     function renderTotal() { document.getElementById('displayTotal').textContent = !isPrivacyOn ? '$' + data.bills.filter(b => b.status === 'unpaid').reduce((s,b) => s + b.amount, 0).toLocaleString() : '$****'; }
 
-    function checkAlerts() {
-        const box = document.getElementById('statementAlerts'); box.innerHTML = '';
-        const today = new Date().getDate();
-        const now = new Date();
-        data.cards.forEach(c => {
-            if (today >= c.day) {
-                const expectedStatementDate = new Date(now.getFullYear(), now.getMonth(), c.day);
-                const hasNewBill = data.bills.some(b => b.name.includes(c.name) && new Date(b.date) > expectedStatementDate);
-                if (!hasNewBill) {
-                    box.innerHTML += `<div class="alert alert-warning border-0 shadow-sm rounded-3 mb-3 d-flex align-items-center justify-content-between"><div class="d-flex align-items-center"><i class="fas fa-bell me-3 fs-4 text-warning"></i><div><strong>${c.name}</strong> 應已出帳 (${c.day}號)<br><small>尚未收到帳單</small></div></div><button class="btn btn-sm btn-outline-secondary" onclick="markAsSkipped('${c.name}')">🔕 本期無帳單</button></div>`;
-                }
-            }
-        });
-    }
-
-    function markAsSkipped(cardName) {
-        if(!confirm(`確認標記 ${cardName} 本期無帳單？`)) return;
-        const d = new Date(); d.setDate(d.getDate() + 20);
-        const newBill = { id: Date.now(), name: cardName + "(無帳單)", amount: 0, date: d.toISOString().split('T')[0], status: 'skipped' };
-        data.bills.push(newBill); saveLocal(); render(); syncData('upload');
-    }
-
-    // ✅ v3.5 更新：繳款後詢問是否同步
     function markAsPaid(id) {
         if(confirm('確定這筆帳單「已繳款」嗎？')) {
-            // 1. 本地更新
-            const bill = data.bills.find(b => b.id === id);
-            bill.status = 'paid';
-            saveLocal();
-            render();
-
-            // 2. 詢問同步 (避免資料遺失)
-            setTimeout(() => {
-                if(confirm('💰 繳費完成！\n\n為了避免資料遺失，是否立刻「同步」到雲端？')) {
-                    syncData('upload');
-                }
-            }, 50);
+            data.bills.find(b => b.id === id).status = 'paid';
+            saveLocal(); render();
+            setTimeout(() => { if(confirm('💰 繳費完成！是否立刻同步到雲端？')) syncData('upload'); }, 50);
         }
     }
-    
-    function deleteBill(id) { 
-        if(confirm('確定要永久刪除這筆紀錄嗎？')) { 
-            data.bills = data.bills.filter(b => b.id !== id); 
-            saveLocal(); 
-            render(); 
-            syncData('upload', true); 
+
+    // v3.8 升級：卡片設定異動後自動同步
+    async function addCardSetting() { 
+        const n=document.getElementById('newCardName').value, d=document.getElementById('newCardDay').value, a=document.getElementById('newCardAutopay').value; 
+        if(n&&d){ 
+            if(editCardIndex > -1) { data.cards[editCardIndex] = {name:n, day:parseInt(d), autopayFrom: a}; editCardIndex = -1; } 
+            else { data.cards.push({name:n, day:parseInt(d), autopayFrom: a}); }
+            
+            saveLocal(); render(); resetCardEditor();
+            
+            // 💎 自動同步
+            document.getElementById('autoSyncLabel').classList.remove('d-none');
+            await syncData('upload', true);
+            document.getElementById('autoSyncLabel').classList.add('d-none');
         } 
     }
 
-    function addCardSetting() { const n=document.getElementById('newCardName').value, d=document.getElementById('newCardDay').value; if(n&&d){ data.cards.push({name:n, day:parseInt(d)}); saveLocal(); render(); document.getElementById('newCardName').value=''; } }
-    function removeCardSetting(i) { data.cards.splice(i,1); saveLocal(); render(); }
-    function renderSettings() { const l=document.getElementById('cardSettingsList'); l.innerHTML=''; data.cards.forEach((c,i)=>l.innerHTML+=`<div class="col-md-6"><div class="p-3 border rounded-3 d-flex justify-content-between align-items-center bg-white"><span class="text-dark"><i class="fas fa-credit-card text-muted me-2"></i>${c.name} (${c.day}號)</span><button class="btn btn-sm text-danger" onclick="removeCardSetting(${i})"><i class="fas fa-times"></i></button></div></div>`); }
+    function resetCardEditor() {
+        document.getElementById('newCardName').value=''; document.getElementById('newCardDay').value=''; document.getElementById('newCardAutopay').value='';
+        document.getElementById('saveCardBtn').textContent = "新增"; document.getElementById('saveCardBtn').className = "btn btn-primary w-100";
+        document.getElementById('cancelEditBtn').classList.add('d-none'); document.getElementById('editorTitle').innerHTML = '<i class="fas fa-calendar-alt text-success me-2"></i>卡片設定';
+        editCardIndex = -1;
+    }
+
+    function editCardSetting(i) {
+        editCardIndex = i; const c = data.cards[i];
+        document.getElementById('newCardName').value = c.name; document.getElementById('newCardDay').value = c.day; document.getElementById('newCardAutopay').value = c.autopayFrom || '';
+        document.getElementById('saveCardBtn').textContent = "更新資料"; document.getElementById('saveCardBtn').className = "btn btn-warning w-100";
+        document.getElementById('cancelEditBtn').classList.remove('d-none'); document.getElementById('editorTitle').innerHTML = '<i class="fas fa-edit text-warning me-2"></i>正在編輯：' + c.name;
+        document.getElementById('cardEditorCard').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelCardEdit() { resetCardEditor(); }
+    
+    async function removeCardSetting(i) { 
+        if(confirm('確定刪除？')) { 
+            data.cards.splice(i,1); saveLocal(); render(); 
+            document.getElementById('autoSyncLabel').classList.remove('d-none');
+            await syncData('upload', true);
+            document.getElementById('autoSyncLabel').classList.add('d-none');
+        } 
+    }
+
+    function renderSettings() { 
+        const l=document.getElementById('cardSettingsList'); l.innerHTML=''; 
+        data.cards.forEach((c,i) => {
+            const autoPayBadge = c.autopayFrom ? `<br><small class="text-primary">🏦 扣款: ${c.autopayFrom}</small>` : '';
+            l.innerHTML += `
+            <div class="col-md-6">
+                <div class="p-3 border rounded-3 d-flex justify-content-between align-items-center bg-white">
+                    <span class="text-dark"><b>${c.name}</b> (${c.day}號)${autoPayBadge}</span>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-warning" onclick="editCardSetting(${i})"><i class="fas fa-pencil-alt"></i></button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="removeCardSetting(${i})"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                </div>
+            </div>`;
+        });
+    }
+
     function saveLocal() { localStorage.setItem('myCreditData', JSON.stringify(data)); }
-    function loadLocal() { const s=localStorage.getItem('myCreditData'); if(s) { data=JSON.parse(s); if(Array.isArray(data)) data={bills:data,cards:[]}; } render(); }
-    function saveKeys() { localStorage.setItem('jsonbin_bin_id', document.getElementById('inputBinId').value); localStorage.setItem('jsonbin_api_key', document.getElementById('inputApiKey').value); alert('✅ 金鑰已儲存'); }
+    function loadLocal() { const s=localStorage.getItem('myCreditData'); if(s) data=JSON.parse(s); render(); }
+    function saveKeys() { localStorage.setItem('jsonbin_bin_id', document.getElementById('inputBinId').value); localStorage.setItem('jsonbin_api_key', document.getElementById('inputApiKey').value); binId=document.getElementById('inputBinId').value; apiKey=document.getElementById('inputApiKey').value; alert('✅ 金鑰已儲存'); }
     
     async function syncData(m, silent = false) {
-        if(!binId && !apiKey) { if(!silent) alert('請先設定金鑰'); return; }
+        if(!binId || !apiKey) return;
         if(!silent) loadingOverlay.style.display='flex';
-        const statusText = document.getElementById('syncStatus');
-        if(silent) statusText.textContent = '🔄...';
-
         try {
             const url = `https://api.jsonbin.io/v3/b/${binId}`;
             if(m==='download') {
-                const res = await fetch(url+'/latest', {headers:{'X-Master-Key':apiKey}}); if(!res.ok) throw new Error();
-                const json = await res.json(); data = Array.isArray(json.record) ? {bills:json.record, cards:[]} : json.record;
-                const now = new Date(); 
-                localStorage.setItem('last_sync_time', `${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`);
-                localStorage.setItem('last_sync_timestamp', Date.now()); 
-                saveLocal(); 
-                if(!silent) alert('✅ 同步完成');
+                const res = await fetch(url+'/latest', {headers:{'X-Master-Key':apiKey}});
+                const json = await res.json(); data = json.record;
+                localStorage.setItem('last_sync_time', new Date().toLocaleString());
+                localStorage.setItem('last_sync_timestamp', Date.now());
+                saveLocal();
             } else { 
-                const res = await fetch(url, {method:'PUT', headers:{'Content-Type':'application/json','X-Master-Key':apiKey}, body:JSON.stringify(data)}); 
-                if(!res.ok) throw new Error(); 
-                if(!silent) alert('☁️ 已備份'); 
+                await fetch(url, {method:'PUT', headers:{'Content-Type':'application/json','X-Master-Key':apiKey}, body:JSON.stringify(data)}); 
+                localStorage.setItem('last_sync_timestamp', Date.now()); // 更新同步時間點，避免被自動下載覆蓋
             }
-        } catch(e) { if(!silent) alert('同步失敗'); console.error(e); } 
-        finally { 
-            loadingOverlay.style.display='none'; 
-            render(); 
-            if(silent) setTimeout(() => updateSyncStatus(), 1000);
-        }
+        } catch(e) { console.error(e); } finally { loadingOverlay.style.display='none'; render(); }
+    }
+
+    function updateCharts() {
+        const ctxCard = document.getElementById('cardChart').getContext('2d'), ctxMonth = document.getElementById('monthChart').getContext('2d');
+        const startStr = document.getElementById('analysisStart').value, endStr = document.getElementById('analysisEnd').value;
+        const targetBills = data.bills.filter(b => b.date >= startStr && b.date <= endStr && b.status !== 'skipped');
+        document.getElementById('yearlyTotal').textContent = '$' + targetBills.reduce((s, b) => s + b.amount, 0).toLocaleString();
+        const cardMap = {}, timeMap = {};
+        targetBills.forEach(b => {
+            let name = b.name.substring(0, 2); cardMap[name] = (cardMap[name] || 0) + b.amount;
+            const monthKey = b.date.substring(0, 7); timeMap[monthKey] = (timeMap[monthKey] || 0) + b.amount;
+        });
+        if(cardChart) cardChart.destroy();
+        cardChart = new Chart(ctxCard, { type: 'doughnut', data: { labels: Object.keys(cardMap), datasets: [{ data: Object.values(cardMap), backgroundColor: ['#667eea','#764ba2','#48bb78','#f6ad55','#f56565'], borderWidth: 0 }] }, options: { plugins: { legend: { position: 'right' } }, maintainAspectRatio: false } });
+        const sortedKeys = Object.keys(timeMap).sort();
+        if(monthChart) monthChart.destroy();
+        monthChart = new Chart(ctxMonth, { type: 'bar', data: { labels: sortedKeys, datasets: [{ label: '支出', data: sortedKeys.map(k => timeMap[k]), backgroundColor: '#667eea', borderRadius: 4 }] }, options: { scales: { y: { beginAtZero: true } }, plugins: { legend: { display: false } }, maintainAspectRatio: false } });
+    }
+
+    function checkAlerts() {
+        const box = document.getElementById('statementAlerts'); box.innerHTML = '';
+        const today = new Date().getDate();
+        const thresholdDate = new Date(); thresholdDate.setDate(thresholdDate.getDate() - 20);
+        data.cards.forEach(c => {
+            if (today >= c.day && !data.bills.some(b => b.name.includes(c.name) && new Date(b.date) >= thresholdDate)) {
+                box.innerHTML += `<div class="alert alert-warning border-0 shadow-sm rounded-3 mb-3 d-flex align-items-center justify-content-between"><div><strong>${c.name}</strong> 應已出帳 (${c.day}號)</div><button class="btn btn-sm btn-outline-secondary" onclick="markAsSkipped('${c.name}')">🔕 略過</button></div>`;
+            }
+        });
+    }
+
+    function markAsSkipped(cardName) { data.bills.push({ id: Date.now(), name: cardName + "(無帳單)", amount: 0, date: new Date().toISOString().split('T')[0], status: 'skipped' }); saveLocal(); render(); syncData('upload'); }
+    function togglePrivacy() { isPrivacyOn = !isPrivacyOn; document.getElementById('privacyIcon').className = isPrivacyOn ? 'fas fa-eye' : 'fas fa-eye-slash'; renderTotal(); }
+    function showAddModal() { addModal.show(); }
+    function showVersionModal() { versionModal.show(); }
+    function updateSyncStatus() { document.getElementById('syncStatus').textContent = localStorage.getItem('last_sync_time') || '未同步'; }
+    function renderHistory() {
+        const pList = document.getElementById('paidList'), searchTerm = document.getElementById('historySearch').value.toLowerCase(), filterYM = document.getElementById('historyYearMonth').value;
+        pList.innerHTML = '';
+        data.bills.filter(b => (b.status === 'paid' || b.status === 'skipped')).sort((a,b) => new Date(b.date) - new Date(a.date)).forEach(b => {
+            if ((searchTerm && !b.name.toLowerCase().includes(searchTerm)) || (filterYM !== 'all' && !b.date.startsWith(filterYM))) return;
+            pList.innerHTML += `<div class="bill-item d-flex align-items-center justify-content-between opacity-75"><div class="d-flex align-items-center"><div class="fw-bold text-secondary ps-2">${b.name}</div><div class="small text-muted ms-2">${b.date}</div></div><div class="text-end text-decoration-line-through">$${b.amount.toLocaleString()}</div></div>`;
+        });
+    }
+    function updateHistoryFilterOptions() {
+        const select = document.getElementById('historyYearMonth'), years = new Set();
+        data.bills.forEach(b => { if(b.status !== 'unpaid') years.add(b.date.substring(0, 7)); });
+        select.innerHTML = '<option value="all">全部</option>' + Array.from(years).sort().reverse().map(ym => `<option value="${ym}">${ym}</option>`).join('');
     }
     document.getElementById('addForm').addEventListener('submit', function(e){ e.preventDefault(); data.bills.push({id:Date.now(), name:document.getElementById('addName').value, amount:parseInt(document.getElementById('addAmount').value), date:document.getElementById('addDate').value, status:'unpaid'}); saveLocal(); render(); addModal.hide(); this.reset(); });
-    function exportToExcel() { if(!data.bills.length)return alert('無資料'); const csv="卡片,金額,日期,狀態\n"+data.bills.map(b=>`"${b.name}",${b.amount},${b.date},${b.status==='paid'?'已繳':'未繳'}`).join('\n'); const l=document.createElement('a'); l.href=URL.createObjectURL(new Blob(["\ufeff"+csv],{type:'text/csv'})); l.download=`帳單.csv`; l.click(); }
-
-    let cardChart, monthChart;
-    function updateCharts() {
-        const ctxCard = document.getElementById('cardChart').getContext('2d');
-        const ctxMonth = document.getElementById('monthChart').getContext('2d');
-        
-        const startStr = document.getElementById('analysisStart').value;
-        const endStr = document.getElementById('analysisEnd').value;
-
-        const targetBills = data.bills.filter(b => {
-            return b.date >= startStr && b.date <= endStr && b.status !== 'skipped';
-        });
-        
-        const total = targetBills.reduce((sum, b) => sum + b.amount, 0);
-        document.getElementById('yearlyTotal').textContent = '$' + total.toLocaleString();
-        
-        const cardMap = {};
-        const timeMap = {}; 
-
-        targetBills.forEach(b => {
-            let name = b.name.substring(0, 2);
-            cardMap[name] = (cardMap[name] || 0) + b.amount;
-            
-            const monthKey = b.date.substring(0, 7); 
-            timeMap[monthKey] = (timeMap[monthKey] || 0) + b.amount;
-        });
-
-        if(cardChart) cardChart.destroy();
-        cardChart = new Chart(ctxCard, {
-            type: 'doughnut',
-            data: {
-                labels: Object.keys(cardMap),
-                datasets: [{
-                    data: Object.values(cardMap),
-                    backgroundColor: ['#667eea','#764ba2','#48bb78','#f6ad55','#f56565','#ed64a6'],
-                    borderWidth: 0
-                }]
-            },
-            options: {
-                plugins: {
-                    legend: {
-                        position: 'right',
-                        labels: { color: document.body.getAttribute('data-theme')==='dark'?'#f7fafc':'#666' }
-                    }
-                },
-                maintainAspectRatio: false
-            }
-        });
-
-        const sortedKeys = Object.keys(timeMap).sort(); 
-        const monthLabels = sortedKeys; 
-        const monthData = sortedKeys.map(k => timeMap[k]);
-
-        if(monthChart) monthChart.destroy();
-        monthChart = new Chart(ctxMonth, {
-            type: 'bar',
-            data: {
-                labels: monthLabels,
-                datasets: [{
-                    label: '支出',
-                    data: monthData,
-                    backgroundColor: '#667eea',
-                    borderRadius: 4
-                }]
-            },
-            options: {
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: { color: document.body.getAttribute('data-theme')==='dark'?'rgba(255,255,255,0.1)':'rgba(0,0,0,0.05)' },
-                        ticks: { color: document.body.getAttribute('data-theme')==='dark'?'#a0aec0':'#666' }
-                    },
-                    x: {
-                        grid: { display: false },
-                        ticks: { color: document.body.getAttribute('data-theme')==='dark'?'#a0aec0':'#666' }
-                    }
-                },
-                plugins: { legend: { display: false } },
-                maintainAspectRatio: false
-            }
-        });
-    }
 </script>
 </body>
 </html>

@@ -377,7 +377,7 @@
                         <div class="text-3xl font-bold text-gray-900 dark:text-white"><span v-if="showPrivacy">{{
                                 formatCurrency(grandTotalValue, 'TWD') }}</span><span v-else>****</span></div>
                         <div class="mt-1 text-xs flex items-center gap-1" v-if="showPrivacy">
-                            <span class="text-gray-400">較前日(損益):</span>
+                            <span class="text-gray-400">較前日(未實現損益):</span>
                             <span v-if="prevDayData"
                                 :class="getPnlClass(grandTotalPnL - (prevDayData.totalPnL || 0))">{{
                                 formatCurrency(grandTotalPnL - (prevDayData.totalPnL || 0), 'TWD') }}</span>
@@ -421,7 +421,7 @@
                         <div class="text-2xl font-bold dark:text-white"><span v-if="showPrivacy">{{
                                 formatCurrency(twStats.value, 'TWD') }}</span><span v-else>****</span></div>
                         <div class="mt-1 text-xs flex items-center gap-1" v-if="showPrivacy">
-                            <span class="text-gray-400">較前日:</span>
+                            <span class="text-gray-400">較前日(未實現損益):</span>
                             <span v-if="prevDayData" :class="getPnlClass(twStats.pnl - (prevDayData.twPnL || 0))">
                                 {{ formatCurrency(twStats.pnl - (prevDayData.twPnL || 0), 'TWD') }}
                                 <span class="ml-1">({{ getRoi(prevDayData.twVal, twStats.pnl - (prevDayData.twPnL || 0))
@@ -446,7 +446,7 @@
                         <div class="text-2xl font-bold dark:text-white"><span v-if="showPrivacy">{{
                                 formatCurrency(usStats.value, 'USD') }}</span><span v-else>****</span></div>
                         <div class="mt-1 text-xs flex items-center gap-1" v-if="showPrivacy">
-                            <span class="text-gray-400">較前日:</span>
+                            <span class="text-gray-400">較前日(未實現損益):</span>
                             <span v-if="prevDayData" :class="getPnlClass(usStats.pnl - (prevDayData.usPnL || 0))">
                                 {{ formatCurrency(usStats.pnl - (prevDayData.usPnL || 0), 'USD') }}
                                 <span class="ml-1">({{ getRoi(prevDayData.usVal, usStats.pnl - (prevDayData.usPnL || 0))
@@ -833,7 +833,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="overflow-x-auto">
+                        <div class="overflow-x-auto max-h-[460px] overflow-y-auto">
                             <table class="w-full text-sm text-left hidden md:table">
                                 <thead class="bg-gray-100 dark:bg-gray-800 text-gray-500 uppercase font-medium">
                                     <tr>
@@ -927,9 +927,10 @@
                                 class="bg-gray-800 text-white px-4 py-1.5 rounded text-sm hover:bg-gray-700 h-9 mb-[1px]">查詢</button>
                         </div>
 
-                        <div class="overflow-x-auto">
+                        <div class="overflow-x-auto max-h-[460px] overflow-y-auto">
                             <table class="w-full text-sm text-left">
-                                <thead class="bg-gray-100 dark:bg-gray-800 text-gray-500 uppercase font-medium">
+                                <thead
+                                    class="bg-gray-100 dark:bg-gray-800 text-gray-500 uppercase font-medium sticky top-0">
                                     <tr>
                                         <th class="px-4 py-2 sort-header" @click="sortRealized('date')">日期 <i
                                                 class="fa-solid fa-sort ml-1 text-xs"></i></th>
@@ -942,7 +943,7 @@
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                                    <tr v-for="rec in paginatedRealizedGains" :key="rec.id"
+                                    <tr v-for="rec in sortedRealizedGains" :key="rec.id"
                                         class="hover:bg-gray-50 dark:hover:bg-gray-800">
                                         <td class="px-4 py-3">{{ rec.date }}</td>
                                         <td class="px-4 py-3 font-bold">{{ rec.name || rec.symbol }}</td>
@@ -956,27 +957,6 @@
                                     </tr>
                                 </tbody>
                             </table>
-                            <div v-if="sortedRealizedGains.length > 0"
-                                class="flex justify-between items-center mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                                <div class="text-xs text-gray-500">
-                                    顯示 {{ (currentPage - 1) * itemsPerPage + 1 }} - {{ Math.min(currentPage *
-                                    itemsPerPage, sortedRealizedGains.length) }} 筆 (共 {{ sortedRealizedGains.length }}
-                                    筆)
-                                </div>
-                                <div class="flex gap-2">
-                                    <button @click="changePage(currentPage - 1)" :disabled="currentPage === 1"
-                                        class="px-3 py-1 rounded border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm">
-                                        <i class="fa-solid fa-chevron-left"></i>
-                                    </button>
-                                    <span class="px-2 py-1 text-sm font-medium">{{ currentPage }} / {{
-                                        totalRealizedPages }}</span>
-                                    <button @click="changePage(currentPage + 1)"
-                                        :disabled="currentPage === totalRealizedPages"
-                                        class="px-3 py-1 rounded border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm">
-                                        <i class="fa-solid fa-chevron-right"></i>
-                                    </button>
-                                </div>
-                            </div>
                             <div v-if="sortedRealizedGains.length === 0" class="text-center py-6 text-gray-400">無符合紀錄
                             </div>
                         </div>
@@ -2087,7 +2067,9 @@
                     const localYearStart = new Date(yearStart.getTime() - yearStart.getTimezoneOffset() * 60000).toISOString().split('T')[0];
 
                     chartEndDate.value = today; chartStartDate.value = past;
-                    divEndDate.value = today; divStartDate.value = localYearStart;
+                    const lastYear = new Date().getFullYear() - 1;
+                    const lastYearStart = `${lastYear}-01-01`;
+                    divEndDate.value = today; divStartDate.value = lastYearStart;
                     realizedEndDate.value = today; realizedStartDate.value = localYearStart;
                     transEndDate.value = today; transStartDate.value = past90;
 

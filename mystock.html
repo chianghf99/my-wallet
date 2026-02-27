@@ -807,32 +807,7 @@
                             <button @click="fetchDividends"
                                 class="bg-gray-800 text-white px-4 py-1.5 rounded text-sm hover:bg-gray-700 h-9 mb-[1px]">查詢</button>
                         </div>
-                        <div class="grid grid-cols-2 gap-3 mb-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                            <div class="text-xs text-gray-500 dark:text-gray-400 col-span-2 font-bold mb-1">📅 年度股息比較
-                            </div>
-                            <div class="text-center p-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
-                                <div class="text-xs text-gray-400 mb-1">🇹🇼 今年台股</div>
-                                <div class="font-bold text-yellow-600 dark:text-yellow-400">{{
-                                    formatCurrency(dividendYearlyTw, 'TWD') }}</div>
-                                <div v-if="dividendLastYearTw > 0" class="text-xs mt-0.5"
-                                    :class="dividendYearlyTw >= dividendLastYearTw ? 'text-up' : 'text-down'">
-                                    去年 {{ formatCurrency(dividendLastYearTw, 'TWD') }} ({{ dividendLastYearTw > 0 ?
-                                    (((dividendYearlyTw - dividendLastYearTw) / dividendLastYearTw) * 100).toFixed(1) +
-                                    '%' : '-' }})
-                                </div>
-                            </div>
-                            <div class="text-center p-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
-                                <div class="text-xs text-gray-400 mb-1">🇺🇸 今年美股</div>
-                                <div class="font-bold text-yellow-600 dark:text-yellow-400">{{
-                                    formatCurrency(dividendYearlyUs, 'USD') }}</div>
-                                <div v-if="dividendLastYearUs > 0" class="text-xs mt-0.5"
-                                    :class="dividendYearlyUs >= dividendLastYearUs ? 'text-up' : 'text-down'">
-                                    去年 {{ formatCurrency(dividendLastYearUs, 'USD') }} ({{ dividendLastYearUs > 0 ?
-                                    (((dividendYearlyUs - dividendLastYearUs) / dividendLastYearUs) * 100).toFixed(1) +
-                                    '%' : '-' }})
-                                </div>
-                            </div>
-                        </div>
+
                         <div class="overflow-x-auto max-h-[460px] overflow-y-auto">
                             <table class="w-full text-sm text-left hidden md:table">
                                 <thead class="bg-gray-100 dark:bg-gray-800 text-gray-500 uppercase font-medium">
@@ -928,7 +903,7 @@
                         </div>
 
                         <div class="overflow-x-auto max-h-[460px] overflow-y-auto">
-                            <table class="w-full text-sm text-left">
+                            <table class="w-full text-sm text-left hidden md:table">
                                 <thead
                                     class="bg-gray-100 dark:bg-gray-800 text-gray-500 uppercase font-medium sticky top-0">
                                     <tr>
@@ -957,8 +932,27 @@
                                     </tr>
                                 </tbody>
                             </table>
-                            <div v-if="sortedRealizedGains.length === 0" class="text-center py-6 text-gray-400">無符合紀錄
+                            <!-- 手機版卡片 -->
+                            <div class="block md:hidden space-y-2 mt-2">
+                                <div v-for="rec in sortedRealizedGains" :key="rec.id"
+                                    class="p-3 border rounded-lg border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 flex justify-between items-center">
+                                    <div>
+                                        <div class="font-bold dark:text-gray-200">{{ rec.name || rec.symbol }}</div>
+                                        <div class="text-xs text-gray-400">{{ rec.date }}</div>
+                                    </div>
+                                    <div class="flex items-center gap-3">
+                                        <div class="font-bold text-right" :class="getPnlClass(rec.pnl)">{{
+                                            formatCurrency(rec.pnl, rec.currency) }}</div>
+                                        <button @click="deleteRealized(rec.id)"
+                                            class="text-gray-300 hover:text-red-500 text-xs"><i
+                                                class="fa-solid fa-trash-can"></i></button>
+                                    </div>
+                                </div>
+                                <div v-if="sortedRealizedGains.length === 0" class="text-center py-6 text-gray-400">
+                                    無符合紀錄</div>
                             </div>
+                            <div v-if="sortedRealizedGains.length === 0"
+                                class="hidden md:block text-center py-6 text-gray-400">無符合紀錄</div>
                         </div>
                     </div>
                 </transition>
@@ -1354,7 +1348,50 @@
 
                     <div class="p-6 overflow-y-auto custom-scrollbar">
                         <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
-
+                            <div class="relative pl-6">
+                                <div
+                                    class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-800 dark:bg-gray-200 border-2 border-white dark:border-gray-800">
+                                </div>
+                                <div class="text-xs text-gray-400 mb-1">2026-02-27</div>
+                                <div class="font-bold text-gray-800 dark:text-white mb-2">v3.6.0</div>
+                                <ul class="text-sm text-gray-600 dark:text-gray-300 space-y-1 list-disc list-inside">
+                                    <li>手機版 Modal 底部彈出優化</li>
+                                    <li>交易紀錄、股息統計加入滾輪模式</li>
+                                    <li>已實現損益改為滾輪，移除分頁</li>
+                                    <li>股息統計預設顯示當年度資料</li>
+                                    <li>已實現損益補手機版卡片</li>
+                                </ul>
+                            </div>
+                            <div class="relative pl-6">
+                                <div
+                                    class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-600 dark:bg-gray-400 border-2 border-white dark:border-gray-800">
+                                </div>
+                                <div class="text-xs text-gray-400 mb-1">2026-02-26</div>
+                                <div class="font-bold text-gray-800 dark:text-white mb-2">v3.5.x</div>
+                                <ul class="text-sm text-gray-600 dark:text-gray-300 space-y-1 list-disc list-inside">
+                                    <li>個股年度分析功能（已移除）</li>
+                                    <li>Yahoo Finance 歷史股價查詢</li>
+                                    <li>已實現損益搜尋與排序</li>
+                                    <li>日期範圍篩選快捷按鈕（今年/去年/近3月/全部）</li>
+                                </ul>
+                            </div>
+                            <div class="relative pl-6">
+                                <div
+                                    class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-500 dark:bg-gray-500 border-2 border-white dark:border-gray-800">
+                                </div>
+                                <div class="text-xs text-gray-400 mb-1">2025</div>
+                                <div class="font-bold text-gray-800 dark:text-white mb-2">v3.0 ~ v3.4</div>
+                                <ul class="text-sm text-gray-600 dark:text-gray-300 space-y-1 list-disc list-inside">
+                                    <li>借款/還款管理模組</li>
+                                    <li>XIRR 年化報酬率計算</li>
+                                    <li>資金管理（入金/出金）</li>
+                                    <li>股息統計分頁</li>
+                                    <li>前日損益比較</li>
+                                    <li>資產走勢圖、持股占比餅圖</li>
+                                    <li>投資筆記功能</li>
+                                    <li>Firebase 雲端同步</li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2067,9 +2104,7 @@
                     const localYearStart = new Date(yearStart.getTime() - yearStart.getTimezoneOffset() * 60000).toISOString().split('T')[0];
 
                     chartEndDate.value = today; chartStartDate.value = past;
-                    const lastYear = new Date().getFullYear() - 1;
-                    const lastYearStart = `${lastYear}-01-01`;
-                    divEndDate.value = today; divStartDate.value = lastYearStart;
+                    divEndDate.value = today; divStartDate.value = localYearStart;
                     realizedEndDate.value = today; realizedStartDate.value = localYearStart;
                     transEndDate.value = today; transStartDate.value = past90;
 
@@ -2116,12 +2151,7 @@
                 const grandTotalPnL = computed(() => twStats.value.pnl + (usStats.value.pnl * exchangeRate.value));
                 const realizedTotalTw = computed(() => sortedRealizedGains.value.filter(r => r.currency === 'TWD').reduce((acc, cur) => acc + cur.pnl, 0));
                 const realizedTotalUs = computed(() => sortedRealizedGains.value.filter(r => r.currency === 'USD').reduce((acc, cur) => acc + cur.pnl, 0));
-                const currentYear = new Date().getFullYear();
-                const lastYear = currentYear - 1;
-                const dividendYearlyTw = computed(() => dividendRecords.value.filter(r => r.currency === 'TWD' && r.date.startsWith(currentYear.toString())).reduce((acc, cur) => acc + cur.amount, 0));
-                const dividendYearlyUs = computed(() => dividendRecords.value.filter(r => r.currency === 'USD' && r.date.startsWith(currentYear.toString())).reduce((acc, cur) => acc + cur.amount, 0));
-                const dividendLastYearTw = computed(() => dividendRecords.value.filter(r => r.currency === 'TWD' && r.date.startsWith(lastYear.toString())).reduce((acc, cur) => acc + cur.amount, 0));
-                const dividendLastYearUs = computed(() => dividendRecords.value.filter(r => r.currency === 'USD' && r.date.startsWith(lastYear.toString())).reduce((acc, cur) => acc + cur.amount, 0));
+
                 // Bug fix: 套用日期篩選，讓加總與下方列表一致
                 const dividendRangeTw = computed(() => dividendRecords.value.filter(r => r.currency === 'TWD' && (!divStartDate.value || r.date >= divStartDate.value) && (!divEndDate.value || r.date <= divEndDate.value)).reduce((acc, cur) => acc + cur.amount, 0));
                 const dividendRangeUs = computed(() => dividendRecords.value.filter(r => r.currency === 'USD' && (!divStartDate.value || r.date >= divStartDate.value) && (!divEndDate.value || r.date <= divEndDate.value)).reduce((acc, cur) => acc + cur.amount, 0));
@@ -3001,7 +3031,7 @@
                     showTransModal, transForm, openTransModal, closeTransModal, submitTransaction, isFundMode, openFundModal,
                     autoFetchName, autoFetchTransName, fetchPrices, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountClass, getAmountSign,
                     chartStartDate, chartEndDate, drawChart, prevDayData, exportData, realizedGains, realizedTotalTw, realizedTotalUs,
-                    divStartDate, divEndDate, fetchDividends, dividendRecords, dividendYearlyTw, dividendYearlyUs, dividendRangeTw, dividendRangeUs,
+                    divStartDate, divEndDate, fetchDividends, dividendRecords, dividendRangeTw, dividendRangeUs,
                     transactionHistory, fetchTransactions, deleteTransaction, deleteDividend, deleteRealized,
                     transStartDate, transEndDate, sortTransaction, sortDividend, sortedTransactions, sortedDividends,
                     realizedStartDate, realizedEndDate, fetchRealizedGains, cashData,
@@ -3037,7 +3067,7 @@
 
                     sectionLoading,
                     showEditTxModal, editTxForm, openEditTxModal, saveEditTx,
-                    dividendLastYearTw, dividendLastYearUs, currentYear, dividendYearlyTw, dividendYearlyUs
+
 
                 };
             }

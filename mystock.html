@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v3.6.0</title>
+    <title>我的投資組合 | Portfolio v3.6.1</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -295,8 +295,8 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v3.6.0</h1>
-                    <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">v3.6.0 </p>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v3.6.1</h1>
+                    <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">v3.6.1 </p>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -316,7 +316,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v3.6.0</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v3.6.1</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -1353,6 +1353,18 @@
                                     class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-800 dark:bg-gray-200 border-2 border-white dark:border-gray-800">
                                 </div>
                                 <div class="text-xs text-gray-400 mb-1">2026-02-27</div>
+                                <div class="font-bold text-gray-800 dark:text-white mb-2">v3.6.1</div>
+                                <ul class="text-sm text-gray-600 dark:text-gray-300 space-y-1 list-disc list-inside">
+                                    <li>編輯持股改為「總成本」輸入，自動換算每股成本</li>
+                                    <li>加入即時預覽每股成本，方便確認</li>
+                                    <li>股票分割時只需更新股數，成本自動重算</li>
+                                </ul>
+                            </div>
+                            <div class="relative pl-6">
+                                <div
+                                    class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-800 dark:bg-gray-200 border-2 border-white dark:border-gray-800">
+                                </div>
+                                <div class="text-xs text-gray-400 mb-1">2026-02-27</div>
                                 <div class="font-bold text-gray-800 dark:text-white mb-2">v3.6.0</div>
                                 <ul class="text-sm text-gray-600 dark:text-gray-300 space-y-1 list-disc list-inside">
                                     <li>手機版 Modal 底部彈出優化</li>
@@ -1760,8 +1772,14 @@
                         <div class="grid grid-cols-2 gap-4">
                             <div><label class="block text-xs font-bold text-gray-500 mb-1">股數</label><input
                                     type="number" step="any" v-model.number="form.shares" class="zen-input"></div>
-                            <div><label class="block text-xs font-bold text-gray-500 mb-1">平均成本</label><input
-                                    type="number" step="any" v-model.number="form.avgCost" class="zen-input"></div>
+                            <div><label class="block text-xs font-bold text-gray-500 mb-1">總成本</label><input
+                                    type="number" step="any" v-model.number="form.totalCostInput" class="zen-input"
+                                    placeholder="股數 × 個股成本"></div>
+                        </div>
+                        <div class="text-xs text-gray-400 -mt-2 text-right"
+                            v-if="form.shares > 0 && form.totalCostInput > 0">
+                            每股成本 ≈ <span class="font-bold text-gray-600 dark:text-gray-300">{{ form.currency === 'TWD' ?
+                                'NT$ ' : '$ ' }}{{ (form.totalCostInput / form.shares).toFixed(4) }}</span>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div><label class="block text-xs font-bold text-gray-500 mb-1">現價</label><input
@@ -2074,7 +2092,7 @@
                 let unsubscribe = null, unsubscribeTrans = null, unsubscribeCash = null, unsubscribeNotes = null, unsubscribeLoans = null;
 
                 const showModal = ref(false); const isEditing = ref(false);
-                const form = ref({ id: null, symbol: '', name: '', currency: 'TWD', shares: 0, avgCost: 0, currentPrice: 0, dividends: 0, previousClose: 0 });
+                const form = ref({ id: null, symbol: '', name: '', currency: 'TWD', shares: 0, avgCost: 0, totalCostInput: 0, currentPrice: 0, dividends: 0, previousClose: 0 });
                 const showTransModal = ref(false); const isFundMode = ref(false); const isLoanMode = ref(false); const isSyncToCash = ref(false); const repaySource = ref('internal');
                 const transForm = ref({ id: null, type: 'buy', symbol: '', name: '', shares: '', totalAmount: '', currentShares: 0, currentAvg: 0, date: getLocalDate(), loanId: '', memo: '' });
 
@@ -2434,10 +2452,10 @@
                     if (isFundMode.value) { if (!transForm.value.totalAmount) return alert('請輸入金額'); const amount = transForm.value.type === 'deposit' ? transForm.value.totalAmount : -transForm.value.totalAmount; await updateCash(form.value.currency, amount, 0); await db.collection('users').doc(user.value.uid).collection('transactions').add(logData); closeTransModal(); setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'chart') drawChart(); }, 500); return; } if (transForm.value.type === 'dividend') { if (!transForm.value.totalAmount) return alert('請輸入金額'); const dividendData = { ...logData, amount: transForm.value.totalAmount }; await db.collection('users').doc(user.value.uid).collection('dividends').add(dividendData); await db.collection('users').doc(user.value.uid).collection('transactions').add(logData); await updateCash(form.value.currency, transForm.value.totalAmount, 0); const existingStock = stocks.value.find(s => s.symbol === transForm.value.symbol); if (existingStock) { await db.collection('users').doc(user.value.uid).collection('stocks').doc(existingStock.id).update({ dividends: (existingStock.dividends || 0) + transForm.value.totalAmount }); } closeTransModal(); setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'chart') drawChart(); }, 500); return; } if (!transForm.value.shares || !transForm.value.totalAmount) return alert('請輸入完整資訊'); logData.price = transForm.value.totalAmount / transForm.value.shares; let stockId = transForm.value.id; let currentShares = transForm.value.currentShares; let currentAvg = transForm.value.currentAvg; if (!stockId) { const existing = stocks.value.find(s => s.symbol === transForm.value.symbol); if (existing) { stockId = existing.id; currentShares = existing.shares; currentAvg = existing.avgCost; } else if (transForm.value.type === 'buy') { const newDoc = await db.collection('users').doc(user.value.uid).collection('stocks').add({ symbol: transForm.value.symbol, name: transForm.value.name, currency: form.value.currency, shares: 0, avgCost: 0, currentPrice: 0, dividends: 0 }); stockId = newDoc.id; } else { const pnl = transForm.value.totalAmount - 0; await db.collection('users').doc(user.value.uid).collection('realized_gains').add({ ...logData, pnl: pnl, price: logData.price }); await db.collection('users').doc(user.value.uid).collection('transactions').add(logData); await updateCash(form.value.currency, transForm.value.totalAmount, 0); closeTransModal(); return; } } let ns = 0, na = 0; if (transForm.value.type === 'buy') { ns = currentShares + transForm.value.shares; const oldTotal = currentShares * currentAvg; na = (oldTotal + transForm.value.totalAmount) / ns; await updateCash(form.value.currency, -transForm.value.totalAmount, 0); } else { if (transForm.value.shares > currentShares) return alert('股數不足'); ns = currentShares - transForm.value.shares; na = currentAvg; const pnl = transForm.value.totalAmount - (transForm.value.shares * currentAvg); await db.collection('users').doc(user.value.uid).collection('realized_gains').add({ ...logData, pnl: pnl, price: logData.price }); await updateCash(form.value.currency, transForm.value.totalAmount, 0); } await db.collection('users').doc(user.value.uid).collection('transactions').add(logData); if (stockId) { const ref = db.collection('users').doc(user.value.uid).collection('stocks').doc(stockId); await ref.update({ shares: ns, avgCost: na }); if (ns === 0 && confirm('股數歸零，是否刪除此庫存項目？')) await ref.delete(); } setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'transactions') fetchTransactions(); if (activeSection.value === 'chart') drawChart(); }, 500); closeTransModal();
                 };
 
-                const openModal = () => { isEditing.value = false; form.value = { id: Date.now().toString(), symbol: '', name: '', currency: 'TWD', marketType: '', shares: 0, avgCost: 0, currentPrice: 0, dividends: 0, previousClose: 0 }; showModal.value = true; };
-                const editStock = (s) => { isEditing.value = true; form.value = { ...s }; showModal.value = true; };
+                const openModal = () => { isEditing.value = false; form.value = { id: Date.now().toString(), symbol: '', name: '', currency: 'TWD', marketType: '', shares: 0, avgCost: 0, totalCostInput: 0, currentPrice: 0, dividends: 0, previousClose: 0 }; showModal.value = true; };
+                const editStock = (s) => { isEditing.value = true; form.value = { ...s, totalCostInput: parseFloat((s.shares * s.avgCost).toFixed(2)) }; showModal.value = true; };
                 const closeModal = () => showModal.value = false;
-                const saveStock = async () => { if (!user.value || !form.value.symbol) return; const d = { ...form.value }; const r = db.collection('users').doc(user.value.uid).collection('stocks'); if (isEditing.value) await r.doc(d.id).update(d); else await r.doc(d.id).set(d); closeModal(); };
+                const saveStock = async () => { if (!user.value || !form.value.symbol) return; const d = { ...form.value }; if (form.value.shares > 0 && form.value.totalCostInput > 0) { d.avgCost = form.value.totalCostInput / form.value.shares; } delete d.totalCostInput; const r = db.collection('users').doc(user.value.uid).collection('stocks'); if (isEditing.value) await r.doc(d.id).update(d); else await r.doc(d.id).set(d); closeModal(); };
 
                 const deleteStock = async (stock) => {
                     if (!user.value) return;

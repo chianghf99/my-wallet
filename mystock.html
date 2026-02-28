@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v3.6.2</title>
+    <title>我的投資組合 | Portfolio v3.6.3</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -295,8 +295,8 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v3.6.2</h1>
-                    <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">v3.6.2 </p>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v3.6.3</h1>
+                    <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">v3.6.3 </p>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -316,7 +316,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v3.6.2</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v3.6.3</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -842,8 +842,24 @@
                                     formatCurrency(dividendRangeUs, 'USD') }}</div>
                             </div>
                         </div>
+                        <div class="flex gap-1.5 mb-3 overflow-x-auto pb-1">
+                            <button @click="setDivRange('YTD')" class="range-btn"
+                                :class="{'active-range': divRange==='YTD'}">今年</button>
+                            <button @click="setDivRange('LAST_YEAR')" class="range-btn"
+                                :class="{'active-range': divRange==='LAST_YEAR'}">去年</button>
+                            <button @click="setDivRange('3M')" class="range-btn"
+                                :class="{'active-range': divRange==='3M'}">近3月</button>
+                            <button @click="setDivRange('ALL')" class="range-btn"
+                                :class="{'active-range': divRange==='ALL'}">全部</button>
+                        </div>
+
                         <div
                             class="flex flex-wrap gap-3 items-end mb-4 pb-4 border-b border-gray-100 dark:border-gray-700">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 mb-1">搜尋代號/名稱</label>
+                                <input type="text" v-model="divSearchQuery" placeholder="如: 2330"
+                                    class="zen-input text-sm py-1.5 uppercase">
+                            </div>
                             <div><label class="block text-xs font-bold text-gray-500 mb-1">開始</label><input type="date"
                                     v-model="divStartDate" class="zen-input text-sm py-1.5"></div>
                             <div><label class="block text-xs font-bold text-gray-500 mb-1">結束</label><input type="date"
@@ -1392,6 +1408,17 @@
 
                     <div class="p-6 overflow-y-auto custom-scrollbar">
                         <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
+                            <div class="relative pl-6">
+                                <div
+                                    class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-800 dark:bg-gray-200 border-2 border-white dark:border-gray-800">
+                                </div>
+                                <div class="text-xs text-gray-400 mb-1">2026-02-28</div>
+                                <div class="font-bold text-gray-800 dark:text-white mb-2">v3.6.3</div>
+                                <ul class="text-sm text-gray-600 dark:text-gray-300 space-y-1 list-disc list-inside">
+                                    <li>股息紀錄新增時間過濾按鈕（今年、去年、近3月、全部）</li>
+                                    <li>股息紀錄新增搜尋標的代號或名稱功能</li>
+                                </ul>
+                            </div>
                             <div class="relative pl-6">
                                 <div
                                     class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-800 dark:bg-gray-200 border-2 border-white dark:border-gray-800">
@@ -2127,6 +2154,8 @@
 
                 const chartStartDate = ref(''); const chartEndDate = ref('');
                 const currentRange = ref('1M');
+                const divRange = ref('YTD');
+                const divSearchQuery = ref('');
                 const divStartDate = ref(''); const divEndDate = ref('');
                 const realizedStartDate = ref(''); const realizedEndDate = ref('');
                 const transStartDate = ref(''); const transEndDate = ref('');
@@ -2251,7 +2280,20 @@
                     return data.slice().sort((a, b) => { let modifier = sortOrderTrans.value === 'desc' ? -1 : 1; if (sortKeyTrans.value === 'date') return (new Date(a.date) - new Date(b.date)) * modifier; if (sortKeyTrans.value === 'type') return a.type.localeCompare(b.type) * modifier; if (sortKeyTrans.value === 'symbol') return (a.name || a.symbol).localeCompare(b.name || b.symbol) * modifier; return 0; });
                 });
 
-                const sortedDividends = computed(() => { return dividendRecords.value.slice().sort((a, b) => { let modifier = sortOrderDiv.value === 'desc' ? -1 : 1; if (sortKeyDiv.value === 'date') return (new Date(a.date) - new Date(b.date)) * modifier; if (sortKeyDiv.value === 'symbol') return (a.name || a.symbol).localeCompare(b.name || b.symbol) * modifier; if (sortKeyDiv.value === 'amount') return (a.amount - b.amount) * modifier; return 0; }); });
+                const sortedDividends = computed(() => {
+                    let data = dividendRecords.value.slice();
+                    if (divSearchQuery.value) {
+                        const q = divSearchQuery.value.toUpperCase();
+                        data = data.filter(d => (d.symbol && d.symbol.toUpperCase().includes(q)) || (d.name && d.name.toUpperCase().includes(q)));
+                    }
+                    return data.sort((a, b) => {
+                        let modifier = sortOrderDiv.value === 'desc' ? -1 : 1;
+                        if (sortKeyDiv.value === 'date') return (new Date(a.date) - new Date(b.date)) * modifier;
+                        if (sortKeyDiv.value === 'symbol') return (a.name || a.symbol).localeCompare(b.name || b.symbol) * modifier;
+                        if (sortKeyDiv.value === 'amount') return (a.amount - b.amount) * modifier;
+                        return 0;
+                    });
+                });
 
                 // v3.6.0: XIRR debounce
                 let xirrDebounceTimer = null;
@@ -2265,6 +2307,16 @@
                 const sortRealized = (key) => { if (sortKeyRealized.value === key) sortOrderRealized.value = sortOrderRealized.value === 'asc' ? 'desc' : 'asc'; else { sortKeyRealized.value = key; sortOrderRealized.value = 'desc'; } };
                 const changePage = (page) => { if (page >= 1 && page <= totalRealizedPages.value) currentPage.value = page; };
                 watch(realizedSearchQuery, () => { currentPage.value = 1; });
+                const setDivRange = (range) => {
+                    divRange.value = range;
+                    const today = getLocalDate();
+                    const y = new Date().getFullYear();
+                    if (range === 'YTD') { divStartDate.value = `${y}-01-01`; divEndDate.value = today; }
+                    else if (range === 'LAST_YEAR') { divStartDate.value = `${y - 1}-01-01`; divEndDate.value = `${y - 1}-12-31`; }
+                    else if (range === '3M') { const d = new Date(); d.setMonth(d.getMonth() - 3); divStartDate.value = d.toISOString().split('T')[0]; divEndDate.value = today; }
+                    else if (range === 'ALL') { divStartDate.value = '2020-01-01'; divEndDate.value = today; }
+                    fetchDividends();
+                };
                 const setRealizedRange = (range) => {
                     realizedRange.value = range;
                     const today = getLocalDate();
@@ -3106,7 +3158,7 @@
                     showTransModal, transForm, openTransModal, closeTransModal, submitTransaction, isFundMode, openFundModal,
                     autoFetchName, autoFetchTransName, fetchPrices, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountClass, getAmountSign,
                     chartStartDate, chartEndDate, drawChart, prevDayData, exportData, realizedGains, realizedTotalTw, realizedTotalUs,
-                    divStartDate, divEndDate, fetchDividends, dividendRecords, dividendRangeTw, dividendRangeUs,
+                    divRange, divSearchQuery, setDivRange, divStartDate, divEndDate, fetchDividends, dividendRecords, dividendRangeTw, dividendRangeUs,
                     transactionHistory, fetchTransactions, deleteTransaction, deleteDividend, deleteRealized,
                     transStartDate, transEndDate, sortTransaction, sortDividend, sortedTransactions, sortedDividends,
                     realizedStartDate, realizedEndDate, fetchRealizedGains, cashData,
@@ -3152,3 +3204,4 @@
 </body>
 
 </html>
+

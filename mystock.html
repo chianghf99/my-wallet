@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v3.6.3</title>
+    <title>我的投資組合 | Portfolio v3.7.0</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -295,8 +295,8 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v3.6.3</h1>
-                    <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">v3.6.3 </p>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v3.7.0</h1>
+                    <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">v3.7.0 </p>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -316,7 +316,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v3.6.3</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v3.7.0</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -571,6 +571,32 @@
                         </div>
 
                         <div class="h-64 md:h-80 w-full relative"><canvas id="assetChart"></canvas></div>
+
+                        <!-- 期間損益 -->
+                        <div v-if="chartPnl.amount !== null" class="mt-4 flex flex-wrap items-center gap-3 px-1">
+                            <div class="flex flex-col">
+                                <span class="text-xs text-gray-400 dark:text-gray-500 font-medium">期間淨資產損益</span>
+                                <div class="flex items-baseline gap-2 mt-0.5">
+                                    <span class="text-lg font-bold" :class="chartPnl.amount >= 0 ? 'text-up' : 'text-down'">
+                                        {{ chartPnl.amount >= 0 ? '+' : '' }}{{ formatCurrency(chartPnl.amount, 'TWD') }}
+                                    </span>
+                                    <span class="text-sm font-semibold px-1.5 py-0.5 rounded"
+                                        :class="chartPnl.pct >= 0 ? 'bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400' : 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400'">
+                                        {{ chartPnl.pct >= 0 ? '+' : '' }}{{ chartPnl.pct.toFixed(2) }}%
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="flex gap-4 ml-auto text-xs text-gray-400 dark:text-gray-500">
+                                <div class="text-right">
+                                    <div>起始</div>
+                                    <div class="font-medium text-gray-600 dark:text-gray-300">{{ formatCurrency(chartPnl.startVal, 'TWD') }}</div>
+                                </div>
+                                <div class="text-right">
+                                    <div>結束</div>
+                                    <div class="font-medium text-gray-600 dark:text-gray-300">{{ formatCurrency(chartPnl.endVal, 'TWD') }}</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </transition>
 
@@ -1410,6 +1436,18 @@
                         <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
                             <div class="relative pl-6">
                                 <div
+                                    class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-blue-500 dark:bg-blue-400 border-2 border-white dark:border-gray-800">
+                                </div>
+                                <div class="text-xs text-gray-400 mb-1">2026-03-14</div>
+                                <div class="font-bold text-gray-800 dark:text-white mb-2">v3.7.0</div>
+                                <ul class="text-sm text-gray-600 dark:text-gray-300 space-y-1 list-disc list-inside">
+                                    <li>美股報價修正：盤後直接顯示當日收盤價（不再回退至前日收盤）</li>
+                                    <li>資產走勢圖新增「期間淨資產損益」顯示（金額 + 百分比）</li>
+                                    <li>期間損益隨時間範圍選擇即時更新，並顯示起訖淨資產</li>
+                                </ul>
+                            </div>
+                            <div class="relative pl-6">
+                                <div
                                     class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-800 dark:bg-gray-200 border-2 border-white dark:border-gray-800">
                                 </div>
                                 <div class="text-xs text-gray-400 mb-1">2026-02-28</div>
@@ -2153,6 +2191,7 @@
                 const fileInput = ref(null);
 
                 const chartStartDate = ref(''); const chartEndDate = ref('');
+                const chartPnl = ref({ amount: null, pct: null, startVal: null, endVal: null });
                 const currentRange = ref('1M');
                 const divRange = ref('YTD');
                 const divSearchQuery = ref('');
@@ -2478,7 +2517,57 @@
                 const updateLoanBalance = async (loanId, amount) => { if (!user.value || !loanId) return; const ref = db.collection('users').doc(user.value.uid).collection('loans').doc(loanId); const doc = await ref.get(); if (doc.exists) { const newBal = (doc.data().balance || 0) + amount; await ref.update({ balance: newBal }); } };
                 const fetchPreviousDayData = async (uid) => { const todayStr = getLocalDate(); const snap = await db.collection('users').doc(uid).collection('history').orderBy('date', 'desc').limit(2).get(); if (snap.empty) return; const docs = snap.docs.map(d => d.data()); if (docs[0].date !== todayStr) prevDayData.value = docs[0]; else if (docs.length > 1) prevDayData.value = docs[1]; };
 
-                const drawChart = async () => { if (!user.value || !document.getElementById('assetChart')) return; const snap = await db.collection('users').doc(user.value.uid).collection('history').where('date', '>=', chartStartDate.value).where('date', '<=', chartEndDate.value).orderBy('date', 'asc').get(); const d = snap.docs.map(x => x.data()); if (chartInstance) chartInstance.destroy(); const isDark = document.documentElement.classList.contains('dark'); const totalColor = isDark ? '#a78bfa' : '#1f2937'; const gridColor = isDark ? '#374151' : '#e5e7eb'; chartInstance = new Chart(document.getElementById('assetChart').getContext('2d'), { type: 'line', data: { labels: d.map(x => x.date), datasets: [{ label: '淨資產 (Net Worth)', data: d.map(x => { const asset = (x.twVal || 0) + (x.twCash || 0) + ((x.usVal || 0) + (x.usCash || 0)) * exchangeRate.value; const loan = x.loan || 0; return asset - loan; }), borderColor: totalColor, fill: true, backgroundColor: isDark ? 'rgba(167, 139, 250, 0.1)' : 'rgba(31,41,55,0.1)', tension: 0.3 }, { label: '台股 (Stock)', data: d.map(x => x.twVal), borderColor: '#3b82f6', hidden: true, tension: 0.3 }, { label: '美股 (Stock TWD)', data: d.map(x => x.usVal * exchangeRate.value), borderColor: '#ef4444', hidden: true, tension: 0.3 }, { label: '台股帳戶 (Stock+Cash)', data: d.map(x => (x.twVal || 0) + (x.twCash || 0)), borderColor: '#93c5fd', borderDash: [5, 5], hidden: true, tension: 0.3 }, { label: '美股帳戶 (Stock+Cash)', data: d.map(x => ((x.usVal || 0) + (x.usCash || 0)) * exchangeRate.value), borderColor: '#fca5a5', borderDash: [5, 5], hidden: true, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { ticks: { callback: v => 'NT$' + (v / 10000).toFixed(0) + '萬', color: isDark ? '#9ca3af' : '#666' }, grid: { color: gridColor } }, x: { ticks: { color: isDark ? '#9ca3af' : '#666' }, grid: { color: gridColor } } }, plugins: { legend: { labels: { color: isDark ? '#e5e7eb' : '#666' } } } } }); };
+                const drawChart = async () => {
+                    if (!user.value || !document.getElementById('assetChart')) return;
+                    const snap = await db.collection('users').doc(user.value.uid).collection('history')
+                        .where('date', '>=', chartStartDate.value)
+                        .where('date', '<=', chartEndDate.value)
+                        .orderBy('date', 'asc').get();
+                    const d = snap.docs.map(x => x.data());
+
+                    // 計算期間損益
+                    const calcNetWorth = x => {
+                        const asset = (x.twVal || 0) + (x.twCash || 0) + ((x.usVal || 0) + (x.usCash || 0)) * exchangeRate.value;
+                        return asset - (x.loan || 0);
+                    };
+                    if (d.length >= 2) {
+                        const startVal = calcNetWorth(d[0]);
+                        const endVal = calcNetWorth(d[d.length - 1]);
+                        const amount = endVal - startVal;
+                        const pct = startVal !== 0 ? (amount / Math.abs(startVal)) * 100 : 0;
+                        chartPnl.value = { amount, pct, startVal, endVal };
+                    } else if (d.length === 1) {
+                        chartPnl.value = { amount: 0, pct: 0, startVal: calcNetWorth(d[0]), endVal: calcNetWorth(d[0]) };
+                    } else {
+                        chartPnl.value = { amount: null, pct: null, startVal: null, endVal: null };
+                    }
+
+                    if (chartInstance) chartInstance.destroy();
+                    const isDark = document.documentElement.classList.contains('dark');
+                    const totalColor = isDark ? '#a78bfa' : '#1f2937';
+                    const gridColor = isDark ? '#374151' : '#e5e7eb';
+                    chartInstance = new Chart(document.getElementById('assetChart').getContext('2d'), {
+                        type: 'line',
+                        data: {
+                            labels: d.map(x => x.date),
+                            datasets: [
+                                { label: '淨資產 (Net Worth)', data: d.map(calcNetWorth), borderColor: totalColor, fill: true, backgroundColor: isDark ? 'rgba(167, 139, 250, 0.1)' : 'rgba(31,41,55,0.1)', tension: 0.3 },
+                                { label: '台股 (Stock)', data: d.map(x => x.twVal), borderColor: '#3b82f6', hidden: true, tension: 0.3 },
+                                { label: '美股 (Stock TWD)', data: d.map(x => x.usVal * exchangeRate.value), borderColor: '#ef4444', hidden: true, tension: 0.3 },
+                                { label: '台股帳戶 (Stock+Cash)', data: d.map(x => (x.twVal || 0) + (x.twCash || 0)), borderColor: '#93c5fd', borderDash: [5, 5], hidden: true, tension: 0.3 },
+                                { label: '美股帳戶 (Stock+Cash)', data: d.map(x => ((x.usVal || 0) + (x.usCash || 0)) * exchangeRate.value), borderColor: '#fca5a5', borderDash: [5, 5], hidden: true, tension: 0.3 }
+                            ]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            scales: {
+                                y: { ticks: { callback: v => 'NT$' + (v / 10000).toFixed(0) + '萬', color: isDark ? '#9ca3af' : '#666' }, grid: { color: gridColor } },
+                                x: { ticks: { color: isDark ? '#9ca3af' : '#666' }, grid: { color: gridColor } }
+                            },
+                            plugins: { legend: { labels: { color: isDark ? '#e5e7eb' : '#666' } } }
+                        }
+                    });
+                };
                 const drawPieCharts = () => { if (pieTwInstance) pieTwInstance.destroy(); if (pieUsInstance) pieUsInstance.destroy(); const tooltipOptions = { callbacks: { label: function (c) { const l = c.label || ''; const v = c.raw; const t = c.chart._metasets[c.datasetIndex].total; const p = t > 0 ? ((v / t) * 100).toFixed(1) + '%' : '0%'; const fv = c.chart.canvas.id === 'pieTw' ? formatCurrency(v, 'TWD') : formatCurrency(v, 'USD'); return `${l}: ${fv} (${p})`; } } }; if (document.getElementById('pieTw') && twStockList.value.length) pieTwInstance = new Chart(document.getElementById('pieTw'), { type: 'doughnut', data: { labels: twStockList.value.map(s => s.name || s.symbol), datasets: [{ data: twStockList.value.map(s => s.currentPrice * s.shares), backgroundColor: ['#3b82f6', '#2563eb', '#1d4ed8', '#60a5fa', '#93c5fd'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { tooltip: tooltipOptions } } }); if (document.getElementById('pieUs') && usStockList.value.length) pieUsInstance = new Chart(document.getElementById('pieUs'), { type: 'doughnut', data: { labels: usStockList.value.map(s => s.name || s.symbol), datasets: [{ data: usStockList.value.map(s => s.currentPrice * s.shares), backgroundColor: ['#ef4444', '#dc2626', '#b91c1c', '#f87171', '#fca5a5'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { tooltip: tooltipOptions } } }); };
 
                 const calculateNewAvg = () => { if (transForm.value.type !== 'buy' || !transForm.value.shares || !transForm.value.totalAmount) return transForm.value.currentAvg; const old = transForm.value.currentShares * transForm.value.currentAvg; return (old + transForm.value.totalAmount) / (transForm.value.currentShares + transForm.value.shares); };
@@ -2711,64 +2800,192 @@
                 };
 
 
-                // ★★★ v3.6.0: 直接 MIS API 抓台股 (上市/上櫃)，不再等 Google Finance ★★★
-                const GAS_PROXY = 'https://script.google.com/macros/s/AKfycbyN4Yib6hdb01-XHP7jlAHFuSkqBd7iqqRd80pDeMia_SpJQ7SM6MPxhaBwF6vJ-kY/exec?url=';
+                // ★★★ v3.8.0: 直連 API ★★★
+                // 台股（盤中）：Cloudflare Worker → MIS TWSE 批次即時報價
+                // 台股（盤後）：TWSE Open API + TPEx Open API
+                // 美股：Finnhub REST API
+                const FINNHUB_API_KEY = 'd6klt59r01qg51f4ff00d6klt59r01qg51f4ff0g';
+                const CF_PROXY = 'https://stock-proxy.chicken7999.workers.dev/?url=';
 
-                const fetchTwStockPrice = async (symbol, marketType) => {
+                // 台股快照 cache (Open API, 5分鐘更新一次)
+                let _twMarketCache = null;
+                let _twMarketCacheTs = 0;
+
+                // 台股盤中快照 cache (MIS, 支援 40 筆分塊, 即時更新)
+                let _twMisCache = new Map();
+                let _twMisCacheTs = 0;
+
+                // 從 TWSE/TPEx Open API 抓當日收盤（盤後用），透過 CF Proxy 避免 CORS
+                const fetchTwSnapshotFromOpenApi = async () => {
+                    const map = new Map();
+                    try {
+                        const j = await (await fetch(CF_PROXY + encodeURIComponent('https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL'))).json();
+                        j.forEach(s => {
+                            const price = parseFloat(s.ClosingPrice?.replace(/,/g, '') || '');
+                            const change = parseFloat(s.Change?.replace(/[^-\d.]/g, '') || '0');
+                            if (!isNaN(price) && price > 0)
+                                map.set(s.Code, { price, prevClose: price - change, market: 'tse' });
+                        });
+                    } catch (e) { console.warn('[TWSE OpenAPI] 上市失敗', e); }
+                    try {
+                        const j = await (await fetch(CF_PROXY + encodeURIComponent('https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes'))).json();
+                        j.forEach(s => {
+                            const price = parseFloat(s.Close?.replace(/,/g, '') || '');
+                            const change = parseFloat(s.Change?.replace(/[^-\d.]/g, '') || '0');
+                            if (!isNaN(price) && price > 0)
+                                map.set(s.SecuritiesCompanyCode, { price, prevClose: price - change, market: 'otc' });
+                        });
+                    } catch (e) { console.warn('[TPEx OpenAPI] 上櫃失敗', e); }
+                    return map;
+                };
+
+
+                // 主快照函式 (僅走 Open API 兜底)
+                const fetchTwMarketSnapshot = async () => {
+                    const cacheTtl = 5 * 60 * 1000;
+                    if (_twMarketCache && Date.now() - _twMarketCacheTs < cacheTtl) return _twMarketCache;
+
+                    const map = await fetchTwSnapshotFromOpenApi();
+                    _twMarketCache = map;
+                    _twMarketCacheTs = Date.now();
+                    return map;
+                };
+
+                // 通用的 retry + timeout 包装函式 (retry=重試次數, timeoutMs=超時限制)
+                const fetchWithRetry = async (url, retry = 1, timeoutMs = 8000) => {
+                    for (let i = 0; i <= retry; i++) {
+                        try {
+                            const controller = new AbortController();
+                            const tid = setTimeout(() => controller.abort(), timeoutMs);
+                            const resp = await fetch(url, { signal: controller.signal });
+                            clearTimeout(tid);
+                            return resp;
+                        } catch (e) {
+                            if (i < retry) {
+                                console.warn(`[Fetch] 失敗，${i + 1} 秒後重試...`, url);
+                                await new Promise(r => setTimeout(r, (i + 1) * 600));
+                            } else {
+                                throw e;
+                            }
+                        }
+                    }
+                };
+
+                // MIS 抓取函式 (支援分塊以避開 URL 長度限制)
+                const fetchMisTwse = async (exChList) => {
+                    const map = new Map();
+                    if (!exChList || exChList.length === 0) return map;
+
+                    const chunkSize = 40;
+                    const chunks = [];
+                    for (let i = 0; i < exChList.length; i += chunkSize) {
+                        chunks.push(exChList.slice(i, i + chunkSize));
+                    }
+
+                    // 改成依序抓取，避免同時發滿 6+ 個請求導致 Cloudflare 或證交所阻擋 (429 Too Many Requests)
+                    for (const chunk of chunks) {
+                        try {
+                            const exCh = chunk.join('|');
+                            const misUrl = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=${exCh}&json=1&delay=0&t=${Date.now()}`;
+                            const j = await (await fetchWithRetry(CF_PROXY + encodeURIComponent(misUrl), 1, 8000)).json();
+                            if (j.msgArray?.length > 0) {
+                                j.msgArray.forEach(s => {
+                                    let price = s.z;
+                                    if (price === '-' || price === '') price = (s.pz !== '-' && s.pz !== '') ? s.pz : s.y;
+                                    const finalPrice = parseFloat(price);
+                                    const prevClose = parseFloat(s.y);
+                                    const market = s.ex === 'otc' ? 'otc' : 'tse';
+                                    if (!isNaN(finalPrice) && finalPrice > 0)
+                                        map.set(s.c, { price: finalPrice, prevClose: isNaN(prevClose) ? finalPrice : prevClose, market });
+                                });
+                            }
+                        } catch (e) {
+                            console.warn('[MIS] 批次抓取失敗 (已重試)', e);
+                        }
+                        // 稍微等待，避免瞬間請求過多
+                        await new Promise(r => setTimeout(r, 300));
+                    }
+                    return map;
+                };
+
+                const fetchTwStockPrice = async (symbol) => {
                     const cleanSym = symbol.replace(/\.(TW|TWO)$/i, '');
-                    const prefix = (marketType === 'otc') ? 'otc' : 'tse';
-                    const misUrl = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=${prefix}_${cleanSym}.tw&json=1&delay=0&t=${Date.now()}`;
-                    const r = await fetch(GAS_PROXY + encodeURIComponent(misUrl));
-                    const j = await r.json();
-                    if (j.msgArray && j.msgArray.length > 0) {
-                        const data = j.msgArray[0];
-                        let price = data.z;
-                        if (price === '-' || price === '') price = (data.pz !== '-' && data.pz !== '') ? data.pz : data.y;
-                        const finalPrice = parseFloat(price);
-                        const prevClose = parseFloat(data.y);
-                        if (!isNaN(finalPrice) && finalPrice > 0) {
-                            return { regularMarketPrice: finalPrice, previousClose: isNaN(prevClose) ? finalPrice : prevClose };
+
+                    // 1. 先看 MIS 的快取 (有效期間只有 30 秒，通常在 batch更新時生成)
+                    if (Date.now() - _twMisCacheTs < 30 * 1000) {
+                        if (_twMisCache.has(cleanSym)) {
+                            const d = _twMisCache.get(cleanSym);
+                            return { regularMarketPrice: d.price, previousClose: d.prevClose };
+                        } else {
+                            // 批次快取中沒有此檔股票，直接退回 Open API（避免對未能成功抓取的股票狂發單獨請求）
+                            const openApiMap = await fetchTwMarketSnapshot();
+                            const d = openApiMap.get(cleanSym);
+                            if (d) return { regularMarketPrice: d.price, previousClose: d.prevClose };
+                            return null;
+                        }
+                    }
+
+                    // 2. 獨立抓取單一檔 (透過 MIS，需要市場類別前綴)
+                    const openApiMap = await fetchTwMarketSnapshot();
+                    const openApiData = openApiMap.get(cleanSym);
+                    const market = openApiData ? openApiData.market : 'tse'; // 預設 tse
+
+                    const misMap = await fetchMisTwse([`${market}_${cleanSym}.tw`]);
+                    const misData = misMap.get(cleanSym);
+
+                    if (misData) {
+                        return { regularMarketPrice: misData.price, previousClose: misData.prevClose };
+                    }
+
+                    // 3. 備用：退回到 Open API
+                    if (openApiData) {
+                        return { regularMarketPrice: openApiData.price, previousClose: openApiData.prevClose };
+                    }
+
+                    return null;
+                };
+
+                // 判斷美股是否盤中 (簡單以時區判斷)
+                const isUsMarketOpen = () => {
+                    const nyTime = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
+                    const day = nyTime.getDay();
+                    const hours = nyTime.getHours();
+                    const minutes = nyTime.getMinutes();
+                    const totalMin = hours * 60 + minutes;
+                    // 美東時間週一到週五，9:30 (570) 到 16:00 (960)
+                    return day >= 1 && day <= 5 && totalMin >= 570 && totalMin < 960;
+                };
+
+                const fetchUsStockPrice = async (symbol) => {
+                    for (let attempt = 0; attempt <= 1; attempt++) {
+                        try {
+                            const r = await fetchWithRetry(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_API_KEY}`, 1, 8000);
+                            const j = await r.json();
+                            // Finnhub: c = 最新成交價(盤中即時/盤後即為當日收盤), pc = 前一個交易日收盤
+                            // 注意：盤後 j.c 就是當日收盤，不應再 fallback 到 j.pc（那才是更前一天）
+                            if (j.c && j.c > 0) {
+                                return {
+                                    regularMarketPrice: j.c,
+                                    previousClose: j.pc || j.c
+                                };
+                            }
+                        } catch (e) {
+                            console.warn(`[Finnhub] ${symbol} 失敗`, e);
                         }
                     }
                     return null;
                 };
 
-                const fetchUsStockPrice = async (symbol) => {
-                    try {
-                        const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=1d&interval=1m&t=${Date.now()}`;
-                        const r = await fetch(GAS_PROXY + encodeURIComponent(targetUrl));
-                        const j = await r.json();
-                        if (j.chart?.result?.length) {
-                            const meta = j.chart.result[0].meta;
-                            if (meta.regularMarketPrice) {
-                                return {
-                                    regularMarketPrice: meta.regularMarketPrice,
-                                    previousClose: meta.chartPreviousClose || meta.previousClose || meta.regularMarketPrice
-                                };
-                            }
-                        }
-                    } catch (e) { /* silent */ }
-                    return null;
-                };
-
-                // 一次性偵測上市/上櫃
+                // 一次性偵測上市/上櫃 (v3.8.0: 用 Open API 快照偵測，不走 proxy)
                 const detectMarketType = async (stock) => {
                     if (stock.currency === 'USD') return 'us';
                     const cleanSym = stock.symbol.replace(/\.(TW|TWO)$/i, '');
-                    // 先試上市 (tse)
-                    try {
-                        const url = GAS_PROXY + encodeURIComponent(`https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_${cleanSym}.tw&json=1&delay=0`);
-                        const j = await (await fetch(url)).json();
-                        if (j.msgArray?.length > 0 && j.msgArray[0].n && j.msgArray[0].n !== '') return 'tse';
-                    } catch (e) { }
-                    // 再試上櫃 (otc)
-                    try {
-                        const url = GAS_PROXY + encodeURIComponent(`https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=otc_${cleanSym}.tw&json=1&delay=0`);
-                        const j = await (await fetch(url)).json();
-                        if (j.msgArray?.length > 0 && j.msgArray[0].n && j.msgArray[0].n !== '') return 'otc';
-                    } catch (e) { }
+                    const map = await fetchTwMarketSnapshot();
+                    const d = map.get(cleanSym);
+                    if (d) return d.market; // 'tse' or 'otc'
                     return 'tse'; // 預設為上市
                 };
+
 
                 // 啟動時為未分類股票批次自動偵測（背景執行，不阻塞 UI）
                 const autoDetectMarketTypes = async (unclassified) => {
@@ -2785,203 +3002,60 @@
                     console.log('[v3.6.0] 偵測完成！');
                 };
 
-                // v3.6.0: 統一的股價抓取入口（自動走對的 API 路徑）
+                // v3.8.0: 統一的股價抓取入口
                 const fetchStockData = async (stock) => {
                     let mt = stock.marketType;
-                    // 若未設定 marketType，先偵測並儲存
-                    if (!mt) {
-                        mt = await detectMarketType(stock);
-                        await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ marketType: mt });
-                        stock.marketType = mt;
-                    }
                     if (mt === 'us') {
                         return await fetchUsStockPrice(stock.symbol);
                     } else {
-                        // 台股：直接走 MIS API（台灣時段 9-13:30 有即時, 其他時段回昨收）
-                        let result = await fetchTwStockPrice(stock.symbol, mt);
-                        // 若失敗且是 tse，嘗試換 otc
-                        if (!result && mt === 'tse') {
-                            result = await fetchTwStockPrice(stock.symbol, 'otc');
-                            if (result) {
-                                await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ marketType: 'otc' });
-                                stock.marketType = 'otc';
-                            }
-                        }
-                        return result;
+                        // 台股：Open API 自動分辨上市/上櫃
+                        return await fetchTwStockPrice(stock.symbol);
                     }
                 };
 
-                // ★★★ 最終版 getYahooData (Google 優先 + 官方 MIS 備援) ★★★
+                // ★★★ v3.8.0: getYahooData 改為直連版 (台股→MIS，美股→Finnhub) ★★★
                 const getYahooData = async (symbol) => {
                     let s = symbol.toUpperCase();
+                    const isTwStock = /^\d{4,6}[A-Z]?$/.test(s) || s.endsWith('.TW') || s.endsWith('.TWO');
 
-                    let yahooSymbol = s;
-                    let googleSymbol = s;
-                    let expectedCurrency = 'TWD';
-
-                    // 區分美股與台股代號格式
-                    if (/^\d{4,6}[A-Z]?$/.test(s)) {
-                        yahooSymbol = s + '.TW';
-                        googleSymbol = s + ':TPE';
-                    } else {
-                        expectedCurrency = 'USD';
-                    }
-
-                    const myGasProxy = 'https://script.google.com/macros/s/AKfycbyN4Yib6hdb01-XHP7jlAHFuSkqBd7iqqRd80pDeMia_SpJQ7SM6MPxhaBwF6vJ-kY/exec?url=';
-
-                    // [資料新鮮度檢查]
-                    const isDataStale = (timestamp) => {
-                        if (!timestamp) return true;
-                        // 統一轉成毫秒
-                        const dataTime = (timestamp < 10000000000) ? timestamp * 1000 : timestamp;
-
-                        const now = new Date();
-                        const hoursDiff = (now.getTime() - dataTime) / (1000 * 60 * 60);
-                        const day = now.getDay();
-                        const hour = now.getHours();
-
-                        // 1. 早上 9 點前 (開盤前)：顯示昨收，不算過期
-                        if (hour < 9) return false;
-
-                        // 2. 早上 9 點後 (開盤後)：嚴格檢查
-                        // 週一：允許 68 小時內的資料 (週五收盤價)
-                        if (day === 1) return hoursDiff > 68;
-
-                        // 平日：超過 18 小時沒更新視為過期
-                        const isWeekday = day >= 2 && day <= 5;
-                        return isWeekday && hoursDiff > 18;
-                    };
-
-                    // =========================================================
-                    // 🛑 第一關：Google Finance (優先使用)
-                    // =========================================================
-                    try {
-                        const targetUrl = `https://www.google.com/finance/quote/${googleSymbol}`;
-                        const url = myGasProxy + encodeURIComponent(targetUrl);
-                        const r = await fetch(url);
-                        const html = await r.text();
-
-                        if (expectedCurrency === 'TWD' && !html.includes('TWD') && !html.includes('NT$')) {
-                            throw new Error('Currency mismatch');
-                        }
-
-                        const priceMatch = html.match(/<div class="YMlKec fxKbKc">([^<]+)<\/div>/);
-                        const prevMatch = html.match(/<div class="P6K39c">([^<]+)<\/div>/);
-
-                        if (priceMatch) {
-                            const cleanNumber = (str) => parseFloat(str.replace(/[^0-9.]/g, ''));
-                            const currentPrice = cleanNumber(priceMatch[1]);
-                            let previousClose = currentPrice;
-                            if (prevMatch) previousClose = cleanNumber(prevMatch[1]);
-
-                            if (!isNaN(currentPrice)) {
+                    // 台股：用 Open API 快照 lookup + 即時 MIS
+                    if (isTwStock) {
+                        const cleanSym = s.replace(/\.(TW|TWO)$/i, '');
+                        const map = await fetchTwMarketSnapshot();
+                        const d = map.get(cleanSym);
+                        if (d) {
+                            // 嘗試透過 MIS 抓取即時報價
+                            const misMap = await fetchMisTwse([`${d.market}_${cleanSym}.tw`]);
+                            const misData = misMap.get(cleanSym);
+                            if (misData) {
                                 return {
-                                    symbol: yahooSymbol,
-                                    regularMarketPrice: currentPrice,
-                                    previousClose: previousClose
+                                    symbol: `${cleanSym}.${d.market === 'otc' ? 'TWO' : 'TW'}`,
+                                    regularMarketPrice: misData.price,
+                                    previousClose: misData.prevClose
                                 };
                             }
+                            // 退回到 Open API
+                            return {
+                                symbol: `${cleanSym}.${d.market === 'otc' ? 'TWO' : 'TW'}`,
+                                regularMarketPrice: d.price,
+                                previousClose: d.prevClose
+                            };
                         }
-                    } catch (e) {
-                        // Google 失敗，安靜地進入第二關
+                        return null;
                     }
 
-                    // =========================================================
-                    // 🛑 第二關：備用數據源 (台股用 MIS 官方，美股用 Yahoo v8)
-                    // =========================================================
-                    const fetchBackup = async (targetSymbol) => {
-
-                        // A. 台股專用：證交所/櫃買中心 官方 MIS API (維持不變)
-                        if (targetSymbol.endsWith('.TW') || targetSymbol.endsWith('.TWO')) {
-                            try {
-                                let misSymbol = "";
-                                if (targetSymbol.endsWith('.TWO')) {
-                                    misSymbol = `otc_${targetSymbol.replace('.TWO', '')}.tw`;
-                                } else {
-                                    misSymbol = `tse_${targetSymbol.replace('.TW', '')}.tw`;
-                                }
-
-                                const misUrl = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=${misSymbol}&json=1&delay=0&t=${Date.now()}`;
-                                const url = myGasProxy + encodeURIComponent(misUrl);
-
-                                const r = await fetch(url);
-                                const j = await r.json();
-
-                                if (j.msgArray && j.msgArray.length > 0) {
-                                    const data = j.msgArray[0];
-                                    let currentPrice = data.z;
-                                    let prevClose = data.y;
-
-                                    if (currentPrice === '-') {
-                                        if (data.pz !== '-') currentPrice = data.pz;
-                                        else currentPrice = prevClose;
-                                    }
-
-                                    const finalPrice = parseFloat(currentPrice);
-                                    const finalPrev = parseFloat(prevClose);
-
-                                    if (!isNaN(finalPrice)) {
-                                        return {
-                                            symbol: targetSymbol,
-                                            regularMarketPrice: finalPrice,
-                                            previousClose: finalPrev
-                                        };
-                                    }
-                                }
-                            } catch (twErr) {
-                                console.warn(`[MIS Fail] ${targetSymbol}`, twErr);
-                            }
-                        }
-
-                        // B. 非台股 (美股等)：改回使用 Yahoo Global v8 Chart API
-                        // 原因：v7 Quote API 容易被擋，但 v8 Chart API 對美股支援度很高
-                        try {
-                            const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${targetSymbol}?range=1d&interval=1m&events=div,splits&t=${Date.now()}`;
-                            const url = myGasProxy + encodeURIComponent(targetUrl);
-                            const r = await fetch(url);
-                            const j = await r.json();
-
-                            if (j.chart?.result?.length) {
-                                const res = j.chart.result[0];
-                                const meta = res.meta;
-
-                                // 美股通常 meta 裡的資料就是即時的
-                                let lastPrice = meta.regularMarketPrice;
-                                let lastTime = meta.regularMarketTime;
-
-                                // 守門員檢查
-                                if (isDataStale(lastTime)) {
-                                    throw new Error(`Data stale`);
-                                }
-
-                                return {
-                                    symbol: meta.symbol,
-                                    regularMarketPrice: lastPrice,
-                                    previousClose: meta.chartPreviousClose || meta.previousClose
-                                };
-                            }
-                        } catch (e) {
-                            // 失敗
-                        }
-                        throw new Error("All sources failed");
-                    };
-
-                    // =========================================================
-                    // 執行備用方案 (自動處理上市上櫃切換)
-                    // =========================================================
+                    // 美股 / 匯率：直連 Finnhub
                     try {
-                        return await fetchBackup(yahooSymbol);
-                    } catch (e) {
-                        // 如果原本是用 .TW 失敗，且是上櫃格式，試試看 .TWO
-                        if (yahooSymbol.endsWith('.TW')) {
-                            try {
-                                const twoSymbol = yahooSymbol.replace('.TW', '.TWO');
-                                return await fetchBackup(twoSymbol);
-                            } catch (e2) {
-                                console.error(`Final fail for ${s}`);
-                            }
+                        const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${s}&token=${FINNHUB_API_KEY}`);
+                        const j = await r.json();
+                        if (j.c && j.c > 0) {
+                            return {
+                                symbol: s,
+                                regularMarketPrice: j.c,
+                                previousClose: j.pc || j.c
+                            };
                         }
-                    }
+                    } catch (e) { /* silent */ }
                     return null;
                 };
                 const autoFetchName = async () => { const s = form.value.symbol; if (!s) return; if (/^\d/.test(s)) { form.value.currency = 'TWD'; } else if (/^[A-Za-z]+$/.test(s)) { form.value.currency = 'USD'; form.value.marketType = 'us'; } if (!form.value.name) form.value.name = '查詢中...'; const d = await getYahooData(s); if (d) { if (form.value.name === '查詢中...') form.value.name = d.symbol; form.value.currentPrice = d.regularMarketPrice; form.value.previousClose = d.previousClose; } else { if (form.value.name === '查詢中...') form.value.name = ''; alert('查無代號'); } };
@@ -3012,44 +3086,53 @@
                     loadingTarget.value = marketType;
 
                     // =========================================================
-                    // ★★★ 第一步：不管按哪個按鈕，都先強制更新匯率 ★★★
-                    // (確保不管是看台股還是美股，總資產的匯率計算都是最新的)
+                    // ★★★ 第一步：更新匯率 (直連 exchangerate-api.com) ★★★
                     // =========================================================
                     try {
-                        // 呼叫 getYahooData 抓美金匯率 (Google 優先 -> Yahoo 備援)
-                        // 注意：Google Finance 的匯率代號通常是 USD-TWD，Yahoo 是 USDTWD=X
-                        // 這裡我們傳 Yahoo 格式，因為我們的 getYahooData 備援機制對 Yahoo v8 支援度很好
-                        const rateData = await getYahooData('USDTWD=X');
-
-                        if (rateData && rateData.regularMarketPrice) {
-                            const newRate = rateData.regularMarketPrice;
-
-                            // A. 更新畫面上的匯率變數
-                            if (typeof exchangeRate !== 'undefined') {
-                                exchangeRate.value = newRate;
-                            }
-
-                            // B. 順便存入 Firebase settings (下次進來就是新的)
+                        const rateResp = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+                        const rateJson = await rateResp.json();
+                        const newRate = rateJson.rates.TWD;
+                        if (newRate && newRate > 0) {
+                            exchangeRate.value = newRate;
                             await db.collection('users').doc(user.value.uid).collection('settings').doc('config').set({
                                 exchangeRate: newRate
                             }, { merge: true });
-
                             console.log(`匯率已更新: ${newRate}`);
                         }
                     } catch (e) {
-                        console.warn("匯率更新失敗，將沿用舊匯率", e);
+                        console.warn('匯率更新失敗，將没用舊匯率', e);
                     }
 
                     // =========================================================
-                    // 第二步：開始更新股票迴圈
+                    // 第二步：台股先批次預載快照（盤中走 MIS 即時，支援 40 筆分塊）
+                    // =========================================================
+                    if (marketType === 'TW') {
+                        // 每支股票同時送 tse + otc 兩個前綴，讓 MIS 自動回傳對的那個
+                        // 避免因為 marketType 記錯導致找不到股票
+                        const exChList = targetStocks.flatMap(stock => {
+                            const clean = stock.symbol.replace(/\.(TW|TWO)$/i, '');
+                            if (stock.marketType === 'otc') return [`otc_${clean}.tw`];
+                            if (stock.marketType === 'tse') return [`tse_${clean}.tw`];
+                            return [`tse_${clean}.tw`, `otc_${clean}.tw`]; // 未知：兩個都試
+                        });
+                        _twMisCache = await fetchMisTwse(exChList);
+                        _twMisCacheTs = Date.now();
+                        console.log(`[v3.8.1] 批次預載 MIS 報價，共 ${_twMisCache.size} 支`);
+                    }
+
+
+                    // =========================================================
+                    // 第三步：開始更新股票迴圈
                     // =========================================================
                     const batch = db.batch();
                     let hasUpdates = false;
                     let successCount = 0;
                     let failCount = 0;
 
-                    // ★ [v3.6.0] 並行更新，每批最多 3 支同時抓取，批次間休息 800ms
-                    const CONCURRENT_LIMIT = 3;
+                    // 台股：快照已預載，迴圈純 lookup（可大並行）；美股：Finnhub 60 req/min
+                    const CONCURRENT_LIMIT = marketType === 'US' ? 3 : 10;
+                    const BATCH_DELAY = marketType === 'US' ? 1200 : 0;
+
                     for (let i = 0; i < targetStocks.length; i += CONCURRENT_LIMIT) {
                         const batchStocks = targetStocks.slice(i, i + CONCURRENT_LIMIT);
                         batchStocks.forEach(stock => { stockStates.value[stock.id] = 'loading'; });
@@ -3080,7 +3163,7 @@
                         }));
 
                         if (i + CONCURRENT_LIMIT < targetStocks.length) {
-                            await new Promise(r => setTimeout(r, 800));
+                            await new Promise(r => setTimeout(r, BATCH_DELAY));
                         }
                     }
 
@@ -3157,7 +3240,7 @@
                     showModal, isEditing, form, openModal, editStock, closeModal, saveStock, deleteStock,
                     showTransModal, transForm, openTransModal, closeTransModal, submitTransaction, isFundMode, openFundModal,
                     autoFetchName, autoFetchTransName, fetchPrices, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountClass, getAmountSign,
-                    chartStartDate, chartEndDate, drawChart, prevDayData, exportData, realizedGains, realizedTotalTw, realizedTotalUs,
+                    chartStartDate, chartEndDate, drawChart, chartPnl, prevDayData, exportData, realizedGains, realizedTotalTw, realizedTotalUs,
                     divRange, divSearchQuery, setDivRange, divStartDate, divEndDate, fetchDividends, dividendRecords, dividendRangeTw, dividendRangeUs,
                     transactionHistory, fetchTransactions, deleteTransaction, deleteDividend, deleteRealized,
                     transStartDate, transEndDate, sortTransaction, sortDividend, sortedTransactions, sortedDividends,
@@ -3204,4 +3287,3 @@
 </body>
 
 </html>
-

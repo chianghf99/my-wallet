@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v3.7.2</title>
+    <title>我的投資組合 | Portfolio v3.7.3</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -295,8 +295,8 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v3.7.2</h1>
-                    <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">v3.7.2 </p>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v3.7.3</h1>
+                    <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">v3.7.3 </p>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -316,7 +316,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v3.7.2</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v3.7.3</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -1438,6 +1438,19 @@
                                 <div
                                     class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-blue-500 dark:bg-blue-400 border-2 border-white dark:border-gray-800">
                                 </div>
+                                <div class="text-xs text-gray-400 mb-1">2026-04-02</div>
+                                <div class="font-bold text-gray-800 dark:text-white mb-2">v3.7.3</div>
+                                <ul class="text-sm text-gray-600 dark:text-gray-300 space-y-1 list-disc list-inside">
+                                    <li>借還款介面防呆重構：移除易誤操作的「同步現金」checkbox</li>
+                                    <li>借款改為明確選擇「已入帳戶現金」或「未進現金帳戶」</li>
+                                    <li>還款改為明確選擇「從帳戶現金扣除」或「外部資金（現金不動）」</li>
+                                    <li>移除外部還款假入金邏輯，邏輯更簡潔不易出錯</li>
+                                </ul>
+                            </div>
+                            <div class="relative pl-6">
+                                <div
+                                    class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-800 dark:bg-gray-200 border-2 border-white dark:border-gray-800">
+                                </div>
                                 <div class="text-xs text-gray-400 mb-1">2026-04-01</div>
                                 <div class="font-bold text-gray-800 dark:text-white mb-2">v3.7.2</div>
                                 <ul class="text-sm text-gray-600 dark:text-gray-300 space-y-1 list-disc list-inside">
@@ -2044,12 +2057,43 @@
                                 <label class="block text-xs font-bold text-gray-500 mb-1">備註 (選填)</label>
                                 <input type="text" v-model="transForm.name" class="zen-input" placeholder="如: 年終還款">
                             </div>
-                            <div
-                                class="flex items-center mt-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded border border-purple-100 dark:border-purple-800">
-                                <input type="checkbox" id="syncCash" v-model="isSyncToCash"
-                                    class="w-4 h-4 text-purple-600 rounded">
-                                <label for="syncCash" class="ml-2 text-sm text-gray-700 dark:text-gray-300">同步{{
-                                    transForm.type==='borrow'?'入金':'扣款' }}至台幣現金</label>
+                            <!-- v3.7.3: 防呆 radio 取代 checkbox -->
+                            <div class="mt-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded border border-purple-100 dark:border-purple-800 space-y-2">
+                                <p class="text-xs font-bold text-purple-700 dark:text-purple-300">
+                                    {{ transForm.type === 'borrow' ? '💰 借款資金去向' : '💸 還款資金來源' }}
+                                </p>
+                                <template v-if="transForm.type === 'borrow'">
+                                    <label class="flex items-start gap-2 cursor-pointer">
+                                        <input type="radio" v-model="loanCashMode" value="sync" class="mt-0.5 text-purple-600">
+                                        <span class="text-sm text-gray-700 dark:text-gray-300">
+                                            <span class="font-medium">已匯入現金帳戶</span>
+                                            <span class="text-xs text-gray-400 block">負債↑ 現金↑（如信貸撥款）</span>
+                                        </span>
+                                    </label>
+                                    <label class="flex items-start gap-2 cursor-pointer">
+                                        <input type="radio" v-model="loanCashMode" value="nosync" class="mt-0.5 text-purple-600">
+                                        <span class="text-sm text-gray-700 dark:text-gray-300">
+                                            <span class="font-medium">未進現金帳戶</span>
+                                            <span class="text-xs text-gray-400 block">只記負債，現金不動（如直接買股）</span>
+                                        </span>
+                                    </label>
+                                </template>
+                                <template v-else>
+                                    <label class="flex items-start gap-2 cursor-pointer">
+                                        <input type="radio" v-model="loanCashMode" value="sync" class="mt-0.5 text-purple-600">
+                                        <span class="text-sm text-gray-700 dark:text-gray-300">
+                                            <span class="font-medium">從帳戶現金扣除</span>
+                                            <span class="text-xs text-gray-400 block">負債↓ 現金↓（用系統內的錢還款）</span>
+                                        </span>
+                                    </label>
+                                    <label class="flex items-start gap-2 cursor-pointer">
+                                        <input type="radio" v-model="loanCashMode" value="nosync" class="mt-0.5 text-purple-600">
+                                        <span class="text-sm text-gray-700 dark:text-gray-300">
+                                            <span class="font-medium">外部資金（現金不動）</span>
+                                            <span class="text-xs text-gray-400 block">只記負債↓，現金維持不變（薪水直接還銀行）</span>
+                                        </span>
+                                    </label>
+                                </template>
                             </div>
                         </div>
 
@@ -2260,7 +2304,7 @@
 
                 const showModal = ref(false); const isEditing = ref(false);
                 const form = ref({ id: null, symbol: '', name: '', currency: 'TWD', shares: 0, avgCost: 0, totalCostInput: 0, currentPrice: 0, dividends: 0, previousClose: 0 });
-                const showTransModal = ref(false); const isFundMode = ref(false); const isLoanMode = ref(false); const isSyncToCash = ref(false); const repaySource = ref('internal');
+                const showTransModal = ref(false); const isFundMode = ref(false); const isLoanMode = ref(false); const loanCashMode = ref('sync'); // v3.7.3: 'sync' | 'nosync'
                 const transForm = ref({ id: null, type: 'buy', symbol: '', name: '', shares: '', totalAmount: '', currentShares: 0, currentAvg: 0, date: getLocalDate(), loanId: '', memo: '' });
 
                 if (isDarkMode.value) document.documentElement.classList.add('dark');
@@ -2623,9 +2667,9 @@
                 const drawPieCharts = () => { if (pieTwInstance) pieTwInstance.destroy(); if (pieUsInstance) pieUsInstance.destroy(); const tooltipOptions = { callbacks: { label: function (c) { const l = c.label || ''; const v = c.raw; const t = c.chart._metasets[c.datasetIndex].total; const p = t > 0 ? ((v / t) * 100).toFixed(1) + '%' : '0%'; const fv = c.chart.canvas.id === 'pieTw' ? formatCurrency(v, 'TWD') : formatCurrency(v, 'USD'); return `${l}: ${fv} (${p})`; } } }; if (document.getElementById('pieTw') && twStockList.value.length) pieTwInstance = new Chart(document.getElementById('pieTw'), { type: 'doughnut', data: { labels: twStockList.value.map(s => s.name || s.symbol), datasets: [{ data: twStockList.value.map(s => s.currentPrice * s.shares), backgroundColor: ['#3b82f6', '#2563eb', '#1d4ed8', '#60a5fa', '#93c5fd'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { tooltip: tooltipOptions } } }); if (document.getElementById('pieUs') && usStockList.value.length) pieUsInstance = new Chart(document.getElementById('pieUs'), { type: 'doughnut', data: { labels: usStockList.value.map(s => s.name || s.symbol), datasets: [{ data: usStockList.value.map(s => s.currentPrice * s.shares), backgroundColor: ['#ef4444', '#dc2626', '#b91c1c', '#f87171', '#fca5a5'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { tooltip: tooltipOptions } } }); };
 
                 const calculateNewAvg = () => { if (transForm.value.type !== 'buy' || !transForm.value.shares || !transForm.value.totalAmount) return transForm.value.currentAvg; const old = transForm.value.currentShares * transForm.value.currentAvg; return (old + transForm.value.totalAmount) / (transForm.value.currentShares + transForm.value.shares); };
-                const openTransModal = (s, type = 'buy') => { repaySource.value = 'internal'; isSyncToCash.value = true; if (s) { transForm.value = { id: s.id, type: 'buy', symbol: s.symbol, name: s.name, shares: '', totalAmount: '', currentShares: s.shares, currentAvg: s.avgCost, date: getLocalDate(), memo: '' }; form.value.currency = s.currency; } else { transForm.value = { id: null, type: type, symbol: '', name: '', shares: '', totalAmount: '', currentShares: 0, currentAvg: 0, date: getLocalDate(), memo: '' }; form.value.currency = 'TWD'; } isFundMode.value = false; isLoanMode.value = false; showTransModal.value = true; };
+                const openTransModal = (s, type = 'buy') => { if (s) { transForm.value = { id: s.id, type: 'buy', symbol: s.symbol, name: s.name, shares: '', totalAmount: '', currentShares: s.shares, currentAvg: s.avgCost, date: getLocalDate(), memo: '' }; form.value.currency = s.currency; } else { transForm.value = { id: null, type: type, symbol: '', name: '', shares: '', totalAmount: '', currentShares: 0, currentAvg: 0, date: getLocalDate(), memo: '' }; form.value.currency = 'TWD'; } isFundMode.value = false; isLoanMode.value = false; showTransModal.value = true; };
                 const openFundModal = () => { isFundMode.value = true; isLoanMode.value = false; transForm.value = { id: null, type: 'deposit', symbol: 'CASH', name: '', shares: 0, totalAmount: '', date: getLocalDate(), memo: '' }; form.value.currency = 'TWD'; showTransModal.value = true; };
-                const openLoanModal = () => { isLoanMode.value = true; isFundMode.value = false; isSyncToCash.value = true; inlineNewLoan.value = false; inlineLoanName.value = ''; transForm.value = { id: null, type: 'borrow', symbol: 'LOAN', name: '', shares: 0, totalAmount: '', date: getLocalDate(), loanId: '', memo: '' }; form.value.currency = 'TWD'; showTransModal.value = true; };
+                const openLoanModal = () => { isLoanMode.value = true; isFundMode.value = false; loanCashMode.value = 'sync'; inlineNewLoan.value = false; inlineLoanName.value = ''; transForm.value = { id: null, type: 'borrow', symbol: 'LOAN', name: '', shares: 0, totalAmount: '', date: getLocalDate(), loanId: '', memo: '' }; form.value.currency = 'TWD'; showTransModal.value = true; };
                 const closeTransModal = () => showTransModal.value = false;
 
                 const submitTransaction = async () => {
@@ -2654,45 +2698,22 @@
                         if (!transForm.value.totalAmount) return alert('請輸入金額');
                         if (!transForm.value.loanId) return alert('請選擇借款帳戶');
 
-                        // --- [新功能] 外部資金還款自動補登入金 ---
-                        if (transForm.value.type === 'repay' && repaySource.value === 'external') {
-                            // 1. 先偷偷記一筆「入金」
-                            const depositData = {
-                                date: transForm.value.date || getLocalDate(),
-                                type: 'deposit',
-                                symbol: 'CASH',
-                                name: '外部償債 (自動補登)', // 自動備註
-                                shares: 0,
-                                price: 0,
-                                totalAmount: transForm.value.totalAmount,
-                                currency: form.value.currency,
-                                loanId: null,
-                                memo: `償還 ${loanName}`,
-                                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                            };
-                            // 2. 寫入入金紀錄
-                            await db.collection('users').doc(user.value.uid).collection('transactions').add(depositData);
+                        // v3.7.3: 簡化邏輯，直接依 loanCashMode 決定是否動現金
+                        const shouldSyncCash = loanCashMode.value === 'sync';
+                        let cashDelta = 0;
+                        let loanDelta = 0;
 
-                            // 3. 增加現金餘額 (因為等一下還款會扣掉，這樣一加一減才會平衡，現金餘額不變)
-                            await updateCash(form.value.currency, transForm.value.totalAmount, 0);
-                        }
-                        // -------------------------------------------
-
-                        let cashDelta = 0; let loanDelta = 0;
                         if (transForm.value.type === 'borrow') {
                             loanDelta = transForm.value.totalAmount;
-                            if (isSyncToCash.value) cashDelta = transForm.value.totalAmount;
+                            if (shouldSyncCash) cashDelta = transForm.value.totalAmount;
                         } else {
                             // 還款 (Repay)
                             loanDelta = -transForm.value.totalAmount;
-                            if (isSyncToCash.value) cashDelta = -transForm.value.totalAmount;
+                            if (shouldSyncCash) cashDelta = -transForm.value.totalAmount;
                         }
 
                         await updateLoanBalance(transForm.value.loanId, loanDelta);
-
-                        if (isSyncToCash.value) {
-                            await updateCash(form.value.currency, cashDelta, 0);
-                        }
+                        if (cashDelta !== 0) await updateCash(form.value.currency, cashDelta, 0);
 
                         await db.collection('users').doc(user.value.uid).collection('transactions').add(logData);
                         closeTransModal();
@@ -3307,7 +3328,7 @@
                     // v2.9.4
                     showHistoryEditModalVisible, openHistoryEditModal, saveHistoryRecord, historyEditForm, calculateHistoryNetWorth,
                     // v2.9.5
-                    loanList, totalLoanBalance, showLoanMgrModal, loanForm, openLoanMgrModal, editLoanAccount, saveLoanAccount, deleteLoanAccount, openLoanModal, isLoanMode, isSyncToCash,
+                    loanList, totalLoanBalance, showLoanMgrModal, loanForm, openLoanMgrModal, editLoanAccount, saveLoanAccount, deleteLoanAccount, openLoanModal, isLoanMode, loanCashMode,
                     inlineNewLoan, inlineLoanName, saveInlineLoanAccount,
                     // v2.9.12
                     exportToExcel,
@@ -3320,7 +3341,7 @@
                     // v2.9.20: Stock Notes
                     openStockNoteModal, showStockNoteModal, stockNoteForm, saveStockNote,
                     // v3.3.5: XIRR (Index Bug Fix)
-                    xirrValue, xirrStartDate, computeSystemXirr, xirrStartVal, xirrEndVal, xirrFlowCount, repaySource,
+                    xirrValue, xirrStartDate, computeSystemXirr, xirrStartVal, xirrEndVal, xirrFlowCount,
                     // v3.5.0
                     updateSingleStock, stockStates, loadingTarget,
                     // v3.6.0

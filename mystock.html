@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v3.7.3</title>
+    <title>我的投資組合 | Portfolio v3.7.4</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -295,8 +295,8 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v3.7.3</h1>
-                    <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">v3.7.3 </p>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v3.7.4</h1>
+                    <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">v3.7.4 </p>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -316,7 +316,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v3.7.3</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v3.7.4</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -1437,6 +1437,17 @@
                             <div class="relative pl-6">
                                 <div
                                     class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-blue-500 dark:bg-blue-400 border-2 border-white dark:border-gray-800">
+                                </div>
+                                <div class="text-xs text-gray-400 mb-1">2026-04-04</div>
+                                <div class="font-bold text-gray-800 dark:text-white mb-2">v3.7.4</div>
+                                <ul class="text-sm text-gray-600 dark:text-gray-300 space-y-1 list-disc list-inside">
+                                    <li>修正刪除借貸紀錄時現金不還原的 bug</li>
+                                    <li>借款紀錄新増 cashSynced 欄位，刪除時依此返回對應現金</li>
+                                </ul>
+                            </div>
+                            <div class="relative pl-6">
+                                <div
+                                    class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-800 dark:bg-gray-200 border-2 border-white dark:border-gray-800">
                                 </div>
                                 <div class="text-xs text-gray-400 mb-1">2026-04-02</div>
                                 <div class="font-bold text-gray-800 dark:text-white mb-2">v3.7.3</div>
@@ -2588,7 +2599,7 @@
                 };
                 const deleteTransaction = (tx) => { pendingDeleteTx.value = tx; showDeleteModal.value = true; };
 
-                const executeDelete = async (revertCash) => { showDeleteModal.value = false; const tx = pendingDeleteTx.value; if (!tx) return; if (revertCash) { if (tx.type === 'deposit') await updateCash(tx.currency, -Math.abs(tx.totalAmount), 0); else if (tx.type === 'withdraw') await updateCash(tx.currency, Math.abs(tx.totalAmount), 0); else if (tx.type === 'borrow') { if (tx.loanId) await updateLoanBalance(tx.loanId, -Math.abs(tx.totalAmount)); else alert('此為舊版借款紀錄，請手動調整對應帳戶餘額。'); } else if (tx.type === 'repay') { if (tx.loanId) await updateLoanBalance(tx.loanId, Math.abs(tx.totalAmount)); } else if (tx.type === 'dividend') { await updateCash(tx.currency, -Math.abs(tx.totalAmount), 0); const stock = stocks.value.find(s => s.symbol === tx.symbol); if (stock) { await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ dividends: Math.max(0, (stock.dividends || 0) - tx.totalAmount) }); } } } await db.collection('users').doc(user.value.uid).collection('transactions').doc(tx.id).delete(); fetchTransactions(); setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'transactions') fetchTransactions(); if (activeSection.value === 'realized') fetchRealizedGains(); if (activeSection.value === 'chart') drawChart(); }, 500); pendingDeleteTx.value = null; };
+                const executeDelete = async (revertCash) => { showDeleteModal.value = false; const tx = pendingDeleteTx.value; if (!tx) return; if (revertCash) { if (tx.type === 'deposit') await updateCash(tx.currency, -Math.abs(tx.totalAmount), 0); else if (tx.type === 'withdraw') await updateCash(tx.currency, Math.abs(tx.totalAmount), 0); else if (tx.type === 'borrow') { if (tx.loanId) await updateLoanBalance(tx.loanId, -Math.abs(tx.totalAmount)); else alert('此為舊版借款紀錄，請手動調整對應帳戶餘額。'); if (tx.cashSynced === true) await updateCash(tx.currency || 'TWD', -Math.abs(tx.totalAmount), 0); } else if (tx.type === 'repay') { if (tx.loanId) await updateLoanBalance(tx.loanId, Math.abs(tx.totalAmount)); if (tx.cashSynced === true) await updateCash(tx.currency || 'TWD', Math.abs(tx.totalAmount), 0); } else if (tx.type === 'dividend') { await updateCash(tx.currency, -Math.abs(tx.totalAmount), 0); const stock = stocks.value.find(s => s.symbol === tx.symbol); if (stock) { await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ dividends: Math.max(0, (stock.dividends || 0) - tx.totalAmount) }); } } } await db.collection('users').doc(user.value.uid).collection('transactions').doc(tx.id).delete(); fetchTransactions(); setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'transactions') fetchTransactions(); if (activeSection.value === 'realized') fetchRealizedGains(); if (activeSection.value === 'chart') drawChart(); }, 500); pendingDeleteTx.value = null; };
                 const deleteDividend = async (rec) => { if (!confirm('刪除股息？(現金將自動扣回)')) return; const stock = stocks.value.find(s => s.symbol === rec.symbol); if (stock) { await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ dividends: Math.max(0, (stock.dividends || 0) - rec.amount) }); } await updateCash(rec.currency, -rec.amount, 0); await db.collection('users').doc(user.value.uid).collection('dividends').doc(rec.id).delete(); fetchDividends(); setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'chart') drawChart(); }, 500); };
                 const deleteRealized = async (id) => { if (!confirm('刪除？')) return; await db.collection('users').doc(user.value.uid).collection('realized_gains').doc(id).delete(); fetchRealizedGains(); };
                 const saveDailySnapshot = async () => { if (!user.value) return; const todayStr = getLocalDate(); const historyRef = db.collection('users').doc(user.value.uid).collection('history').doc(todayStr); const currentHour = new Date().getHours(); const snapshot = { date: todayStr, timestamp: firebase.firestore.FieldValue.serverTimestamp(), savedHour: currentHour, totalVal: grandTotalValue.value, twVal: twStats.value.value, usVal: usStats.value.value, twCash: cashData.value.twd || 0, usCash: cashData.value.usd || 0, loan: totalLoanBalance.value, totalPnL: grandTotalPnL.value, twPnL: twStats.value.pnl, usPnL: usStats.value.pnl }; if (currentHour >= 21) { const doc = await historyRef.get(); if (doc.exists) { const existingSavedHour = doc.data().savedHour; if (existingSavedHour !== undefined && existingSavedHour < 21 && doc.data().totalVal > 0) { return; } } } await historyRef.set(snapshot, { merge: true }); debouncedXirr(); };
@@ -2690,6 +2701,7 @@
                         totalAmount: transForm.value.totalAmount,
                         currency: form.value.currency,
                         loanId: isLoanMode.value ? transForm.value.loanId : null,
+                        cashSynced: isLoanMode.value ? (loanCashMode.value === 'sync') : null, // v3.7.4: 記錄是否有同步現金
                         memo: transForm.value.name || transForm.value.memo, // Also save in memo for future
                         timestamp: firebase.firestore.FieldValue.serverTimestamp()
                     };

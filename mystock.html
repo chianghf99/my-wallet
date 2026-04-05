@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v3.7.4</title>
+    <title>我的投資組合 | Portfolio v3.7.5</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -295,8 +295,8 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v3.7.4</h1>
-                    <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">v3.7.4 </p>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v3.7.5</h1>
+                    <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">v3.7.5 </p>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -316,7 +316,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v3.7.4</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v3.7.5</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -1437,6 +1437,18 @@
                             <div class="relative pl-6">
                                 <div
                                     class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-blue-500 dark:bg-blue-400 border-2 border-white dark:border-gray-800">
+                                </div>
+                                <div class="text-xs text-gray-400 mb-1">2026-04-05</div>
+                                <div class="font-bold text-gray-800 dark:text-white mb-2">v3.7.5</div>
+                                <ul class="text-sm text-gray-600 dark:text-gray-300 space-y-1 list-disc list-inside">
+                                    <li>XIRR 改為槟桿策略版：起始從總資產計算，終値用總資產（不扣負債）</li>
+                                    <li>借款(cashSynced)及還款(cashSynced)一並純入 XIRR 現金流計算</li>
+                                    <li>解決高槟桿時 XIRR 就負的問題</li>
+                                </ul>
+                            </div>
+                            <div class="relative pl-6">
+                                <div
+                                    class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-800 dark:bg-gray-200 border-2 border-white dark:border-gray-800">
                                 </div>
                                 <div class="text-xs text-gray-400 mb-1">2026-04-04</div>
                                 <div class="font-bold text-gray-800 dark:text-white mb-2">v3.7.4</div>
@@ -2831,9 +2843,12 @@
                     return 0;
                 };
 
-                // v3.3.5: 修復 Firestore Index 當機錯誤
+                // v3.7.5: Option B XIRR — 槓桿策略版
+                // 起始值：總資產（淨資產 + 貸款）
+                // 流量：入出金 + 借款(cashSynced=true 正流入) + 還款(cashSynced=true 負流出)
+                // 終值：grandTotalAssets（總資產，不扣貸款）
                 const computeSystemXirr = async () => {
-                    if (!user.value || grandTotalValue.value === 0) return;
+                    if (!user.value || grandTotalAssets.value === 0) return;
 
                     try {
                         const historySnap = await db.collection('users').doc(user.value.uid).collection('history').orderBy('date', 'asc').limit(1).get();
@@ -2842,37 +2857,46 @@
                         const startData = historySnap.docs[0].data();
                         const startDate = startData.date;
 
+                        // v3.7.5: 起始值改用「總資產」（淨資產 + 當時貸款）
                         let rawVal = startData.totalVal;
                         if (typeof rawVal === 'string') rawVal = rawVal.replace(/,/g, '');
                         const startNetWorth = Number(rawVal) || 0;
+                        const startLoan = Number(startData.loan) || 0;
+                        const startGrossAssets = startNetWorth + startLoan;
 
                         xirrStartDate.value = startDate;
-                        xirrStartVal.value = formatCurrency(startNetWorth, 'TWD');
-                        xirrEndVal.value = formatCurrency(grandTotalValue.value, 'TWD');
+                        xirrStartVal.value = formatCurrency(startGrossAssets, 'TWD');
+                        xirrEndVal.value = formatCurrency(grandTotalAssets.value, 'TWD');
 
-                        // [v3.3.5 修正] 移除 .where('type') 以避免需要複合索引導致當機
-                        // 改用 client-side 過濾
                         const txSnap = await db.collection('users').doc(user.value.uid).collection('transactions')
                             .where('date', '>', startDate)
                             .get();
 
                         const flows = [];
-                        flows.push({ amount: -Math.abs(startNetWorth), dateObj: parseDate(startDate) });
+                        // 起始：投入總資產（負值）
+                        flows.push({ amount: -Math.abs(startGrossAssets), dateObj: parseDate(startDate) });
 
                         txSnap.docs.forEach(doc => {
                             const t = doc.data();
-                            // 只取 deposit / withdraw
-                            if (t.type === 'deposit' || t.type === 'withdraw') {
-                                const amt = t.currency === 'USD' ? t.totalAmount * exchangeRate.value : t.totalAmount;
-                                if (t.type === 'deposit') {
-                                    flows.push({ amount: -Math.abs(amt), dateObj: parseDate(t.date) });
-                                } else if (t.type === 'withdraw') {
-                                    flows.push({ amount: Math.abs(amt), dateObj: parseDate(t.date) });
-                                }
+                            const twd = (currency) => currency === 'USD' ? t.totalAmount * exchangeRate.value : t.totalAmount;
+
+                            if (t.type === 'deposit') {
+                                // 個人入金 → 你的錢流出 → 負
+                                flows.push({ amount: -Math.abs(twd(t.currency)), dateObj: parseDate(t.date) });
+                            } else if (t.type === 'withdraw') {
+                                // 個人出金 → 你的錢流回 → 正
+                                flows.push({ amount: Math.abs(twd(t.currency)), dateObj: parseDate(t.date) });
+                            } else if (t.type === 'borrow' && t.cashSynced === true) {
+                                // v3.7.5: 借款入帳 → 資金流入總資產池 → 正
+                                flows.push({ amount: Math.abs(twd(t.currency)), dateObj: parseDate(t.date) });
+                            } else if (t.type === 'repay' && t.cashSynced === true) {
+                                // v3.7.5: 還款出帳 → 資金流出總資產池 → 負
+                                flows.push({ amount: -Math.abs(twd(t.currency)), dateObj: parseDate(t.date) });
                             }
                         });
 
-                        flows.push({ amount: grandTotalValue.value, dateObj: new Date() });
+                        // 終值：當前總資產（不扣貸款）
+                        flows.push({ amount: grandTotalAssets.value, dateObj: new Date() });
 
                         xirrFlowCount.value = flows.length;
 

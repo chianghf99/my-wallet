@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v3.8.0</title>
+    <title>我的投資組合 | Portfolio v3.9.0</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -17,6 +17,9 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <!-- v3.9.0: Google API for Drive Backup -->
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script src="https://accounts.google.com/gsi/client"></script>
 
     <style>
         body {
@@ -295,8 +298,8 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v3.8.0</h1>
-                    <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">v3.8.0 </p>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v3.9.0</h1>
+                    <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">v3.9.0 </p>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -316,7 +319,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v3.8.0</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v3.9.0</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -1439,6 +1442,18 @@
                                     class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-blue-500 dark:bg-blue-400 border-2 border-white dark:border-gray-800">
                                 </div>
                                 <div class="text-xs text-gray-400 mb-1">2026-04-10</div>
+                                <div class="font-bold text-gray-800 dark:text-white mb-2">v3.9.0</div>
+                                <ul class="text-sm text-gray-600 dark:text-gray-300 space-y-1 list-disc list-inside">
+                                    <li>新增「備份到 Google 雲端硬碟」功能，直接將 JSON 上傳至個人 Drive</li>
+                                    <li>新增「從 Google Drive 還原」功能，透過 Google Picker 選取備份檔案後自動還原</li>
+                                    <li>Drive 備份使用 drive.file scope，只能存取本 app 建立的檔案，安全無虞</li>
+                                </ul>
+                            </div>
+                            <div class="relative pl-6">
+                                <div
+                                    class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-800 dark:bg-gray-200 border-2 border-white dark:border-gray-800">
+                                </div>
+                                <div class="text-xs text-gray-400 mb-1">2026-04-10</div>
                                 <div class="font-bold text-gray-800 dark:text-white mb-2">v3.8.0</div>
                                 <ul class="text-sm text-gray-600 dark:text-gray-300 space-y-1 list-disc list-inside">
                                     <li>修正新增美股（如 AMD）後無法更新股價的 bug</li>
@@ -1643,13 +1658,32 @@
                                 <i
                                     class="fa-solid fa-download text-blue-500 w-6 group-hover:scale-110 transition-transform"></i>
                                 <span class="dark:text-gray-200 text-sm font-medium">備份 JSON <span
-                                        class="text-xs text-gray-400 ml-1">(完整資料庫)</span></span>
+                                        class="text-xs text-gray-400 ml-1">(本機下載)</span></span>
+                            </button>
+                            <!-- v3.9.0: Google Drive Backup -->
+                            <button @click="exportDataToDrive" :disabled="driveLoading"
+                                class="w-full text-left px-4 py-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition flex items-center group disabled:opacity-50">
+                                <i v-if="!driveLoading"
+                                    class="fa-brands fa-google-drive text-yellow-500 w-6 group-hover:scale-110 transition-transform"></i>
+                                <i v-else class="fa-solid fa-spinner fa-spin text-yellow-500 w-6"></i>
+                                <span class="dark:text-gray-200 text-sm font-medium">備份到 Google 雲端 <span
+                                        class="text-xs text-gray-400 ml-1">(Drive)</span></span>
                             </button>
                             <button @click="triggerImport"
                                 class="w-full text-left px-4 py-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition flex items-center group">
                                 <i
                                     class="fa-solid fa-upload text-purple-500 w-6 group-hover:scale-110 transition-transform"></i>
-                                <span class="dark:text-gray-200 text-sm font-medium">還原 JSON 資料</span>
+                                <span class="dark:text-gray-200 text-sm font-medium">還原 JSON <span
+                                        class="text-xs text-gray-400 ml-1">(本機檔案)</span></span>
+                            </button>
+                            <!-- v3.9.0: Google Drive Import -->
+                            <button @click="importFromDrive" :disabled="driveLoading"
+                                class="w-full text-left px-4 py-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition flex items-center group disabled:opacity-50">
+                                <i v-if="!driveLoading"
+                                    class="fa-brands fa-google-drive text-indigo-500 w-6 group-hover:scale-110 transition-transform"></i>
+                                <i v-else class="fa-solid fa-spinner fa-spin text-indigo-500 w-6"></i>
+                                <span class="dark:text-gray-200 text-sm font-medium">從 Google 雲端還原 <span
+                                        class="text-xs text-gray-400 ml-1">(Drive)</span></span>
                             </button>
                             <input type="file" ref="fileInput" @change="handleImport" class="hidden" accept=".json">
                         </div>
@@ -2537,6 +2571,161 @@
                 const logout = () => auth.signOut();
 
                 // --- 5. 匯出/匯入/清除 ---
+
+                // v3.9.0: Google Drive 相關
+                const driveLoading = ref(false);
+                const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+                const PICKER_API_KEY = 'AIzaSyAh94_Z-wA_riNIXmn_btCXbTtaZny1CQg'; // 同 Firebase API Key
+
+                // 取得含 Drive scope 的 Google access token
+                const getDriveAccessToken = async () => {
+                    const provider = new firebase.auth.GoogleAuthProvider();
+                    provider.addScope(DRIVE_SCOPE);
+                    const result = await auth.signInWithPopup(provider);
+                    return result.credential.accessToken;
+                };
+
+                // 載入 gapi (picker)
+                const loadGapi = () => new Promise((resolve, reject) => {
+                    if (typeof gapi === 'undefined') return reject(new Error('Google API 未載入'));
+                    gapi.load('picker', { callback: resolve, onerror: reject });
+                });
+
+                // v3.9.0: 備份到 Google Drive
+                const exportDataToDrive = async () => {
+                    if (!user.value || driveLoading.value) return;
+                    driveLoading.value = true;
+                    try {
+                        const accessToken = await getDriveAccessToken();
+                        const uid = user.value.uid;
+                        const allStocks = await db.collection('users').doc(uid).collection('stocks').get();
+                        const allTrans = await db.collection('users').doc(uid).collection('transactions').get();
+                        const allRealized = await db.collection('users').doc(uid).collection('realized_gains').get();
+                        const allDividends = await db.collection('users').doc(uid).collection('dividends').get();
+                        const allHistory = await db.collection('users').doc(uid).collection('history').orderBy('date').get();
+                        const allNotes = await db.collection('users').doc(uid).collection('notes').get();
+                        const allLoans = await db.collection('users').doc(uid).collection('loans').get();
+                        const cashDoc = await db.collection('users').doc(uid).collection('portfolio').doc('cash').get();
+                        const obj = {
+                            stocks: allStocks.docs.map(d => ({ id: d.id, ...d.data() })),
+                            transactions: allTrans.docs.map(d => ({ id: d.id, ...d.data() })),
+                            realized: allRealized.docs.map(d => ({ id: d.id, ...d.data() })),
+                            dividends: allDividends.docs.map(d => ({ id: d.id, ...d.data() })),
+                            history: allHistory.docs.map(d => d.data()),
+                            cash: cashDoc.exists ? cashDoc.data() : { twd: 0, usd: 0, loan: 0 },
+                            notes: allNotes.docs.map(d => ({ id: d.id, ...d.data() })),
+                            loans: allLoans.docs.map(d => ({ id: d.id, ...d.data() }))
+                        };
+                        const fileName = `portfolio_BACKUP_${getLocalDate()}.json`;
+                        const jsonStr = JSON.stringify(obj, null, 2);
+                        const metadata = { name: fileName, mimeType: 'application/json' };
+                        const form = new FormData();
+                        form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+                        form.append('file', new Blob([jsonStr], { type: 'application/json' }));
+                        const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+                            method: 'POST',
+                            headers: { Authorization: `Bearer ${accessToken}` },
+                            body: form
+                        });
+                        if (!res.ok) throw new Error(`Drive 上傳失敗：${res.status}`);
+                        alert(`✅ 備份成功！\n檔案「${fileName}」已儲存至您的 Google 雲端硬碟。`);
+                    } catch (err) {
+                        console.error('[Drive Backup]', err);
+                        alert('備份失敗：' + err.message);
+                    } finally {
+                        driveLoading.value = false;
+                    }
+                };
+
+                // v3.9.0: 從 Google Drive 匯入（用 Picker 選檔）
+                const importFromDrive = async () => {
+                    if (!user.value || driveLoading.value) return;
+                    driveLoading.value = true;
+                    try {
+                        const accessToken = await getDriveAccessToken();
+                        await loadGapi();
+                        await new Promise((resolve, reject) => {
+                            const picker = new google.picker.PickerBuilder()
+                                .setOAuthToken(accessToken)
+                                .setDeveloperKey(PICKER_API_KEY)
+                                .addView(
+                                    new google.picker.DocsView()
+                                        .setMimeTypes('application/json')
+                                        .setQuery('portfolio_BACKUP')
+                                )
+                                .setTitle('選取備份檔案')
+                                .setCallback(async (data) => {
+                                    if (data.action === google.picker.Action.CANCEL) {
+                                        driveLoading.value = false;
+                                        return resolve();
+                                    }
+                                    if (data.action !== google.picker.Action.PICKED) return;
+                                    try {
+                                        const fileId = data.docs[0].id;
+                                        const res = await fetch(
+                                            `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+                                            { headers: { Authorization: `Bearer ${accessToken}` } }
+                                        );
+                                        if (!res.ok) throw new Error(`下載失敗：${res.status}`);
+                                        const json = await res.json();
+                                        if (!confirm(`警告：這將使用備份檔案中的資料更新您的資產紀錄。\n\n若 ID 相同將覆蓋舊資料，ID 不同則新增。\n\n確定要執行還原嗎？`)) {
+                                            driveLoading.value = false;
+                                            return resolve();
+                                        }
+                                        loadingTarget.value = 'import';
+                                        const uid = user.value.uid;
+                                        const batchLimit = 400;
+                                        const restoreCol = async (colName, dataArr) => {
+                                            if (!dataArr || !Array.isArray(dataArr)) return;
+                                            const chunks = [];
+                                            for (let i = 0; i < dataArr.length; i += batchLimit) chunks.push(dataArr.slice(i, i + batchLimit));
+                                            for (const chunk of chunks) {
+                                                const batch = db.batch();
+                                                chunk.forEach(item => {
+                                                    if (item.id) {
+                                                        const { id, ...data } = item;
+                                                        batch.set(db.collection('users').doc(uid).collection(colName).doc(id), data, { merge: true });
+                                                    }
+                                                });
+                                                await batch.commit();
+                                            }
+                                        };
+                                        await restoreCol('stocks', json.stocks);
+                                        await restoreCol('transactions', json.transactions);
+                                        await restoreCol('realized_gains', json.realized);
+                                        await restoreCol('dividends', json.dividends);
+                                        await restoreCol('notes', json.notes);
+                                        await restoreCol('loans', json.loans);
+                                        if (json.history && Array.isArray(json.history)) {
+                                            const chunks = [];
+                                            for (let i = 0; i < json.history.length; i += batchLimit) chunks.push(json.history.slice(i, i + batchLimit));
+                                            for (const chunk of chunks) {
+                                                const batch = db.batch();
+                                                chunk.forEach(h => { if (h.date) batch.set(db.collection('users').doc(uid).collection('history').doc(h.date), h, { merge: true }); });
+                                                await batch.commit();
+                                            }
+                                        }
+                                        if (json.cash) await db.collection('users').doc(uid).collection('portfolio').doc('cash').set(json.cash, { merge: true });
+                                        alert('還原成功！頁面將重新整理。');
+                                        location.reload();
+                                    } catch (e) {
+                                        console.error('[Drive Import]', e);
+                                        alert('還原失敗：' + e.message);
+                                        loadingTarget.value = null;
+                                        driveLoading.value = false;
+                                    }
+                                    resolve();
+                                })
+                                .build();
+                            picker.setVisible(true);
+                        });
+                    } catch (err) {
+                        console.error('[Drive Import]', err);
+                        alert('Drive 匯入失敗：' + err.message);
+                        driveLoading.value = false;
+                    }
+                };
+
                 const exportData = async () => { if (!user.value) return; const uid = user.value.uid; const allStocks = await db.collection('users').doc(uid).collection('stocks').get(); const allTrans = await db.collection('users').doc(uid).collection('transactions').get(); const allRealized = await db.collection('users').doc(uid).collection('realized_gains').get(); const allDividends = await db.collection('users').doc(uid).collection('dividends').get(); const allHistory = await db.collection('users').doc(uid).collection('history').orderBy('date').get(); const allNotes = await db.collection('users').doc(uid).collection('notes').get(); const allLoans = await db.collection('users').doc(uid).collection('loans').get(); const cashDoc = await db.collection('users').doc(uid).collection('portfolio').doc('cash').get(); const obj = { stocks: allStocks.docs.map(d => ({ id: d.id, ...d.data() })), transactions: allTrans.docs.map(d => ({ id: d.id, ...d.data() })), realized: allRealized.docs.map(d => ({ id: d.id, ...d.data() })), dividends: allDividends.docs.map(d => ({ id: d.id, ...d.data() })), history: allHistory.docs.map(d => d.data()), cash: cashDoc.exists ? cashDoc.data() : { twd: 0, usd: 0, loan: 0 }, notes: allNotes.docs.map(d => ({ id: d.id, ...d.data() })), loans: allLoans.docs.map(d => ({ id: d.id, ...d.data() })) }; const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(obj, null, 2)); a.download = `portfolio_FULL_BACKUP_${getLocalDate()}.json`; document.body.appendChild(a); a.click(); a.remove(); };
 
                 const exportToExcel = async () => { if (!user.value) return; if (typeof XLSX === 'undefined') { alert('Excel 元件載入失敗，請檢查網路連線。'); return; } const uid = user.value.uid; const wb = XLSX.utils.book_new(); const summaryData = [['項目', '金額 (TWD)', '金額 (USD)'], ['總淨資產 (Net Worth)', grandTotalValue.value, grandTotalValue.value / exchangeRate.value], ['台股部位', twStats.value.value, twStats.value.value / exchangeRate.value], ['美股部位', usStats.value.value * exchangeRate.value, usStats.value.value], ['台幣現金', cashData.value.twd, cashData.value.twd / exchangeRate.value], ['美金現金', cashData.value.usd * exchangeRate.value, cashData.value.usd], ['總負債 (Loans)', totalLoanBalance.value, totalLoanBalance.value / exchangeRate.value], ['未實現損益', grandTotalPnL.value, grandTotalPnL.value / exchangeRate.value], ['匯率 (USD/TWD)', exchangeRate.value, '']]; XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryData), "總覽 Summary"); const sSnap = await db.collection('users').doc(uid).collection('stocks').get(); const stockData = sSnap.docs.map(d => d.data()).map(s => ({ 代號: s.symbol, 名稱: s.name, 幣別: s.currency, 股數: s.shares, 平均成本: s.avgCost, 現價: s.currentPrice, 市值: s.shares * s.currentPrice, 損益: (s.currentPrice - s.avgCost) * s.shares })); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(stockData), "庫存 Stocks"); const tSnap = await db.collection('users').doc(uid).collection('transactions').orderBy('date', 'desc').get(); const txData = tSnap.docs.map(d => d.data()); const wsTrans = XLSX.utils.json_to_sheet(txData.map(t => ({ 日期: t.date, 類別: getTypeName(t.type), 代號: t.symbol, 名稱: t.name, 股數: t.shares, 總金額: t.totalAmount, 幣別: t.currency, 備註: t.memo || '' }))); XLSX.utils.book_append_sheet(wb, wsTrans, "交易紀錄 Transactions"); const hSnap = await db.collection('users').doc(uid).collection('history').orderBy('date', 'desc').get(); const histData = hSnap.docs.map(d => d.data()); const wsHist = XLSX.utils.json_to_sheet(histData.map(h => ({ 日期: h.date, 淨資產: h.totalVal, 總資產: (h.totalVal || 0) + (h.loan || 0), 負債: h.loan, 台股: h.twVal, 美股USD: h.usVal, 台幣現金: h.twCash || 0, 美金現金: h.usCash || 0 }))); XLSX.utils.book_append_sheet(wb, wsHist, "歷史淨值 History"); const rSnap = await db.collection('users').doc(uid).collection('realized_gains').orderBy('date', 'desc').get(); const realData = rSnap.docs.map(d => d.data()); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(realData), "已實現損益 Realized"); const dSnap = await db.collection('users').doc(uid).collection('dividends').orderBy('date', 'desc').get(); const divData = dSnap.docs.map(d => d.data()); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(divData), "股息 Dividends"); const lSnap = await db.collection('users').doc(uid).collection('loans').get(); const loanData = lSnap.docs.map(d => d.data()); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(loanData), "借款 Loans"); const nSnap = await db.collection('users').doc(uid).collection('notes').get(); const noteData = nSnap.docs.map(d => d.data()); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(noteData), "筆記 Notes"); XLSX.writeFile(wb, `Portfolio_FULL_Export_${getLocalDate()}.xlsx`); };
@@ -3386,6 +3575,8 @@
                     showSettingsModal, defaultPrivacyHidden, saveSettings,
                     // v2.9.17: Restore
                     triggerImport, fileInput, handleImport,
+                    // v3.9.0: Google Drive
+                    driveLoading, exportDataToDrive, importFromDrive,
                     // v2.9.18: Chart & History
                     setChartRange, currentRange, historyFilterYear, availableYears,
                     // v2.9.20: Stock Notes

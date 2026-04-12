@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v3.9.0</title>
+    <title>我的投資組合 | Portfolio v4.0.2</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -298,8 +298,8 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v3.9.0</h1>
-                    <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">v3.9.0 </p>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v4.0.2</h1>
+                    <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">v4.0.2 </p>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -319,7 +319,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v3.9.0</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v4.0.2</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -539,13 +539,18 @@
                         :class="activeSection==='realized' ? 'btn-active' : 'btn-inactive'"
                         class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i
                             class="fa-solid fa-file-invoice-dollar mr-2"></i>已實現損益</button>
+                    <!-- v4.0.0: 房地產 -->
+                    <button @click="toggleSection('realestate')"
+                        :class="activeSection==='realestate' ? 'btn-active' : 'btn-inactive'"
+                        class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i
+                            class="fa-solid fa-house mr-2"></i>房地產</button>
 
                 </div>
 
                 <transition name="collapse">
                     <div v-if="activeSection === 'chart'" class="zen-card p-4 md:p-6 mb-8 relative">
                         <button @click="openHistoryModal"
-                            class="absolute top-4 right-4 text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-gray-800 dark:hover:text-white px-2 py-1 rounded transition"><i
+                            class="absolute top-4 right-4 z-10 cursor-pointer text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-gray-800 dark:hover:text-white px-2 py-1 rounded transition"><i
                                 class="fa-solid fa-clock-rotate-left mr-1"></i>維護歷史資料</button>
 
                         <div class="pt-2">
@@ -1046,6 +1051,86 @@
                     </div>
                 </transition>
 
+                <!-- v4.0.0: 房地產管理 Section -->
+                <transition name="collapse">
+                    <div v-if="activeSection === 'realestate'" class="zen-card p-4 md:p-6 mb-8">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold dark:text-white flex items-center gap-2"><i class="fa-solid fa-house text-emerald-600"></i> 不動產管理</h3>
+                            <button @click="openRealEstateModal(null)"
+                                class="bg-emerald-700 text-white px-3 py-1 text-sm rounded hover:bg-emerald-600 transition"><i
+                                    class="fa-solid fa-plus mr-1"></i>新增房產</button>
+                        </div>
+
+                        <!-- 統計列 -->
+                        <div class="grid grid-cols-3 gap-3 mb-5">
+                            <div class="bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded-xl border border-emerald-100 dark:border-emerald-900/30 text-center">
+                                <div class="text-xs text-emerald-600 dark:text-emerald-400 mb-1">估計總市值</div>
+                                <div class="text-lg font-bold text-emerald-700 dark:text-emerald-300"><span v-if="showPrivacy">{{ formatCurrency(realEstateTotalMarket, 'TWD') }}</span><span v-else>****</span></div>
+                            </div>
+                            <div class="bg-red-50 dark:bg-red-900/20 p-3 rounded-xl border border-red-100 dark:border-red-900/30 text-center">
+                                <div class="text-xs text-red-600 dark:text-red-400 mb-1">對應房貸</div>
+                                <div class="text-lg font-bold text-red-700 dark:text-red-300"><span v-if="showPrivacy">{{ formatCurrency(realEstateTotalMortgage, 'TWD') }}</span><span v-else>****</span></div>
+                            </div>
+                            <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-700 text-center">
+                                <div class="text-xs text-gray-500 mb-1">不動產淨值</div>
+                                <div class="text-lg font-bold" :class="getPnlClass(realEstateNetValue)"><span v-if="showPrivacy">{{ formatCurrency(realEstateNetValue, 'TWD') }}</span><span v-else>****</span></div>
+                            </div>
+                        </div>
+
+                        <!-- 房產列表 -->
+                        <div class="space-y-3">
+                            <div v-for="re in realEstateList" :key="re.id"
+                                class="zen-card p-4 border border-gray-100 dark:border-gray-700">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <div class="font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                            <i class="fa-solid fa-house-chimney text-emerald-500 text-sm"></i>
+                                            {{ re.name }}
+                                        </div>
+                                        <div class="text-xs text-gray-400 mt-0.5">{{ re.address || '（無地址）' }}</div>
+                                        <div class="text-xs text-gray-400 mt-0.5">購入日期：{{ re.purchaseDate || '-' }}</div>
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <button @click="openRealEstateModal(re)" class="text-gray-400 hover:text-blue-500"><i class="fa-solid fa-pen text-xs"></i></button>
+                                        <button @click="deleteRealEstate(re)" class="text-gray-400 hover:text-red-500"><i class="fa-solid fa-trash text-xs"></i></button>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                                    <div>
+                                        <div class="text-xs text-gray-400 mb-0.5">購入成本</div>
+                                        <div class="font-medium text-sm dark:text-gray-200"><span v-if="showPrivacy">{{ formatCurrency(re.purchaseCost, 'TWD') }}</span><span v-else>****</span></div>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs text-gray-400 mb-0.5">估計市值</div>
+                                        <div class="font-bold text-sm dark:text-gray-100"><span v-if="showPrivacy">{{ formatCurrency(re.marketValue, 'TWD') }}</span><span v-else>****</span></div>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs text-gray-400 mb-0.5">帳面損益</div>
+                                        <div class="font-bold text-sm" :class="getPnlClass(re.marketValue - re.purchaseCost)"><span v-if="showPrivacy">{{ formatCurrency(re.marketValue - re.purchaseCost, 'TWD') }}</span><span v-else>****</span></div>
+                                    </div>
+                                </div>
+                                <div class="space-y-1 mt-2" v-if="getReMortgageLoans(re).length > 0">
+                                    <div class="flex items-center gap-1 text-xs text-gray-400">
+                                        <i class="fa-solid fa-link text-purple-400"></i>
+                                        <span>連結房貸：</span>
+                                    </div>
+                                    <div v-for="loan in getReMortgageLoans(re)" :key="loan.id"
+                                        class="flex justify-between items-center text-xs pl-4">
+                                        <span class="text-purple-600 dark:text-purple-300">{{ loan.name }}</span>
+                                        <span class="text-red-500 dark:text-red-400 font-medium">{{ formatCurrency(loan.balance, 'TWD') }}</span>
+                                    </div>
+                                    <div class="flex justify-between items-center text-xs pl-4 pt-1 border-t border-gray-100 dark:border-gray-700 font-bold">
+                                        <span class="text-gray-500">房貸小計</span>
+                                        <span class="text-red-600 dark:text-red-400">{{ formatCurrency(getReMortgageTotal(re), 'TWD') }}</span>
+                                    </div>
+                                </div>
+                                <div v-if="re.note" class="mt-2 text-xs text-gray-400 italic">{{ re.note }}</div>
+                            </div>
+                            <div v-if="realEstateList.length === 0" class="text-center py-10 text-gray-400">尚未新增任何房產，點擊右上角「新增房產」開始記錄。</div>
+                        </div>
+                    </div>
+                </transition>
+
 
                 <div class="flex justify-end mb-4">
                     <div class="flex bg-gray-200 dark:bg-gray-700 rounded p-0.5">
@@ -1439,6 +1524,37 @@
                         <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
                             <div class="relative pl-6">
                                 <div
+                                    class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800">
+                                </div>
+                                <div class="text-xs text-gray-400 mb-1">2026-04-12</div>
+                            <div class="border-b border-gray-100 dark:border-gray-700 pb-2">
+                                <div class="font-bold text-gray-800 dark:text-white mb-2">v4.0.2</div>
+                                <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                    <li>修正：修復因底層 HTML 標籤未正確閉合，導致設定按鈕與歷史紀錄彈窗無法顯示的 Bug</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mt-4">
+                                <div class="font-bold text-gray-800 dark:text-white mb-2">v4.0.1</div>
+                                <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                    <li>更新版面：還原首頁頂部卡片為三大分類，優化視覺動線以避免排版擠壓</li>
+                                    <li>功能優化：房地產設定更新為支援涵蓋多筆借款帳戶</li>
+                                    <li>修正：修復資產走勢圖未能包含不動產淨值的問題</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mt-4">
+                                <div class="font-bold text-gray-800 dark:text-white mb-2">v4.0.0</div>
+                                <ul class="text-sm text-gray-600 dark:text-gray-300 space-y-1 list-disc list-inside">
+                                    <li>新增「不動產管理」模組，支援多筆房產記錄</li>
+                                    <li>房產（估計市值 - 對應房貸）納入淨資產計算</li>
+                                    <li>儀表板新增不動產卡片，顯示市值、房貸、帳面損益</li>
+                                    <li>可連結現有借款帳戶作為房貸追蹤</li>
+                                </ul>
+                            </div>
+                        </div>
+                            <div class="relative pl-6">
+                                <div
                                     class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-blue-500 dark:bg-blue-400 border-2 border-white dark:border-gray-800">
                                 </div>
                                 <div class="text-xs text-gray-400 mb-1">2026-04-10</div>
@@ -1604,6 +1720,7 @@
                     </div>
                 </div>
             </div>
+            </div>
 
             <div v-if="showSettingsModal"
                 class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -1705,6 +1822,50 @@
                         <button @click="logout"
                             class="w-full py-2.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition font-medium flex items-center justify-center"><i
                                 class="fa-solid fa-sign-out-alt mr-2"></i>登出帳號</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- v4.0.0: 房地產新增/編輯 Modal -->
+            <div v-if="showRealEstateModal"
+                class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
+                    <div class="bg-emerald-700 text-white px-6 py-4 flex justify-between items-center">
+                        <h3 class="font-bold">{{ realEstateForm.id ? '編輯房產' : '新增房產' }}</h3>
+                        <button @click="showRealEstateModal=false" class="text-white hover:text-gray-200"><i class="fa-solid fa-times"></i></button>
+                    </div>
+                    <div class="p-6 space-y-3">
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">房產名稱 *</label><input type="text" v-model="realEstateForm.name" class="zen-input" placeholder="如：台北信義區自住"></div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">地址（選填）</label><input type="text" v-model="realEstateForm.address" class="zen-input" placeholder="如：台北市信義區...."></div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div><label class="block text-xs font-bold text-gray-500 mb-1">購入日期</label><input type="date" v-model="realEstateForm.purchaseDate" class="zen-input"></div>
+                            <div><label class="block text-xs font-bold text-gray-500 mb-1">購入總成本 (TWD)</label><input type="number" step="any" v-model.number="realEstateForm.purchaseCost" class="zen-input"></div>
+                        </div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">估計市值 (TWD) *</label><input type="number" step="any" v-model.number="realEstateForm.marketValue" class="zen-input" placeholder="手動輸入估計市值"></div>
+                        <div v-if="realEstateForm.purchaseCost > 0 && realEstateForm.marketValue > 0" class="text-xs text-right" :class="getPnlClass(realEstateForm.marketValue - realEstateForm.purchaseCost)">帳面損益：{{ formatCurrency(realEstateForm.marketValue - realEstateForm.purchaseCost, 'TWD') }}</div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-1">連結房貸帳戶（可多選）</label>
+                            <div v-if="loanList.length === 0" class="text-xs text-gray-400 py-2">尚未建立任何借款帳戶</div>
+                            <div v-else class="space-y-1 max-h-28 overflow-y-auto border border-gray-200 dark:border-gray-600 rounded p-2">
+                                <label v-for="l in loanList" :key="l.id"
+                                    class="flex items-center justify-between gap-2 py-1 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 px-1 rounded">
+                                    <div class="flex items-center gap-2">
+                                        <input type="checkbox"
+                                            :checked="realEstateForm.mortgageLoanIds.includes(l.id)"
+                                            @change="toggleReMortgageLoan(l.id)"
+                                            class="text-emerald-600 rounded">
+                                        <span class="text-sm dark:text-gray-200">{{ l.name }}</span>
+                                    </div>
+                                    <span class="text-xs text-red-500 dark:text-red-400 font-medium">{{ formatCurrency(l.balance, 'TWD') }}</span>
+                                </label>
+                            </div>
+                            <p class="text-[11px] text-gray-400 mt-1">完全選取後，對應房貸餘額將納入不動產淨值計算。</p>
+                        </div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">備註（選填）</label><input type="text" v-model="realEstateForm.note" class="zen-input" placeholder="如：待出售、出租中..."></div>
+                    </div>
+                    <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex justify-end gap-3">
+                        <button @click="showRealEstateModal=false" class="px-4 py-2 rounded text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button>
+                        <button @click="saveRealEstate" class="px-6 py-2 rounded bg-emerald-700 text-white font-medium hover:bg-emerald-600 transition">儲存</button>
                     </div>
                 </div>
             </div>
@@ -2341,6 +2502,12 @@
                 const cashData = ref({ twd: 0, usd: 0, loan: 0 });
                 const prevDayData = ref(null);
 
+                // v4.0.0: 房地產
+                const realEstateList = ref([]);
+                const showRealEstateModal = ref(false);
+                const realEstateForm = ref({ id: null, name: '', address: '', purchaseDate: '', purchaseCost: 0, marketValue: 0, mortgageLoanIds: [], note: '' });
+                let unsubscribeRealEstate = null;
+
                 const getLocalDate = () => { const d = new Date(); const offset = d.getTimezoneOffset() * 60000; return new Date(d.getTime() - offset).toISOString().split('T')[0]; };
 
                 const fileInput = ref(null);
@@ -2408,8 +2575,8 @@
 
                     auth.onAuthStateChanged((u) => {
                         user.value = u;
-                        if (u) { loadUserData(u.uid); fetchPreviousDayData(u.uid); fetchCash(u.uid); fetchNotes(u.uid); fetchLoans(u.uid); }
-                        else { stocks.value = []; realizedGains.value = []; dividendRecords.value = []; transactionHistory.value = []; cashData.value = { twd: 0, usd: 0, loan: 0 }; notes.value = []; loanList.value = []; }
+                        if (u) { loadUserData(u.uid); fetchPreviousDayData(u.uid); fetchCash(u.uid); fetchNotes(u.uid); fetchLoans(u.uid); fetchRealEstate(u.uid); }
+                        else { stocks.value = []; realizedGains.value = []; dividendRecords.value = []; transactionHistory.value = []; cashData.value = { twd: 0, usd: 0, loan: 0 }; notes.value = []; loanList.value = []; realEstateList.value = []; }
                     });
                     fetchExchangeRate();
                 });
@@ -2444,7 +2611,26 @@
                 const twStats = computed(() => calculateStats(twStockList.value));
                 const usStats = computed(() => calculateStats(usStockList.value));
                 const totalLoanBalance = computed(() => loanList.value.reduce((acc, cur) => acc + (cur.balance || 0), 0));
-                const grandTotalAssets = computed(() => { const stockVal = twStats.value.value + (usStats.value.value * exchangeRate.value); const cashVal = (cashData.value.twd || 0) + ((cashData.value.usd || 0) * exchangeRate.value); return stockVal + cashVal; });
+                // v4.0.0: 房地產 computed
+                const realEstateTotalMarket = computed(() => realEstateList.value.reduce((acc, re) => acc + (re.marketValue || 0), 0));
+                const realEstateTotalMortgage = computed(() => {
+                    return realEstateList.value.reduce((acc, re) => {
+                        const ids = re.mortgageLoanIds || (re.mortgageLoanId ? [re.mortgageLoanId] : []);
+                        const sum = ids.reduce((s, id) => {
+                            const loan = loanList.value.find(l => l.id === id);
+                            return s + (loan ? (loan.balance || 0) : 0);
+                        }, 0);
+                        return acc + sum;
+                    }, 0);
+                });
+                const realEstateNetValue = computed(() => realEstateTotalMarket.value - realEstateTotalMortgage.value);
+                const realEstateBookPnL = computed(() => realEstateList.value.reduce((acc, re) => acc + ((re.marketValue || 0) - (re.purchaseCost || 0)), 0));
+                const grandTotalAssets = computed(() => {
+                    const stockVal = twStats.value.value + (usStats.value.value * exchangeRate.value);
+                    const cashVal = (cashData.value.twd || 0) + ((cashData.value.usd || 0) * exchangeRate.value);
+                    return stockVal + cashVal + realEstateTotalMarket.value; // v4.0.0: 含房產市值
+                });
+                // v4.0.0: 淨資產 = 總資產 - 所有負債(貸款)；房貸已含在 totalLoanBalance 內（若連結對應帳戶）
                 const grandTotalValue = computed(() => grandTotalAssets.value - totalLoanBalance.value);
                 const grandTotalPnL = computed(() => twStats.value.pnl + (usStats.value.pnl * exchangeRate.value));
                 const realizedTotalTw = computed(() => sortedRealizedGains.value.filter(r => r.currency === 'TWD').reduce((acc, cur) => acc + cur.pnl, 0));
@@ -2567,6 +2753,60 @@
                 const fetchLoans = (uid) => { if (unsubscribeLoans) unsubscribeLoans(); unsubscribeLoans = db.collection('users').doc(uid).collection('loans').onSnapshot(snap => { loanList.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); }); };
                 const migrateLegacyLoan = async (uid, amount) => { if (loanList.value.length > 0) return; await db.collection('users').doc(uid).collection('loans').add({ name: '原有借款', balance: amount, currency: 'TWD' }); await db.collection('users').doc(uid).collection('portfolio').doc('cash').update({ loan: 0 }); };
                 const fetchNotes = (uid) => { if (unsubscribeNotes) unsubscribeNotes(); unsubscribeNotes = db.collection('users').doc(uid).collection('notes').orderBy('date', 'desc').onSnapshot(snap => { notes.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); }); };
+                // v4.0.0: 房地產 CRUD
+                const fetchRealEstate = (uid) => { if (unsubscribeRealEstate) unsubscribeRealEstate(); unsubscribeRealEstate = db.collection('users').doc(uid).collection('real_estate').onSnapshot(snap => { realEstateList.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); }); };
+                const openRealEstateModal = (re) => {
+                    if (re) {
+                        // 相容舊資料（mortgageLoanId 單一 string）
+                        const ids = re.mortgageLoanIds || (re.mortgageLoanId ? [re.mortgageLoanId] : []);
+                        realEstateForm.value = { ...re, mortgageLoanIds: ids };
+                    } else {
+                        realEstateForm.value = { id: null, name: '', address: '', purchaseDate: getLocalDate(), purchaseCost: 0, marketValue: 0, mortgageLoanIds: [], note: '' };
+                    }
+                    showRealEstateModal.value = true;
+                };
+                const saveRealEstate = async () => {
+                    if (!user.value || !realEstateForm.value.name) return alert('請輸入房產名稱');
+                    if (!realEstateForm.value.marketValue) return alert('請輸入估計市值');
+                    const data = {
+                        name: realEstateForm.value.name,
+                        address: realEstateForm.value.address || '',
+                        purchaseDate: realEstateForm.value.purchaseDate || '',
+                        purchaseCost: realEstateForm.value.purchaseCost || 0,
+                        marketValue: realEstateForm.value.marketValue || 0,
+                        mortgageLoanIds: realEstateForm.value.mortgageLoanIds || [],
+                        note: realEstateForm.value.note || '',
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    };
+                    const col = db.collection('users').doc(user.value.uid).collection('real_estate');
+                    if (realEstateForm.value.id) await col.doc(realEstateForm.value.id).update(data);
+                    else await col.add(data);
+                    showRealEstateModal.value = false;
+                    setTimeout(saveDailySnapshot, 500);
+                };
+                const deleteRealEstate = async (re) => {
+                    if (!confirm(`確定刪除「${re.name}」？`)) return;
+                    await db.collection('users').doc(user.value.uid).collection('real_estate').doc(re.id).delete();
+                    setTimeout(saveDailySnapshot, 500);
+                };
+                const getLoanName = (loanId) => { const l = loanList.value.find(x => x.id === loanId); return l ? l.name : '未知帳戶'; };
+                const getReMortgageTotal = (re) => {
+                    const ids = re.mortgageLoanIds || (re.mortgageLoanId ? [re.mortgageLoanId] : []);
+                    return ids.reduce((s, id) => {
+                        const l = loanList.value.find(x => x.id === id);
+                        return s + (l ? (l.balance || 0) : 0);
+                    }, 0);
+                };
+                const getReMortgageLoans = (re) => {
+                    const ids = re.mortgageLoanIds || (re.mortgageLoanId ? [re.mortgageLoanId] : []);
+                    return ids.map(id => loanList.value.find(x => x.id === id)).filter(Boolean);
+                };
+                const toggleReMortgageLoan = (loanId) => {
+                    const ids = realEstateForm.value.mortgageLoanIds || [];
+                    const idx = ids.indexOf(loanId);
+                    if (idx === -1) realEstateForm.value.mortgageLoanIds = [...ids, loanId];
+                    else realEstateForm.value.mortgageLoanIds = ids.filter(id => id !== loanId);
+                };
                 const login = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(alert);
                 const logout = () => auth.signOut();
 
@@ -2772,7 +3012,19 @@
                     debouncedXirr();
                 };
 
-                const openHistoryModal = async () => { if (!user.value) return; showHistoryModal.value = true; const start = `${historyFilterYear.value}-01-01`; const end = `${historyFilterYear.value}-12-31`; const snap = await db.collection('users').doc(user.value.uid).collection('history').where('date', '>=', start).where('date', '<=', end).orderBy('date', 'desc').get(); historyRecords.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); };
+                const openHistoryModal = async () => { 
+                    if (!user.value) return; 
+                    showHistoryModal.value = true;
+                    try {
+                        const start = `${historyFilterYear.value}-01-01`; 
+                        const end = `${historyFilterYear.value}-12-31`; 
+                        const snap = await db.collection('users').doc(user.value.uid).collection('history').where('date', '>=', start).where('date', '<=', end).orderBy('date', 'desc').get(); 
+                        historyRecords.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); 
+                    } catch(err) {
+                        console.error('History fetch error:', err);
+                        alert('載入歷史資料失敗：' + err.message);
+                    }
+                };
                 const deleteHistoryRecord = async (date) => { if (!confirm(`確定要刪除 ${date} 的歷史紀錄嗎？`)) return; await db.collection('users').doc(user.value.uid).collection('history').doc(date).delete(); await openHistoryModal(); drawChart(); debouncedXirr(); };
                 const openHistoryEditModal = (rec) => { historyEditForm.value = { date: rec.date, twVal: rec.twVal || 0, usVal: rec.usVal || 0, twCash: rec.twCash || 0, usCash: rec.usCash || 0, loan: rec.loan || 0 }; showHistoryEditModalVisible.value = true; };
                 const calculateHistoryNetWorth = () => { const asset = (historyEditForm.value.twVal || 0) + (historyEditForm.value.twCash || 0) + ((historyEditForm.value.usVal || 0) + (historyEditForm.value.usCash || 0)) * exchangeRate.value; const loan = historyEditForm.value.loan || 0; return asset - loan; };
@@ -2815,7 +3067,7 @@
                 const executeDelete = async (revertCash) => { showDeleteModal.value = false; const tx = pendingDeleteTx.value; if (!tx) return; if (revertCash) { if (tx.type === 'deposit') await updateCash(tx.currency, -Math.abs(tx.totalAmount), 0); else if (tx.type === 'withdraw') await updateCash(tx.currency, Math.abs(tx.totalAmount), 0); else if (tx.type === 'borrow') { if (tx.loanId) await updateLoanBalance(tx.loanId, -Math.abs(tx.totalAmount)); else alert('此為舊版借款紀錄，請手動調整對應帳戶餘額。'); if (tx.cashSynced === true) await updateCash(tx.currency || 'TWD', -Math.abs(tx.totalAmount), 0); } else if (tx.type === 'repay') { if (tx.loanId) await updateLoanBalance(tx.loanId, Math.abs(tx.totalAmount)); if (tx.cashSynced === true) await updateCash(tx.currency || 'TWD', Math.abs(tx.totalAmount), 0); } else if (tx.type === 'dividend') { await updateCash(tx.currency, -Math.abs(tx.totalAmount), 0); const stock = stocks.value.find(s => s.symbol === tx.symbol); if (stock) { await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ dividends: Math.max(0, (stock.dividends || 0) - tx.totalAmount) }); } } } await db.collection('users').doc(user.value.uid).collection('transactions').doc(tx.id).delete(); fetchTransactions(); setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'transactions') fetchTransactions(); if (activeSection.value === 'realized') fetchRealizedGains(); if (activeSection.value === 'chart') drawChart(); }, 500); pendingDeleteTx.value = null; };
                 const deleteDividend = async (rec) => { if (!confirm('刪除股息？(現金將自動扣回)')) return; const stock = stocks.value.find(s => s.symbol === rec.symbol); if (stock) { await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ dividends: Math.max(0, (stock.dividends || 0) - rec.amount) }); } await updateCash(rec.currency, -rec.amount, 0); await db.collection('users').doc(user.value.uid).collection('dividends').doc(rec.id).delete(); fetchDividends(); setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'chart') drawChart(); }, 500); };
                 const deleteRealized = async (id) => { if (!confirm('刪除？')) return; await db.collection('users').doc(user.value.uid).collection('realized_gains').doc(id).delete(); fetchRealizedGains(); };
-                const saveDailySnapshot = async () => { if (!user.value) return; const todayStr = getLocalDate(); const historyRef = db.collection('users').doc(user.value.uid).collection('history').doc(todayStr); const currentHour = new Date().getHours(); const snapshot = { date: todayStr, timestamp: firebase.firestore.FieldValue.serverTimestamp(), savedHour: currentHour, totalVal: grandTotalValue.value, twVal: twStats.value.value, usVal: usStats.value.value, twCash: cashData.value.twd || 0, usCash: cashData.value.usd || 0, loan: totalLoanBalance.value, totalPnL: grandTotalPnL.value, twPnL: twStats.value.pnl, usPnL: usStats.value.pnl }; if (currentHour >= 21) { const doc = await historyRef.get(); if (doc.exists) { const existingSavedHour = doc.data().savedHour; if (existingSavedHour !== undefined && existingSavedHour < 21 && doc.data().totalVal > 0) { return; } } } await historyRef.set(snapshot, { merge: true }); debouncedXirr(); };
+                const saveDailySnapshot = async () => { if (!user.value) return; const todayStr = getLocalDate(); const historyRef = db.collection('users').doc(user.value.uid).collection('history').doc(todayStr); const currentHour = new Date().getHours(); const snapshot = { date: todayStr, timestamp: firebase.firestore.FieldValue.serverTimestamp(), savedHour: currentHour, totalVal: grandTotalValue.value, twVal: twStats.value.value, usVal: usStats.value.value, twCash: cashData.value.twd || 0, usCash: cashData.value.usd || 0, loan: totalLoanBalance.value, totalPnL: grandTotalPnL.value, twPnL: twStats.value.pnl, usPnL: usStats.value.pnl, realestate: realEstateTotalMarket.value }; if (currentHour >= 21) { const doc = await historyRef.get(); if (doc.exists) { const existingSavedHour = doc.data().savedHour; if (existingSavedHour !== undefined && existingSavedHour < 21 && doc.data().totalVal > 0) { return; } } } await historyRef.set(snapshot, { merge: true }); debouncedXirr(); };
 
                 const updateCash = async (currency, amount, loanAmount = 0) => {
                     if (!user.value) return;
@@ -2847,7 +3099,7 @@
 
                     // 計算期間損益
                     const calcNetWorth = x => {
-                        const asset = (x.twVal || 0) + (x.twCash || 0) + ((x.usVal || 0) + (x.usCash || 0)) * exchangeRate.value;
+                        const asset = (x.twVal || 0) + (x.twCash || 0) + ((x.usVal || 0) + (x.usCash || 0)) * exchangeRate.value + (x.realestate || 0);
                         return asset - (x.loan || 0);
                     };
                     if (d.length >= 2) {
@@ -3593,6 +3845,10 @@
                     sectionLoading,
                     showEditTxModal, editTxForm, openEditTxModal, saveEditTx,
 
+                    // v4.0.0: 房地產
+                    realEstateList, realEstateTotalMarket, realEstateTotalMortgage, realEstateNetValue, realEstateBookPnL,
+                    showRealEstateModal, realEstateForm, openRealEstateModal, saveRealEstate, deleteRealEstate,
+                    getLoanName, getReMortgageTotal, getReMortgageLoans, toggleReMortgageLoan,
 
                 };
             }

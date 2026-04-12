@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v4.0.2</title>
+    <title>我的投資組合 | Portfolio v4.0.4</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -298,8 +298,8 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v4.0.2</h1>
-                    <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">v4.0.2 </p>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v4.0.4</h1>
+                    <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">v4.0.4 </p>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -319,7 +319,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v4.0.2</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v4.0.4</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -1528,6 +1528,18 @@
                                 </div>
                                 <div class="text-xs text-gray-400 mb-1">2026-04-12</div>
                             <div class="border-b border-gray-100 dark:border-gray-700 pb-2">
+                                <div class="font-bold text-gray-800 dark:text-white mb-2">v4.0.4</div>
+                                <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                    <li>修正：修復因資料庫欄位名稱不符，導致手動補登的不動產市值無法套用在資產走勢圖上的問題</li>
+                                </ul>
+                            </div>
+                            <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mt-4">
+                                <div class="font-bold text-gray-800 dark:text-white mb-2">v4.0.3</div>
+                                <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                    <li>新增：歷史資料維護彈窗現在支援手動補登「不動產市值」，解決過去紀錄凹陷的問題</li>
+                                </ul>
+                            </div>
+                            <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mt-4">
                                 <div class="font-bold text-gray-800 dark:text-white mb-2">v4.0.2</div>
                                 <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
                                     <li>修正：修復因底層 HTML 標籤未正確閉合，導致設定按鈕與歷史紀錄彈窗無法顯示的 Bug</li>
@@ -2082,9 +2094,15 @@
                                     type="number" v-model.number="historyEditForm.usCash" class="zen-input text-right">
                             </div>
                         </div>
-                        <div><label class="block text-xs font-bold text-gray-500 mb-1">貸款總額 (台幣)</label><input
-                                type="number" v-model.number="historyEditForm.loan"
-                                class="zen-input text-right text-red-500"></div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div><label class="block text-xs font-bold text-gray-500 mb-1">不動產市值 (台幣)</label><input
+                                    type="number" v-model.number="historyEditForm.realestate" class="zen-input text-right text-emerald-600 dark:text-emerald-400">
+                            </div>
+                            <div><label class="block text-xs font-bold text-gray-500 mb-1">貸款總額 (台幣)</label><input
+                                    type="number" v-model.number="historyEditForm.loan"
+                                    class="zen-input text-right text-red-500">
+                            </div>
+                        </div>
                         <div class="text-center mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
                             <div class="text-xs text-gray-400">預覽淨資產 (Net Worth)</div>
                             <div class="text-xl font-bold text-gray-800 dark:text-white">{{
@@ -2490,7 +2508,7 @@
                 const showEditTxModal = ref(false);
                 const editTxForm = ref({ id: null, date: '', name: '', memo: '' });
                 const showHistoryEditModalVisible = ref(false);
-                const historyEditForm = ref({ date: '', twVal: 0, usVal: 0, twCash: 0, usCash: 0, loan: 0 });
+                const historyEditForm = ref({ date: '', twVal: 0, usVal: 0, twCash: 0, usCash: 0, loan: 0, realestate: 0 });
                 const notes = ref([]);
                 const showNoteModalVisible = ref(false);
                 const noteForm = ref({ id: null, title: '', date: '', content: '' });
@@ -3026,9 +3044,9 @@
                     }
                 };
                 const deleteHistoryRecord = async (date) => { if (!confirm(`確定要刪除 ${date} 的歷史紀錄嗎？`)) return; await db.collection('users').doc(user.value.uid).collection('history').doc(date).delete(); await openHistoryModal(); drawChart(); debouncedXirr(); };
-                const openHistoryEditModal = (rec) => { historyEditForm.value = { date: rec.date, twVal: rec.twVal || 0, usVal: rec.usVal || 0, twCash: rec.twCash || 0, usCash: rec.usCash || 0, loan: rec.loan || 0 }; showHistoryEditModalVisible.value = true; };
-                const calculateHistoryNetWorth = () => { const asset = (historyEditForm.value.twVal || 0) + (historyEditForm.value.twCash || 0) + ((historyEditForm.value.usVal || 0) + (historyEditForm.value.usCash || 0)) * exchangeRate.value; const loan = historyEditForm.value.loan || 0; return asset - loan; };
-                const saveHistoryRecord = async () => { if (!user.value) return; const newNetWorth = calculateHistoryNetWorth(); await db.collection('users').doc(user.value.uid).collection('history').doc(historyEditForm.value.date).update({ twVal: historyEditForm.value.twVal, usVal: historyEditForm.value.usVal, twCash: historyEditForm.value.twCash, usCash: historyEditForm.value.usCash, loan: historyEditForm.value.loan, totalVal: newNetWorth }); showHistoryEditModalVisible.value = false; await openHistoryModal(); drawChart(); debouncedXirr(); };
+                const openHistoryEditModal = (rec) => { historyEditForm.value = { date: rec.date, twVal: rec.twVal || 0, usVal: rec.usVal || 0, twCash: rec.twCash || 0, usCash: rec.usCash || 0, loan: rec.loan || 0, realestate: rec.realestate || rec.realEstateVal || 0 }; showHistoryEditModalVisible.value = true; };
+                const calculateHistoryNetWorth = () => { const asset = (historyEditForm.value.twVal || 0) + (historyEditForm.value.twCash || 0) + ((historyEditForm.value.usVal || 0) + (historyEditForm.value.usCash || 0)) * exchangeRate.value + (historyEditForm.value.realestate || 0); const loan = historyEditForm.value.loan || 0; return asset - loan; };
+                const saveHistoryRecord = async () => { if (!user.value) return; const newNetWorth = calculateHistoryNetWorth(); await db.collection('users').doc(user.value.uid).collection('history').doc(historyEditForm.value.date).update({ twVal: historyEditForm.value.twVal, usVal: historyEditForm.value.usVal, twCash: historyEditForm.value.twCash, usCash: historyEditForm.value.usCash, loan: historyEditForm.value.loan, realestate: historyEditForm.value.realestate, totalVal: newNetWorth }); showHistoryEditModalVisible.value = false; await openHistoryModal(); drawChart(); debouncedXirr(); };
                 const openLoanMgrModal = () => { showLoanMgrModal.value = true; loanForm.value = { id: null, name: '', balance: 0 }; };
                 const editLoanAccount = (l) => { loanForm.value = { ...l }; };
                 const saveLoanAccount = async () => { if (!user.value || !loanForm.value.name) return alert('請輸入名稱'); const data = { name: loanForm.value.name, balance: loanForm.value.balance || 0, currency: 'TWD' }; if (loanForm.value.id) await db.collection('users').doc(user.value.uid).collection('loans').doc(loanForm.value.id).update(data); else await db.collection('users').doc(user.value.uid).collection('loans').add(data); loanForm.value = { id: null, name: '', balance: 0 }; };

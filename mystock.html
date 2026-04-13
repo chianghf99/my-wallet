@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v4.0.4</title>
+    <title>我的投資組合 | Portfolio v4.0.5</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -298,8 +298,8 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v4.0.4</h1>
-                    <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">v4.0.4 </p>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v4.0.5</h1>
+                    <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">v4.0.5 </p>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -319,7 +319,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v4.0.4</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v4.0.5</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -768,7 +768,10 @@
                                         <td class="px-4 py-3"><span class="tag"
                                                 :class="{'tag-buy': tx.type==='buy', 'tag-sell': tx.type==='sell', 'tag-div': tx.type==='dividend', 'tag-fund': tx.type==='deposit'||tx.type==='withdraw', 'tag-loan': tx.type==='borrow'||tx.type==='repay'}">{{
                                                 getTypeName(tx.type) }}</span></td>
-                                        <td class="px-4 py-3 font-bold">{{ tx.name || tx.symbol }}</td>
+                                        <td class="px-4 py-3 font-bold">
+                                            <div>{{ tx.name || tx.symbol }}</div>
+                                            <div v-if="tx.memo" class="text-xs font-normal text-gray-500 dark:text-gray-400 mt-0.5"><i class="fa-solid fa-note-sticky text-gray-400 dark:text-gray-500 mr-1"></i>{{ tx.memo }}</div>
+                                        </td>
                                         <td class="px-4 py-3 text-right">{{
                                             (['dividend','deposit','withdraw','borrow','repay'].includes(tx.type)) ? '-'
                                             : formatNumber(tx.shares) }}</td>
@@ -800,6 +803,7 @@
                                                 getTypeName(tx.type) }}</span>
                                         </div>
                                         <div class="text-xs text-gray-400">{{ tx.date }}</div>
+                                        <div v-if="tx.memo" class="text-xs text-gray-500 dark:text-gray-400 mt-1"><i class="fa-solid fa-note-sticky text-gray-400 dark:text-gray-500 mr-1"></i>{{ tx.memo }}</div>
                                     </div>
                                     <div class="text-right">
                                         <div class="font-bold" :class="getAmountClass(tx)">{{ getAmountSign(tx) }}{{
@@ -1526,8 +1530,15 @@
                                 <div
                                     class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800">
                                 </div>
-                                <div class="text-xs text-gray-400 mb-1">2026-04-12</div>
+                                <div class="text-xs text-gray-400 mb-1">2026-04-14</div>
                             <div class="border-b border-gray-100 dark:border-gray-700 pb-2">
+                                <div class="font-bold text-gray-800 dark:text-white mb-2">v4.0.5</div>
+                                <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                    <li>修正：修復交易紀錄備註在存檔時遭到股票名稱覆寫而消失的 Bug</li>
+                                    <li>新增：交易明細列表現在會直接顯示每一筆交易的備註內容</li>
+                                </ul>
+                            </div>
+                            <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mt-4">
                                 <div class="font-bold text-gray-800 dark:text-white mb-2">v4.0.4</div>
                                 <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
                                     <li>修正：修復因資料庫欄位名稱不符，導致手動補登的不動產市值無法套用在資產走勢圖上的問題</li>
@@ -3185,7 +3196,7 @@
                         currency: form.value.currency,
                         loanId: isLoanMode.value ? transForm.value.loanId : null,
                         cashSynced: isLoanMode.value ? (loanCashMode.value === 'sync') : null, // v3.7.4: 記錄是否有同步現金
-                        memo: transForm.value.name || transForm.value.memo, // Also save in memo for future
+                        memo: transForm.value.memo || '', // v4.0.5 Fix: Prevent overwriting with stock name
                         timestamp: firebase.firestore.FieldValue.serverTimestamp()
                     };
 

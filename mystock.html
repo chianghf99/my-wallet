@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v4.0.9</title>
+    <title>我的投資組合 | Portfolio v4.1.0</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -298,8 +298,8 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v4.0.9</h1>
-                    <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">v4.0.9 </p>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v4.1.0</h1>
+                    <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">v4.1.0 </p>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -319,7 +319,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v4.0.9</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v4.1.0</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -404,6 +404,7 @@
                                         getRoi(grandTotalValue - grandTotalPnL, grandTotalPnL) }})</span></span>
                                 <span v-else class="text-gray-300 dark:text-gray-600">****</span>
                             </div>
+                            <!-- XIRR 暫時隱藏（數值因時間過短失真）
                             <div class="flex justify-between text-xs items-center">
                                 <div class="text-gray-400 group relative cursor-help">
                                     年化報酬率 (XIRR) <i class="fa-regular fa-circle-question ml-0.5"></i>
@@ -422,6 +423,12 @@
                                     xirrValue }}%</span>
                                 <span v-else class="text-gray-300 dark:text-gray-600">****</span>
                             </div>
+                            <div class="mt-2 text-right">
+                                <button @click="openCustomXirrModal" class="text-xs text-purple-600 dark:text-purple-400 hover:underline">
+                                    <i class="fa-solid fa-calculator"></i> 區間試算
+                                </button>
+                            </div>
+                            -->
                         </div>
                     </div>
 
@@ -1532,6 +1539,12 @@
                                 </div>
                                 <div class="text-xs text-gray-400 mb-1">2026-04-18</div>
                             <div class="border-b border-gray-100 dark:border-gray-700 pb-2">
+                                <div class="font-bold text-gray-800 dark:text-white mb-2">v4.1.0</div>
+                                <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                    <li>新增：全新「區間績效分析器」工具。現可於首頁 XIRR 旁點按「區間試算」，自訂起訖日期以獲取該時段的精確投資報酬率。</li>
+                                </ul>
+                            </div>
+                            <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mt-4">
                                 <div class="font-bold text-gray-800 dark:text-white mb-2">v4.0.9</div>
                                 <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
                                     <li>優化：新增美股紀錄時，透過美國資料庫自動帶入完整的「英文公司名稱」</li>
@@ -2469,12 +2482,74 @@
                         </div>
                     </div>
                 </div>
+            </div>
 
-
+            <!-- 區間績效試算 Modal -->
+            <div v-if="showCustomXirrModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden" @click.stop>
+                    <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-700">
+                        <h3 class="font-bold text-gray-800 dark:text-white">
+                            <i class="fa-solid fa-calculator mr-2 text-purple-500"></i>區間績效分析器
+                        </h3>
+                        <button @click="showCustomXirrModal = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                            <i class="fa-solid fa-xmark text-lg"></i>
+                        </button>
+                    </div>
+                    <div class="p-6">
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 mb-1">開始日期</label>
+                                <input type="date" v-model="cxStartDate" class="zen-input w-full">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 mb-1">結束日期</label>
+                                <input type="date" v-model="cxEndDate" class="zen-input w-full">
+                            </div>
+                        </div>
+                        
+                        <button @click="calculateCustomXirr" :disabled="cxLoading" 
+                            class="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 rounded transition shadow-sm mb-4">
+                            {{ cxLoading ? '計算中...' : '開始計算' }}
+                        </button>
+                        
+                        <div v-if="cxXirrValue !== null" class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg space-y-3">
+                            <div class="flex justify-between items-center text-sm">
+                                <span class="text-gray-500 dark:text-gray-400">區間年化報酬 (XIRR)</span>
+                                <span class="font-bold text-lg" :class="getPnlClass(cxXirrValue)">{{ cxXirrValue }}%</span>
+                            </div>
+                            <div v-if="cxDays < 90" class="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded p-2 flex items-start gap-1">
+                                <i class="fa-solid fa-triangle-exclamation mt-0.5 flex-shrink-0"></i>
+                                <span>區間僅 {{ cxDays }} 天，XIRR 為年化數字，短期波動會使結果嚴重失真，僅供參考。</span>
+                            </div>
+                            <div class="border-t border-gray-200 dark:border-gray-600 my-2 pt-2 space-y-1">
+                                <div class="flex justify-between text-xs">
+                                    <span class="text-gray-500 dark:text-gray-400">期初總資產 ({{ cxRealStartDate }})</span>
+                                    <span class="text-gray-700 dark:text-gray-300">{{ formatCurrency(cxStartGross, 'TWD') }}</span>
+                                </div>
+                                <div class="flex justify-between text-xs">
+                                    <span class="text-gray-500 dark:text-gray-400">期間入金總和</span>
+                                    <span class="text-red-500">{{ formatCurrency(cxInflow, 'TWD') }}</span>
+                                </div>
+                                <div class="flex justify-between text-xs">
+                                    <span class="text-gray-500 dark:text-gray-400">期間出金總和</span>
+                                    <span class="text-green-500">{{ formatCurrency(cxOutflow, 'TWD') }}</span>
+                                </div>
+                                <div class="flex justify-between text-xs">
+                                    <span class="text-gray-500 dark:text-gray-400">期末總資產 ({{ cxRealEndDate }})</span>
+                                    <span class="text-gray-700 dark:text-gray-300">{{ formatCurrency(cxEndGross, 'TWD') }}</span>
+                                </div>
+                                <div class="flex justify-between text-xs pt-2 mt-1 border-t border-gray-200 dark:border-gray-600 font-bold">
+                                    <span class="text-gray-500 dark:text-gray-400">區間帳面改變</span>
+                                    <span :class="getPnlClass(cxEndGross - cxStartGross - cxInflow + cxOutflow)">
+                                        {{ formatCurrency(cxEndGross - cxStartGross - cxInflow + cxOutflow, 'TWD') }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-
-    </div>
 
     <script>
         const { createApp, ref, computed, onMounted, watch } = Vue;
@@ -3416,6 +3491,125 @@
                     }
                 };
 
+                // --- 新增：特定區間 XIRR ---
+                const showCustomXirrModal = ref(false);
+                const cxDays = ref(0);
+                const cxStartDate = ref('');
+                const cxEndDate = ref('');
+                const cxRealStartDate = ref('');
+                const cxRealEndDate = ref('');
+                const cxStartGross = ref(0);
+                const cxEndGross = ref(0);
+                const cxInflow = ref(0);
+                const cxOutflow = ref(0);
+                const cxXirrValue = ref(null);
+                const cxLoading = ref(false);
+
+                const openCustomXirrModal = () => {
+                    const d = new Date();
+                    d.setMonth(d.getMonth() - 1); 
+                    cxStartDate.value = d.toISOString().split('T')[0];
+                    cxEndDate.value = getLocalDate();
+                    cxXirrValue.value = null;
+                    showCustomXirrModal.value = true;
+                };
+
+                const calculateCustomXirr = async () => {
+                    if(!cxStartDate.value || !cxEndDate.value) return alert('請選擇完整的起訖日期！');
+                    if(cxStartDate.value >= cxEndDate.value) return alert('開始日期必須早於結束日期！');
+                    cxLoading.value = true;
+                    try {
+                        const startSnap = await db.collection('users').doc(user.value.uid).collection('history')
+                            .where('date', '<=', cxStartDate.value)
+                            .orderBy('date', 'desc').limit(1).get();
+                            
+                        let startBase = 0;
+                        let realStartDate = cxStartDate.value;
+                        if (!startSnap.empty) {
+                            const d = startSnap.docs[0].data();
+                            startBase = (Number(String(d.totalVal).replace(/,/g, '')) || 0) + (Number(d.loan) || 0);
+                            realStartDate = d.date;
+                        } else {
+                            const firstSnap = await db.collection('users').doc(user.value.uid).collection('history')
+                                .orderBy('date', 'asc').limit(1).get();
+                            if(firstSnap.empty) { cxLoading.value = false; return alert('無歷史資料可計算'); }
+                            const d = firstSnap.docs[0].data();
+                            startBase = (Number(String(d.totalVal).replace(/,/g, '')) || 0) + (Number(d.loan) || 0);
+                            realStartDate = d.date;
+                            cxStartDate.value = realStartDate;
+                        }
+                        
+                        cxStartGross.value = startBase;
+                        cxRealStartDate.value = realStartDate;
+                        cxDays.value = 0; // reset
+                        
+                        let endBase = 0;
+                        let realEndDate = cxEndDate.value;
+                        if(cxEndDate.value >= getLocalDate()) {
+                            endBase = grandTotalAssets.value;
+                            realEndDate = '今日即時';
+                        } else {
+                            const endSnap = await db.collection('users').doc(user.value.uid).collection('history')
+                                .where('date', '<=', cxEndDate.value)
+                                .orderBy('date', 'desc').limit(1).get();
+                            if(!endSnap.empty) {
+                                const d = endSnap.docs[0].data();
+                                endBase = (Number(String(d.totalVal).replace(/,/g, '')) || 0) + (Number(d.loan) || 0);
+                                realEndDate = d.date;
+                            } else {
+                                endBase = startBase;
+                            }
+                        }
+                        cxEndGross.value = endBase;
+                        cxRealEndDate.value = realEndDate;
+                        // 計算實際天數
+                        const startD = parseDate(realStartDate);
+                        const endD = realEndDate === '今日即時' ? new Date() : parseDate(realEndDate);
+                        cxDays.value = Math.round((endD - startD) / (1000 * 60 * 60 * 24));
+                        
+                        const txSnap = await db.collection('users').doc(user.value.uid).collection('transactions')
+                            .where('date', '>', realStartDate)
+                            .where('date', '<=', realEndDate === '今日即時' ? getLocalDate() : realEndDate)
+                            .get();
+                            
+                        const flows = [];
+                        flows.push({ amount: -Math.abs(startBase), dateObj: parseDate(realStartDate) });
+                        
+                        let tin = 0, tout = 0;
+                        txSnap.docs.forEach(doc => {
+                            const t = doc.data();
+                            const twd = (currency) => currency === 'USD' ? t.totalAmount * exchangeRate.value : t.totalAmount;
+                            if (t.type === 'deposit') {
+                                tin += twd(t.currency);
+                                flows.push({ amount: -Math.abs(twd(t.currency)), dateObj: parseDate(t.date) });
+                            } else if (t.type === 'withdraw') {
+                                tout += twd(t.currency);
+                                flows.push({ amount: Math.abs(twd(t.currency)), dateObj: parseDate(t.date) });
+                            } else if (t.type === 'borrow' && t.cashSynced === true) {
+                                tin += twd(t.currency); 
+                                flows.push({ amount: Math.abs(twd(t.currency)), dateObj: parseDate(t.date) });
+                            } else if (t.type === 'repay' && t.cashSynced === true) {
+                                tout += twd(t.currency);
+                                flows.push({ amount: -Math.abs(twd(t.currency)), dateObj: parseDate(t.date) });
+                            }
+                        });
+                        
+                        cxInflow.value = tin;
+                        cxOutflow.value = tout;
+                        
+                        const endDateParsed = realEndDate === '今日即時' ? new Date() : parseDate(realEndDate);
+                        flows.push({ amount: endBase, dateObj: endDateParsed });
+                        
+                        const result = calcXIRR(flows);
+                        cxXirrValue.value = (typeof result === 'number') ? result.toFixed(2) : result;
+                        
+                    } catch (e) {
+                        console.error('Custom XIRR Error', e);
+                        alert('計算發生錯誤，請稍後再試。');
+                    }
+                    cxLoading.value = false;
+                };
+
 
                 // ★★★ v3.8.0: 直連 API ★★★
                 // 台股（盤中）：Cloudflare Worker → MIS TWSE 批次即時報價
@@ -3913,6 +4107,11 @@
                     realEstateList, realEstateTotalMarket, realEstateTotalMortgage, realEstateNetValue, realEstateBookPnL,
                     showRealEstateModal, realEstateForm, openRealEstateModal, saveRealEstate, deleteRealEstate,
                     getLoanName, getReMortgageTotal, getReMortgageLoans, toggleReMortgageLoan,
+
+                     // 區間績效分析器
+                     showCustomXirrModal, openCustomXirrModal, calculateCustomXirr,
+                     cxStartDate, cxEndDate, cxLoading, cxXirrValue, cxDays,
+                     cxRealStartDate, cxRealEndDate, cxStartGross, cxEndGross, cxInflow, cxOutflow,
 
                 };
             }

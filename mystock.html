@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v4.0.7</title>
+    <title>我的投資組合 | Portfolio v4.0.9</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -298,8 +298,8 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v4.0.7</h1>
-                    <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">v4.0.7 </p>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v4.0.9</h1>
+                    <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">v4.0.9 </p>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -319,7 +319,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v4.0.7</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v4.0.9</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -1530,8 +1530,20 @@
                                 <div
                                     class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800">
                                 </div>
-                                <div class="text-xs text-gray-400 mb-1">2026-04-14</div>
+                                <div class="text-xs text-gray-400 mb-1">2026-04-18</div>
                             <div class="border-b border-gray-100 dark:border-gray-700 pb-2">
+                                <div class="font-bold text-gray-800 dark:text-white mb-2">v4.0.9</div>
+                                <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                    <li>優化：新增美股紀錄時，透過美國資料庫自動帶入完整的「英文公司名稱」</li>
+                                </ul>
+                            </div>
+                            <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mt-4">
+                                <div class="font-bold text-gray-800 dark:text-white mb-2">v4.0.8</div>
+                                <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                    <li>優化：新增股票或交易時，輸入台股代碼可直接帶入「中文股票名稱」</li>
+                                </ul>
+                            </div>
+                            <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mt-4">
                                 <div class="font-bold text-gray-800 dark:text-white mb-2">v4.0.7</div>
                                 <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
                                     <li>優化：新增借貸交易時，切換至「還款」將自動預設勾選「外部資金（現金不動）」作為還款來源</li>
@@ -3429,7 +3441,7 @@
                             const price = parseFloat(s.ClosingPrice?.replace(/,/g, '') || '');
                             const change = parseFloat(s.Change?.replace(/[^-\d.]/g, '') || '0');
                             if (!isNaN(price) && price > 0)
-                                map.set(s.Code, { price, prevClose: price - change, market: 'tse' });
+                                map.set(s.Code, { price, prevClose: price - change, market: 'tse', name: s.Name });
                         });
                     } catch (e) { console.warn('[TWSE OpenAPI] 上市失敗', e); }
                     try {
@@ -3438,7 +3450,7 @@
                             const price = parseFloat(s.Close?.replace(/,/g, '') || '');
                             const change = parseFloat(s.Change?.replace(/[^-\d.]/g, '') || '0');
                             if (!isNaN(price) && price > 0)
-                                map.set(s.SecuritiesCompanyCode, { price, prevClose: price - change, market: 'otc' });
+                                map.set(s.SecuritiesCompanyCode, { price, prevClose: price - change, market: 'otc', name: s.CompanyName });
                         });
                     } catch (e) { console.warn('[TPEx OpenAPI] 上櫃失敗', e); }
                     return map;
@@ -3637,6 +3649,7 @@
                             if (misData) {
                                 return {
                                     symbol: `${cleanSym}.${d.market === 'otc' ? 'TWO' : 'TW'}`,
+                                    name: d.name,
                                     regularMarketPrice: misData.price,
                                     previousClose: misData.prevClose
                                 };
@@ -3644,6 +3657,7 @@
                             // 退回到 Open API
                             return {
                                 symbol: `${cleanSym}.${d.market === 'otc' ? 'TWO' : 'TW'}`,
+                                name: d.name,
                                 regularMarketPrice: d.price,
                                 previousClose: d.prevClose
                             };
@@ -3656,8 +3670,15 @@
                         const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${s}&token=${FINNHUB_API_KEY}`);
                         const j = await r.json();
                         if (j.c && j.c > 0) {
+                            let cpName = undefined;
+                            try {
+                                const profileRes = await fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${s}&token=${FINNHUB_API_KEY}`);
+                                const profileJson = await profileRes.json();
+                                if (profileJson && profileJson.name) cpName = profileJson.name;
+                            } catch (e) { /* silent */ }
                             return {
                                 symbol: s,
+                                name: cpName,
                                 regularMarketPrice: j.c,
                                 previousClose: j.pc || j.c
                             };
@@ -3665,8 +3686,8 @@
                     } catch (e) { /* silent */ }
                     return null;
                 };
-                const autoFetchName = async () => { const s = form.value.symbol; if (!s) return; if (/^\d/.test(s)) { form.value.currency = 'TWD'; } else if (/^[A-Za-z]+$/.test(s)) { form.value.currency = 'USD'; form.value.marketType = 'us'; } if (!form.value.name) form.value.name = '查詢中...'; const d = await getYahooData(s); if (d) { if (form.value.name === '查詢中...') form.value.name = d.symbol; form.value.currentPrice = d.regularMarketPrice; form.value.previousClose = d.previousClose; } else { if (form.value.name === '查詢中...') form.value.name = ''; alert('查無代號'); } };
-                const autoFetchTransName = async () => { const s = transForm.value.symbol; if (!s) return; const localStock = stocks.value.find(st => st.symbol && st.symbol.toUpperCase() === s.toUpperCase()); if (localStock) { transForm.value.name = localStock.name; form.value.currency = localStock.currency; return; } if (/^\d/.test(s)) form.value.currency = 'TWD'; else if (/^[A-Za-z]+$/.test(s)) form.value.currency = 'USD'; if (!transForm.value.name) transForm.value.name = '查詢中...'; const d = await getYahooData(s); if (d) { if (transForm.value.name === '查詢中...') transForm.value.name = d.symbol; } else { if (transForm.value.name === '查詢中...') transForm.value.name = ''; } };
+                const autoFetchName = async () => { const s = form.value.symbol; if (!s) return; if (/^\d/.test(s)) { form.value.currency = 'TWD'; } else if (/^[A-Za-z]+$/.test(s)) { form.value.currency = 'USD'; form.value.marketType = 'us'; } if (!form.value.name) form.value.name = '查詢中...'; const d = await getYahooData(s); if (d) { if (form.value.name === '查詢中...') form.value.name = d.name || d.symbol; form.value.currentPrice = d.regularMarketPrice; form.value.previousClose = d.previousClose; } else { if (form.value.name === '查詢中...') form.value.name = ''; alert('查無代號'); } };
+                const autoFetchTransName = async () => { const s = transForm.value.symbol; if (!s) return; const localStock = stocks.value.find(st => st.symbol && st.symbol.toUpperCase() === s.toUpperCase()); if (localStock) { transForm.value.name = localStock.name; form.value.currency = localStock.currency; return; } if (/^\d/.test(s)) form.value.currency = 'TWD'; else if (/^[A-Za-z]+$/.test(s)) form.value.currency = 'USD'; if (!transForm.value.name) transForm.value.name = '查詢中...'; const d = await getYahooData(s); if (d) { if (transForm.value.name === '查詢中...') transForm.value.name = d.name || d.symbol; } else { if (transForm.value.name === '查詢中...') transForm.value.name = ''; } };
                 // [主程式] 批次更新股價 (支援分流 + 必定更新匯率)
                 const fetchPrices = async (marketType) => {
                     // 基本檢查

@@ -1,7 +1,7 @@
 import { db, auth } from './firebase-config.js';
 import { getLocalDate, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountSign } from './utils/format.js';
 
-import { user, stocks, exchangeRate, lastUpdated, lastUpdatedTs, loadingTarget, isLoading, viewMode, isMobile, showPrivacy, defaultPrivacyHidden, showSettingsModal, isDarkMode, activeSection, showChangelog, stockStates, sectionLoading, xirrValue, xirrStartDate, xirrStartVal, xirrEndVal, xirrFlowCount, showStockNoteModal, stockNoteForm, showHistoryModal, historyRecords, historyFilterYear, availableYears, showDeleteModal, pendingDeleteTx, showEditTxModal, editTxForm, showHistoryEditModalVisible, historyEditForm, notes, showNoteModalVisible, noteForm, loanList, showLoanMgrModal, inlineNewLoan, inlineLoanName, loanForm, cashData, prevDayData, realEstateList, showRealEstateModal, realEstateForm, chartStartDate, chartEndDate, chartPnl, currentRange, divRange, divSearchQuery, divStartDate, divEndDate, realizedStartDate, realizedEndDate, transStartDate, transEndDate, transFilterType, transSearchQuery, sortKeyTrans, sortOrderTrans, sortKeyDiv, sortOrderDiv, realizedGains, realizedSearchQuery, sortKeyRealized, sortOrderRealized, realizedRange, currentPage, itemsPerPage, dividendRecords, transactionHistory, showModal, isEditing, form, showTransModal, isFundMode, isLoanMode, loanCashMode, transForm, isPriceStale } from './store/index.js';
+import { user, stocks, exchangeRate, lastUpdated, lastUpdatedTs, loadingTarget, isLoading, viewMode, isMobile, showPrivacy, defaultPrivacyHidden, hideZeroShares, showSettingsModal, isDarkMode, activeSection, showChangelog, stockStates, sectionLoading, xirrValue, xirrStartDate, xirrStartVal, xirrEndVal, xirrFlowCount, showStockNoteModal, stockNoteForm, showHistoryModal, historyRecords, historyFilterYear, availableYears, showDeleteModal, pendingDeleteTx, showEditTxModal, editTxForm, showHistoryEditModalVisible, historyEditForm, notes, showNoteModalVisible, noteForm, loanList, showLoanMgrModal, inlineNewLoan, inlineLoanName, loanForm, cashData, prevDayData, realEstateList, showRealEstateModal, realEstateForm, chartStartDate, chartEndDate, chartPnl, currentRange, divRange, divSearchQuery, divStartDate, divEndDate, realizedStartDate, realizedEndDate, transStartDate, transEndDate, transFilterType, transSearchQuery, sortKeyTrans, sortOrderTrans, sortKeyDiv, sortOrderDiv, realizedGains, realizedSearchQuery, sortKeyRealized, sortOrderRealized, realizedRange, currentPage, itemsPerPage, dividendRecords, transactionHistory, showModal, isEditing, form, showTransModal, isFundMode, isLoanMode, loanCashMode, transForm, isPriceStale } from './store/index.js';
 const { createApp, ref, computed, onMounted, watch } = Vue;
 
         createApp({
@@ -74,7 +74,13 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
                 const totalRealizedPages = computed(() => { return Math.ceil(sortedRealizedGains.value.length / itemsPerPage.value) || 1; });
 
-                const sortedStocks = computed(() => [...stocks.value].sort((a, b) => (b.currentPrice * b.shares * (b.currency === 'USD' ? exchangeRate.value : 1)) - (a.currentPrice * a.shares * (a.currency === 'USD' ? exchangeRate.value : 1))));
+                const sortedStocks = computed(() => {
+                    let list = [...stocks.value];
+                    if (hideZeroShares.value) {
+                        list = list.filter(s => s.shares > 0);
+                    }
+                    return list.sort((a, b) => (b.currentPrice * b.shares * (b.currency === 'USD' ? exchangeRate.value : 1)) - (a.currentPrice * a.shares * (a.currency === 'USD' ? exchangeRate.value : 1)));
+                });
                 const twStockList = computed(() => sortedStocks.value.filter(s => s.currency === 'TWD'));
                 const usStockList = computed(() => sortedStocks.value.filter(s => s.currency === 'USD'));
                 const twStats = computed(() => calculateStats(twStockList.value));
@@ -193,7 +199,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 };
 
                 const toggleDarkMode = () => { isDarkMode.value = !isDarkMode.value; localStorage.setItem('darkMode', isDarkMode.value); document.documentElement.classList.toggle('dark'); };
-                const saveSettings = () => { localStorage.setItem('app_default_privacy_hidden', defaultPrivacyHidden.value); };
+                const saveSettings = () => { localStorage.setItem('app_default_privacy_hidden', defaultPrivacyHidden.value); localStorage.setItem('hideZeroShares', hideZeroShares.value); };
 
                 watch(isDarkMode, () => { if (activeSection.value === 'chart') setTimeout(drawChart, 100); });
                 const toggleSection = (s) => {
@@ -1390,7 +1396,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
                 return {
                     clearAllUserData, // v3.2.1
-                    user, login, logout, stocks, exchangeRate, lastUpdated, isLoading, viewMode, isMobile, showPrivacy, isDarkMode, toggleDarkMode, activeSection, toggleSection, showChangelog,
+                    user, login, logout, stocks, exchangeRate, lastUpdated, isLoading, viewMode, isMobile, showPrivacy, isDarkMode, toggleDarkMode, activeSection, toggleSection, showChangelog, hideZeroShares, defaultPrivacyHidden,
                     twStats, usStats, grandTotalValue, grandTotalAssets, grandTotalPnL, twStockList, usStockList,
                     showModal, isEditing, form, openModal, editStock, closeModal, saveStock, deleteStock,
                     showTransModal, transForm, openTransModal, closeTransModal, submitTransaction, isFundMode, openFundModal,

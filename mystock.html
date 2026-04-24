@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v4.1.1</title>
+    <title>我的投資組合 | Portfolio v4.2.0</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -298,8 +298,8 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v4.1.1</h1>
-                    <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">v4.1.1 </p>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v4.2.0</h1>
+                    <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">v4.2.0 </p>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -319,7 +319,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v4.1.1</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v4.2.0</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -1538,6 +1538,13 @@
                                     class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800">
                                 </div>
                                 <div class="text-xs text-gray-400 mb-1">2026-04-24</div>
+                            <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
+                                <div class="font-bold text-gray-800 dark:text-white mb-2">v4.2.0</div>
+                                <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                    <li>架構：完成第一階段模組化，將巨型腳本拆分為 main.js、store、firebase 與 utils 等獨立檔案，大幅提升可維護性。</li>
+                                    <li>新增：在設定中加入「隱藏已清空庫存」選項，可隱藏零股紀錄且不刪除歷史資料。</li>
+                                </ul>
+                            </div>
                             <div class="border-b border-gray-100 dark:border-gray-700 pb-2">
                                 <div class="font-bold text-gray-800 dark:text-white mb-2">v4.1.1</div>
                                 <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
@@ -1811,6 +1818,18 @@
                                 </div>
                                 <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox"
                                         v-model="defaultPrivacyHidden" class="sr-only peer" @change="saveSettings">
+                                    <div
+                                        class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600">
+                                    </div>
+                                </label>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="font-bold dark:text-white text-sm">隱藏已清空庫存</div>
+                                    <div class="text-xs text-gray-500">在清單中隱藏股數為 0 的股票</div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox"
+                                        v-model="hideZeroShares" class="sr-only peer" @change="saveSettings">
                                     <div
                                         class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600">
                                     </div>

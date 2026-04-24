@@ -12,6 +12,7 @@ export const viewMode = ref('auto');
 export const isMobile = ref(window.innerWidth < 768);
 export const showPrivacy = ref(false);
 export const defaultPrivacyHidden = ref(false);
+export const hideZeroShares = ref(localStorage.getItem('hideZeroShares') === 'true');
 export const showSettingsModal = ref(false);
 export const isDarkMode = ref(localStorage.getItem('darkMode') === 'true');
 export const activeSection = ref('');

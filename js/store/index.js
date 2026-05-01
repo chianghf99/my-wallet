@@ -79,8 +79,7 @@ export const realizedSearchQuery = ref('');
 export const sortKeyRealized = ref('date');
 export const sortOrderRealized = ref('desc');
 export const realizedRange = ref('YTD');
-export const currentPage = ref(1);
-export const itemsPerPage = ref(10);
+
 
 export const dividendRecords = ref([]);
 export const transactionHistory = ref([]);

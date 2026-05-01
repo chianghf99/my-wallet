@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v4.2.0</title>
+    <title>我的投資組合 | Portfolio v4.3.0</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -298,8 +298,7 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v4.2.0</h1>
-                    <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">v4.2.0 </p>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v4.3.0</h1>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -319,7 +318,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v4.2.0</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v4.3.0</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -1537,7 +1536,17 @@
                                 <div
                                     class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800">
                                 </div>
-                                <div class="text-xs text-gray-400 mb-1">2026-04-24</div>
+                                <div class="text-xs text-gray-400 mb-1">2026-05-01</div>
+                            <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
+                                <div class="font-bold text-gray-800 dark:text-white mb-2">v4.3.0</div>
+                                <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                    <li>優化：台股單支更新改用 Yahoo Finance API，盤中較 MIS 更穩定，失敗自動降級至 MIS → Open API</li>
+                                    <li>修正：備份與還原功能（JSON 及 Google Drive）补入不動產資料，避免還原後不動產資料遺失</li>
+                                    <li>修正：備份操作改用 Firestore transaction，消除快速操作時現金資料競態的風險</li>
+                                    <li>優化：移除已實現損益未使用的分頁功能，統一改為卷軸式顯示</li>
+                                    <li>修正：更新日誌 HTML 時間軸結構，較舊版本條目現在正確顯示於時間軸線上</li>
+                                </ul>
+                            </div>
                             <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
                                 <div class="font-bold text-gray-800 dark:text-white mb-2">v4.2.0</div>
                                 <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
@@ -1630,7 +1639,6 @@
                                     <li>可連結現有借款帳戶作為房貸追蹤</li>
                                 </ul>
                             </div>
-                        </div>
                             <div class="relative pl-6">
                                 <div
                                     class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-blue-500 dark:bg-blue-400 border-2 border-white dark:border-gray-800">

@@ -1,7 +1,7 @@
 import { db, auth } from './firebase-config.js';
 import { getLocalDate, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountSign } from './utils/format.js';
 
-import { user, stocks, exchangeRate, lastUpdated, lastUpdatedTs, loadingTarget, isLoading, viewMode, isMobile, showPrivacy, defaultPrivacyHidden, hideZeroShares, showSettingsModal, isDarkMode, activeSection, showChangelog, stockStates, sectionLoading, xirrValue, xirrStartDate, xirrStartVal, xirrEndVal, xirrFlowCount, showStockNoteModal, stockNoteForm, showHistoryModal, historyRecords, historyFilterYear, availableYears, showDeleteModal, pendingDeleteTx, showEditTxModal, editTxForm, showHistoryEditModalVisible, historyEditForm, notes, showNoteModalVisible, noteForm, loanList, showLoanMgrModal, inlineNewLoan, inlineLoanName, loanForm, cashData, prevDayData, realEstateList, showRealEstateModal, realEstateForm, chartStartDate, chartEndDate, chartPnl, currentRange, divRange, divSearchQuery, divStartDate, divEndDate, realizedStartDate, realizedEndDate, transStartDate, transEndDate, transFilterType, transSearchQuery, sortKeyTrans, sortOrderTrans, sortKeyDiv, sortOrderDiv, realizedGains, realizedSearchQuery, sortKeyRealized, sortOrderRealized, realizedRange, currentPage, itemsPerPage, dividendRecords, transactionHistory, showModal, isEditing, form, showTransModal, isFundMode, isLoanMode, loanCashMode, transForm, isPriceStale } from './store/index.js';
+import { user, stocks, exchangeRate, lastUpdated, lastUpdatedTs, loadingTarget, isLoading, viewMode, isMobile, showPrivacy, defaultPrivacyHidden, hideZeroShares, showSettingsModal, isDarkMode, activeSection, showChangelog, stockStates, sectionLoading, xirrValue, xirrStartDate, xirrStartVal, xirrEndVal, xirrFlowCount, showStockNoteModal, stockNoteForm, showHistoryModal, historyRecords, historyFilterYear, availableYears, showDeleteModal, pendingDeleteTx, showEditTxModal, editTxForm, showHistoryEditModalVisible, historyEditForm, notes, showNoteModalVisible, noteForm, loanList, showLoanMgrModal, inlineNewLoan, inlineLoanName, loanForm, cashData, prevDayData, realEstateList, showRealEstateModal, realEstateForm, chartStartDate, chartEndDate, chartPnl, currentRange, divRange, divSearchQuery, divStartDate, divEndDate, realizedStartDate, realizedEndDate, transStartDate, transEndDate, transFilterType, transSearchQuery, sortKeyTrans, sortOrderTrans, sortKeyDiv, sortOrderDiv, realizedGains, realizedSearchQuery, sortKeyRealized, sortOrderRealized, realizedRange, dividendRecords, transactionHistory, showModal, isEditing, form, showTransModal, isFundMode, isLoanMode, loanCashMode, transForm, isPriceStale } from './store/index.js';
 const { createApp, ref, computed, onMounted, watch } = Vue;
 
         createApp({
@@ -66,13 +66,6 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     });
                     return data;
                 });
-
-                const paginatedRealizedGains = computed(() => {
-                    const start = (currentPage.value - 1) * itemsPerPage.value;
-                    return sortedRealizedGains.value.slice(start, start + itemsPerPage.value);
-                });
-
-                const totalRealizedPages = computed(() => { return Math.ceil(sortedRealizedGains.value.length / itemsPerPage.value) || 1; });
 
                 const sortedStocks = computed(() => {
                     let list = [...stocks.value];
@@ -159,8 +152,6 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
                 // --- 4. 輔助函數 ---
                 const sortRealized = (key) => { if (sortKeyRealized.value === key) sortOrderRealized.value = sortOrderRealized.value === 'asc' ? 'desc' : 'asc'; else { sortKeyRealized.value = key; sortOrderRealized.value = 'desc'; } };
-                const changePage = (page) => { if (page >= 1 && page <= totalRealizedPages.value) currentPage.value = page; };
-                watch(realizedSearchQuery, () => { currentPage.value = 1; });
                 const setDivRange = (range) => {
                     divRange.value = range;
                     const today = getLocalDate();
@@ -319,6 +310,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         const allHistory = await db.collection('users').doc(uid).collection('history').orderBy('date').get();
                         const allNotes = await db.collection('users').doc(uid).collection('notes').get();
                         const allLoans = await db.collection('users').doc(uid).collection('loans').get();
+                        const allRealEstate = await db.collection('users').doc(uid).collection('real_estate').get();
                         const cashDoc = await db.collection('users').doc(uid).collection('portfolio').doc('cash').get();
                         const obj = {
                             stocks: allStocks.docs.map(d => ({ id: d.id, ...d.data() })),
@@ -328,7 +320,8 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                             history: allHistory.docs.map(d => d.data()),
                             cash: cashDoc.exists ? cashDoc.data() : { twd: 0, usd: 0, loan: 0 },
                             notes: allNotes.docs.map(d => ({ id: d.id, ...d.data() })),
-                            loans: allLoans.docs.map(d => ({ id: d.id, ...d.data() }))
+                            loans: allLoans.docs.map(d => ({ id: d.id, ...d.data() })),
+                            real_estate: allRealEstate.docs.map(d => ({ id: d.id, ...d.data() }))
                         };
                         const fileName = `portfolio_BACKUP_${getLocalDate()}.json`;
                         const jsonStr = JSON.stringify(obj, null, 2);
@@ -410,6 +403,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                                         await restoreCol('dividends', json.dividends);
                                         await restoreCol('notes', json.notes);
                                         await restoreCol('loans', json.loans);
+                                        await restoreCol('real_estate', json.real_estate);
                                         if (json.history && Array.isArray(json.history)) {
                                             const chunks = [];
                                             for (let i = 0; i < json.history.length; i += batchLimit) chunks.push(json.history.slice(i, i + batchLimit));
@@ -440,13 +434,13 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     }
                 };
 
-                const exportData = async () => { if (!user.value) return; const uid = user.value.uid; const allStocks = await db.collection('users').doc(uid).collection('stocks').get(); const allTrans = await db.collection('users').doc(uid).collection('transactions').get(); const allRealized = await db.collection('users').doc(uid).collection('realized_gains').get(); const allDividends = await db.collection('users').doc(uid).collection('dividends').get(); const allHistory = await db.collection('users').doc(uid).collection('history').orderBy('date').get(); const allNotes = await db.collection('users').doc(uid).collection('notes').get(); const allLoans = await db.collection('users').doc(uid).collection('loans').get(); const cashDoc = await db.collection('users').doc(uid).collection('portfolio').doc('cash').get(); const obj = { stocks: allStocks.docs.map(d => ({ id: d.id, ...d.data() })), transactions: allTrans.docs.map(d => ({ id: d.id, ...d.data() })), realized: allRealized.docs.map(d => ({ id: d.id, ...d.data() })), dividends: allDividends.docs.map(d => ({ id: d.id, ...d.data() })), history: allHistory.docs.map(d => d.data()), cash: cashDoc.exists ? cashDoc.data() : { twd: 0, usd: 0, loan: 0 }, notes: allNotes.docs.map(d => ({ id: d.id, ...d.data() })), loans: allLoans.docs.map(d => ({ id: d.id, ...d.data() })) }; const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(obj, null, 2)); a.download = `portfolio_FULL_BACKUP_${getLocalDate()}.json`; document.body.appendChild(a); a.click(); a.remove(); };
+                const exportData = async () => { if (!user.value) return; const uid = user.value.uid; const allStocks = await db.collection('users').doc(uid).collection('stocks').get(); const allTrans = await db.collection('users').doc(uid).collection('transactions').get(); const allRealized = await db.collection('users').doc(uid).collection('realized_gains').get(); const allDividends = await db.collection('users').doc(uid).collection('dividends').get(); const allHistory = await db.collection('users').doc(uid).collection('history').orderBy('date').get(); const allNotes = await db.collection('users').doc(uid).collection('notes').get(); const allLoans = await db.collection('users').doc(uid).collection('loans').get(); const allRealEstate = await db.collection('users').doc(uid).collection('real_estate').get(); const cashDoc = await db.collection('users').doc(uid).collection('portfolio').doc('cash').get(); const obj = { stocks: allStocks.docs.map(d => ({ id: d.id, ...d.data() })), transactions: allTrans.docs.map(d => ({ id: d.id, ...d.data() })), realized: allRealized.docs.map(d => ({ id: d.id, ...d.data() })), dividends: allDividends.docs.map(d => ({ id: d.id, ...d.data() })), history: allHistory.docs.map(d => d.data()), cash: cashDoc.exists ? cashDoc.data() : { twd: 0, usd: 0, loan: 0 }, notes: allNotes.docs.map(d => ({ id: d.id, ...d.data() })), loans: allLoans.docs.map(d => ({ id: d.id, ...d.data() })), real_estate: allRealEstate.docs.map(d => ({ id: d.id, ...d.data() })) }; const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(obj, null, 2)); a.download = `portfolio_FULL_BACKUP_${getLocalDate()}.json`; document.body.appendChild(a); a.click(); a.remove(); };
 
                 const exportToExcel = async () => { if (!user.value) return; if (typeof XLSX === 'undefined') { alert('Excel 元件載入失敗，請檢查網路連線。'); return; } const uid = user.value.uid; const wb = XLSX.utils.book_new(); const summaryData = [['項目', '金額 (TWD)', '金額 (USD)'], ['總淨資產 (Net Worth)', grandTotalValue.value, grandTotalValue.value / exchangeRate.value], ['台股部位', twStats.value.value, twStats.value.value / exchangeRate.value], ['美股部位', usStats.value.value * exchangeRate.value, usStats.value.value], ['台幣現金', cashData.value.twd, cashData.value.twd / exchangeRate.value], ['美金現金', cashData.value.usd * exchangeRate.value, cashData.value.usd], ['總負債 (Loans)', totalLoanBalance.value, totalLoanBalance.value / exchangeRate.value], ['未實現損益', grandTotalPnL.value, grandTotalPnL.value / exchangeRate.value], ['匯率 (USD/TWD)', exchangeRate.value, '']]; XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryData), "總覽 Summary"); const sSnap = await db.collection('users').doc(uid).collection('stocks').get(); const stockData = sSnap.docs.map(d => d.data()).map(s => ({ 代號: s.symbol, 名稱: s.name, 幣別: s.currency, 股數: s.shares, 平均成本: s.avgCost, 現價: s.currentPrice, 市值: s.shares * s.currentPrice, 損益: (s.currentPrice - s.avgCost) * s.shares })); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(stockData), "庫存 Stocks"); const tSnap = await db.collection('users').doc(uid).collection('transactions').orderBy('date', 'desc').get(); const txData = tSnap.docs.map(d => d.data()); const wsTrans = XLSX.utils.json_to_sheet(txData.map(t => ({ 日期: t.date, 類別: getTypeName(t.type), 代號: t.symbol, 名稱: t.name, 股數: t.shares, 總金額: t.totalAmount, 幣別: t.currency, 備註: t.memo || '' }))); XLSX.utils.book_append_sheet(wb, wsTrans, "交易紀錄 Transactions"); const hSnap = await db.collection('users').doc(uid).collection('history').orderBy('date', 'desc').get(); const histData = hSnap.docs.map(d => d.data()); const wsHist = XLSX.utils.json_to_sheet(histData.map(h => ({ 日期: h.date, 淨資產: h.totalVal, 總資產: (h.totalVal || 0) + (h.loan || 0), 負債: h.loan, 台股: h.twVal, 美股USD: h.usVal, 台幣現金: h.twCash || 0, 美金現金: h.usCash || 0 }))); XLSX.utils.book_append_sheet(wb, wsHist, "歷史淨值 History"); const rSnap = await db.collection('users').doc(uid).collection('realized_gains').orderBy('date', 'desc').get(); const realData = rSnap.docs.map(d => d.data()); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(realData), "已實現損益 Realized"); const dSnap = await db.collection('users').doc(uid).collection('dividends').orderBy('date', 'desc').get(); const divData = dSnap.docs.map(d => d.data()); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(divData), "股息 Dividends"); const lSnap = await db.collection('users').doc(uid).collection('loans').get(); const loanData = lSnap.docs.map(d => d.data()); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(loanData), "借款 Loans"); const nSnap = await db.collection('users').doc(uid).collection('notes').get(); const noteData = nSnap.docs.map(d => d.data()); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(noteData), "筆記 Notes"); XLSX.writeFile(wb, `Portfolio_FULL_Export_${getLocalDate()}.xlsx`); };
 
                 const triggerImport = () => { fileInput.value.click(); };
 
-                const handleImport = async (event) => { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = async (e) => { try { const json = JSON.parse(e.target.result); if (!confirm(`警告：這將使用備份檔案中的資料更新您的資產紀錄。\n\n若 ID 相同將覆蓋舊資料，ID 不同則新增。\n\n確定要執行還原嗎？`)) { event.target.value = ''; return; } loadingTarget.value = 'import'; const uid = user.value.uid; const batchLimit = 400; const restoreCollection = async (colName, dataArr) => { if (!dataArr || !Array.isArray(dataArr)) return; const chunks = []; for (let i = 0; i < dataArr.length; i += batchLimit) { chunks.push(dataArr.slice(i, i + batchLimit)); } for (const chunk of chunks) { const batch = db.batch(); chunk.forEach(item => { if (item.id) { const docRef = db.collection('users').doc(uid).collection(colName).doc(item.id); const { id, ...data } = item; batch.set(docRef, data, { merge: true }); } }); await batch.commit(); } }; await restoreCollection('stocks', json.stocks); await restoreCollection('transactions', json.transactions); await restoreCollection('realized_gains', json.realized); await restoreCollection('dividends', json.dividends); await restoreCollection('notes', json.notes); await restoreCollection('loans', json.loans); if (json.history && Array.isArray(json.history)) { const chunks = []; for (let i = 0; i < json.history.length; i += batchLimit) { chunks.push(json.history.slice(i, i + batchLimit)); } for (const chunk of chunks) { const batch = db.batch(); chunk.forEach(h => { if (h.date) { const docRef = db.collection('users').doc(uid).collection('history').doc(h.date); batch.set(docRef, h, { merge: true }); } }); await batch.commit(); } } if (json.cash) { await db.collection('users').doc(uid).collection('portfolio').doc('cash').set(json.cash, { merge: true }); } alert('還原成功！頁面將重新整理。'); location.reload(); } catch (err) { console.error(err); alert('還原失敗：檔案格式錯誤或網路問題。'); loadingTarget.value = null; } }; reader.readAsText(file); };
+                const handleImport = async (event) => { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = async (e) => { try { const json = JSON.parse(e.target.result); if (!confirm(`警告：這將使用備份檔案中的資料更新您的資產紀錄。\n\n若 ID 相同將覆蓋舊資料，ID 不同則新增。\n\n確定要執行還原嗎？`)) { event.target.value = ''; return; } loadingTarget.value = 'import'; const uid = user.value.uid; const batchLimit = 400; const restoreCollection = async (colName, dataArr) => { if (!dataArr || !Array.isArray(dataArr)) return; const chunks = []; for (let i = 0; i < dataArr.length; i += batchLimit) { chunks.push(dataArr.slice(i, i + batchLimit)); } for (const chunk of chunks) { const batch = db.batch(); chunk.forEach(item => { if (item.id) { const docRef = db.collection('users').doc(uid).collection(colName).doc(item.id); const { id, ...data } = item; batch.set(docRef, data, { merge: true }); } }); await batch.commit(); } }; await restoreCollection('stocks', json.stocks); await restoreCollection('transactions', json.transactions); await restoreCollection('realized_gains', json.realized); await restoreCollection('dividends', json.dividends); await restoreCollection('notes', json.notes); await restoreCollection('loans', json.loans); await restoreCollection('real_estate', json.real_estate); if (json.history && Array.isArray(json.history)) { const chunks = []; for (let i = 0; i < json.history.length; i += batchLimit) { chunks.push(json.history.slice(i, i + batchLimit)); } for (const chunk of chunks) { const batch = db.batch(); chunk.forEach(h => { if (h.date) { const docRef = db.collection('users').doc(uid).collection('history').doc(h.date); batch.set(docRef, h, { merge: true }); } }); await batch.commit(); } } if (json.cash) { await db.collection('users').doc(uid).collection('portfolio').doc('cash').set(json.cash, { merge: true }); } alert('還原成功！頁面將重新整理。'); location.reload(); } catch (err) { console.error(err); alert('還原失敗：檔案格式錯誤或網路問題。'); loadingTarget.value = null; } }; reader.readAsText(file); };
 
                 const clearAllUserData = async () => {
                     if (!user.value) return;
@@ -546,19 +540,22 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 const updateCash = async (currency, amount, loanAmount = 0) => {
                     if (!user.value) return;
                     const ref = db.collection('users').doc(user.value.uid).collection('portfolio').doc('cash');
-                    const doc = await ref.get();
-                    let current = doc.exists ? doc.data() : { twd: 0, usd: 0, loan: 0 };
-                    let newTwd = current.twd || 0;
-                    let newUsd = current.usd || 0;
-                    if (currency === 'TWD') newTwd += amount;
-                    else newUsd += amount;
-                    if (!doc.exists) {
-                        await ref.set({ twd: newTwd, usd: newUsd, loan: 0 });
-                    } else {
-                        await ref.update({ twd: newTwd, usd: newUsd });
-                    }
-                    cashData.value.twd = newTwd;
-                    cashData.value.usd = newUsd;
+                    await db.runTransaction(async (transaction) => {
+                        const doc = await transaction.get(ref);
+                        let current = doc.exists ? doc.data() : { twd: 0, usd: 0, loan: 0 };
+                        let newTwd = current.twd || 0;
+                        let newUsd = current.usd || 0;
+                        if (currency === 'TWD') newTwd += amount;
+                        else newUsd += amount;
+                        if (!doc.exists) {
+                            transaction.set(ref, { twd: newTwd, usd: newUsd, loan: 0 });
+                        } else {
+                            transaction.update(ref, { twd: newTwd, usd: newUsd });
+                        }
+                        // 樂觀更新本地狀態
+                        cashData.value.twd = newTwd;
+                        cashData.value.usd = newUsd;
+                    });
                 };
                 const updateLoanBalance = async (loanId, amount) => { if (!user.value || !loanId) return; const ref = db.collection('users').doc(user.value.uid).collection('loans').doc(loanId); const doc = await ref.get(); if (doc.exists) { const newBal = (doc.data().balance || 0) + amount; await ref.update({ balance: newBal }); } };
                 const fetchPreviousDayData = async (uid) => { const todayStr = getLocalDate(); const snap = await db.collection('users').doc(uid).collection('history').orderBy('date', 'desc').limit(2).get(); if (snap.empty) return; const docs = snap.docs.map(d => d.data()); if (docs[0].date !== todayStr) prevDayData.value = docs[0]; else if (docs.length > 1) prevDayData.value = docs[1]; };
@@ -1100,6 +1097,30 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     return null;
                 };
 
+                // ★★★ v4.3.0: 台股單支更新改走 Yahoo Finance v7（較 MIS 穩定）★★★
+                // 透過現有 CF Proxy 繞過 CORS；失敗自動降級回 MIS → Open API
+                const fetchTwStockPriceYahoo = async (stock) => {
+                    const cleanSym = stock.symbol.replace(/\.(TW|TWO)$/i, '');
+                    // 依 marketType 決定 Yahoo suffix (.TWO = 上櫃, .TW = 上市)
+                    const suffix = (stock.marketType === 'otc') ? '.TWO' : '.TW';
+                    const yahooSym = `${cleanSym}${suffix}`;
+                    try {
+                        const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${yahooSym}&lang=zh-TW&region=TW`;
+                        const resp = await fetchWithRetry(CF_PROXY + encodeURIComponent(url), 1, 8000);
+                        const json = await resp.json();
+                        const result = json?.quoteResponse?.result?.[0];
+                        if (result && result.regularMarketPrice > 0) {
+                            return {
+                                regularMarketPrice: result.regularMarketPrice,
+                                previousClose: result.regularMarketPreviousClose || result.regularMarketPrice
+                            };
+                        }
+                    } catch (e) {
+                        console.warn(`[Yahoo] ${yahooSym} 失敗，降級至 MIS`, e);
+                    }
+                    return null;
+                };
+
                 // 判斷美股是否盤中 (簡單以時區判斷)
                 const isUsMarketOpen = () => {
                     const nyTime = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
@@ -1349,14 +1370,27 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     const typeName = marketType === 'TW' ? '台股' : (marketType === 'US' ? '美股' : '全部');
                     alert(`${typeName} 更新完成！\n\n✅ 成功: ${successCount} 筆\n❌ 失敗: ${failCount} 筆`);
                 };
-                // [修改] 單一股票更新 (失敗時紅色驚嘆號不消失)
+                // [v4.3.0] 單一股票更新：台股優先走 Yahoo Finance，失敗降級至 MIS→OpenAPI
                 const updateSingleStock = async (stock) => {
                     if (!user.value) return;
 
                     stockStates.value[stock.id] = 'loading';
 
                     try {
-                        const data = await fetchStockData(stock);
+                        const isUs = stock.marketType === 'us' || (!stock.marketType && stock.currency === 'USD');
+                        let data = null;
+
+                        if (!isUs) {
+                            // 台股：Yahoo Finance 優先
+                            data = await fetchTwStockPriceYahoo(stock);
+                            if (!data) {
+                                console.log(`[updateSingleStock] ${stock.symbol} Yahoo 無資料，降級至 MIS`);
+                                data = await fetchStockData(stock);
+                            }
+                        } else {
+                            // 美股：Finnhub（不變）
+                            data = await fetchStockData(stock);
+                        }
 
                         if (data) {
                             stock.currentPrice = data.regularMarketPrice;
@@ -1377,7 +1411,6 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         stockStates.value[stock.id] = 'error';
                     }
 
-                    // [修改重點] 3秒後只消除「成功」的圖示，失敗的保留
                     setTimeout(() => {
                         if (stockStates.value[stock.id] === 'success') {
                             stockStates.value[stock.id] = null;
@@ -1410,7 +1443,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     showHistoryModal, historyRecords, openHistoryModal, deleteHistoryRecord,
                     notes, openNoteModal, closeNoteModal, saveNote, deleteNote, showNoteModalVisible, noteForm,
                     realizedSearchQuery, sortRealized, sortedRealizedGains, realizedGains,
-                    realizedRange, setRealizedRange, currentPage, itemsPerPage, paginatedRealizedGains, totalRealizedPages, changePage,
+                    realizedRange, setRealizedRange,
                     // v2.9.2
                     showDeleteModal, pendingDeleteTx, executeDelete,
                     // v2.9.4

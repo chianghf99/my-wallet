@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v4.3.0</title>
+    <title>我的投資組合 | Portfolio v4.4.0</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -298,7 +298,7 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v4.3.0</h1>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v4.4.0</h1>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -318,7 +318,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v4.3.0</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v4.4.0</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -396,11 +396,27 @@
                                     formatCurrency(grandTotalAssets, 'TWD') }}</span>
                                 <span v-else class="text-gray-300 dark:text-gray-600">****</span>
                             </div>
+                            <!-- v4.4.0: 槓桿比 -->
+                            <div class="flex justify-between text-sm items-center" v-if="totalLoanBalance > 0">
+                                <div class="text-gray-500 dark:text-gray-400 group relative cursor-help">
+                                    槓桿比 (Leverage) <i class="fa-regular fa-circle-question ml-0.5 text-xs"></i>
+                                    <div class="absolute bottom-full left-0 mb-2 hidden group-hover:block bg-gray-800 text-white text-xs p-3 rounded whitespace-nowrap z-10 shadow-lg leading-relaxed border border-gray-600">
+                                        <div class="font-bold text-yellow-400 mb-1">&#x69d3;桿比 = 總資產 / 淨資產</div>
+                                        <div>總資產 (Gross): {{ formatCurrency(grandTotalAssets, 'TWD') }}</div>
+                                        <div>淨資產 (Net): {{ formatCurrency(grandTotalValue, 'TWD') }}</div>
+                                        <div>負債: {{ formatCurrency(totalLoanBalance, 'TWD') }}</div>
+                                    </div>
+                                </div>
+                                <span v-if="showPrivacy" class="font-bold text-sm"
+                                    :class="leverageRatio >= 2.5 ? 'text-red-500 dark:text-red-400' : leverageRatio >= 1.5 ? 'text-orange-500 dark:text-orange-400' : 'text-gray-700 dark:text-gray-200'">
+                                    {{ leverageRatio.toFixed(2) }}x
+                                </span>
+                                <span v-else class="text-gray-300 dark:text-gray-600">****</span>
+                            </div>
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-500 dark:text-gray-400">總未實現損益</span>
                                 <span v-if="showPrivacy" :class="getPnlClass(grandTotalPnL)">{{
-                                    formatCurrency(grandTotalPnL, 'TWD') }}<span class="text-xs ml-1">({{
-                                        getRoi(grandTotalValue - grandTotalPnL, grandTotalPnL) }})</span></span>
+                                    formatCurrency(grandTotalPnL, 'TWD') }}<span class="text-xs ml-1">({{ getRoi(grandTotalValue - grandTotalPnL, grandTotalPnL) }})</span></span>
                                 <span v-else class="text-gray-300 dark:text-gray-600">****</span>
                             </div>
                             <!-- XIRR 暫時隱藏（數值因時間過短失真）
@@ -706,6 +722,52 @@
                                     <div v-if="loanList.length===0" class="text-center text-xs text-purple-300">無借款
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                        
+                        <!-- v4.4.0: 槓桿比儀表板 -->
+                        <div v-if="totalLoanBalance > 0" class="mt-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-xl p-4">
+                            <div class="flex justify-between items-start mb-3">
+                                <div>
+                                    <div class="text-sm font-bold text-amber-800 dark:text-amber-300 flex items-center gap-2">
+                                        <i class="fa-solid fa-scale-unbalanced"></i> 槓桿比儀表板
+                                    </div>
+                                    <div class="text-xs text-amber-600 dark:text-amber-400 mt-0.5">槓桿比 = 總資產 / 淨資產</div>
+                                </div>
+                                <span class="text-3xl font-bold"
+                                    :class="leverageRatio >= 2.5 ? 'text-red-500 dark:text-red-400' : leverageRatio >= 1.5 ? 'text-orange-500 dark:text-orange-400' : 'text-emerald-600 dark:text-emerald-400'"
+                                    v-if="showPrivacy">{{ leverageRatio.toFixed(2) }}x</span>
+                                <span v-else class="text-2xl font-bold text-gray-300">****</span>
+                            </div>
+                            <!-- 視覺化進度條 -->
+                            <div class="mb-3" v-if="showPrivacy">
+                                <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                    <div class="h-full rounded-full transition-all duration-500"
+                                        :style="{ width: Math.min(((leverageRatio - 1) / 2) * 100, 100) + '%' }"
+                                        :class="leverageRatio >= 2.5 ? 'bg-red-500' : leverageRatio >= 1.5 ? 'bg-orange-400' : 'bg-emerald-500'">
+                                    </div>
+                                </div>
+                                <div class="flex justify-between text-[10px] text-gray-400 mt-1">
+                                    <span>1x (無槓桿)</span><span>1.5x</span><span>2x</span><span>2.5x (高)</span><span>3x+</span>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-3 gap-2 text-center text-xs" v-if="showPrivacy">
+                                <div class="bg-white dark:bg-gray-800 rounded-lg p-2">
+                                    <div class="text-gray-400 mb-0.5">總資產</div>
+                                    <div class="font-bold text-gray-700 dark:text-gray-200">{{ formatCurrency(grandTotalAssets, 'TWD') }}</div>
+                                </div>
+                                <div class="bg-white dark:bg-gray-800 rounded-lg p-2">
+                                    <div class="text-gray-400 mb-0.5">淨資產</div>
+                                    <div class="font-bold text-gray-700 dark:text-gray-200">{{ formatCurrency(grandTotalValue, 'TWD') }}</div>
+                                </div>
+                                <div class="bg-purple-50 dark:bg-purple-900/30 rounded-lg p-2">
+                                    <div class="text-purple-500 dark:text-purple-400 mb-0.5">負債</div>
+                                    <div class="font-bold text-purple-600 dark:text-purple-300">{{ formatCurrency(totalLoanBalance, 'TWD') }}</div>
+                                </div>
+                            </div>
+                            <div class="mt-2 text-[11px] text-red-600 dark:text-red-400 flex items-start gap-1" v-if="leverageRatio >= 2">
+                                <i class="fa-solid fa-triangle-exclamation mt-0.5 flex-shrink-0"></i>
+                                <span>槓桿比 {{ leverageRatio.toFixed(2) }}x 偏高，請評估風險承受能力。</span>
                             </div>
                         </div>
                     </div>
@@ -1536,7 +1598,15 @@
                                 <div
                                     class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800">
                                 </div>
-                                <div class="text-xs text-gray-400 mb-1">2026-05-01</div>
+                                <div class="text-xs text-gray-400 mb-1">2026-05-03</div>
+                            <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
+                                <div class="font-bold text-gray-800 dark:text-white mb-2">v4.4.0</div>
+                                <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                    <li>新增：將「槓桿比」納入每日快照，資產走勢圖支援在副 Y 軸顯示歷史槓桿變化（僅有負債時顯示）</li>
+                                    <li>新增：資金管理區加入「槓桿比儀表板」，含視覺化進度條與各項資產分解</li>
+                                    <li>新增：淨資產卡片展示即時槓桿比，超過 2.5x 顯示紅色警示</li>
+                                </ul>
+                            </div>
                             <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
                                 <div class="font-bold text-gray-800 dark:text-white mb-2">v4.3.0</div>
                                 <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">

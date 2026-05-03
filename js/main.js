@@ -100,6 +100,11 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 // v4.0.0: 淨資產 = 總資產 - 所有負債(貸款)；房貸已含在 totalLoanBalance 內（若連結對應帳戶）
                 const grandTotalValue = computed(() => grandTotalAssets.value - totalLoanBalance.value);
                 const grandTotalPnL = computed(() => twStats.value.pnl + (usStats.value.pnl * exchangeRate.value));
+                // v4.4.0: 槓桿比 = 總資產 / 淨資產
+                const leverageRatio = computed(() => {
+                    if (grandTotalValue.value <= 0) return 1;
+                    return grandTotalAssets.value / grandTotalValue.value;
+                });
                 const realizedTotalTw = computed(() => sortedRealizedGains.value.filter(r => r.currency === 'TWD').reduce((acc, cur) => acc + cur.pnl, 0));
                 const realizedTotalUs = computed(() => sortedRealizedGains.value.filter(r => r.currency === 'USD').reduce((acc, cur) => acc + cur.pnl, 0));
 
@@ -535,7 +540,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 const executeDelete = async (revertCash) => { showDeleteModal.value = false; const tx = pendingDeleteTx.value; if (!tx) return; if (revertCash) { if (tx.type === 'deposit') await updateCash(tx.currency, -Math.abs(tx.totalAmount), 0); else if (tx.type === 'withdraw') await updateCash(tx.currency, Math.abs(tx.totalAmount), 0); else if (tx.type === 'borrow') { if (tx.loanId) await updateLoanBalance(tx.loanId, -Math.abs(tx.totalAmount)); else alert('此為舊版借款紀錄，請手動調整對應帳戶餘額。'); if (tx.cashSynced === true) await updateCash(tx.currency || 'TWD', -Math.abs(tx.totalAmount), 0); } else if (tx.type === 'repay') { if (tx.loanId) await updateLoanBalance(tx.loanId, Math.abs(tx.totalAmount)); if (tx.cashSynced === true) await updateCash(tx.currency || 'TWD', Math.abs(tx.totalAmount), 0); } else if (tx.type === 'dividend') { await updateCash(tx.currency, -Math.abs(tx.totalAmount), 0); const stock = stocks.value.find(s => s.symbol === tx.symbol); if (stock) { await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ dividends: Math.max(0, (stock.dividends || 0) - tx.totalAmount) }); } } else if (tx.type === 'buy') { await updateCash(tx.currency, Math.abs(tx.totalAmount), 0); const stock = stocks.value.find(s => s.symbol === tx.symbol); if (stock) { const ns = stock.shares - tx.shares; if (ns <= 0) { await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).delete(); } else { const remainingValue = (stock.shares * stock.avgCost) - tx.totalAmount; const na = remainingValue > 0 ? remainingValue / ns : 0; await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ shares: ns, avgCost: na }); } } } else if (tx.type === 'sell') { alert('系統提示：已將您的賣出金額從現金中扣除。但因系統無法追蹤原銷售股票之成本紀錄，請您手動至「已實現損益」與「庫存」調整對應股數與紀錄，以確保資料正確。'); await updateCash(tx.currency, -Math.abs(tx.totalAmount), 0); } } await db.collection('users').doc(user.value.uid).collection('transactions').doc(tx.id).delete(); fetchTransactions(); setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'transactions') fetchTransactions(); if (activeSection.value === 'realized') fetchRealizedGains(); if (activeSection.value === 'chart') drawChart(); }, 500); pendingDeleteTx.value = null; };
                 const deleteDividend = async (rec) => { if (!confirm('刪除股息？(現金將自動扣回)')) return; const stock = stocks.value.find(s => s.symbol === rec.symbol); if (stock) { await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ dividends: Math.max(0, (stock.dividends || 0) - rec.amount) }); } await updateCash(rec.currency, -rec.amount, 0); await db.collection('users').doc(user.value.uid).collection('dividends').doc(rec.id).delete(); fetchDividends(); setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'chart') drawChart(); }, 500); };
                 const deleteRealized = async (id) => { if (!confirm('刪除？')) return; await db.collection('users').doc(user.value.uid).collection('realized_gains').doc(id).delete(); fetchRealizedGains(); };
-                const saveDailySnapshot = async () => { if (!user.value) return; const todayStr = getLocalDate(); const historyRef = db.collection('users').doc(user.value.uid).collection('history').doc(todayStr); const currentHour = new Date().getHours(); const snapshot = { date: todayStr, timestamp: firebase.firestore.FieldValue.serverTimestamp(), savedHour: currentHour, totalVal: grandTotalValue.value, twVal: twStats.value.value, usVal: usStats.value.value, twCash: cashData.value.twd || 0, usCash: cashData.value.usd || 0, loan: totalLoanBalance.value, totalPnL: grandTotalPnL.value, twPnL: twStats.value.pnl, usPnL: usStats.value.pnl, realestate: realEstateTotalMarket.value }; if (currentHour >= 21) { const doc = await historyRef.get(); if (doc.exists) { const existingSavedHour = doc.data().savedHour; if (existingSavedHour !== undefined && existingSavedHour < 21 && doc.data().totalVal > 0) { return; } } } await historyRef.set(snapshot, { merge: true }); debouncedXirr(); };
+                const saveDailySnapshot = async () => { if (!user.value) return; const todayStr = getLocalDate(); const historyRef = db.collection('users').doc(user.value.uid).collection('history').doc(todayStr); const currentHour = new Date().getHours(); const snapshot = { date: todayStr, timestamp: firebase.firestore.FieldValue.serverTimestamp(), savedHour: currentHour, totalVal: grandTotalValue.value, twVal: twStats.value.value, usVal: usStats.value.value, twCash: cashData.value.twd || 0, usCash: cashData.value.usd || 0, loan: totalLoanBalance.value, totalPnL: grandTotalPnL.value, twPnL: twStats.value.pnl, usPnL: usStats.value.pnl, realestate: realEstateTotalMarket.value, leverage: leverageRatio.value }; if (currentHour >= 21) { const doc = await historyRef.get(); if (doc.exists) { const existingSavedHour = doc.data().savedHour; if (existingSavedHour !== undefined && existingSavedHour < 21 && doc.data().totalVal > 0) { return; } } } await historyRef.set(snapshot, { merge: true }); debouncedXirr(); };
 
                 const updateCash = async (currency, amount, loanAmount = 0) => {
                     if (!user.value) return;
@@ -589,23 +594,42 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     const isDark = document.documentElement.classList.contains('dark');
                     const totalColor = isDark ? '#a78bfa' : '#1f2937';
                     const gridColor = isDark ? '#374151' : '#e5e7eb';
+                    // v4.4.0: 計算歷史槓桿比（有存 leverage 欄位用它，否則從 totalVal + loan 推算）
+                    const calcLeverage = x => {
+                        if (x.leverage !== undefined) return x.leverage;
+                        const netWorth = calcNetWorth(x);
+                        if (netWorth <= 0) return 1;
+                        const gross = netWorth + (x.loan || 0);
+                        return gross / netWorth;
+                    };
+                    const hasLoan = d.some(x => (x.loan || 0) > 0 || (x.leverage !== undefined && x.leverage > 1.01));
+
                     chartInstance = new Chart(document.getElementById('assetChart').getContext('2d'), {
                         type: 'line',
                         data: {
                             labels: d.map(x => x.date),
                             datasets: [
-                                { label: '淨資產 (Net Worth)', data: d.map(calcNetWorth), borderColor: totalColor, fill: true, backgroundColor: isDark ? 'rgba(167, 139, 250, 0.1)' : 'rgba(31,41,55,0.1)', tension: 0.3 },
-                                { label: '台股 (Stock)', data: d.map(x => x.twVal), borderColor: '#3b82f6', hidden: true, tension: 0.3 },
-                                { label: '美股 (Stock TWD)', data: d.map(x => x.usVal * exchangeRate.value), borderColor: '#ef4444', hidden: true, tension: 0.3 },
-                                { label: '台股帳戶 (Stock+Cash)', data: d.map(x => (x.twVal || 0) + (x.twCash || 0)), borderColor: '#93c5fd', borderDash: [5, 5], hidden: true, tension: 0.3 },
-                                { label: '美股帳戶 (Stock+Cash)', data: d.map(x => ((x.usVal || 0) + (x.usCash || 0)) * exchangeRate.value), borderColor: '#fca5a5', borderDash: [5, 5], hidden: true, tension: 0.3 }
+                                { label: '淨資產 (Net Worth)', data: d.map(calcNetWorth), borderColor: totalColor, fill: true, backgroundColor: isDark ? 'rgba(167, 139, 250, 0.1)' : 'rgba(31,41,55,0.1)', tension: 0.3, yAxisID: 'y' },
+                                { label: '台股 (Stock)', data: d.map(x => x.twVal), borderColor: '#3b82f6', hidden: true, tension: 0.3, yAxisID: 'y' },
+                                { label: '美股 (Stock TWD)', data: d.map(x => x.usVal * exchangeRate.value), borderColor: '#ef4444', hidden: true, tension: 0.3, yAxisID: 'y' },
+                                { label: '台股帳戶 (Stock+Cash)', data: d.map(x => (x.twVal || 0) + (x.twCash || 0)), borderColor: '#93c5fd', borderDash: [5, 5], hidden: true, tension: 0.3, yAxisID: 'y' },
+                                { label: '美股帳戶 (Stock+Cash)', data: d.map(x => ((x.usVal || 0) + (x.usCash || 0)) * exchangeRate.value), borderColor: '#fca5a5', borderDash: [5, 5], hidden: true, tension: 0.3, yAxisID: 'y' },
+                                // v4.4.0: 槓桿比（副 Y 軸，右側）
+                                { label: '槓桿比 (Leverage)', data: hasLoan ? d.map(calcLeverage) : [], borderColor: '#f59e0b', borderDash: [3, 3], borderWidth: 1.5, pointRadius: 2, tension: 0.3, yAxisID: 'yLeverage', hidden: !hasLoan }
                             ]
                         },
                         options: {
                             responsive: true, maintainAspectRatio: false,
                             scales: {
                                 y: { ticks: { callback: v => 'NT$' + (v / 10000).toFixed(0) + '萬', color: isDark ? '#9ca3af' : '#666' }, grid: { color: gridColor } },
-                                x: { ticks: { color: isDark ? '#9ca3af' : '#666' }, grid: { color: gridColor } }
+                                x: { ticks: { color: isDark ? '#9ca3af' : '#666' }, grid: { color: gridColor } },
+                                yLeverage: {
+                                    position: 'right',
+                                    display: hasLoan,
+                                    min: 1,
+                                    ticks: { callback: v => v.toFixed(2) + 'x', color: '#f59e0b' },
+                                    grid: { drawOnChartArea: false }
+                                }
                             },
                             plugins: { legend: { labels: { color: isDark ? '#e5e7eb' : '#666' } } }
                         }
@@ -1430,7 +1454,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 return {
                     clearAllUserData, // v3.2.1
                     user, login, logout, stocks, exchangeRate, lastUpdated, isLoading, viewMode, isMobile, showPrivacy, isDarkMode, toggleDarkMode, activeSection, toggleSection, showChangelog, hideZeroShares, defaultPrivacyHidden,
-                    twStats, usStats, grandTotalValue, grandTotalAssets, grandTotalPnL, twStockList, usStockList,
+                    twStats, usStats, grandTotalValue, grandTotalAssets, grandTotalPnL, twStockList, usStockList, leverageRatio,
                     showModal, isEditing, form, openModal, editStock, closeModal, saveStock, deleteStock,
                     showTransModal, transForm, openTransModal, closeTransModal, submitTransaction, isFundMode, openFundModal,
                     autoFetchName, autoFetchTransName, fetchPrices, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountClass, getAmountSign,

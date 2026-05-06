@@ -86,7 +86,7 @@ export const transactionHistory = ref([]);
 
 export const showModal = ref(false); 
 export const isEditing = ref(false);
-export const form = ref({ id: null, symbol: '', name: '', currency: 'TWD', shares: 0, avgCost: 0, totalCostInput: 0, currentPrice: 0, dividends: 0, previousClose: 0 });
+export const form = ref({ id: null, symbol: '', name: '', currency: 'TWD', shares: 0, avgCost: 0, totalCostInput: 0, currentPrice: 0, dividends: 0, previousClose: 0, multiplier: 1 });
 export const showTransModal = ref(false); 
 export const isFundMode = ref(false); 
 export const isLoanMode = ref(false); 

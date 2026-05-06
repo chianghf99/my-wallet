@@ -251,11 +251,6 @@
                 <button class="btn btn-primary w-100 mb-2" onclick="saveFirebaseKeys()">儲存設定</button>
                 <button class="btn btn-outline-secondary w-100" id="btnMigrate" onclick="migrateFromJsonbin()" style="display:none;">從 Jsonbin 一鍵遷移</button>
             </div></div></div>
-            <div class="col-md-12"><div class="card border-0 shadow-sm rounded-4 h-100"><div class="card-body">
-                <h6>Gemini AI 解析設定</h6>
-                <input type="password" class="form-control bg-light mb-2" id="inputGeminiApiKey" placeholder="Gemini API Key">
-                <button class="btn btn-primary w-100" onclick="saveGeminiKey()">儲存金鑰</button>
-            </div></div></div>
         </div>
     </div>
 </div>
@@ -330,11 +325,9 @@
     document.getElementById('analysisStart').value = `${now.getFullYear()}-01-01`;
     document.getElementById('analysisEnd').value = now.toISOString().split('T')[0];
 
-    // Settings UI Loading
     function loadSettingsUI() {
         document.getElementById('inputFirebaseApiKey').value = localStorage.getItem('firebase_api_key') || '';
         document.getElementById('inputDocId').value = localStorage.getItem('firebase_doc_id') || '';
-        document.getElementById('inputGeminiApiKey').value = localStorage.getItem('gemini_api_key') || '';
         
         if (localStorage.getItem('jsonbin_bin_id') && localStorage.getItem('jsonbin_api_key')) {
             document.getElementById('btnMigrate').style.display = 'block';
@@ -519,11 +512,6 @@
         initFirebase();
         alert('✅ Firebase 設定已儲存');
     }
-    
-    function saveGeminiKey() {
-        localStorage.setItem('gemini_api_key', document.getElementById('inputGeminiApiKey').value);
-        alert('✅ Gemini API Key 已儲存');
-    }
 
     function updateSyncStatus() { document.getElementById('syncStatus').textContent = localStorage.getItem('last_sync_time') || '未同步'; }
     function togglePrivacy() { isPrivacyOn = !isPrivacyOn; document.getElementById('privacyIcon').className = isPrivacyOn ? 'fas fa-eye' : 'fas fa-eye-slash'; renderTotal(); }
@@ -591,14 +579,203 @@
         } catch(e) { console.error(e); alert("遷移失敗：" + e.message); } finally { loadingOverlay.style.display='none'; render(); }
     }
 
-    // Gemini PDF Upload
+    // Offline Regex Parser
+    function cleanDate(dateStr) {
+        try {
+            dateStr = dateStr.replace(/\s+/g, "");
+            if (!dateStr.includes("/") && !dateStr.includes("-")) {
+                let dNum = dateStr.replace(/[^\d]/g, "");
+                if (dNum.length >= 6) {
+                    let y = parseInt(dNum.substring(0, 3)) + 1911;
+                    let m = dNum.substring(3, 5).padStart(2, '0');
+                    let d = dNum.substring(5).padStart(2, '0');
+                    return `${y}-${m}-${d}`;
+                }
+            }
+            let dNum = dateStr.replace(/[^\d\/-]/g, "");
+            let parts = dNum.split(/[\/-]/);
+            if (parts.length === 3) {
+                let year = parseInt(parts[0]);
+                if (year < 1911) year += 1911;
+                return `${year}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+            }
+            return dateStr;
+        } catch (e) { return dateStr; }
+    }
+
+    function processBankRules(filename, text) {
+        let amount = -1;
+        let dueDate = "未知日期";
+        let bankName = "";
+        filename = filename.toLowerCase();
+        const textNoSpace = text.replace(/\s+/g, "");
+
+        const isFubonDate = /^\d+年\d+月/.test(filename);
+
+        if (filename.includes("cbgcc") || filename.includes("dbs") || filename.includes("星展")) {
+            bankName = "星展信用卡";
+            let allDates = text.match(/\d{4}\/\d{2}\/\d{2}/g);
+            if (allDates) {
+                let validDates = allDates.filter(d => d.includes("202"));
+                if (validDates.length > 0) dueDate = cleanDate(validDates.sort()[validDates.length-1]);
+            }
+            let autoPayMatch = text.match(/自動扣繳\s*(\d{1,3}(?:,\d{3})*)/);
+            if (autoPayMatch) amount = parseInt(autoPayMatch[1].replace(/,/g, ""));
+            if (amount === -1) {
+                let maxValid = -1;
+                let lines = text.split('\n');
+                for (let line of lines) {
+                    let numsMatch = line.match(/\d{1,3}(?:,\d{3})*/g);
+                    if (numsMatch && numsMatch.length >= 3) {
+                        for (let nStr of numsMatch) {
+                            let n = parseInt(nStr.replace(/,/g, ""));
+                            if (n > 0 && n < 200000 && n > maxValid) maxValid = n;
+                        }
+                    }
+                }
+                if (maxValid > 0) amount = maxValid;
+            }
+        } 
+        else if (filename.includes("就學貸款")) {
+            bankName = "富邦學貸";
+            let amtMatch = text.match(/本期應繳總金額\s*(\d{1,3}(?:,\d{3})*)/);
+            if (amtMatch) amount = parseInt(amtMatch[1].replace(/,/g, ""));
+            let dateMatch = text.match(/扣繳日期.*?(\d{3}\/\d{2}\/\d{2})/s);
+            if (!dateMatch) {
+                let allDates = text.match(/\d{3}\/\d{2}\/\d{2}/g);
+                if (allDates) {
+                    let validDates = allDates.filter(d => d.includes("11"));
+                    if (validDates.length > 0) dueDate = cleanDate(validDates.sort()[validDates.length-1]);
+                }
+            } else {
+                dueDate = cleanDate(dateMatch[1]);
+            }
+        }
+        else if (filename.includes("永豐")) {
+            bankName = "永豐信用卡";
+            let dateMatch = text.match(/截止日\s*[:]?\s*(\d{4}\/\d{2}\/\d{2})/);
+            if (dateMatch) dueDate = cleanDate(dateMatch[1]);
+            let deductMatch = text.match(/預定扣款金額\s*(\d{1,3}(?:,\d{3})*)/);
+            if (deductMatch) amount = parseInt(deductMatch[1].replace(/,/g, ""));
+            if (amount === -1) {
+                let amtMatch = text.match(/(?:[^上期]|^)應繳總金額\s*(\d{1,3}(?:,\d{3})*)/); 
+                if (amtMatch) amount = parseInt(amtMatch[1].replace(/,/g, ""));
+            }
+            if (amount === -1) {
+                let fallbackMatch = textNoSpace.match(/臺幣.*?(?:\d{1,3}(?:,\d{3})*)/g);
+                if (fallbackMatch && fallbackMatch.length > 0) {
+                    let nums = fallbackMatch.map(m => parseInt(m.replace(/[^\d]/g, "")));
+                    amount = Math.max(...nums);
+                }
+            }
+        }
+        else if (filename.includes("富邦") || isFubonDate) {
+            bankName = "富邦信用卡";
+            let twoDatesMatch = text.match(/(\d{3}\/\d{2}\/\d{2})\s+(\d{3}\/\d{2}\/\d{2})/);
+            if (twoDatesMatch) dueDate = cleanDate(twoDatesMatch[2]);
+            else {
+                let dateMatch = text.match(/繳款截止日\s*(\d{2,3}\/\d{2}\/\d{2})/);
+                if (dateMatch) dueDate = cleanDate(dateMatch[1]);
+            }
+            let amtMatchCht = textNoSpace.match(/本期應繳總額(\d{1,3}(?:,\d{3})*)/);
+            if (amtMatchCht) amount = parseInt(amtMatchCht[1].replace(/,/g, ""));
+            else {
+                let amtMatchNt = textNoSpace.match(/NT\$(\d{1,3}(?:,\d{3})*)/);
+                if (amtMatchNt) amount = parseInt(amtMatchNt[1].replace(/,/g, ""));
+            }
+        }
+        else if (filename.includes("tsb") || filename.includes("台新")) {
+            bankName = "台新信用卡";
+            let dateMatch = text.match(/繳款截止日\s*(\d{2,3}\/\d{2}\/\d{2})/);
+            if (dateMatch) dueDate = cleanDate(dateMatch[1]);
+            let amtMatch = text.match(/本期累計應繳金額\s*(\d{1,3}(?:,\d{3})*|0)/);
+            if (amtMatch) amount = parseInt(amtMatch[1].replace(/,/g, ""));
+        }
+        else if (filename.includes("彰化") || filename.includes("chb")) {
+            bankName = "彰銀信用卡";
+            let dateMatch = text.match(/截止日[\s\S]{0,30}(\d{4}\/\d{2}\/\d{2})/);
+            if (dateMatch) dueDate = cleanDate(dateMatch[1]);
+            else {
+                let allDates = text.match(/\d{4}\/\d{2}\/\d{2}/g);
+                if (allDates) dueDate = cleanDate(allDates.sort()[allDates.length-1]);
+            }
+            let amtMatch = text.match(/本期應繳總額.*?[=]\s*(\d{1,3}(?:,\d{3})*)/s);
+            if (!amtMatch) amtMatch = text.match(/[=]\s*(\d{1,3}(?:,\d{3})*)/);
+            if (amtMatch) amount = parseInt(amtMatch[1].replace(/,/g, ""));
+        }
+        else if (filename.includes("國泰") || filename.includes("消費明細")) {
+            bankName = "國泰信用卡";
+            let dateMatch = text.match(/繳款截止日.*?(\d{3,4}\/\d{1,2}\/\d{1,2})/);
+            if (dateMatch) dueDate = cleanDate(dateMatch[1]);
+            if (dueDate === "未知日期") {
+                let allDates = text.match(/\d{3}\/\d{2}\/\d{2}/g) || text.match(/\d{4}\/\d{2}\/\d{2}/g);
+                if (allDates) {
+                    let cleanDates = allDates.map(d => cleanDate(d)).sort();
+                    dueDate = cleanDates[cleanDates.length-1];
+                }
+            }
+            let allAmts = textNoSpace.match(/\d{1,3}(?:,\d{3})*/g) || [];
+            let validAmts = allAmts.map(a => parseInt(a.replace(/,/g, ""))).filter(n => n > 0 && n < 150000 && n !== 1000 && (n % 10000 !== 0));
+            if (validAmts.length > 0) amount = Math.max(...validAmts);
+        }
+        else if (filename.includes("玉山") || filename.includes("esun")) {
+            bankName = "玉山信用卡";
+            let allDates = text.match(/\d{3}\/\d{2}\/\d{2}/g);
+            if (allDates) {
+                let cleanDates = allDates.map(d => cleanDate(d)).sort();
+                dueDate = cleanDates[cleanDates.length-1];
+            }
+            let matches = textNoSpace.match(/(\d{1,3}(?:,\d{3})*)元(\d{1,3}(?:,\d{3})*)元/);
+            if (matches) amount = parseInt(matches[1].replace(/,/g, ""));
+            if (amount === -1) {
+                let amtMatch = textNoSpace.match(/本期應繳總金額(\d{1,3}(?:,\d{3})*)元/);
+                if (!amtMatch) amtMatch = textNoSpace.match(/本期應繳總金額.*?(\d{1,3}(?:,\d{3})*)/);
+                if (amtMatch) amount = parseInt(amtMatch[1].replace(/,/g, ""));
+            }
+        }
+        else if (filename.includes("ubot") || filename.includes("聯邦")) {
+            bankName = "聯邦信用卡";
+            let amtMatch = text.match(/(\d{1,3}(?:,\d{3})*).*?優惠注意事項/s);
+            if (amtMatch) amount = parseInt(amtMatch[1].replace(/,/g, ""));
+            
+            let validDates = [];
+            let dateRe = /(\d{3}\/\d{2}\/\d{2})/g;
+            let match;
+            while ((match = dateRe.exec(text)) !== null) {
+                let dStr = match[1];
+                let ctx = text.substring(Math.max(0, match.index - 10), match.index + 20);
+                if (!ctx.includes("止") && !ctx.includes("適用期間")) {
+                    validDates.push(cleanDate(dStr));
+                }
+            }
+            if (validDates.length > 0) dueDate = validDates.sort()[validDates.length-1];
+        }
+        else if (filename.includes("ctbc") || filename.includes("中信")) {
+            bankName = "中信信用卡";
+            let allDates = text.match(/(\d{3}\s\d{2}\s\d{2})|(\d{3}\/\d{2}\/\d{2})/g) || [];
+            let validDates = allDates.filter(d => d.includes("114") || d.includes("115"));
+            if (validDates.length > 0) dueDate = cleanDate(validDates.sort()[validDates.length-1]);
+
+            let amtMatches = text.match(/\$\s*(\d{1,3}(?:,\d{3})*)/g);
+            if (amtMatches) {
+                let cleanNums = amtMatches.map(m => parseInt(m.replace(/[\$\s,]/g, "")));
+                amount = Math.max(...cleanNums);
+            }
+            if (amount === -1) {
+                if (text.match(/\/\s*0\/\s*0/) || text.match(/\s0\s+\+0/)) amount = 0;
+            }
+        }
+        else {
+            bankName = "未辨識銀行";
+        }
+        
+        return { name: bankName, amount: amount, date: dueDate };
+    }
+
     async function handlePDFUpload() {
         const fileInput = document.getElementById('pdfUpload');
         const file = fileInput.files[0];
         if (!file) { alert('請先選擇 PDF 檔案'); return; }
-        
-        const geminiKey = localStorage.getItem('gemini_api_key');
-        if (!geminiKey) { alert('請先在設定頁面填寫 Gemini API Key'); return; }
 
         const pdfPassword = document.getElementById('pdfPassword').value;
 
@@ -615,38 +792,28 @@
                 cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
                 cMapPacked: true
             }).promise;
+            
             let fullText = '';
-            for (let i = 1; i <= pdf.numPages; i++) {
+            for (let i = 1; i <= Math.min(2, pdf.numPages); i++) {
                 const page = await pdf.getPage(i);
                 const textContent = await page.getTextContent();
                 fullText += textContent.items.map(item => item.str).join(' ') + '\n';
             }
 
-            const prompt = `請分析以下信用卡帳單文字，提取出：銀行名稱、應繳總額(純數字)、繳款截止日(YYYY-MM-DD)。請嚴格只回傳 JSON 格式，不要包含任何 markdown 或其他文字：{"name": "銀行名稱", "amount": 1234, "date": "2024-01-01"}\n\n帳單內容：\n${fullText.substring(0, 15000)}`;
-
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }],
-                    generationConfig: { response_mime_type: "application/json" }
-                })
-            });
-
-            if (!response.ok) {
-                const errData = await response.text();
-                throw new Error('Gemini API 請求失敗: ' + response.status + ' ' + errData);
+            const result = processBankRules(file.name, fullText);
+            
+            if (result.name !== "未辨識銀行" && result.amount !== -1) {
+                document.getElementById('addName').value = result.name;
+                document.getElementById('addAmount').value = result.amount;
+                if (result.date !== "未知日期") document.getElementById('addDate').value = result.date;
+                alert('✅ 離線解析成功！請確認欄位是否正確。');
+            } else {
+                alert('⚠️ 解析完成，但無法辨識金額或銀行，請手動輸入。');
+                if (result.name !== "未辨識銀行") document.getElementById('addName').value = result.name;
+                if (result.amount !== -1) document.getElementById('addAmount').value = result.amount;
+                if (result.date !== "未知日期") document.getElementById('addDate').value = result.date;
             }
-            
-            const resultData = await response.json();
-            const jsonText = resultData.candidates[0].content.parts[0].text;
-            const result = JSON.parse(jsonText);
 
-            if(result.name) document.getElementById('addName').value = result.name;
-            if(result.amount) document.getElementById('addAmount').value = result.amount;
-            if(result.date) document.getElementById('addDate').value = result.date;
-            
-            alert('✅ 解析成功！請確認欄位是否正確。');
         } catch (e) {
             console.error(e);
             if (e.name === 'PasswordException') {

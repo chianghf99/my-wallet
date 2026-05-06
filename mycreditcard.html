@@ -595,20 +595,15 @@
     function loginGoogle() {
         const provider = new firebase.auth.GoogleAuthProvider();
         const btn = document.getElementById('btnGoogleLogin');
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>載入中...';
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>跳轉中...';
         btn.disabled = true;
         
-        auth.signInWithPopup(provider).catch(e => {
+        // 強制使用 Redirect 避免手機瀏覽器阻擋彈跳視窗
+        auth.signInWithRedirect(provider).catch(e => {
             console.error(e);
-            if (e.code === 'auth/popup-blocked' || e.code === 'auth/cancelled-popup-request') {
-                // If popup is blocked by mobile Safari or Chrome, fallback to redirect
-                auth.signInWithRedirect(provider);
-            } else {
-                alert("登入失敗: " + e.message);
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
+            alert("登入跳轉失敗: " + e.message);
+            btn.innerHTML = '<img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5 me-2" alt="Google">Google 登入';
+            btn.disabled = false;
         });
     }
 

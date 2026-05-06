@@ -221,37 +221,43 @@
                         </div>
                         
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div v-for="bill in unpaidBills" :key="bill.id" class="bg-white dark:bg-slate-800 p-5 rounded-3xl group border border-slate-100 dark:border-slate-700/50 hover:border-indigo-400 transition-all duration-300 shadow-sm hover:shadow-xl">
-                                <div class="flex items-center gap-4">
-                                    <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-xl" 
-                                         :class="getBillStatusClass(bill).iconBg">
-                                        <i :class="getBillIcon(bill.name)"></i>
-                                    </div>
-                                    <div class="flex-1">
-                                        <h4 class="font-black text-slate-800 dark:text-slate-100 leading-tight">{{ bill.name }}</h4>
-                                        <div class="flex items-center gap-2 mt-1">
-                                            <span class="text-xs font-bold text-slate-500 dark:text-slate-400">{{ formatDate(bill.date) }}</span>
-                                            <span v-if="getCardAutopay(bill.name)" class="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/50 text-indigo-500 dark:text-indigo-300 rounded text-[10px] font-bold">
-                                                🏦 {{ getCardAutopay(bill.name) }}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div class="text-right">
-                                        <div class="font-black text-lg text-slate-800 dark:text-slate-100">
-                                            ${{ bill.amount.toLocaleString() }}
-                                        </div>
-                                        <div :class="getBillStatusClass(bill).badge" class="px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider inline-block">
-                                            {{ getBillStatusClass(bill).text }}
-                                        </div>
-                                    </div>
+                            <div v-for="bill in unpaidBills" :key="bill.id" class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700/50 hover:border-indigo-300 transition-all duration-300 shadow-sm hover:shadow-xl overflow-hidden">
+                                <!-- Urgency progress bar -->
+                                <div class="h-1.5 bg-slate-100 dark:bg-slate-700/50">
+                                    <div class="h-full rounded-r-full transition-all duration-700"
+                                         :class="getUrgencyBar(bill).color"
+                                         :style="{width: getUrgencyBar(bill).width}"></div>
                                 </div>
-                                <div class="mt-4 pt-4 border-t border-slate-50 dark:border-slate-700 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button @click="markAsPaid(bill.id)" class="text-xs font-bold text-emerald-500 hover:text-emerald-600">
-                                        <i class="fas fa-check mr-1"></i>標記已繳
-                                    </button>
-                                    <div class="flex gap-3">
-                                        <button @click="editBill(bill)" class="text-xs font-bold text-indigo-500 dark:text-indigo-400">修改</button>
-                                        <button @click="deleteBill(bill.id)" class="text-xs font-bold text-rose-500">刪除</button>
+                                <div class="p-5">
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-xl flex-shrink-0"
+                                             :class="getBillStatusClass(bill).iconBg">
+                                            <i :class="getBillIcon(bill.name)"></i>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <h4 class="font-black text-slate-800 dark:text-slate-100 leading-tight truncate">{{ bill.name }}</h4>
+                                            <div class="flex items-center gap-2 mt-1 flex-wrap">
+                                                <span class="text-xs font-bold text-slate-500 dark:text-slate-400">{{ formatDate(bill.date) }}</span>
+                                                <span v-if="getCardAutopay(bill.name)" class="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/50 text-indigo-500 dark:text-indigo-300 rounded text-[10px] font-bold">
+                                                    🏦 {{ getCardAutopay(bill.name) }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div class="text-right flex-shrink-0">
+                                            <div class="font-black text-xl text-slate-800 dark:text-slate-100">${{ bill.amount.toLocaleString() }}</div>
+                                            <div :class="getBillStatusClass(bill).badge" class="px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider inline-block mt-1">
+                                                {{ getBillStatusClass(bill).text }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700 flex justify-between items-center">
+                                        <button @click="markAsPaid(bill.id)" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-xs font-black text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 transition-all active:scale-95">
+                                            <i class="fas fa-check"></i>標記已繳
+                                        </button>
+                                        <div class="flex gap-2">
+                                            <button @click="editBill(bill)" class="px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-xs font-black text-indigo-500 hover:bg-indigo-100 transition-all active:scale-95">修改</button>
+                                            <button @click="deleteBill(bill.id)" class="px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-900/20 text-xs font-black text-rose-500 hover:bg-rose-100 transition-all active:scale-95">刪除</button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -265,7 +271,7 @@
                             <div class="flex flex-col md:flex-row gap-3">
                                 <div class="relative flex-1">
                                     <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                                    <input type="text" v-model="historySearch" placeholder="搜尋卡片或日期..." 
+                                    <input type="text" v-model="historySearch" placeholder="搜尋卡片或日期..."
                                            class="w-full pl-12 pr-4 py-4 rounded-2xl glass focus:ring-2 focus:ring-indigo-500 transition-all outline-none font-medium">
                                 </div>
                                 <select v-model="historyPeriod" class="px-6 py-4 rounded-2xl glass font-bold outline-none cursor-pointer">
@@ -274,11 +280,29 @@
                                 </select>
                             </div>
                         </div>
-                        
-                        <div class="space-y-3">
-                            <div v-for="item in filteredHistory" :key="item.id" class="glass p-4 rounded-2xl flex items-center justify-between opacity-80 hover:opacity-100 transition-opacity">
+
+                        <!-- Empty state -->
+                        <div v-if="groupedHistory.length === 0" class="glass rounded-3xl p-12 text-center border-dashed border-2">
+                            <div class="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-history text-slate-400 text-3xl"></i>
+                            </div>
+                            <h4 class="text-lg font-bold text-slate-800 dark:text-slate-100">沒有歷史紀錄</h4>
+                            <p class="text-slate-500">已繳帳單會顯示在這裡</p>
+                        </div>
+
+                        <!-- Grouped by month -->
+                        <div v-for="[month, group] in groupedHistory" :key="month" class="space-y-2">
+                            <div class="flex items-center justify-between px-2 pt-2">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-1.5 h-5 bg-indigo-500 rounded-full"></div>
+                                    <h4 class="text-sm font-black text-slate-500 dark:text-slate-400 tracking-wide">{{ formatMonthLabel(month) }}</h4>
+                                </div>
+                                <span class="text-sm font-black text-slate-600 dark:text-slate-300">${{ group.total.toLocaleString() }}</span>
+                            </div>
+                            <div v-for="item in group.items" :key="item.id" class="glass p-4 rounded-2xl flex items-center justify-between hover:bg-white/80 dark:hover:bg-slate-800/80 transition-all">
                                 <div class="flex items-center gap-4">
-                                    <div class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+                                    <div class="w-10 h-10 rounded-xl flex items-center justify-center"
+                                         :class="item.status === 'paid' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'">
                                         <i :class="getBillIcon(item.name)"></i>
                                     </div>
                                     <div>
@@ -287,8 +311,11 @@
                                     </div>
                                 </div>
                                 <div class="text-right">
-                                    <div class="font-bold text-slate-500 line-through">${{ item.amount.toLocaleString() }}</div>
-                                    <div class="text-[10px] font-black text-emerald-500 uppercase">{{ item.status === 'paid' ? '已入帳' : '略過' }}</div>
+                                    <div class="font-bold text-slate-700 dark:text-slate-300">${{ item.amount.toLocaleString() }}</div>
+                                    <div class="text-[10px] font-black uppercase mt-0.5"
+                                         :class="item.status === 'paid' ? 'text-emerald-500' : 'text-slate-400'">
+                                        {{ item.status === 'paid' ? '✓ 已入帳' : '略過' }}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -299,8 +326,15 @@
                         <h3 class="text-xl font-black text-slate-800 dark:text-white px-2">統計分析</h3>
                         
                         <!-- Filters -->
-                        <div class="glass p-6 rounded-3xl">
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="glass p-6 rounded-3xl space-y-4">
+                            <!-- Quick select -->
+                            <div class="flex flex-wrap gap-2">
+                                <button @click="setAnalysisPeriod('thisYear')" class="px-4 py-2 rounded-xl text-xs font-black bg-indigo-500 text-white shadow shadow-indigo-500/30 active:scale-95 transition-all">今年</button>
+                                <button @click="setAnalysisPeriod('6m')" class="px-4 py-2 rounded-xl text-xs font-black glass hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-slate-600 dark:text-slate-300 active:scale-95 transition-all">過去 6 月</button>
+                                <button @click="setAnalysisPeriod('12m')" class="px-4 py-2 rounded-xl text-xs font-black glass hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-slate-600 dark:text-slate-300 active:scale-95 transition-all">過去 12 月</button>
+                                <button @click="setAnalysisPeriod('all')" class="px-4 py-2 rounded-xl text-xs font-black glass hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-slate-600 dark:text-slate-300 active:scale-95 transition-all">全部</button>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
                                     <label class="block text-xs font-black text-slate-400 uppercase mb-2">開始日期</label>
                                     <input type="date" v-model="analysisStart" class="w-full glass px-4 py-3 rounded-xl outline-none">
@@ -659,6 +693,17 @@ createApp({
             return Array.from(banks).sort();
         });
 
+        const groupedHistory = computed(() => {
+            const groups = {};
+            filteredHistory.value.forEach(item => {
+                const month = item.date.substring(0, 7);
+                if (!groups[month]) groups[month] = { items: [], total: 0 };
+                groups[month].items.push(item);
+                groups[month].total += item.amount;
+            });
+            return Object.entries(groups).sort(([a],[b]) => b.localeCompare(a));
+        });
+
         // Firebase Logic
         let auth, db;
         const initFirebase = () => {
@@ -866,6 +911,38 @@ createApp({
             return c ? c.autopayFrom : null;
         };
 
+        const getUrgencyBar = (bill) => {
+            if (!bill.date || bill.date === '\u672a\u77e5\u65e5\u671f') return { width: '100%', color: 'bg-rose-500' };
+            const d = Math.ceil((new Date(bill.date) - new Date().setHours(0,0,0,0)) / 86400000);
+            if (d < 0)  return { width: '100%', color: 'bg-rose-600' };
+            if (d === 0) return { width: '100%', color: 'bg-rose-500 animate-pulse' };
+            if (d <= 3)  return { width: `${100 - d * 5}%`, color: 'bg-amber-500' };
+            if (d <= 7)  return { width: `${85 - d * 4}%`, color: 'bg-orange-400' };
+            if (d <= 14) return { width: `${60 - d * 2}%`, color: 'bg-indigo-400' };
+            return { width: '10%', color: 'bg-indigo-300' };
+        };
+
+        const formatMonthLabel = (ym) => {
+            const [y, m] = ym.split('-');
+            return `${y} \u5e74 ${parseInt(m)} \u6708`;
+        };
+
+        const setAnalysisPeriod = (period) => {
+            const now = new Date();
+            analysisEnd.value = now.toISOString().split('T')[0];
+            if (period === 'thisYear') {
+                analysisStart.value = `${now.getFullYear()}-01-01`;
+            } else if (period === '6m') {
+                const d = new Date(now); d.setMonth(d.getMonth() - 6);
+                analysisStart.value = d.toISOString().split('T')[0];
+            } else if (period === '12m') {
+                const d = new Date(now); d.setMonth(d.getMonth() - 12);
+                analysisStart.value = d.toISOString().split('T')[0];
+            } else {
+                analysisStart.value = '2020-01-01';
+            }
+        };
+
         // PDF Parser (The logic you provided)
         const onFileChange = (e) => { pdfFile.value = e.target.files[0]; };
         
@@ -1028,10 +1105,11 @@ createApp({
             isLocked, pinBuffer, isLoading, loadingText, user, activePage, theme, isPrivacyOn, syncStatus, bills, cards,
             showAddModal, showChangelog, showCardEditor, billForm, editingBillId, cardForm, editingCardIndex,
             pdfPassword, historySearch, historyPeriod, analysisStart, analysisEnd, analysisBank,
-            navItems, changelog, unpaidBills, totalUnpaidAmount, filteredHistory, analysisBills, analysisTotal, uniqueBanks,
+            navItems, changelog, unpaidBills, totalUnpaidAmount, filteredHistory, groupedHistory, analysisBills, analysisTotal, uniqueBanks,
             loginGoogle, logout, triggerSync, pressKey, setPin, newPin, toggleTheme, togglePrivacy,
             submitBill, markAsPaid, editBill, deleteBill, startAddCard, editCard, saveCard, deleteCard,
-            formatDate, getBillIcon, getBillStatusClass, getCardAutopay, onFileChange, parsePDF, exportToExcel
+            formatDate, getBillIcon, getBillStatusClass, getCardAutopay, getUrgencyBar, formatMonthLabel, setAnalysisPeriod,
+            onFileChange, parsePDF, exportToExcel
         };
     }
 }).mount('#app');

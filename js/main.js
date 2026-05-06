@@ -170,12 +170,16 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 const setRealizedRange = (range) => {
                     realizedRange.value = range;
                     const today = getLocalDate();
-                    const y = new Date().getFullYear();
-                    if (range === 'YTD') { realizedStartDate.value = `${y}-01-01`; realizedEndDate.value = today; }
+                    const d = new Date();
+                    const y = d.getFullYear();
+                    const m = (d.getMonth() + 1).toString().padStart(2, '0');
+                    if (range === 'TODAY') { realizedStartDate.value = today; realizedEndDate.value = today; }
+                    else if (range === 'THIS_MONTH') { realizedStartDate.value = `${y}-${m}-01`; realizedEndDate.value = today; }
+                    else if (range === 'YTD') { realizedStartDate.value = `${y}-01-01`; realizedEndDate.value = today; }
                     else if (range === 'LAST_YEAR') { realizedStartDate.value = `${y - 1}-01-01`; realizedEndDate.value = `${y - 1}-12-31`; }
-                    else if (range === '3M') { const d = new Date(); d.setMonth(d.getMonth() - 3); realizedStartDate.value = d.toISOString().split('T')[0]; realizedEndDate.value = today; }
+                    else if (range === '3M') { const d2 = new Date(); d2.setMonth(d2.getMonth() - 3); realizedStartDate.value = d2.toISOString().split('T')[0]; realizedEndDate.value = today; }
                     else if (range === 'ALL') { realizedStartDate.value = '2020-01-01'; realizedEndDate.value = today; }
-                    fetchRealizedGains(); currentPage.value = 1;
+                    fetchRealizedGains();
                 };
 
                 const setChartRange = (range) => {

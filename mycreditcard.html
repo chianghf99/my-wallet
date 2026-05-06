@@ -121,11 +121,16 @@
         
         <!-- Sidebar (Desktop) -->
         <aside class="hidden lg:flex w-72 h-screen sticky top-0 flex-col glass border-r border-slate-200 dark:border-slate-800 p-8 z-50">
-            <div class="mb-12 flex items-center gap-3 cursor-pointer" @click="activePage = 'dashboard'">
-                <div class="w-10 h-10 rounded-xl bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-                    <i class="fas fa-wallet text-white text-xl"></i>
+            <div class="mb-12 flex items-center justify-between">
+                <div class="flex items-center gap-3 cursor-pointer" @click="activePage = 'dashboard'">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                        <i class="fas fa-wallet text-white text-xl"></i>
+                    </div>
+                    <h1 class="text-xl font-black text-slate-800 dark:text-white tracking-tight">卡片管家 <span class="text-indigo-500">Pro</span></h1>
                 </div>
-                <h1 class="text-xl font-black text-slate-800 dark:text-white tracking-tight">卡片管家 <span class="text-indigo-500">Pro</span></h1>
+                <a href="../index.html" class="w-10 h-10 rounded-xl glass flex items-center justify-center text-slate-400 hover:text-indigo-500 transition-colors" title="回到主頁">
+                    <i class="fas fa-home"></i>
+                </a>
             </div>
             
             <nav class="flex-1 space-y-2">
@@ -173,7 +178,9 @@
                             </div>
                         </div>
                         
-                        <div class="flex gap-3">
+                            <a href="../index.html" class="w-12 h-12 rounded-2xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all">
+                                <i class="fas fa-home"></i>
+                            </a>
                             <button @click="togglePrivacy" class="w-12 h-12 rounded-2xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all">
                                 <i :class="isPrivacyOn ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
                             </button>
@@ -491,7 +498,7 @@
                 </div>
                 <div class="space-y-3">
                     <input type="file" @change="onFileChange" accept="application/pdf" class="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:bg-indigo-500 file:text-white hover:file:bg-indigo-600">
-                    <input type="password" v-model="pdfPassword" placeholder="PDF 密碼 (身分證字號)" class="w-full glass px-4 py-2 rounded-xl text-sm outline-none">
+                    <input type="password" v-model="pdfPassword" placeholder="PDF 密碼" class="w-full glass px-4 py-2 rounded-xl text-sm outline-none">
                     <button @click="parsePDF" class="w-full py-3 bg-indigo-500 text-white font-black rounded-xl text-sm shadow-lg shadow-indigo-500/20">開始解析</button>
                 </div>
             </div>
@@ -499,7 +506,15 @@
             <form @submit.prevent="submitBill" class="space-y-4">
                 <div>
                     <label class="block text-xs font-black text-slate-400 uppercase mb-1 ml-2">卡片名稱</label>
-                    <input type="text" v-model="billForm.name" required placeholder="如：富邦信用卡" class="w-full glass px-5 py-4 rounded-2xl outline-none font-bold">
+                    <input type="text" v-model="billForm.name" required list="bankList" placeholder="選擇或輸入銀行名稱" class="w-full glass px-5 py-4 rounded-2xl outline-none font-bold">
+                    <datalist id="bankList">
+                        <option v-for="bank in uniqueBanks" :key="bank" :value="bank"></option>
+                        <option value="星展信用卡"></option>
+                        <option value="富邦信用卡"></option>
+                        <option value="台新信用卡"></option>
+                        <option value="永豐信用卡"></option>
+                        <option value="國泰信用卡"></option>
+                    </datalist>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
@@ -995,7 +1010,11 @@ createApp({
         });
 
         watch(activePage, (p) => {
-            if(p === 'analysis') nextTick(() => renderCharts());
+            if(p === 'analysis') {
+                nextTick(() => {
+                    setTimeout(() => renderCharts(), 100);
+                });
+            }
         });
 
         watch([analysisStart, analysisEnd, analysisBank], () => {

@@ -553,7 +553,8 @@ const firebaseConfig = {
     projectId: "stock-portfolio-df6dd",
     storageBucket: "stock-portfolio-df6dd.firebasestorage.app",
     messagingSenderId: "753606247346",
-    appId: "1:753606247346:web:af0d0460327afb40f31aab"
+    appId: "1:753606247346:web:af0d0460327afb40f31aab",
+    measurementId: "G-TGV1QF9QBG"
 };
 
 createApp({
@@ -669,26 +670,41 @@ createApp({
         const logout = () => { if(confirm('確定登出？')) auth.signOut(); };
 
         const triggerSync = async (mode, silent = false) => {
-            if (!user.value) { if(!silent) alert('請先登入 Google'); return; }
+            if (!user.value) { if(!silent) alert('請先登入 Google 以使用雲端同步功能'); return; }
             if (!silent) isLoading.value = true;
             try {
-                const docRef = db.collection("creditcard_data").doc(user.value.uid);
+                // 改用更符合 Firestore 安全規則的路徑：users/UID/creditcard/data
+                const docRef = db.collection("users").doc(user.value.uid).collection("creditcard").doc("data");
+                
                 if (mode === 'download') {
                     const snap = await docRef.get();
                     if (snap.exists) {
                         const d = snap.data();
-                        bills.value = d.bills || [];
-                        cards.value = d.cards || [];
-                        syncStatus.value = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                        // 確保資料結構正確才套用
+                        if (d.bills) bills.value = Array.isArray(d.bills) ? d.bills : [];
+                        if (d.cards) cards.value = Array.isArray(d.cards) ? d.cards : [];
+                        syncStatus.value = '同步自雲端 ' + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                         saveLocal();
+                    } else {
+                        if (!silent) alert('雲端尚無備份資料');
+                        syncStatus.value = '雲端無資料';
                     }
                 } else {
-                    await docRef.set({ bills: bills.value, cards: cards.value, last_sync: Date.now() });
-                    syncStatus.value = '已存檔';
+                    // 上傳前確保資料是乾淨的
+                    const dataToSave = {
+                        bills: JSON.parse(JSON.stringify(bills.value)),
+                        cards: JSON.parse(JSON.stringify(cards.value)),
+                        last_sync: Date.now(),
+                        updated_at: firebase.firestore.FieldValue.serverTimestamp()
+                    };
+                    await docRef.set(dataToSave, { merge: true });
+                    syncStatus.value = '已存檔至雲端 ' + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    if (!silent) alert('✅ 雲端存檔成功');
                 }
             } catch (e) {
-                console.error(e);
-                if (!silent) alert('同步出錯: ' + e.message);
+                console.error('Firestore Sync Error:', e);
+                if (!silent) alert('同步失敗: ' + (e.code === 'permission-denied' ? '權限不足，請確認 Firebase Rules 設定' : e.message));
+                syncStatus.value = '同步失敗';
             } finally {
                 isLoading.value = false;
             }

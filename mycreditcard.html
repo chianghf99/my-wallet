@@ -469,6 +469,8 @@
     }
 
     function render() {
+        if (!data.bills) data.bills = [];
+        if (!data.cards) data.cards = [];
         const uList = document.getElementById('unpaidList'), emptyMsg = document.getElementById('emptyMsg');
         uList.innerHTML = '';
         const unpaids = data.bills.filter(b => b.status === 'unpaid').sort((a,b) => new Date(a.date) - new Date(b.date));
@@ -548,7 +550,7 @@
     }
 
     function saveLocal() { localStorage.setItem('myCreditData', JSON.stringify(data)); }
-    function loadLocal() { const s=localStorage.getItem('myCreditData'); if(s) data=JSON.parse(s); render(); }
+    function loadLocal() { const s=localStorage.getItem('myCreditData'); if(s) { data=JSON.parse(s); data.bills = data.bills || []; data.cards = data.cards || []; } render(); }
     
     // Firebase Sync functions
     let fbApp, db, auth;
@@ -613,6 +615,8 @@
                 const docSnap = await docRef.get();
                 if (docSnap.exists) {
                     data = docSnap.data();
+                    data.bills = data.bills || [];
+                    data.cards = data.cards || [];
                     localStorage.setItem('last_sync_time', new Date().toLocaleString());
                     localStorage.setItem('last_sync_timestamp', Date.now());
                     saveLocal();

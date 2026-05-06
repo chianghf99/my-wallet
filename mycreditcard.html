@@ -10,9 +10,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
@@ -595,14 +595,18 @@
     function loginGoogle() {
         const provider = new firebase.auth.GoogleAuthProvider();
         const btn = document.getElementById('btnGoogleLogin');
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>跳轉中...';
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>載入中...';
         btn.disabled = true;
         
-        // 強制使用 Redirect 避免手機瀏覽器阻擋彈跳視窗
-        auth.signInWithRedirect(provider).catch(e => {
+        auth.signInWithPopup(provider).then(() => {
+            // 成功登入後，按鈕會透過 onAuthStateChanged 隱藏
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }).catch(e => {
             console.error(e);
-            alert("登入跳轉失敗: " + e.message);
-            btn.innerHTML = '<img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5 me-2" alt="Google">Google 登入';
+            alert("登入失敗: " + e.message);
+            btn.innerHTML = originalText;
             btn.disabled = false;
         });
     }

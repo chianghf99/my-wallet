@@ -4,905 +4,1000 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#667eea">
-    <title>卡片管家 Pro</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta name="theme-color" content="#6366f1">
+    <title>卡片管家 Pro | Card Manager</title>
+    
+    <!-- Dependencies -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#6366f1',
+                        secondary: '#8b5cf6',
+                    }
+                }
+            }
+        }
+    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <!-- Firebase v9 Compat -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    
+
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-        
         :root {
-            --primary-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-            --bg-color: #f3f4f6;
-            --card-bg: rgba(255, 255, 255, 0.7);
-            --input-bg: rgba(255, 255, 255, 0.5);
-            --text-color: #1f2937;
-            --text-muted: #6b7280;
-            --border-color: rgba(255, 255, 255, 0.5);
-            --shadow-color: rgba(0, 0, 0, 0.05);
-            --sidebar-bg: rgba(255, 255, 255, 0.8);
+            --glass-bg: rgba(255, 255, 255, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.5);
             --glass-blur: blur(16px);
         }
-
-        [data-theme="dark"] {
-            --bg-color: #0f172a;
-            --card-bg: rgba(30, 41, 59, 0.75);
-            --input-bg: rgba(15, 23, 42, 0.5);
-            --text-color: #f8fafc;
-            --text-muted: #94a3b8;
-            --border-color: rgba(255, 255, 255, 0.08);
-            --shadow-color: rgba(0, 0, 0, 0.3);
-            --sidebar-bg: rgba(30, 41, 59, 0.8);
+        .dark {
+            --glass-bg: rgba(30, 41, 59, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.08);
         }
-
-        body { 
-            background-color: var(--bg-color); 
-            color: var(--text-color); 
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif; 
-            padding-bottom: 90px; 
-            user-select: none; 
-            transition: background-color 0.4s ease, color 0.4s ease; 
-            background-image: radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.1) 0%, transparent 400px),
-                              radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 400px);
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            background-color: #f3f4f6;
+            background-image: radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 400px),
+                              radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.08) 0%, transparent 400px);
             background-attachment: fixed;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
+        .dark body { background-color: #0f172a; }
         
-        [data-theme="dark"] .bg-light { background-color: var(--input-bg) !important; }
-        [data-theme="dark"] .bg-white { background-color: var(--card-bg) !important; }
-        [data-theme="dark"] .text-dark { color: var(--text-color) !important; }
-        [data-theme="dark"] .text-secondary { color: var(--text-muted) !important; }
-        [data-theme="dark"] .text-muted { color: var(--text-muted) !important; }
-        [data-theme="dark"] .border { border-color: var(--border-color) !important; }
-        
-        .card, .modal-content, .bill-item {
-            background-color: var(--card-bg);
-            color: var(--text-color);
-            border: 1px solid var(--border-color);
-            box-shadow: 0 8px 32px var(--shadow-color);
+        .glass {
+            background-color: var(--glass-bg);
             backdrop-filter: var(--glass-blur);
             -webkit-backdrop-filter: var(--glass-blur);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid var(--glass-border);
         }
         
-        .card:hover, .bill-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 12px 40px var(--shadow-color);
-        }
+        .safe-bottom { padding-bottom: max(1.5rem, env(safe-area-inset-bottom)); }
         
-        .header-card {
-            background: var(--primary-gradient); color: white;
-            border-radius: 0 0 32px 32px;
-            padding: 60px 20px 30px 20px;
-            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3);
-            margin-bottom: 20px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .header-card::after {
-            content: ''; position: absolute; top: 0; right: 0; bottom: 0; left: 0;
-            background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 100%);
-            pointer-events: none;
-        }
-
-        .bill-item { border-radius: 16px; margin-bottom: 12px; padding: 15px; }
-        .bill-icon { width: 45px; height: 45px; border-radius: 12px; background: var(--input-bg); color: #6366f1; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; margin-right: 15px; }
+        /* Transitions */
+        .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease, transform 0.3s ease; }
+        .fade-enter-from, .fade-leave-to { opacity: 0; transform: translateY(10px); }
         
-        .form-control, .form-select { 
-            background-color: var(--input-bg); 
-            color: var(--text-color); 
-            border: 1px solid var(--border-color); 
-            backdrop-filter: blur(4px);
-            transition: all 0.3s;
-        }
-        .form-control:focus, .form-select:focus { 
-            background-color: var(--input-bg); 
-            color: var(--text-color); 
-            border-color: #6366f1; 
-            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15); 
-        }
+        .key-btn:active { transform: scale(0.9); }
         
-        .bottom-nav {
-            position: fixed; bottom: 0; left: 0; width: 100%;
-            background: var(--card-bg); border-top: 1px solid var(--border-color); padding: 12px 0;
-            display: flex; justify-content: space-around; z-index: 1000;
-            padding-bottom: max(12px, env(safe-area-inset-bottom));
-            backdrop-filter: var(--glass-blur);
-            -webkit-backdrop-filter: var(--glass-blur);
-        }
-        .nav-btn { text-align: center; color: var(--text-muted); font-size: 0.75rem; background: none; border: none; flex: 1; transition: 0.3s; }
-        .nav-btn.active { color: #8b5cf6; font-weight: 700; transform: translateY(-2px); }
-        .nav-btn i { font-size: 1.4rem; display: block; margin-bottom: 4px; transition: 0.3s; }
-        .nav-btn.active i { filter: drop-shadow(0 4px 6px rgba(139, 92, 246, 0.4)); }
-
-        .sidebar { display: none; }
-        @media (min-width: 992px) {
-            body { padding-bottom: 0; padding-left: 260px; }
-            .bottom-nav { display: none; }
-            .sidebar {
-                display: flex; flex-direction: column;
-                position: fixed; top: 0; left: 0; width: 260px; height: 100vh;
-                background: var(--sidebar-bg); border-right: 1px solid var(--border-color); z-index: 1000;
-                padding: 30px 20px;
-                backdrop-filter: var(--glass-blur);
-                -webkit-backdrop-filter: var(--glass-blur);
-            }
-            .sidebar-title { font-size: 1.5rem; font-weight: 800; color: var(--text-color); margin-bottom: 40px; padding-left: 10px; display: flex; align-items: center; cursor: pointer; }
-            .sidebar-title i { color: #6366f1; margin-right: 10px; filter: drop-shadow(0 2px 4px rgba(99, 102, 241, 0.4)); }
-            .side-btn {
-                text-align: left; padding: 15px 20px; margin-bottom: 8px;
-                border-radius: 12px; color: var(--text-muted); font-size: 1rem; font-weight: 600;
-                background: none; border: none; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center;
-            }
-            .side-btn:hover, .side-btn.active { background: rgba(99, 102, 241, 0.1); color: #6366f1; transform: translateX(5px); }
-            .container { max-width: 1000px !important; padding-top: 30px; }
-        }
-
-        .version-link { color: var(--text-muted); font-size: 0.8rem; padding: 10px; cursor: pointer; transition: 0.2s; }
-        .version-link:hover { color: #6366f1; }
-        .badge-pill { padding: 5px 12px; border-radius: 20px; font-weight: 600; font-size: 0.75rem; letter-spacing: 0.5px; }
-        .bg-urgent { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
-        .bg-soon { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
-        .bg-normal { background: rgba(99, 102, 241, 0.15); color: #6366f1; border: 1px solid rgba(99, 102, 241, 0.3); }
-        
-        .page-section { display: none; animation: fadeInScale 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; transform: scale(0.98); }
-        .page-section.active { display: block; }
-        @keyframes fadeInScale { to { opacity: 1; transform: scale(1); } }
-        
-        #pinOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); z-index: 99999; display: none; flex-direction: column; justify-content: center; align-items: center; }
-        .key-btn { width: 75px; height: 75px; border-radius: 50%; background: var(--card-bg); border: 1px solid var(--border-color); font-size: 1.5rem; font-weight: 600; color: var(--text-color); display: flex; align-items: center; justify-content: center; backdrop-filter: var(--glass-blur); transition: 0.2s; }
-        .key-btn:active { transform: scale(0.9); background: var(--border-color); }
-        .pin-dots { display: flex; gap: 15px; margin-bottom: 40px; }
-        .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--input-bg); border: 1px solid var(--border-color); transition: 0.3s; }
-        .dot.active { background: #8b5cf6; border-color: #8b5cf6; transform: scale(1.3); box-shadow: 0 0 10px rgba(139, 92, 246, 0.5); }
-        .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 25px; width: 300px; }
-        
-        #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(8px); z-index: 9998; display: none; flex-direction: column; justify-content: center; align-items: center; color: white; }
-        .spinner-border { width: 3rem; height: 3rem; border-width: 0.25em; border-color: rgba(255,255,255,0.3); border-right-color: white; }
-        
-        .changelog-item { position: relative; padding-left: 20px; margin-bottom: 15px; border-left: 3px solid #6366f1; }
-        
-        ::-webkit-scrollbar { width: 6px; }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.5); border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(107, 114, 128, 0.8); }
+        ::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.3); border-radius: 10px; }
         
-        .btn { border-radius: 12px; transition: all 0.3s; font-weight: 600; }
-        .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .btn:active { transform: translateY(1px); }
-        .btn-primary { background: var(--primary-gradient); border: none; }
-        .btn-primary:hover { opacity: 0.9; box-shadow: 0 6px 15px rgba(99, 102, 241, 0.4); }
+        input[type="number"]::-webkit-inner-spin-button, 
+        input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
     </style>
 </head>
-<body>
+<body class="transition-colors duration-500">
 
-<div id="pinOverlay">
-    <div class="mb-5 text-center">
-        <div class="mb-3"><i class="fas fa-shield-alt fa-3x text-primary" style="background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent;"></i></div>
-        <h5 class="fw-bold">歡迎回來</h5>
-        <p class="small opacity-75">請輸入 6 位數密碼</p>
+<div id="app" v-cloak>
+    <!-- PIN Overlay -->
+    <div v-if="isLocked" class="fixed inset-0 z-[10000] bg-gray-50 dark:bg-slate-900 flex flex-col justify-center items-center">
+        <div class="mb-8 text-center">
+            <div class="mb-4 inline-block p-4 rounded-3xl bg-indigo-50 dark:bg-indigo-900/30">
+                <i class="fas fa-shield-alt fa-3x text-indigo-500"></i>
+            </div>
+            <h2 class="text-2xl font-extrabold text-slate-800 dark:text-slate-100">歡迎回來</h2>
+            <p class="text-slate-500 dark:text-slate-400">請輸入 6 位數安全密碼</p>
+        </div>
+        
+        <div class="flex gap-4 mb-12">
+            <div v-for="i in 6" :key="i" 
+                 class="w-4 h-4 rounded-full border-2 border-indigo-200 dark:border-indigo-800 transition-all duration-300"
+                 :class="{'bg-indigo-500 border-indigo-500 scale-125 shadow-[0_0_10px_rgba(99,102,241,0.5)]': pinBuffer.length >= i}">
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-3 gap-6 w-72">
+            <button v-for="n in 9" :key="n" @click="pressKey(n)" class="key-btn w-20 h-20 rounded-full glass flex items-center justify-center text-2xl font-bold text-slate-700 dark:text-slate-200">
+                {{ n }}
+            </button>
+            <button @click="pressKey('clear')" class="key-btn w-20 h-20 rounded-full flex items-center justify-center text-xl font-medium text-slate-400">C</button>
+            <button @click="pressKey(0)" class="key-btn w-20 h-20 rounded-full glass flex items-center justify-center text-2xl font-bold text-slate-700 dark:text-slate-200">0</button>
+            <button @click="pressKey('del')" class="key-btn w-20 h-20 rounded-full flex items-center justify-center text-xl text-rose-500">
+                <i class="fas fa-backspace"></i>
+            </button>
+        </div>
     </div>
-    <div class="pin-dots"><div class="dot" id="d1"></div><div class="dot" id="d2"></div><div class="dot" id="d3"></div><div class="dot" id="d4"></div><div class="dot" id="d5"></div><div class="dot" id="d6"></div></div>
-    <div class="keypad">
-        <button class="key-btn" onclick="pressKey(1)">1</button><button class="key-btn" onclick="pressKey(2)">2</button><button class="key-btn" onclick="pressKey(3)">3</button>
-        <button class="key-btn" onclick="pressKey(4)">4</button><button class="key-btn" onclick="pressKey(5)">5</button><button class="key-btn" onclick="pressKey(6)">6</button>
-        <button class="key-btn" onclick="pressKey(7)">7</button><button class="key-btn" onclick="pressKey(8)">8</button><button class="key-btn" onclick="pressKey(9)">9</button>
-        <button class="key-btn opacity-75" onclick="pressKey('clear')">C</button><button class="key-btn" onclick="pressKey(0)">0</button><button class="key-btn text-danger" onclick="pressKey('del')"><i class="fas fa-backspace"></i></button>
+
+    <!-- Loading Overlay -->
+    <div v-if="isLoading" class="fixed inset-0 z-[9999] bg-slate-900/40 backdrop-blur-md flex flex-col justify-center items-center text-white">
+        <div class="animate-spin rounded-full h-12 w-12 border-4 border-white/20 border-t-white"></div>
+        <p class="mt-4 font-bold tracking-widest">{{ loadingText }}</p>
     </div>
-</div>
 
-<div id="loadingOverlay"><div class="spinner-border text-light"></div><div class="mt-3 fw-bold small">同步中...</div></div>
-
-<div class="sidebar">
-    <div class="sidebar-title" onclick="goToHome()"><i class="fas fa-wallet"></i> 卡片管家 Pro</div>
-    <button class="side-btn active" onclick="switchPage('dashboard')"><i class="fas fa-home"></i> 待繳帳單</button>
-    <button class="side-btn" onclick="switchPage('history')"><i class="fas fa-history"></i> 歷史紀錄</button>
-    <button class="side-btn" onclick="switchPage('analysis')"><i class="fas fa-chart-pie"></i> 統計分析</button>
-    <button class="side-btn" onclick="switchPage('settings')"><i class="fas fa-cog"></i> 設定</button>
-    <div style="margin-top: auto;"><div class="version-link" onclick="showVersionModal()">v4.0</div></div>
-</div>
-
-<div id="page-dashboard" class="page-section active">
-    <div class="header-card">
-        <div class="w-100">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <span class="badge bg-white bg-opacity-25 rounded-pill px-3"><i class="fas fa-cloud me-1"></i> <span id="syncStatus">未同步</span></span>
-                <div class="d-flex gap-3">
-                    <button class="btn btn-sm text-white p-0" onclick="togglePrivacy()"><i class="fas fa-eye-slash" id="privacyIcon"></i></button>
-                    <button class="btn btn-sm text-white p-0" onclick="goToHome()"><i class="fas fa-home"></i></button>
+    <!-- Main Content -->
+    <div class="min-h-screen flex flex-col lg:flex-row">
+        
+        <!-- Sidebar (Desktop) -->
+        <aside class="hidden lg:flex w-72 h-screen sticky top-0 flex-col glass border-r border-slate-200 dark:border-slate-800 p-8 z-50">
+            <div class="mb-12 flex items-center gap-3 cursor-pointer" @click="activePage = 'dashboard'">
+                <div class="w-10 h-10 rounded-xl bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                    <i class="fas fa-wallet text-white text-xl"></i>
+                </div>
+                <h1 class="text-xl font-black text-slate-800 dark:text-white tracking-tight">卡片管家 <span class="text-indigo-500">Pro</span></h1>
+            </div>
+            
+            <nav class="flex-1 space-y-2">
+                <button v-for="page in navItems" :key="page.id" 
+                        @click="activePage = page.id"
+                        class="w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 font-bold"
+                        :class="activePage === page.id ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30 translate-x-2' : 'text-slate-500 hover:bg-indigo-50 dark:hover:bg-slate-800/50 hover:text-indigo-500'">
+                    <i :class="page.icon" class="text-xl"></i>
+                    {{ page.label }}
+                </button>
+            </nav>
+            
+            <div class="mt-auto">
+                <div class="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800/50 flex items-center justify-between">
+                    <span class="text-xs font-bold text-slate-400">VERSION 4.0</span>
+                    <button @click="showChangelog = true" class="text-xs text-indigo-500 font-bold">日誌</button>
                 </div>
             </div>
-            <div class="text-center mt-3"><small class="opacity-75">本月待繳總額</small><h1 class="display-3 fw-bold mb-0 mt-1" id="displayTotal">$0</h1></div>
-        </div>
-        <div class="d-flex justify-content-center gap-3 mt-4">
-            <button class="btn btn-light rounded-circle shadow-sm" onclick="syncData('download')" title="同步"><i class="fas fa-sync-alt text-primary"></i></button>
-            <button class="btn btn-light rounded-circle shadow-sm" onclick="syncData('upload')" title="存檔"><i class="fas fa-cloud-upload-alt text-primary"></i></button>
-            <button class="btn btn-light rounded-circle shadow-sm" onclick="exportToExcel()" title="匯出"><i class="fas fa-file-csv text-success"></i></button>
-        </div>
-    </div>
-    <div class="container px-3">
-        <div id="statementAlerts"></div>
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h6 class="fw-bold text-secondary mb-0">待繳項目</h6>
-            <button class="btn btn-sm btn-light text-primary rounded-pill px-3 fw-bold" onclick="showAddModal()">+ 新增</button>
-        </div>
-        <div id="unpaidList"></div>
-        <div id="emptyMsg" class="text-center py-5 text-muted" style="display:none;"><p>目前沒有待繳帳單 🎉</p></div>
-    </div>
-</div>
+        </aside>
 
-<div id="page-history" class="page-section">
-    <div class="container px-3 pt-4">
-        <h5 class="fw-bold mb-4">繳款歷史紀錄</h5>
-        <div class="row g-2 mb-4">
-            <div class="col-8"><input type="text" id="historySearch" class="form-control rounded-pill" placeholder="🔍 搜尋銀行..." onkeyup="renderHistory()"></div>
-            <div class="col-4">
-                <select id="historyPeriod" class="form-select rounded-pill" onchange="renderHistory()">
-                    <option value="3m">最近 3 個月</option>
-                    <option value="all">顯示全部</option>
-                </select>
-            </div>
-        </div>
-        <div id="paidList"></div>
-        <div id="historyEmptyMsg" class="text-center py-5 text-muted" style="display:none;"><p>查無紀錄</p></div>
-    </div>
-</div>
-
-<div id="page-analysis" class="page-section">
-    <div class="container px-3 pt-4">
-        <h5 class="fw-bold mb-3">消費分析</h5>
-        <div class="card border-0 shadow-sm rounded-4 mb-4">
-            <div class="card-body p-3">
-                <div class="row g-2 align-items-center">
-                    <div class="col-6"><label class="small text-muted ms-1">開始</label><input type="date" id="analysisStart" class="form-control form-control-sm rounded-pill border-0 bg-light"></div>
-                    <div class="col-6"><label class="small text-muted ms-1">結束</label><input type="date" id="analysisEnd" class="form-control form-control-sm rounded-pill border-0 bg-light"></div>
-                    <div class="col-12 mt-2">
-                        <select id="analysisBankFilter" class="form-select form-select-sm rounded-pill border-0 bg-light" onchange="updateCharts()">
-                            <option value="all">所有銀行</option>
-                        </select>
-                    </div>
-                    <div class="col-12 mt-2"><button onclick="updateCharts()" class="btn btn-sm btn-primary w-100 rounded-pill">重新計算</button></div>
-                </div>
-            </div>
-        </div>
-        <div class="row g-4">
-            <div class="col-md-4"><div class="card border-0 shadow-sm rounded-4 h-100"><div class="card-body text-center py-5"><small class="text-muted">區間總計</small><h2 class="fw-bold text-primary" id="yearlyTotal">$0</h2></div></div></div>
-            <div class="col-md-8"><div class="card border-0 shadow-sm rounded-4 h-100"><div class="card-body"><h6>支出趨勢</h6><div style="height: 250px;"><canvas id="monthChart"></canvas></div></div></div></div>
-            <div class="col-12"><div class="card border-0 shadow-sm rounded-4"><div class="card-body"><h6>佔比分析</h6><div style="height: 300px; position: relative;"><canvas id="cardChart"></canvas></div></div></div></div>
-        </div>
-    </div>
-</div>
-
-<div id="page-settings" class="page-section">
-    <div class="container px-3 pt-4">
-        <h5 class="fw-bold mb-4">系統設定</h5>
-        <div class="row g-4">
-            <div class="col-12">
-                <div class="card border-0 shadow-sm rounded-4"><div class="card-body d-flex justify-content-between"><div><h6>深色模式</h6></div><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="darkModeSwitch" onchange="toggleDarkMode()"></div></div></div>
-            </div>
-            <div class="col-12">
-                <div class="card border-0 shadow-sm rounded-4" id="cardEditorCard">
-                    <div class="card-body">
-                        <h6 class="fw-bold mb-3" id="editorTitle">卡片設定</h6>
-                        <div class="row g-2 mb-3">
-                            <div class="col-md-4"><input type="text" class="form-control" id="newCardName" placeholder="銀行"></div>
-                            <div class="col-md-2"><input type="number" class="form-control" id="newCardDay" placeholder="日"></div>
-                            <div class="col-md-4"><input type="text" class="form-control" id="newCardAutopay" placeholder="扣款帳戶" list="bankAccountsList"><datalist id="bankAccountsList"></datalist></div>
-                            <div class="col-md-2 d-flex gap-2"><button class="btn btn-primary w-100" id="saveCardBtn" onclick="addCardSetting()">新增</button><button class="btn btn-outline-secondary d-none" id="cancelEditBtn" onclick="cancelCardEdit()">取消</button></div>
+        <!-- Main Wrapper -->
+        <main class="flex-1 overflow-x-hidden relative">
+            
+            <!-- Mobile Header / Dashboard Summary Card -->
+            <header v-if="activePage === 'dashboard'" class="lg:pt-8">
+                <div class="bg-indigo-600 lg:rounded-3xl lg:mx-8 p-8 lg:p-12 text-white relative overflow-hidden shadow-2xl shadow-indigo-500/20">
+                    <!-- Decorative Circles -->
+                    <div class="absolute -right-20 -top-20 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+                    <div class="absolute -left-20 -bottom-20 w-64 h-64 bg-indigo-400/20 rounded-full blur-3xl"></div>
+                    
+                    <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div>
+                            <p class="text-indigo-100 font-medium tracking-wide mb-1 opacity-80">本月待繳總額</p>
+                            <h2 class="text-5xl lg:text-6xl font-black flex items-baseline gap-2">
+                                <span class="text-2xl opacity-50">$</span>
+                                {{ isPrivacyOn ? '****' : totalUnpaidAmount.toLocaleString() }}
+                            </h2>
+                            <div class="mt-4 flex flex-wrap gap-2">
+                                <span class="px-3 py-1 bg-white/20 rounded-full text-xs font-bold backdrop-blur-md">
+                                    <i class="fas fa-cloud mr-1"></i> {{ syncStatus }}
+                                </span>
+                                <span v-if="unpaidBills.length > 0" class="px-3 py-1 bg-amber-400 text-amber-900 rounded-full text-xs font-bold animate-pulse">
+                                    {{ unpaidBills.length }} 個項目待繳
+                                </span>
+                            </div>
                         </div>
-                        <div id="autoSyncLabel" class="small text-muted mb-2 text-end d-none">☁️ 自動同步中...</div>
-                        <div id="cardSettingsList" class="row g-2"></div>
+                        
+                        <div class="flex gap-3">
+                            <button @click="togglePrivacy" class="w-12 h-12 rounded-2xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all">
+                                <i :class="isPrivacyOn ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+                            </button>
+                            <button @click="triggerSync('download')" class="w-12 h-12 rounded-2xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                            <button @click="triggerSync('upload')" class="w-12 h-12 rounded-2xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                            </button>
+                            <button @click="exportToExcel" class="w-12 h-12 rounded-2xl bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/30 transition-all active:scale-95">
+                                <i class="fas fa-file-csv"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
+            </header>
+
+            <!-- Page Container -->
+            <div class="container max-w-5xl mx-auto px-4 py-8 lg:py-12 mb-20 lg:mb-0">
+                <transition name="fade" mode="out-in">
+                    
+                    <!-- Dashboard Page -->
+                    <div v-if="activePage === 'dashboard'" key="dash" class="space-y-6">
+                        <div class="flex justify-between items-center px-2">
+                            <h3 class="text-xl font-black text-slate-800 dark:text-white">待繳帳單</h3>
+                            <button @click="showAddModal = true" class="px-6 py-2 bg-indigo-500 text-white rounded-2xl font-bold shadow-lg shadow-indigo-500/20 active:scale-95 transition-all">
+                                <i class="fas fa-plus mr-2"></i>新增項目
+                            </button>
+                        </div>
+                        
+                        <div v-if="unpaidBills.length === 0" class="glass rounded-3xl p-12 text-center border-dashed border-2">
+                            <div class="w-20 h-20 bg-indigo-50 dark:bg-indigo-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-check-circle text-indigo-500 text-3xl"></i>
+                            </div>
+                            <h4 class="text-lg font-bold text-slate-800 dark:text-slate-100">目前沒有待繳帳單</h4>
+                            <p class="text-slate-500">所有的財務狀況都在掌控之中 🎉</p>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div v-for="bill in unpaidBills" :key="bill.id" class="glass p-5 rounded-3xl group hover:border-indigo-400/50 transition-all duration-300 shadow-sm hover:shadow-xl">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-xl" 
+                                         :class="getBillStatusClass(bill).iconBg">
+                                        <i :class="getBillIcon(bill.name)"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <h4 class="font-black text-slate-800 dark:text-slate-100 leading-tight">{{ bill.name }}</h4>
+                                        <div class="flex items-center gap-2 mt-1">
+                                            <span class="text-xs font-bold text-slate-400">{{ formatDate(bill.date) }}</span>
+                                            <span v-if="getCardAutopay(bill.name)" class="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-500 rounded text-[10px] font-bold">
+                                                🏦 {{ getCardAutopay(bill.name) }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="font-black text-lg text-slate-800 dark:text-slate-100">
+                                            ${{ bill.amount.toLocaleString() }}
+                                        </div>
+                                        <div :class="getBillStatusClass(bill).badge" class="px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider inline-block">
+                                            {{ getBillStatusClass(bill).text }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button @click="markAsPaid(bill.id)" class="text-xs font-bold text-emerald-500 hover:text-emerald-600">
+                                        <i class="fas fa-check mr-1"></i>標記已繳
+                                    </button>
+                                    <div class="flex gap-3">
+                                        <button @click="editBill(bill)" class="text-xs font-bold text-indigo-500">修改</button>
+                                        <button @click="deleteBill(bill.id)" class="text-xs font-bold text-rose-400">刪除</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- History Page -->
+                    <div v-else-if="activePage === 'history'" key="history" class="space-y-6">
+                        <div class="px-2">
+                            <h3 class="text-xl font-black text-slate-800 dark:text-white mb-2">歷史紀錄</h3>
+                            <div class="flex flex-col md:flex-row gap-3">
+                                <div class="relative flex-1">
+                                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                    <input type="text" v-model="historySearch" placeholder="搜尋卡片或日期..." 
+                                           class="w-full pl-12 pr-4 py-4 rounded-2xl glass focus:ring-2 focus:ring-indigo-500 transition-all outline-none font-medium">
+                                </div>
+                                <select v-model="historyPeriod" class="px-6 py-4 rounded-2xl glass font-bold outline-none cursor-pointer">
+                                    <option value="3m">最近三個月</option>
+                                    <option value="all">全部紀錄</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-3">
+                            <div v-for="item in filteredHistory" :key="item.id" class="glass p-4 rounded-2xl flex items-center justify-between opacity-80 hover:opacity-100 transition-opacity">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+                                        <i :class="getBillIcon(item.name)"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="font-bold text-slate-700 dark:text-slate-200">{{ item.name }}</h5>
+                                        <p class="text-xs text-slate-400">{{ item.date }}</p>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="font-bold text-slate-500 line-through">${{ item.amount.toLocaleString() }}</div>
+                                    <div class="text-[10px] font-black text-emerald-500 uppercase">{{ item.status === 'paid' ? '已入帳' : '略過' }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Analysis Page -->
+                    <div v-else-if="activePage === 'analysis'" key="analysis" class="space-y-8">
+                        <h3 class="text-xl font-black text-slate-800 dark:text-white px-2">統計分析</h3>
+                        
+                        <!-- Filters -->
+                        <div class="glass p-6 rounded-3xl">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div>
+                                    <label class="block text-xs font-black text-slate-400 uppercase mb-2">開始日期</label>
+                                    <input type="date" v-model="analysisStart" class="w-full glass px-4 py-3 rounded-xl outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-black text-slate-400 uppercase mb-2">結束日期</label>
+                                    <input type="date" v-model="analysisEnd" class="w-full glass px-4 py-3 rounded-xl outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-black text-slate-400 uppercase mb-2">銀行篩選</label>
+                                    <select v-model="analysisBank" class="w-full glass px-4 py-3 rounded-xl outline-none">
+                                        <option value="all">所有銀行</option>
+                                        <option v-for="bank in uniqueBanks" :key="bank" :value="bank">{{ bank }}</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Stats Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div class="glass p-8 rounded-3xl flex flex-col items-center justify-center text-center">
+                                <span class="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">區間總花費</span>
+                                <h4 class="text-4xl font-black text-indigo-500">${{ analysisTotal.toLocaleString() }}</h4>
+                                <div class="mt-4 px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-500 rounded-full text-[10px] font-black">
+                                    {{ analysisBills.length }} 筆消費紀錄
+                                </div>
+                            </div>
+                            
+                            <div class="md:col-span-2 glass p-8 rounded-3xl">
+                                <h5 class="text-sm font-black text-slate-400 uppercase mb-4">月度支出趨勢</h5>
+                                <div class="h-64 relative">
+                                    <canvas id="monthChart"></canvas>
+                                </div>
+                            </div>
+                            
+                            <div class="md:col-span-3 glass p-8 rounded-3xl">
+                                <h5 class="text-sm font-black text-slate-400 uppercase mb-6">消費類別佔比 (銀行)</h5>
+                                <div class="h-80 relative">
+                                    <canvas id="bankChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Settings Page -->
+                    <div v-else-if="activePage === 'settings'" key="settings" class="space-y-8">
+                        <h3 class="text-xl font-black text-slate-800 dark:text-white px-2">系統設定</h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Auth Section -->
+                            <div class="glass p-8 rounded-3xl">
+                                <div class="flex items-center gap-4 mb-6">
+                                    <div class="w-12 h-12 rounded-2xl bg-indigo-500 flex items-center justify-center text-white">
+                                        <i class="fas fa-cloud"></i>
+                                    </div>
+                                    <h4 class="text-lg font-black text-slate-800 dark:text-white">雲端同步</h4>
+                                </div>
+                                
+                                <div v-if="!user" class="space-y-4">
+                                    <p class="text-sm text-slate-500 leading-relaxed">登入 Google 帳號後，您的帳單資料將會加密儲存在雲端，讓您在不同設備上都能保持同步。</p>
+                                    <button @click="loginGoogle" class="w-full flex items-center justify-center gap-3 py-4 rounded-2xl border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-500 transition-all font-bold group">
+                                        <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5" alt="Google">
+                                        <span>Google 登入</span>
+                                    </button>
+                                </div>
+                                <div v-else class="space-y-4">
+                                    <div class="p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/50">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-white text-xs font-black">
+                                                {{ user.email[0].toUpperCase() }}
+                                            </div>
+                                            <div class="flex-1 overflow-hidden">
+                                                <p class="text-xs text-slate-400 font-bold uppercase truncate">目前已登入</p>
+                                                <p class="font-black text-slate-800 dark:text-slate-100 truncate text-sm">{{ user.email }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button @click="logout" class="w-full py-4 text-rose-500 font-black text-sm hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-2xl transition-all">
+                                        登出身分驗證
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Security Section -->
+                            <div class="glass p-8 rounded-3xl">
+                                <div class="flex items-center gap-4 mb-6">
+                                    <div class="w-12 h-12 rounded-2xl bg-rose-500 flex items-center justify-center text-white">
+                                        <i class="fas fa-lock"></i>
+                                    </div>
+                                    <h4 class="text-lg font-black text-slate-800 dark:text-white">安全鎖</h4>
+                                </div>
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-xs font-black text-slate-400 uppercase mb-2">設定新密碼 (6位數)</label>
+                                        <input type="tel" v-model="newPin" maxlength="6" placeholder="輸入 6 位數字"
+                                               class="w-full glass px-4 py-3 rounded-xl outline-none font-black tracking-[1em] text-center">
+                                    </div>
+                                    <button @click="setPin" class="w-full py-4 bg-slate-800 dark:bg-white dark:text-slate-900 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all">
+                                        更新安全密碼
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Appearance -->
+                            <div class="md:col-span-2 glass p-8 rounded-3xl flex items-center justify-between">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-12 h-12 rounded-2xl bg-slate-800 dark:bg-white flex items-center justify-center text-white dark:text-slate-900">
+                                        <i class="fas fa-moon"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-lg font-black text-slate-800 dark:text-white">深色模式</h4>
+                                        <p class="text-xs text-slate-400">更適合夜間使用的深沉介面</p>
+                                    </div>
+                                </div>
+                                <button @click="toggleTheme" 
+                                        class="w-16 h-8 rounded-full relative transition-all duration-500 p-1"
+                                        :class="theme === 'dark' ? 'bg-indigo-600' : 'bg-slate-300'">
+                                    <div class="w-6 h-6 bg-white rounded-full transition-all duration-500 shadow-md transform"
+                                         :class="theme === 'dark' ? 'translate-x-8' : 'translate-x-0'">
+                                    </div>
+                                </button>
+                            </div>
+                            
+                            <!-- Card Management -->
+                            <div class="md:col-span-2 glass p-8 rounded-3xl">
+                                <div class="flex items-center justify-between mb-8">
+                                    <h4 class="text-lg font-black text-slate-800 dark:text-white">卡片設定管理</h4>
+                                    <button @click="startAddCard" class="text-indigo-500 font-bold text-sm">+ 新增卡片</button>
+                                </div>
+                                
+                                <!-- Card Editor Form -->
+                                <div v-if="showCardEditor" class="mb-8 p-6 rounded-3xl bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-200 dark:border-indigo-800">
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                        <div>
+                                            <label class="block text-xs font-bold text-slate-400 mb-1">銀行名稱</label>
+                                            <input type="text" v-model="cardForm.name" class="w-full glass px-4 py-2 rounded-lg outline-none">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-bold text-slate-400 mb-1">結帳日</label>
+                                            <input type="number" v-model="cardForm.day" class="w-full glass px-4 py-2 rounded-lg outline-none">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-bold text-slate-400 mb-1">扣款帳戶</label>
+                                            <input type="text" v-model="cardForm.autopay" class="w-full glass px-4 py-2 rounded-lg outline-none">
+                                        </div>
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <button @click="saveCard" class="flex-1 py-3 bg-indigo-500 text-white font-bold rounded-xl">{{ editingCardIndex !== null ? '更新' : '新增' }}</button>
+                                        <button @click="showCardEditor = false" class="px-6 py-3 bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-300 font-bold rounded-xl">取消</button>
+                                    </div>
+                                </div>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <div v-for="(card, i) in cards" :key="i" class="p-4 border border-slate-100 dark:border-slate-800 rounded-2xl flex items-center justify-between">
+                                        <div>
+                                            <div class="font-black text-slate-700 dark:text-slate-200">{{ card.name }}</div>
+                                            <div class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{{ card.day }}號 結帳</div>
+                                            <div v-if="card.autopayFrom" class="text-[10px] text-indigo-400 font-bold mt-1 tracking-tighter italic">🏦 {{ card.autopayFrom }}</div>
+                                        </div>
+                                        <div class="flex gap-1">
+                                            <button @click="editCard(i)" class="w-8 h-8 rounded-lg hover:bg-amber-50 text-amber-500 flex items-center justify-center transition-all"><i class="fas fa-edit text-xs"></i></button>
+                                            <button @click="deleteCard(i)" class="w-8 h-8 rounded-lg hover:bg-rose-50 text-rose-500 flex items-center justify-center transition-all"><i class="fas fa-trash text-xs"></i></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </transition>
             </div>
-            <div class="col-md-6"><div class="card border-0 shadow-sm rounded-4 h-100"><div class="card-body"><h6>安全鎖</h6><input type="tel" class="form-control mb-2" id="newAppPin" placeholder="6 位數" maxlength="6"><button class="btn btn-dark w-100" onclick="setAppPin()">設定密碼</button></div></div></div>
-            <div class="col-md-6"><div class="card border-0 shadow-sm rounded-4 h-100"><div class="card-body">
-                <h6>Firebase 雲端同步</h6>
-                <div id="authSection" class="mt-3">
-                    <button class="btn btn-outline-dark w-100 mb-2" id="btnGoogleLogin" onclick="loginGoogle()"><img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5 me-2" alt="Google">Google 登入</button>
-                    <div id="authStatus" class="small text-muted text-center">尚未登入</div>
+
+            <!-- Mobile Navbar -->
+            <nav class="lg:hidden fixed bottom-0 left-0 right-0 glass border-t border-slate-200 dark:border-slate-800 z-[100] px-4 flex justify-around safe-bottom">
+                <button v-for="item in navItems" :key="item.id" 
+                        @click="activePage = item.id"
+                        class="flex flex-col items-center py-4 transition-all"
+                        :class="activePage === item.id ? 'text-indigo-500 -translate-y-1' : 'text-slate-400'">
+                    <i :class="item.icon" class="text-xl mb-1"></i>
+                    <span class="text-[10px] font-black uppercase tracking-widest">{{ item.shortLabel || item.label }}</span>
+                </button>
+            </nav>
+        </main>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <div v-if="showAddModal" class="fixed inset-0 z-[1000] flex items-center justify-center px-4 overflow-y-auto">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" @click="showAddModal = false"></div>
+        <div class="glass w-full max-w-md rounded-[2.5rem] p-8 relative z-10 animate-in fade-in zoom-in duration-300">
+            <h3 class="text-2xl font-black text-slate-800 dark:text-white mb-6">新增帳單</h3>
+            
+            <!-- AI PDF Upload Section -->
+            <div class="mb-8 p-5 bg-indigo-50 dark:bg-indigo-900/20 rounded-3xl border-2 border-indigo-200 dark:border-indigo-800 border-dashed">
+                <div class="flex items-center gap-3 mb-4 text-indigo-600 dark:text-indigo-400">
+                    <i class="fas fa-robot text-xl"></i>
+                    <span class="font-black">離線 AI 帳單解析</span>
                 </div>
-            </div></div></div>
+                <div class="space-y-3">
+                    <input type="file" @change="onFileChange" accept="application/pdf" class="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:bg-indigo-500 file:text-white hover:file:bg-indigo-600">
+                    <input type="password" v-model="pdfPassword" placeholder="PDF 密碼 (身分證字號)" class="w-full glass px-4 py-2 rounded-xl text-sm outline-none">
+                    <button @click="parsePDF" class="w-full py-3 bg-indigo-500 text-white font-black rounded-xl text-sm shadow-lg shadow-indigo-500/20">開始解析</button>
+                </div>
+            </div>
+            
+            <form @submit.prevent="submitBill" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-black text-slate-400 uppercase mb-1 ml-2">卡片名稱</label>
+                    <input type="text" v-model="billForm.name" required placeholder="如：富邦信用卡" class="w-full glass px-5 py-4 rounded-2xl outline-none font-bold">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-black text-slate-400 uppercase mb-1 ml-2">應繳金額</label>
+                        <input type="number" v-model="billForm.amount" required placeholder="0" class="w-full glass px-5 py-4 rounded-2xl outline-none font-bold">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-black text-slate-400 uppercase mb-1 ml-2">截止日期</label>
+                        <input type="date" v-model="billForm.date" required class="w-full glass px-5 py-4 rounded-2xl outline-none font-bold">
+                    </div>
+                </div>
+                <div class="pt-4 flex gap-3">
+                    <button type="submit" class="flex-1 py-4 bg-slate-800 dark:bg-white dark:text-slate-900 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all">
+                        {{ editingBillId ? '更新帳單' : '確認新增' }}
+                    </button>
+                    <button type="button" @click="showAddModal = false" class="px-8 py-4 bg-slate-100 dark:bg-slate-800 text-slate-500 font-black rounded-2xl">
+                        取消
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Changelog Modal -->
+    <div v-if="showChangelog" class="fixed inset-0 z-[1000] flex items-center justify-center px-4">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" @click="showChangelog = false"></div>
+        <div class="glass w-full max-w-lg rounded-[2.5rem] p-8 relative z-10 max-h-[80vh] flex flex-col">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-black text-slate-800 dark:text-white">更新日誌</h3>
+                <button @click="showChangelog = false" class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="flex-1 overflow-y-auto space-y-6 pr-2">
+                <div v-for="log in changelog" :key="log.version" class="relative pl-6 border-l-2 border-indigo-500">
+                    <div class="absolute w-3 h-3 bg-indigo-500 rounded-full -left-[7px] top-1"></div>
+                    <h5 class="font-black text-slate-800 dark:text-slate-100">{{ log.version }} <span class="text-xs text-slate-400 font-normal ml-2">{{ log.date }}</span></h5>
+                    <ul class="mt-2 space-y-1">
+                        <li v-for="item in log.items" :key="item" class="text-sm text-slate-500 dark:text-slate-400">• {{ item }}</li>
+                    </ul>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
-<div class="bottom-nav">
-    <button class="nav-btn active" onclick="switchPage('dashboard')"><i class="fas fa-wallet"></i> 待繳</button>
-    <button class="nav-btn" onclick="switchPage('history')"><i class="fas fa-history"></i> 歷史</button>
-    <button class="nav-btn" onclick="switchPage('analysis')"><i class="fas fa-chart-pie"></i> 分析</button>
-    <button class="nav-btn" onclick="switchPage('settings')"><i class="fas fa-cog"></i> 設定</button>
-</div>
-
-<div class="modal fade" id="addModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body">
-    <div class="mb-3 p-3 bg-light rounded-3 border border-primary border-opacity-25">
-        <label class="form-label fw-bold text-primary small mb-1"><i class="fas fa-magic"></i> AI 帳單解析</label>
-        <input type="file" class="form-control form-control-sm mb-2" id="pdfUpload" accept="application/pdf">
-        <input type="password" class="form-control form-control-sm mb-2" id="pdfPassword" placeholder="PDF 密碼 (通常為身分證字號)">
-        <button type="button" class="btn btn-sm btn-outline-primary w-100" id="parsePdfBtn" onclick="handlePDFUpload()">上傳並解析</button>
-    </div>
-    <form id="addForm">
-        <input type="text" class="form-control mb-2" id="addName" placeholder="卡片名稱" required>
-        <input type="number" class="form-control mb-2" id="addAmount" placeholder="金額" required>
-        <input type="date" class="form-control mb-3" id="addDate" required>
-        <button type="submit" class="btn btn-primary w-100 rounded-pill">確定新增</button>
-    </form>
-</div></div></div></div>
-
-<div class="modal fade" id="versionModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 rounded-4">
-        <div class="modal-header border-0"><h5 class="modal-title fw-bold">更新日誌 v4.0</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-        <div class="modal-body" style="max-height: 400px; overflow-y: auto;">
-            <div class="changelog-item">
-                <div class="fw-bold">v4.0 (2026/05/06)</div>
-                <small class="text-muted">• 系統升級：全面遷移至 Firebase 雲端資料庫。<br>• 智能助理：新增 Gemini AI 帳單 PDF 自動解析功能。<br>• 體驗優化：修正深色模式、到期日顏色提示、未出帳提醒邏輯。</small>
-            </div>
-            <div class="changelog-item mt-2">
-                <div class="fw-bold">v3.9</div>
-                <small class="text-muted">• 統計分析：修正圖表毀損，新增「銀行篩選」，預設為今年 1/1 起。<br>• 歷史紀錄：預設僅顯示最近 3 個月，大幅提升流暢度。</small>
-            </div>
-        </div>
-    </div></div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    let data = { bills: [], cards: [] };
-    let isPrivacyOn = false;
-    let pinBuffer = "";
-    let editCardIndex = -1;
-    let cardChart, monthChart;
-    const HOME_URL = "https://chianghf99.github.io/my-wallet/";
+const { createApp, ref, reactive, computed, onMounted, watch, nextTick } = Vue;
 
-    function goToHome() { window.location.href = HOME_URL; }
-    function checkLock() { if(localStorage.getItem('app_pin')) { document.getElementById('pinOverlay').style.display='flex'; pinBuffer=""; updateDots(); } }
-    function pressKey(key) {
-        if(key === 'clear') { pinBuffer = ""; } else if(key === 'del') { pinBuffer = pinBuffer.slice(0, -1); } else if(pinBuffer.length < 6) { pinBuffer += key; }
-        updateDots();
-        if(pinBuffer.length === 6) {
-            if(pinBuffer === localStorage.getItem('app_pin')) document.getElementById('pinOverlay').style.display='none';
-            else { pinBuffer = ""; updateDots(); alert('密碼錯誤'); }
-        }
-    }
-    function updateDots() { for(let i=1; i<=6; i++) document.getElementById('d'+i).classList.toggle('active', i<=pinBuffer.length); }
-    function setAppPin() { const v = document.getElementById('newAppPin').value; if(v.length === 6) { localStorage.setItem('app_pin', v); alert('已設定'); } }
-    function clearAppPin() { if(confirm('確定移除密碼鎖？')) localStorage.removeItem('app_pin'); }
+const firebaseConfig = {
+    apiKey: "AIzaSyAh94_Z-wA_riNIXmn_btCXbTtaZny1CQg",
+    authDomain: "stock-portfolio-df6dd.firebaseapp.com",
+    projectId: "stock-portfolio-df6dd",
+    storageBucket: "stock-portfolio-df6dd.firebasestorage.app",
+    messagingSenderId: "753606247346",
+    appId: "1:753606247346:web:af0d0460327afb40f31aab"
+};
 
-    const addModal = new bootstrap.Modal(document.getElementById('addModal'));
-    const versionModal = new bootstrap.Modal(document.getElementById('versionModal'));
-    const loadingOverlay = document.getElementById('loadingOverlay');
-    
-    // 預設日期設定 (當年 1/1)
-    const now = new Date();
-    document.getElementById('analysisStart').value = `${now.getFullYear()}-01-01`;
-    document.getElementById('analysisEnd').value = now.toISOString().split('T')[0];
-
-    checkLock(); loadLocal(); initDarkMode(); initFirebase();
-    setTimeout(autoSyncCheck, 1500);
-
-    function autoSyncCheck() { if (auth && auth.currentUser) syncData('download', true); }
-    
-    function initDarkMode() { 
-        const isDark = localStorage.getItem('theme') === 'dark';
-        if (isDark) { document.body.setAttribute('data-theme', 'dark'); document.getElementById('darkModeSwitch').checked = true; } 
-    }
-    
-    function toggleDarkMode() { 
-        const isDark = document.getElementById('darkModeSwitch').checked; 
-        if (isDark) document.body.setAttribute('data-theme', 'dark');
-        else document.body.removeAttribute('data-theme');
-        localStorage.setItem('theme', isDark ? 'dark' : 'light'); 
-    }
-
-    function switchPage(p) {
-        document.querySelectorAll('.page-section').forEach(el => el.classList.remove('active'));
-        document.getElementById('page-'+p).classList.add('active');
-        document.querySelectorAll('.nav-btn, .side-btn').forEach(el => el.classList.remove('active'));
-        document.querySelectorAll(`[onclick="switchPage('${p}')"]`).forEach(el => el.classList.add('active'));
-        if(p === 'analysis') { updateBankFilterOptions(); updateCharts(); }
-        if(p === 'history') { renderHistory(); }
-    }
-
-    function updateBankFilterOptions() {
-        const select = document.getElementById('analysisBankFilter');
-        const banks = new Set();
-        data.bills.forEach(b => { if(b.name) banks.add(b.name.substring(0,2)); });
-        let html = '<option value="all">所有銀行</option>';
-        Array.from(banks).sort().forEach(b => html += `<option value="${b}">${b}</option>`);
-        select.innerHTML = html;
-    }
-
-    function renderHistory() {
-        const pList = document.getElementById('paidList'), emptyMsg = document.getElementById('historyEmptyMsg');
-        const searchTerm = document.getElementById('historySearch').value.toLowerCase();
-        const period = document.getElementById('historyPeriod').value;
-        pList.innerHTML = '';
+createApp({
+    setup() {
+        const isLocked = ref(false);
+        const pinBuffer = ref("");
+        const isLoading = ref(false);
+        const loadingText = ref("同步中...");
+        const user = ref(null);
+        const activePage = ref('dashboard');
+        const theme = ref(localStorage.getItem('theme') || 'light');
+        const isPrivacyOn = ref(localStorage.getItem('privacy') === 'true');
+        const syncStatus = ref('未同步');
         
-        let paids = data.bills.filter(b => (b.status === 'paid' || b.status === 'skipped')).sort((a,b) => new Date(b.date) - new Date(a.date));
+        const bills = ref([]);
+        const cards = ref([]);
         
-        if (period === '3m') {
-            const threeMonthsAgo = new Date();
-            threeMonthsAgo.setDate(threeMonthsAgo.getDate() - 90);
-            paids = paids.filter(b => new Date(b.date) >= threeMonthsAgo);
-        }
-
-        let hasData = false;
-        paids.forEach(b => {
-            if (searchTerm && !b.name.toLowerCase().includes(searchTerm)) return;
-            hasData = true;
-            pList.innerHTML += `<div class="bill-item d-flex align-items-center justify-content-between opacity-75"><div><b>${b.name}</b><br><small class="text-muted">${b.date}</small></div><div class="text-end text-decoration-line-through">$${b.amount.toLocaleString()}</div></div>`;
-        });
-        emptyMsg.style.display = hasData ? 'none' : 'block';
-    }
-
-    function updateCharts() {
-        const ctxCard = document.getElementById('cardChart').getContext('2d'), ctxMonth = document.getElementById('monthChart').getContext('2d');
-        const start = document.getElementById('analysisStart').value, end = document.getElementById('analysisEnd').value;
-        const bankFilter = document.getElementById('analysisBankFilter').value;
-
-        const targetBills = data.bills.filter(b => {
-            const matchDate = b.date >= start && b.date <= end;
-            const matchBank = bankFilter === 'all' || b.name.includes(bankFilter);
-            return matchDate && matchBank && b.status !== 'skipped';
-        });
+        const showAddModal = ref(false);
+        const showChangelog = ref(false);
+        const showCardEditor = ref(false);
         
-        document.getElementById('yearlyTotal').textContent = '$' + targetBills.reduce((s, b) => s + b.amount, 0).toLocaleString();
+        const billForm = reactive({ name: '', amount: '', date: '' });
+        const editingBillId = ref(null);
+        const cardForm = reactive({ name: '', day: '', autopay: '' });
+        const editingCardIndex = ref(null);
         
-        const cardMap = {}, timeMap = {};
-        targetBills.forEach(b => {
-            let name = b.name.substring(0, 2); cardMap[name] = (cardMap[name] || 0) + b.amount;
-            const monthKey = b.date.substring(0, 7); timeMap[monthKey] = (timeMap[monthKey] || 0) + b.amount;
+        const pdfFile = ref(null);
+        const pdfPassword = ref("");
+        
+        const historySearch = ref("");
+        const historyPeriod = ref("3m");
+        
+        const analysisStart = ref(`${new Date().getFullYear()}-01-01`);
+        const analysisEnd = ref(new Date().toISOString().split('T')[0]);
+        const analysisBank = ref("all");
+        
+        const navItems = [
+            { id: 'dashboard', label: '待繳帳單', shortLabel: '待繳', icon: 'fas fa-wallet' },
+            { id: 'history', label: '歷史紀錄', shortLabel: '歷史', icon: 'fas fa-history' },
+            { id: 'analysis', label: '統計分析', shortLabel: '分析', icon: 'fas fa-chart-pie' },
+            { id: 'settings', label: '系統設定', shortLabel: '設定', icon: 'fas fa-cog' },
+        ];
+
+        const changelog = [
+            { version: 'v4.0.0', date: '2026/05/06', items: ['架構重寫：採用 Vue 3 + Tailwind 全面重構','登入優化：修正 Safari 彈出視窗阻擋問題','視覺升級：Glassmorphism 2.0 旗艦級設計','功能遷移：完整保留 PDF 解析與 Firestore 同步'] },
+            { version: 'v3.9.0', date: '2026/04/28', items: ['統計分析銀行篩選','歷史紀錄分段載入'] }
+        ];
+
+        // Computed
+        const unpaidBills = computed(() => {
+            return bills.value.filter(b => b.status === 'unpaid').sort((a,b) => new Date(a.date) - new Date(b.date));
         });
 
-        if(cardChart) cardChart.destroy();
-        cardChart = new Chart(ctxCard, { type: 'doughnut', data: { labels: Object.keys(cardMap), datasets: [{ data: Object.values(cardMap), backgroundColor: ['#667eea','#764ba2','#48bb78','#f6ad55','#f56565','#ed64a6'], borderWidth: 0 }] }, options: { plugins: { legend: { position: 'right' } }, maintainAspectRatio: false } });
-        
-        const sortedKeys = Object.keys(timeMap).sort();
-        if(monthChart) monthChart.destroy();
-        monthChart = new Chart(ctxMonth, { type: 'bar', data: { labels: sortedKeys, datasets: [{ label: '支出', data: sortedKeys.map(k => timeMap[k]), backgroundColor: '#667eea', borderRadius: 4 }] }, options: { scales: { y: { beginAtZero: true } }, plugins: { legend: { display: false } }, maintainAspectRatio: false } });
-    }
+        const totalUnpaidAmount = computed(() => {
+            return unpaidBills.value.reduce((sum, b) => sum + (Number(b.amount) || 0), 0);
+        });
 
-    function render() {
-        if (!data.bills) data.bills = [];
-        if (!data.cards) data.cards = [];
-        const uList = document.getElementById('unpaidList'), emptyMsg = document.getElementById('emptyMsg');
-        uList.innerHTML = '';
-        const unpaids = data.bills.filter(b => b.status === 'unpaid').sort((a,b) => new Date(a.date) - new Date(b.date));
-        unpaids.forEach(b => {
-            const cardSetting = data.cards.find(c => b.name.includes(c.name));
-            const autopayText = cardSetting && cardSetting.autopayFrom ? `<div class="small text-primary mt-1">🏦 ${cardSetting.autopayFrom} 扣款</div>` : '';
-            
-            let badgeClass = 'bg-normal';
-            let statusText = '';
-            let dateDisplay = b.date;
-            
-            if (b.date === "未知日期" || b.date === "請手動確認" || !b.date.includes("-")) {
-                statusText = '請確認';
-                badgeClass = 'bg-urgent';
-                dateDisplay = '日期未知';
-            } else {
-                const d = Math.ceil((new Date(b.date) - new Date().setHours(0,0,0,0)) / 86400000);
-                statusText = `剩 ${Math.abs(d)} 天`;
-                dateDisplay = b.date.slice(5) + ' 截止';
-                if (d < 0) {
-                    badgeClass = 'bg-urgent';
-                    statusText = '過期';
-                } else if (d === 0) {
-                    badgeClass = 'bg-urgent';
-                    statusText = '今天到期';
-                } else if (d <= 3) {
-                    badgeClass = 'bg-urgent';
-                } else if (d <= 7) {
-                    badgeClass = 'bg-soon';
-                }
+        const filteredHistory = computed(() => {
+            let list = bills.value.filter(b => b.status === 'paid' || b.status === 'skipped').sort((a,b) => new Date(b.date) - new Date(a.date));
+            if (historyPeriod.value === '3m') {
+                const limit = new Date(); limit.setDate(limit.getDate() - 90);
+                list = list.filter(b => new Date(b.date) >= limit);
             }
-
-            uList.innerHTML += `<div class="bill-item d-flex align-items-center justify-content-between"><div><div class="fw-bold">${b.name}</div><div class="small text-secondary">${dateDisplay}</div>${autopayText}</div><div class="text-end"><div class="fw-bold">$${b.amount.toLocaleString()}</div><div class="badge-pill ${badgeClass}">${statusText}</div><div onclick="markAsPaid(${b.id})" class="text-success small cursor-pointer mt-1">標記已繳</div></div></div>`;
+            if (historySearch.value) {
+                const s = historySearch.value.toLowerCase();
+                list = list.filter(b => b.name.toLowerCase().includes(s) || b.date.includes(s));
+            }
+            return list;
         });
-        renderTotal(); 
-        emptyMsg.style.display = unpaids.length ? 'none' : 'block'; 
-        renderSettings(); 
-        updateSyncStatus(); 
-        renderHistory();
-        checkAlerts();
-    }
 
-    function renderTotal() { document.getElementById('displayTotal').textContent = !isPrivacyOn ? '$' + data.bills.filter(b => b.status === 'unpaid').reduce((s,b) => s + b.amount, 0).toLocaleString() : '$****'; }
-
-    async function addCardSetting() { 
-        const n=document.getElementById('newCardName').value, d=document.getElementById('newCardDay').value, a=document.getElementById('newCardAutopay').value; 
-        if(n&&d){ 
-            if(editCardIndex > -1) { data.cards[editCardIndex] = {name:n, day:parseInt(d), autopayFrom: a}; editCardIndex = -1; } 
-            else data.cards.push({name:n, day:parseInt(d), autopayFrom: a});
-            saveLocal(); render(); resetCardEditor();
-            document.getElementById('autoSyncLabel').classList.remove('d-none');
-            await syncData('upload', true);
-            document.getElementById('autoSyncLabel').classList.add('d-none');
-        } 
-    }
-
-    function resetCardEditor() {
-        document.getElementById('newCardName').value=''; document.getElementById('newCardDay').value=''; document.getElementById('newCardAutopay').value='';
-        document.getElementById('saveCardBtn').textContent = "新增"; document.getElementById('cancelEditBtn').classList.add('d-none');
-        editCardIndex = -1;
-    }
-
-    function editCardSetting(i) {
-        editCardIndex = i; const c = data.cards[i];
-        document.getElementById('newCardName').value = c.name; document.getElementById('newCardDay').value = c.day; document.getElementById('newCardAutopay').value = c.autopayFrom || '';
-        document.getElementById('saveCardBtn').textContent = "更新資料"; document.getElementById('cancelEditBtn').classList.remove('d-none');
-        document.getElementById('cardEditorCard').scrollIntoView({ behavior: 'smooth' });
-    }
-
-    async function removeCardSetting(i) { if(confirm('確定刪除？')) { data.cards.splice(i,1); saveLocal(); render(); await syncData('upload', true); } }
-
-    function renderSettings() { 
-        const l=document.getElementById('cardSettingsList'); l.innerHTML=''; 
-        data.cards.forEach((c,i) => {
-            l.innerHTML += `<div class="col-md-6"><div class="p-3 border rounded-3 d-flex justify-content-between align-items-center bg-white"><span><b>${c.name}</b> (${c.day}號)${c.autopayFrom ? `<br><small class="text-primary">🏦 ${c.autopayFrom}</small>` : ''}</span><div class="d-flex gap-2"><button class="btn btn-sm btn-outline-warning" onclick="editCardSetting(${i})"><i class="fas fa-pencil-alt"></i></button><button class="btn btn-sm btn-outline-danger" onclick="removeCardSetting(${i})"><i class="fas fa-trash-alt"></i></button></div></div></div>`;
+        const analysisBills = computed(() => {
+            return bills.value.filter(b => {
+                const inRange = b.date >= analysisStart.value && b.date <= analysisEnd.value;
+                const matchBank = analysisBank.value === 'all' || b.name.includes(analysisBank.value);
+                return inRange && matchBank && b.status !== 'skipped';
+            });
         });
-    }
 
-    function saveLocal() { localStorage.setItem('myCreditData', JSON.stringify(data)); }
-    function loadLocal() { const s=localStorage.getItem('myCreditData'); if(s) { data=JSON.parse(s); data.bills = data.bills || []; data.cards = data.cards || []; } render(); }
-    
-    // Firebase Sync functions
-    let fbApp, db, auth;
-    
-    function initFirebase() {
-        const firebaseConfig = {
-            apiKey: "AIzaSyAh94_Z-wA_riNIXmn_btCXbTtaZny1CQg",
-            authDomain: "stock-portfolio-df6dd.firebaseapp.com",
-            projectId: "stock-portfolio-df6dd",
-            storageBucket: "stock-portfolio-df6dd.firebasestorage.app",
-            messagingSenderId: "753606247346",
-            appId: "1:753606247346:web:af0d0460327afb40f31aab"
+        const analysisTotal = computed(() => {
+            return analysisBills.value.reduce((s,b) => s + b.amount, 0);
+        });
+
+        const uniqueBanks = computed(() => {
+            const banks = new Set();
+            bills.value.forEach(b => { if(b.name) banks.add(b.name.substring(0, 2)) });
+            return Array.from(banks).sort();
+        });
+
+        // Firebase Logic
+        let auth, db;
+        const initFirebase = () => {
+            if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+            auth = firebase.auth();
+            db = firebase.firestore();
+            
+            auth.onAuthStateChanged(u => {
+                user.value = u;
+                if (u) {
+                    triggerSync('download', true);
+                }
+            });
         };
-        
-        if (!firebase.apps.length) {
-            fbApp = firebase.initializeApp(firebaseConfig);
-        } else {
-            fbApp = firebase.app();
-        }
-        db = firebase.firestore();
-        auth = firebase.auth();
-        
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                document.getElementById('btnGoogleLogin').style.display = 'none';
-                document.getElementById('authStatus').innerHTML = `<span class="text-success"><i class="fas fa-check-circle"></i> 已登入 (${user.email || 'Google 帳號'})</span><br><a href="#" onclick="auth.signOut()" class="text-muted small">登出</a>`;
-            } else {
-                document.getElementById('btnGoogleLogin').style.display = 'block';
-                document.getElementById('authStatus').textContent = '尚未登入';
-            }
-        });
-    }
 
-    function loginGoogle() {
-        // 直接觸發，不進行任何 DOM 變更，防止 Safari Popup Blocker 阻擋
-        auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => {
-            console.error(e);
-            alert("登入失敗: " + e.message);
-        });
-    }
+        const loginGoogle = () => {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            // 直接呼叫，避免任何非同步操作破壞 User Gesture 脈絡
+            auth.signInWithPopup(provider).catch(e => {
+                console.error(e);
+                alert("登入失敗: " + e.message);
+            });
+        };
 
+        const logout = () => { if(confirm('確定登出？')) auth.signOut(); };
 
-    function updateSyncStatus() { document.getElementById('syncStatus').textContent = localStorage.getItem('last_sync_time') || '未同步'; }
-    function togglePrivacy() { isPrivacyOn = !isPrivacyOn; document.getElementById('privacyIcon').className = isPrivacyOn ? 'fas fa-eye' : 'fas fa-eye-slash'; renderTotal(); }
-    function showAddModal() { addModal.show(); }
-    function showVersionModal() { versionModal.show(); }
-    function cancelCardEdit() { resetCardEditor(); }
-
-    async function syncData(m, silent = false) {
-        const docId = localStorage.getItem('firebase_doc_id') || 'my_data';
-        
-        if(!db || !auth) initFirebase();
-        if(!auth.currentUser) {
-            if(!silent) alert('請先在設定頁面登入 Google 帳號！');
-            return;
-        }
-        
-        if(!silent) loadingOverlay.style.display='flex';
-        try {
-            const docRef = db.collection("creditcard_data").doc(docId);
-            if(m==='download') {
-                const docSnap = await docRef.get();
-                if (docSnap.exists) {
-                    data = docSnap.data();
-                    data.bills = data.bills || [];
-                    data.cards = data.cards || [];
-                    localStorage.setItem('last_sync_time', new Date().toLocaleString());
-                    localStorage.setItem('last_sync_timestamp', Date.now());
-                    saveLocal();
-                }
-            } else { 
-                await docRef.set(data);
-                localStorage.setItem('last_sync_time', new Date().toLocaleString());
-                localStorage.setItem('last_sync_timestamp', Date.now());
-            }
-        } catch(e) { 
-            console.error(e); 
-            if(!silent) alert('同步失敗: ' + e.message); 
-        } finally { 
-            loadingOverlay.style.display='none'; 
-            render(); 
-        }
-    }
-    
-    // Offline Regex Parser
-    function cleanDate(dateStr) {
-        try {
-            dateStr = dateStr.replace(/\s+/g, "");
-            if (!dateStr.includes("/") && !dateStr.includes("-")) {
-                let dNum = dateStr.replace(/[^\d]/g, "");
-                if (dNum.length >= 6) {
-                    let y = parseInt(dNum.substring(0, 3)) + 1911;
-                    let m = dNum.substring(3, 5).padStart(2, '0');
-                    let d = dNum.substring(5).padStart(2, '0');
-                    return `${y}-${m}-${d}`;
-                }
-            }
-            let dNum = dateStr.replace(/[^\d\/-]/g, "");
-            let parts = dNum.split(/[\/-]/);
-            if (parts.length === 3) {
-                let year = parseInt(parts[0]);
-                if (year < 1911) year += 1911;
-                return `${year}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
-            }
-            return dateStr;
-        } catch (e) { return dateStr; }
-    }
-
-    function processBankRules(filename, text) {
-        let amount = -1;
-        let dueDate = "未知日期";
-        let bankName = "";
-        filename = filename.toLowerCase();
-        const textNoSpace = text.replace(/\s+/g, "");
-
-        const isFubonDate = /^\d+年\d+月/.test(filename);
-
-        if (filename.includes("cbgcc") || filename.includes("dbs") || filename.includes("星展")) {
-            bankName = "星展信用卡";
-            let allDates = text.match(/\d{4}\/\d{2}\/\d{2}/g);
-            if (allDates) {
-                let validDates = allDates.filter(d => d.includes("202"));
-                if (validDates.length > 0) dueDate = cleanDate(validDates.sort()[validDates.length-1]);
-            }
-            let autoPayMatch = text.match(/自動扣繳\s*(\d{1,3}(?:,\d{3})*)/);
-            if (autoPayMatch) amount = parseInt(autoPayMatch[1].replace(/,/g, ""));
-            if (amount === -1) {
-                let maxValid = -1;
-                let lines = text.split('\n');
-                for (let line of lines) {
-                    let numsMatch = line.match(/\d{1,3}(?:,\d{3})*/g);
-                    if (numsMatch && numsMatch.length >= 3) {
-                        for (let nStr of numsMatch) {
-                            let n = parseInt(nStr.replace(/,/g, ""));
-                            if (n > 0 && n < 200000 && n > maxValid) maxValid = n;
-                        }
+        const triggerSync = async (mode, silent = false) => {
+            if (!user.value) { if(!silent) alert('請先登入 Google'); return; }
+            if (!silent) isLoading.value = true;
+            try {
+                const docRef = db.collection("creditcard_data").doc(user.value.uid);
+                if (mode === 'download') {
+                    const snap = await docRef.get();
+                    if (snap.exists) {
+                        const d = snap.data();
+                        bills.value = d.bills || [];
+                        cards.value = d.cards || [];
+                        syncStatus.value = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                        saveLocal();
                     }
+                } else {
+                    await docRef.set({ bills: bills.value, cards: cards.value, last_sync: Date.now() });
+                    syncStatus.value = '已存檔';
                 }
-                if (maxValid > 0) amount = maxValid;
+            } catch (e) {
+                console.error(e);
+                if (!silent) alert('同步出錯: ' + e.message);
+            } finally {
+                isLoading.value = false;
             }
-        } 
-        else if (filename.includes("就學貸款")) {
-            bankName = "富邦學貸";
-            let amtMatch = text.match(/本期應繳總金額\s*(\d{1,3}(?:,\d{3})*)/);
-            if (amtMatch) amount = parseInt(amtMatch[1].replace(/,/g, ""));
-            let dateMatch = text.match(/扣繳日期.*?(\d{3}\/\d{2}\/\d{2})/s);
-            if (!dateMatch) {
-                let allDates = text.match(/\d{3}\/\d{2}\/\d{2}/g);
-                if (allDates) {
-                    let validDates = allDates.filter(d => d.includes("11"));
-                    if (validDates.length > 0) dueDate = cleanDate(validDates.sort()[validDates.length-1]);
+        };
+
+        // UI & Logic
+        const checkLock = () => { if(localStorage.getItem('app_pin')) isLocked.value = true; };
+        const pressKey = (k) => {
+            if(k === 'clear') pinBuffer.value = "";
+            else if(k === 'del') pinBuffer.value = pinBuffer.value.slice(0, -1);
+            else if(pinBuffer.value.length < 6) pinBuffer.value += k;
+            
+            if(pinBuffer.value.length === 6) {
+                if(pinBuffer.value === localStorage.getItem('app_pin')) {
+                    isLocked.value = false;
+                    pinBuffer.value = "";
+                } else {
+                    alert('密碼錯誤');
+                    pinBuffer.value = "";
                 }
+            }
+        };
+
+        const setPin = () => {
+            if(newPin.value.length === 6) {
+                localStorage.setItem('app_pin', newPin.value);
+                alert('密碼已設定');
+                newPin.value = "";
+            } else { alert('請輸入 6 位數字'); }
+        };
+        const newPin = ref("");
+
+        const toggleTheme = () => {
+            theme.value = theme.value === 'dark' ? 'light' : 'dark';
+            document.documentElement.classList.toggle('dark', theme.value === 'dark');
+            localStorage.setItem('theme', theme.value);
+        };
+
+        const togglePrivacy = () => {
+            isPrivacyOn.value = !isPrivacyOn.value;
+            localStorage.setItem('privacy', isPrivacyOn.value);
+        };
+
+        const saveLocal = () => localStorage.setItem('myCreditData', JSON.stringify({ bills: bills.value, cards: cards.value }));
+        const loadLocal = () => {
+            const s = localStorage.getItem('myCreditData');
+            if (s) {
+                const d = JSON.parse(s);
+                bills.value = d.bills || [];
+                cards.value = d.cards || [];
+            }
+        };
+
+        // Bills
+        const submitBill = () => {
+            const billData = {
+                id: editingBillId.value || Date.now(),
+                name: billForm.name,
+                amount: Number(billForm.amount),
+                date: billForm.date,
+                status: 'unpaid'
+            };
+            
+            if (editingBillId.value) {
+                const idx = bills.value.findIndex(b => b.id === editingBillId.value);
+                if(idx !== -1) bills.value[idx] = billData;
             } else {
-                dueDate = cleanDate(dateMatch[1]);
+                bills.value.push(billData);
             }
-        }
-        else if (filename.includes("永豐")) {
-            bankName = "永豐信用卡";
-            let dateMatch = text.match(/截止日\s*[:]?\s*(\d{4}\/\d{2}\/\d{2})/);
-            if (dateMatch) dueDate = cleanDate(dateMatch[1]);
-            let deductMatch = text.match(/預定扣款金額\s*(\d{1,3}(?:,\d{3})*)/);
-            if (deductMatch) amount = parseInt(deductMatch[1].replace(/,/g, ""));
-            if (amount === -1) {
-                let amtMatch = text.match(/(?:[^上期]|^)應繳總金額\s*(\d{1,3}(?:,\d{3})*)/); 
+            
+            saveLocal();
+            showAddModal.value = false;
+            resetBillForm();
+            if(user.value) triggerSync('upload', true);
+        };
+
+        const resetBillForm = () => {
+            billForm.name = ''; billForm.amount = ''; billForm.date = ''; editingBillId.value = null;
+        };
+
+        const markAsPaid = (id) => {
+            const bill = bills.value.find(b => b.id === id);
+            if(bill) {
+                bill.status = 'paid';
+                saveLocal();
+                if(user.value) triggerSync('upload', true);
+            }
+        };
+
+        const editBill = (bill) => {
+            billForm.name = bill.name; billForm.amount = bill.amount; billForm.date = bill.date;
+            editingBillId.value = bill.id;
+            showAddModal.value = true;
+        };
+
+        const deleteBill = (id) => {
+            if(confirm('確定刪除此帳單？')) {
+                bills.value = bills.value.filter(b => b.id !== id);
+                saveLocal();
+                if(user.value) triggerSync('upload', true);
+            }
+        };
+
+        // Cards
+        const startAddCard = () => { editingCardIndex.value = null; cardForm.name = ''; cardForm.day = ''; cardForm.autopay = ''; showCardEditor.value = true; };
+        const editCard = (i) => {
+            const c = cards.value[i];
+            cardForm.name = c.name; cardForm.day = c.day; cardForm.autopay = c.autopayFrom || '';
+            editingCardIndex.value = i; showCardEditor.value = true;
+        };
+        const saveCard = () => {
+            const c = { name: cardForm.name, day: parseInt(cardForm.day), autopayFrom: cardForm.autopay };
+            if(editingCardIndex.value !== null) cards.value[editingCardIndex.value] = c;
+            else cards.value.push(c);
+            saveLocal(); showCardEditor.value = false;
+            if(user.value) triggerSync('upload', true);
+        };
+        const deleteCard = (i) => { if(confirm('刪除卡片設定？')) { cards.value.splice(i, 1); saveLocal(); if(user.value) triggerSync('upload', true); } };
+
+        // Helper
+        const formatDate = (d) => {
+            if(!d || d === '未知日期') return '日期未知';
+            return d.split('-').slice(1).join('/');
+        };
+
+        const getBillIcon = (name) => {
+            if (name.includes('富邦')) return 'fas fa-building-columns';
+            if (name.includes('台新')) return 'fas fa-credit-card';
+            return 'fas fa-money-bill-wave';
+        };
+
+        const getBillStatusClass = (bill) => {
+            if (!bill.date || bill.date === '未知日期') return { badge: 'bg-rose-500/10 text-rose-500', iconBg: 'bg-rose-500/10 text-rose-500', text: '請確認' };
+            const d = Math.ceil((new Date(bill.date) - new Date().setHours(0,0,0,0)) / 86400000);
+            if (d < 0) return { badge: 'bg-rose-500 text-white', iconBg: 'bg-rose-500/20 text-rose-500', text: '已過期' };
+            if (d === 0) return { badge: 'bg-rose-500 animate-pulse text-white', iconBg: 'bg-rose-500/20 text-rose-500', text: '今天到期' };
+            if (d <= 3) return { badge: 'bg-amber-500 text-white', iconBg: 'bg-amber-500/20 text-amber-500', text: `剩 ${d} 天` };
+            return { badge: 'bg-indigo-500/10 text-indigo-500', iconBg: 'bg-indigo-500/10 text-indigo-500', text: `剩 ${d} 天` };
+        };
+
+        const getCardAutopay = (name) => {
+            const c = cards.value.find(c => name.includes(c.name));
+            return c ? c.autopayFrom : null;
+        };
+
+        // PDF Parser (The logic you provided)
+        const onFileChange = (e) => { pdfFile.value = e.target.files[0]; };
+        
+        const parsePDF = async () => {
+            if(!pdfFile.value) { alert('請選擇 PDF'); return; }
+            isLoading.value = true;
+            loadingText.value = "AI 解析中...";
+            try {
+                const reader = new FileReader();
+                reader.onload = async () => {
+                    try {
+                        const pdfData = new Uint8Array(reader.result);
+                        const loadingTask = pdfjsLib.getDocument({ data: pdfData, password: pdfPassword.value });
+                        const pdf = await loadingTask.promise;
+                        let fullText = "";
+                        for (let i = 1; i <= Math.min(pdf.numPages, 3); i++) {
+                            const page = await pdf.getPage(i);
+                            const content = await page.getTextContent();
+                            fullText += content.items.map(item => item.str).join(" ") + "\n";
+                        }
+                        
+                        const result = processBankRules(pdfFile.value.name, fullText);
+                        if (result.amount > 0) {
+                            billForm.name = result.bankName;
+                            billForm.amount = result.amount;
+                            billForm.date = result.dueDate === '未知日期' ? '' : result.dueDate;
+                            alert(`解析成功：${result.bankName} $${result.amount}`);
+                        } else {
+                            alert("解析失敗，請確認檔案格式。");
+                        }
+                    } catch (e) {
+                        alert("PDF 讀取失敗，密碼可能錯誤。");
+                    } finally { isLoading.value = false; loadingText.value = "同步中..."; }
+                };
+                reader.readAsArrayBuffer(pdfFile.value);
+            } catch (e) {
+                isLoading.value = false;
+                alert("檔案處理出錯");
+            }
+        };
+
+        const processBankRules = (filename, text) => {
+            let amount = -1; let dueDate = "未知日期"; let bankName = "";
+            filename = filename.toLowerCase();
+            const textNoSpace = text.replace(/\s+/g, "");
+            const cleanDate = (dStr) => {
+                try {
+                    dStr = dStr.replace(/[^\d\/-]/g, "");
+                    let parts = dStr.split(/[\/-]/);
+                    if (parts.length === 3) {
+                        let y = parseInt(parts[0]); if(y < 1000) y += 1911;
+                        return `${y}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}`;
+                    }
+                    return dStr;
+                } catch(e) { return dStr; }
+            };
+
+            if (filename.includes("cbgcc") || filename.includes("dbs") || filename.includes("星展")) {
+                bankName = "星展信用卡";
+                let allDates = text.match(/\d{4}\/\d{2}\/\d{2}/g);
+                if (allDates) dueDate = cleanDate(allDates.sort().pop());
+                let autoPayMatch = text.match(/自動扣繳\s*(\d{1,3}(?:,\d{3})*)/);
+                if (autoPayMatch) amount = parseInt(autoPayMatch[1].replace(/,/g, ""));
+            } else if (filename.includes("永豐")) {
+                bankName = "永豐信用卡";
+                let dateMatch = text.match(/截止日\s*[:]?\s*(\d{4}\/\d{2}\/\d{2})/);
+                if (dateMatch) dueDate = cleanDate(dateMatch[1]);
+                let deductMatch = text.match(/預定扣款金額\s*(\d{1,3}(?:,\d{3})*)/);
+                if (deductMatch) amount = parseInt(deductMatch[1].replace(/,/g, ""));
+            } else if (filename.includes("富邦") || /^\d+年\d+月/.test(filename)) {
+                bankName = "富邦信用卡";
+                let dateMatch = text.match(/(\d{3}\/\d{2}\/\d{2})\s+(\d{3}\/\d{2}\/\d{2})/);
+                if (dateMatch) dueDate = cleanDate(dateMatch[2]);
+                let amtMatch = textNoSpace.match(/本期應繳總額(\d{1,3}(?:,\d{3})*)/);
                 if (amtMatch) amount = parseInt(amtMatch[1].replace(/,/g, ""));
-            }
-            if (amount === -1) {
-                let fallbackMatch = textNoSpace.match(/臺幣.*?(?:\d{1,3}(?:,\d{3})*)/g);
-                if (fallbackMatch && fallbackMatch.length > 0) {
-                    let nums = fallbackMatch.map(m => parseInt(m.replace(/[^\d]/g, "")));
-                    amount = Math.max(...nums);
-                }
-            }
-        }
-        else if (filename.includes("富邦") || isFubonDate) {
-            bankName = "富邦信用卡";
-            let twoDatesMatch = text.match(/(\d{3}\/\d{2}\/\d{2})\s+(\d{3}\/\d{2}\/\d{2})/);
-            if (twoDatesMatch) dueDate = cleanDate(twoDatesMatch[2]);
-            else {
+            } else if (filename.includes("台新")) {
+                bankName = "台新信用卡";
                 let dateMatch = text.match(/繳款截止日\s*(\d{2,3}\/\d{2}\/\d{2})/);
                 if (dateMatch) dueDate = cleanDate(dateMatch[1]);
-            }
-            let amtMatchCht = textNoSpace.match(/本期應繳總額(\d{1,3}(?:,\d{3})*)/);
-            if (amtMatchCht) amount = parseInt(amtMatchCht[1].replace(/,/g, ""));
-            else {
-                let amtMatchNt = textNoSpace.match(/NT\$(\d{1,3}(?:,\d{3})*)/);
-                if (amtMatchNt) amount = parseInt(amtMatchNt[1].replace(/,/g, ""));
-            }
-        }
-        else if (filename.includes("tsb") || filename.includes("台新")) {
-            bankName = "台新信用卡";
-            let dateMatch = text.match(/繳款截止日\s*(\d{2,3}\/\d{2}\/\d{2})/);
-            if (dateMatch) dueDate = cleanDate(dateMatch[1]);
-            let amtMatch = text.match(/本期累計應繳金額\s*(\d{1,3}(?:,\d{3})*|0)/);
-            if (amtMatch) amount = parseInt(amtMatch[1].replace(/,/g, ""));
-        }
-        else if (filename.includes("彰化") || filename.includes("chb")) {
-            bankName = "彰銀信用卡";
-            let dateMatch = text.match(/截止日[\s\S]{0,30}(\d{4}\/\d{2}\/\d{2})/);
-            if (dateMatch) dueDate = cleanDate(dateMatch[1]);
-            else {
-                let allDates = text.match(/\d{4}\/\d{2}\/\d{2}/g);
-                if (allDates) dueDate = cleanDate(allDates.sort()[allDates.length-1]);
-            }
-            let amtMatch = text.match(/本期應繳總額.*?[=]\s*(\d{1,3}(?:,\d{3})*)/s);
-            if (!amtMatch) amtMatch = text.match(/[=]\s*(\d{1,3}(?:,\d{3})*)/);
-            if (amtMatch) amount = parseInt(amtMatch[1].replace(/,/g, ""));
-        }
-        else if (filename.includes("國泰") || filename.includes("消費明細")) {
-            bankName = "國泰信用卡";
-            let dateMatch = text.match(/繳款截止日.*?(\d{3,4}\/\d{1,2}\/\d{1,2})/);
-            if (dateMatch) dueDate = cleanDate(dateMatch[1]);
-            if (dueDate === "未知日期") {
-                let allDates = text.match(/\d{3}\/\d{2}\/\d{2}/g) || text.match(/\d{4}\/\d{2}\/\d{2}/g);
-                if (allDates) {
-                    let cleanDates = allDates.map(d => cleanDate(d)).sort();
-                    dueDate = cleanDates[cleanDates.length-1];
-                }
-            }
-            let allAmts = textNoSpace.match(/\d{1,3}(?:,\d{3})*/g) || [];
-            let validAmts = allAmts.map(a => parseInt(a.replace(/,/g, ""))).filter(n => n > 0 && n < 150000 && n !== 1000 && (n % 10000 !== 0));
-            if (validAmts.length > 0) amount = Math.max(...validAmts);
-        }
-        else if (filename.includes("玉山") || filename.includes("esun")) {
-            bankName = "玉山信用卡";
-            let allDates = text.match(/\d{3}\/\d{2}\/\d{2}/g);
-            if (allDates) {
-                let cleanDates = allDates.map(d => cleanDate(d)).sort();
-                dueDate = cleanDates[cleanDates.length-1];
-            }
-            let matches = textNoSpace.match(/(\d{1,3}(?:,\d{3})*)元(\d{1,3}(?:,\d{3})*)元/);
-            if (matches) amount = parseInt(matches[1].replace(/,/g, ""));
-            if (amount === -1) {
-                let amtMatch = textNoSpace.match(/本期應繳總金額(\d{1,3}(?:,\d{3})*)元/);
-                if (!amtMatch) amtMatch = textNoSpace.match(/本期應繳總金額.*?(\d{1,3}(?:,\d{3})*)/);
+                let amtMatch = text.match(/本期累計應繳金額\s*(\d{1,3}(?:,\d{3})*)/);
                 if (amtMatch) amount = parseInt(amtMatch[1].replace(/,/g, ""));
+            } else if (filename.includes("國泰")) {
+                bankName = "國泰信用卡";
+                let dateMatch = text.match(/繳款截止日.*?(\d{3,4}\/\d{1,2}\/\d{1,2})/);
+                if (dateMatch) dueDate = cleanDate(dateMatch[1]);
+                let allAmts = textNoSpace.match(/\d{1,3}(?:,\d{3})*/g) || [];
+                let validAmts = allAmts.map(a => parseInt(a.replace(/,/g, ""))).filter(n => n > 0 && n < 150000 && n !== 1000);
+                if (validAmts.length > 0) amount = Math.max(...validAmts);
             }
-        }
-        else if (filename.includes("ubot") || filename.includes("聯邦")) {
-            bankName = "聯邦信用卡";
-            let amtMatch = text.match(/(\d{1,3}(?:,\d{3})*).*?優惠注意事項/s);
-            if (amtMatch) amount = parseInt(amtMatch[1].replace(/,/g, ""));
             
-            let validDates = [];
-            let dateRe = /(\d{3}\/\d{2}\/\d{2})/g;
-            let match;
-            while ((match = dateRe.exec(text)) !== null) {
-                let dStr = match[1];
-                let ctx = text.substring(Math.max(0, match.index - 10), match.index + 20);
-                if (!ctx.includes("止") && !ctx.includes("適用期間")) {
-                    validDates.push(cleanDate(dStr));
-                }
-            }
-            if (validDates.length > 0) dueDate = validDates.sort()[validDates.length-1];
-        }
-        else if (filename.includes("ctbc") || filename.includes("中信")) {
-            bankName = "中信信用卡";
-            let allDates = text.match(/(\d{3}\s\d{2}\s\d{2})|(\d{3}\/\d{2}\/\d{2})/g) || [];
-            let validDates = allDates.filter(d => d.includes("114") || d.includes("115"));
-            if (validDates.length > 0) dueDate = cleanDate(validDates.sort()[validDates.length-1]);
+            return { amount, dueDate, bankName: bankName || "未知銀行" };
+        };
 
-            let amtMatches = text.match(/\$\s*(\d{1,3}(?:,\d{3})*)/g);
-            if (amtMatches) {
-                let cleanNums = amtMatches.map(m => parseInt(m.replace(/[\$\s,]/g, "")));
-                amount = Math.max(...cleanNums);
-            }
-            if (amount === -1) {
-                if (text.match(/\/\s*0\/\s*0/) || text.match(/\s0\s+\+0/)) amount = 0;
-            }
-        }
-        else {
-            bankName = "未辨識銀行";
-        }
-        
-        return { name: bankName, amount: amount, date: dueDate };
-    }
+        const exportToExcel = () => {
+            const csv = "\uFEFF卡片,金額,日期,狀態\n" + bills.value.map(b => `"${b.name}",${b.amount},${b.date},${b.status}`).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = `帳單匯出_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+        };
 
-    async function handlePDFUpload() {
-        const fileInput = document.getElementById('pdfUpload');
-        const file = fileInput.files[0];
-        if (!file) { alert('請先選擇 PDF 檔案'); return; }
+        // Charts
+        let bChart, mChart;
+        const renderCharts = () => {
+            const ctxBank = document.getElementById('bankChart');
+            const ctxMonth = document.getElementById('monthChart');
+            if(!ctxBank || !ctxMonth) return;
 
-        const pdfPassword = document.getElementById('pdfPassword').value;
+            const bankData = {}; const monthData = {};
+            analysisBills.value.forEach(b => {
+                const bank = b.name.substring(0,2); bankData[bank] = (bankData[bank] || 0) + b.amount;
+                const month = b.date.substring(0,7); monthData[month] = (monthData[month] || 0) + b.amount;
+            });
 
-        const btn = document.getElementById('parsePdfBtn');
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 解析中...';
+            if(bChart) bChart.destroy();
+            bChart = new Chart(ctxBank, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(bankData),
+                    datasets: [{ data: Object.values(bankData), backgroundColor: ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#3b82f6'], borderWidth: 0 }]
+                },
+                options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, color: theme.value === 'dark' ? '#94a3b8' : '#64748b' } } } }
+            });
 
-        try {
-            const arrayBuffer = await file.arrayBuffer();
-            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-            const pdf = await pdfjsLib.getDocument({
-                data: arrayBuffer, 
-                password: pdfPassword,
-                cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
-                cMapPacked: true
-            }).promise;
-            
-            let fullText = '';
-            for (let i = 1; i <= Math.min(2, pdf.numPages); i++) {
-                const page = await pdf.getPage(i);
-                const textContent = await page.getTextContent();
-                fullText += textContent.items.map(item => item.str).join(' ') + '\n';
-            }
+            const sortedMonths = Object.keys(monthData).sort();
+            if(mChart) mChart.destroy();
+            mChart = new Chart(ctxMonth, {
+                type: 'bar',
+                data: {
+                    labels: sortedMonths,
+                    datasets: [{ label: '支出', data: sortedMonths.map(m => monthData[m]), backgroundColor: '#6366f1', borderRadius: 8 }]
+                },
+                options: { maintainAspectRatio: false, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: theme.value === 'dark' ? '#1e293b' : '#f1f5f9' } } }, plugins: { legend: { display: false } } }
+            });
+        };
 
-            const result = processBankRules(file.name, fullText);
-            
-            if (result.name !== "未辨識銀行" && result.amount !== -1) {
-                document.getElementById('addName').value = result.name;
-                document.getElementById('addAmount').value = result.amount;
-                if (result.date !== "未知日期") document.getElementById('addDate').value = result.date;
-                alert('✅ 離線解析成功！請確認欄位是否正確。');
-            } else {
-                alert('⚠️ 解析完成，但無法辨識金額或銀行，請手動輸入。');
-                if (result.name !== "未辨識銀行") document.getElementById('addName').value = result.name;
-                if (result.amount !== -1) document.getElementById('addAmount').value = result.amount;
-                if (result.date !== "未知日期") document.getElementById('addDate').value = result.date;
-            }
-
-        } catch (e) {
-            console.error(e);
-            if (e.name === 'PasswordException') {
-                alert('PDF 需要密碼，請輸入正確的密碼 (通常為身分證字號)！');
-            } else {
-                alert('解析失敗，錯誤訊息：\n' + (e.message || e.toString()));
-            }
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = '上傳並解析';
-            fileInput.value = '';
-            document.getElementById('pdfPassword').value = '';
-        }
-    }
-
-    function markAsPaid(id) {
-        if(confirm('確定標記已繳？')) { data.bills.find(b => b.id === id).status = 'paid'; saveLocal(); render(); setTimeout(() => syncData('upload'), 50); }
-    }
-
-    function checkAlerts() {
-        const box = document.getElementById('statementAlerts'); box.innerHTML = '';
-        const today = new Date().getDate();
-        const threshold = new Date(); threshold.setDate(threshold.getDate() - 20);
-        data.cards.forEach(c => {
-            if (today >= c.day && !data.bills.some(b => b.name.includes(c.name) && new Date(b.date) >= threshold)) {
-                box.innerHTML += `<div class="alert alert-warning border-0 small mb-2 d-flex justify-content-between align-items-center"><span><strong>${c.name}</strong> 應已出帳</span><button class="btn btn-sm btn-outline-secondary" onclick="markAsSkipped('${c.name}')">略過</button></div>`;
-            }
+        onMounted(() => {
+            document.documentElement.classList.toggle('dark', theme.value === 'dark');
+            loadLocal();
+            checkLock();
+            initFirebase();
         });
-    }
 
-    function markAsSkipped(cardName) { data.bills.push({ id: Date.now(), name: cardName + "(無帳單)", amount: 0, date: new Date().toISOString().split('T')[0], status: 'skipped' }); saveLocal(); render(); syncData('upload'); }
-    function exportToExcel() { const csv="卡片,金額,日期,狀態\n"+data.bills.map(b=>`"${b.name}",${b.amount},${b.date},${b.status}`).join('\n'); const l=document.createElement('a'); l.href=URL.createObjectURL(new Blob(["\ufeff"+csv],{type:'text/csv'})); l.download=`帳單.csv`; l.click(); }
-    document.getElementById('addForm').addEventListener('submit', function(e){ e.preventDefault(); data.bills.push({id:Date.now(), name:document.getElementById('addName').value, amount:parseInt(document.getElementById('addAmount').value), date:document.getElementById('addDate').value, status:'unpaid'}); saveLocal(); render(); addModal.hide(); setTimeout(() => syncData('upload'), 50); this.reset(); });
+        watch(activePage, (p) => {
+            if(p === 'analysis') nextTick(() => renderCharts());
+        });
+
+        watch([analysisStart, analysisEnd, analysisBank], () => {
+            if(activePage.value === 'analysis') renderCharts();
+        });
+
+        return {
+            isLocked, pinBuffer, isLoading, loadingText, user, activePage, theme, isPrivacyOn, syncStatus, bills, cards,
+            showAddModal, showChangelog, showCardEditor, billForm, editingBillId, cardForm, editingCardIndex,
+            pdfPassword, historySearch, historyPeriod, analysisStart, analysisEnd, analysisBank,
+            navItems, changelog, unpaidBills, totalUnpaidAmount, filteredHistory, analysisBills, analysisTotal, uniqueBanks,
+            loginGoogle, logout, triggerSync, pressKey, setPin, newPin, toggleTheme, togglePrivacy,
+            submitBill, markAsPaid, editBill, deleteBill, startAddCard, editCard, saveCard, deleteCard,
+            formatDate, getBillIcon, getBillStatusClass, getCardAutopay, onFileChange, parsePDF, exportToExcel
+        };
+    }
+}).mount('#app');
 </script>
+
 </body>
 </html>

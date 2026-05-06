@@ -633,7 +633,10 @@
                 })
             });
 
-            if (!response.ok) throw new Error('API 請求失敗');
+            if (!response.ok) {
+                const errData = await response.text();
+                throw new Error('Gemini API 請求失敗: ' + response.status + ' ' + errData);
+            }
             
             const resultData = await response.json();
             const jsonText = resultData.candidates[0].content.parts[0].text;
@@ -649,7 +652,7 @@
             if (e.name === 'PasswordException') {
                 alert('PDF 需要密碼，請輸入正確的密碼 (通常為身分證字號)！');
             } else {
-                alert('解析失敗，請確認檔案格式或 API Key。');
+                alert('解析失敗，錯誤訊息：\n' + (e.message || e.toString()));
             }
         } finally {
             btn.disabled = false;

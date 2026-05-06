@@ -301,14 +301,13 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-6"><div class="card border-0 shadow-sm rounded-4 h-100"><div class="card-body"><h6>安全鎖</h6><input type="tel" class="form-control mb-2" id="newAppPin" placeholder="6 位數" maxlength="6"><button class="btn btn-dark w-100" onclick="setAppPin()">設定</button></div></div></div>
+            <div class="col-md-6"><div class="card border-0 shadow-sm rounded-4 h-100"><div class="card-body"><h6>安全鎖</h6><input type="tel" class="form-control mb-2" id="newAppPin" placeholder="6 位數" maxlength="6"><button class="btn btn-dark w-100" onclick="setAppPin()">設定密碼</button></div></div></div>
             <div class="col-md-6"><div class="card border-0 shadow-sm rounded-4 h-100"><div class="card-body">
                 <h6>Firebase 雲端同步</h6>
-                <div id="authSection" class="mb-3">
+                <div id="authSection" class="mt-3">
                     <button class="btn btn-outline-dark w-100 mb-2" id="btnGoogleLogin" onclick="loginGoogle()"><img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5 me-2" alt="Google">Google 登入</button>
                     <div id="authStatus" class="small text-muted text-center">尚未登入</div>
                 </div>
-                <button class="btn btn-outline-secondary w-100" id="btnMigrate" onclick="migrateFromJsonbin()" style="display:none;">從 Jsonbin 一鍵遷移</button>
             </div></div></div>
         </div>
     </div>
@@ -384,16 +383,7 @@
     document.getElementById('analysisStart').value = `${now.getFullYear()}-01-01`;
     document.getElementById('analysisEnd').value = now.toISOString().split('T')[0];
 
-    // Settings UI Loading
-    function loadSettingsUI() {
-        if (localStorage.getItem('jsonbin_bin_id') && localStorage.getItem('jsonbin_api_key')) {
-            document.getElementById('btnMigrate').style.display = 'block';
-        } else {
-            document.getElementById('btnMigrate').style.display = 'none';
-        }
-    }
-
-    checkLock(); loadLocal(); initDarkMode(); loadSettingsUI(); initFirebase();
+    checkLock(); loadLocal(); initDarkMode(); initFirebase();
     setTimeout(autoSyncCheck, 1500);
 
     function autoSyncCheck() { if (auth && auth.currentUser) syncData('download', true); }
@@ -593,21 +583,10 @@
     }
 
     function loginGoogle() {
-        const provider = new firebase.auth.GoogleAuthProvider();
-        const btn = document.getElementById('btnGoogleLogin');
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>載入中...';
-        btn.disabled = true;
-        
-        auth.signInWithPopup(provider).then(() => {
-            // 成功登入後，按鈕會透過 onAuthStateChanged 隱藏
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-        }).catch(e => {
+        // 直接觸發，不進行任何 DOM 變更，防止 Safari Popup Blocker 阻擋
+        auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => {
             console.error(e);
             alert("登入失敗: " + e.message);
-            btn.innerHTML = originalText;
-            btn.disabled = false;
         });
     }
 
@@ -652,33 +631,6 @@
         }
     }
     
-    // JSONBin Migration
-    async function migrateFromJsonbin() {
-        const binId = localStorage.getItem('jsonbin_bin_id');
-        const oldApiKey = localStorage.getItem('jsonbin_api_key');
-        const fbKey = localStorage.getItem('firebase_api_key');
-        
-        if (!binId || !oldApiKey) { alert("找不到 Jsonbin 設定，無法遷移。"); return; }
-        if (!fbKey) { alert("請先設定 Firebase API Key。"); return; }
-        
-        if (!confirm("確定要從 Jsonbin 下載資料並覆寫到 Firebase 嗎？")) return;
-        
-        loadingOverlay.style.display='flex';
-        try {
-            const url = `https://api.jsonbin.io/v3/b/${binId}/latest`;
-            const res = await fetch(url, {headers:{'X-Master-Key':oldApiKey}});
-            const json = await res.json(); 
-            if(json.record) {
-                data = json.record;
-                await syncData('upload', true);
-                alert("✅ 遷移成功！您的資料已安全轉移至 Firebase。");
-                localStorage.removeItem('jsonbin_bin_id');
-                localStorage.removeItem('jsonbin_api_key');
-                loadSettingsUI();
-            }
-        } catch(e) { console.error(e); alert("遷移失敗：" + e.message); } finally { loadingOverlay.style.display='none'; render(); }
-    }
-
     // Offline Regex Parser
     function cleanDate(dateStr) {
         try {

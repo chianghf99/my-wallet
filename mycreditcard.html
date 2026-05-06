@@ -11,6 +11,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     
     <style>
@@ -246,9 +247,10 @@
             <div class="col-md-6"><div class="card border-0 shadow-sm rounded-4 h-100"><div class="card-body"><h6>安全鎖</h6><input type="tel" class="form-control mb-2" id="newAppPin" placeholder="6 位數" maxlength="6"><button class="btn btn-dark w-100" onclick="setAppPin()">設定</button></div></div></div>
             <div class="col-md-6"><div class="card border-0 shadow-sm rounded-4 h-100"><div class="card-body">
                 <h6>Firebase 雲端同步</h6>
-                <input type="password" class="form-control bg-light mb-2" id="inputFirebaseApiKey" placeholder="Firebase API Key">
-                <input type="text" class="form-control bg-light mb-3" id="inputDocId" placeholder="Document ID (預設: my_data)">
-                <button class="btn btn-primary w-100 mb-2" onclick="saveFirebaseKeys()">儲存設定</button>
+                <div id="authSection" class="mb-3">
+                    <button class="btn btn-outline-dark w-100 mb-2" id="btnGoogleLogin" onclick="loginGoogle()"><img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5 me-2" alt="Google">Google 登入</button>
+                    <div id="authStatus" class="small text-muted text-center">尚未登入</div>
+                </div>
                 <button class="btn btn-outline-secondary w-100" id="btnMigrate" onclick="migrateFromJsonbin()" style="display:none;">從 Jsonbin 一鍵遷移</button>
             </div></div></div>
         </div>
@@ -325,10 +327,8 @@
     document.getElementById('analysisStart').value = `${now.getFullYear()}-01-01`;
     document.getElementById('analysisEnd').value = now.toISOString().split('T')[0];
 
+    // Settings UI Loading
     function loadSettingsUI() {
-        document.getElementById('inputFirebaseApiKey').value = localStorage.getItem('firebase_api_key') || '';
-        document.getElementById('inputDocId').value = localStorage.getItem('firebase_doc_id') || '';
-        
         if (localStorage.getItem('jsonbin_bin_id') && localStorage.getItem('jsonbin_api_key')) {
             document.getElementById('btnMigrate').style.display = 'block';
         } else {
@@ -336,9 +336,10 @@
         }
     }
 
-    checkLock(); loadLocal(); initDarkMode(); loadSettingsUI(); setTimeout(autoSyncCheck, 1000);
+    checkLock(); loadLocal(); initDarkMode(); loadSettingsUI(); initFirebase();
+    setTimeout(autoSyncCheck, 1500);
 
-    function autoSyncCheck() { if (localStorage.getItem('firebase_api_key')) syncData('download', true); }
+    function autoSyncCheck() { if (auth && auth.currentUser) syncData('download', true); }
     
     function initDarkMode() { 
         const isDark = localStorage.getItem('theme') === 'dark';
@@ -493,25 +494,42 @@
     function loadLocal() { const s=localStorage.getItem('myCreditData'); if(s) data=JSON.parse(s); render(); }
     
     // Firebase Sync functions
-    let fbApp, db;
-    function initFirebase() {
-        const apiKey = localStorage.getItem('firebase_api_key');
-        if (apiKey && !firebase.apps.length) {
-            fbApp = firebase.initializeApp({
-                apiKey: apiKey,
-                projectId: "stock-portfolio-df6dd",
-            });
-            db = firebase.firestore();
-        }
-    }
+    let fbApp, db, auth;
     
-    function saveFirebaseKeys() {
-        localStorage.setItem('firebase_api_key', document.getElementById('inputFirebaseApiKey').value);
-        const docId = document.getElementById('inputDocId').value || 'my_data';
-        localStorage.setItem('firebase_doc_id', docId);
-        initFirebase();
-        alert('✅ Firebase 設定已儲存');
+    function initFirebase() {
+        const firebaseConfig = {
+            apiKey: "AIzaSyAh94_Z-wA_riNIXmn_btCXbTtaZny1CQg",
+            authDomain: "stock-portfolio-df6dd.firebaseapp.com",
+            projectId: "stock-portfolio-df6dd",
+            storageBucket: "stock-portfolio-df6dd.firebasestorage.app",
+            messagingSenderId: "753606247346",
+            appId: "1:753606247346:web:af0d0460327afb40f31aab"
+        };
+        
+        if (!firebase.apps.length) {
+            fbApp = firebase.initializeApp(firebaseConfig);
+        } else {
+            fbApp = firebase.app();
+        }
+        db = firebase.firestore();
+        auth = firebase.auth();
+        
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById('btnGoogleLogin').style.display = 'none';
+                document.getElementById('authStatus').innerHTML = `<span class="text-success"><i class="fas fa-check-circle"></i> 已登入 (${user.email || 'Google 帳號'})</span><br><a href="#" onclick="auth.signOut()" class="text-muted small">登出</a>`;
+            } else {
+                document.getElementById('btnGoogleLogin').style.display = 'block';
+                document.getElementById('authStatus').textContent = '尚未登入';
+            }
+        });
     }
+
+    function loginGoogle() {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        auth.signInWithPopup(provider).catch(e => alert("登入失敗: " + e.message));
+    }
+
 
     function updateSyncStatus() { document.getElementById('syncStatus').textContent = localStorage.getItem('last_sync_time') || '未同步'; }
     function togglePrivacy() { isPrivacyOn = !isPrivacyOn; document.getElementById('privacyIcon').className = isPrivacyOn ? 'fas fa-eye' : 'fas fa-eye-slash'; renderTotal(); }
@@ -520,12 +538,13 @@
     function cancelCardEdit() { resetCardEditor(); }
 
     async function syncData(m, silent = false) {
-        const apiKey = localStorage.getItem('firebase_api_key');
         const docId = localStorage.getItem('firebase_doc_id') || 'my_data';
         
-        if(!apiKey) return;
-        if(!db) initFirebase();
-        if(!db) return;
+        if(!db || !auth) initFirebase();
+        if(!auth.currentUser) {
+            if(!silent) alert('請先在設定頁面登入 Google 帳號！');
+            return;
+        }
         
         if(!silent) loadingOverlay.style.display='flex';
         try {

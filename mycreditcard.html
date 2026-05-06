@@ -271,6 +271,7 @@
     <div class="mb-3 p-3 bg-light rounded-3 border border-primary border-opacity-25">
         <label class="form-label fw-bold text-primary small mb-1"><i class="fas fa-magic"></i> AI 帳單解析</label>
         <input type="file" class="form-control form-control-sm mb-2" id="pdfUpload" accept="application/pdf">
+        <input type="password" class="form-control form-control-sm mb-2" id="pdfPassword" placeholder="PDF 密碼 (通常為身分證字號)">
         <button type="button" class="btn btn-sm btn-outline-primary w-100" id="parsePdfBtn" onclick="handlePDFUpload()">上傳並解析</button>
     </div>
     <form id="addForm">
@@ -599,6 +600,8 @@
         const geminiKey = localStorage.getItem('gemini_api_key');
         if (!geminiKey) { alert('請先在設定頁面填寫 Gemini API Key'); return; }
 
+        const pdfPassword = document.getElementById('pdfPassword').value;
+
         const btn = document.getElementById('parsePdfBtn');
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 解析中...';
@@ -606,7 +609,12 @@
         try {
             const arrayBuffer = await file.arrayBuffer();
             pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-            const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+            const pdf = await pdfjsLib.getDocument({
+                data: arrayBuffer, 
+                password: pdfPassword,
+                cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
+                cMapPacked: true
+            }).promise;
             let fullText = '';
             for (let i = 1; i <= pdf.numPages; i++) {
                 const page = await pdf.getPage(i);
@@ -638,11 +646,16 @@
             alert('✅ 解析成功！請確認欄位是否正確。');
         } catch (e) {
             console.error(e);
-            alert('解析失敗，請確認檔案格式或 API Key。');
+            if (e.name === 'PasswordException') {
+                alert('PDF 需要密碼，請輸入正確的密碼 (通常為身分證字號)！');
+            } else {
+                alert('解析失敗，請確認檔案格式或 API Key。');
+            }
         } finally {
             btn.disabled = false;
             btn.innerHTML = '上傳並解析';
             fileInput.value = '';
+            document.getElementById('pdfPassword').value = '';
         }
     }
 

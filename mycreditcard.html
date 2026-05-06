@@ -144,9 +144,9 @@
             </nav>
             
             <div class="mt-auto">
-                <div class="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800/50 flex items-center justify-between">
-                    <span class="text-xs font-bold text-slate-400">VERSION 4.0</span>
-                    <button @click="showChangelog = true" class="text-xs text-indigo-500 font-bold">日誌</button>
+                <div class="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-between">
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400">VERSION 4.1.0</span>
+                    <button @click="showChangelog = true" class="text-xs text-indigo-500 font-bold hover:underline">更新日誌</button>
                 </div>
             </div>
         </aside>
@@ -221,7 +221,7 @@
                         </div>
                         
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div v-for="bill in unpaidBills" :key="bill.id" class="glass p-5 rounded-3xl group hover:border-indigo-400/50 transition-all duration-300 shadow-sm hover:shadow-xl">
+                            <div v-for="bill in unpaidBills" :key="bill.id" class="bg-white dark:bg-slate-800 p-5 rounded-3xl group border border-slate-100 dark:border-slate-700/50 hover:border-indigo-400 transition-all duration-300 shadow-sm hover:shadow-xl">
                                 <div class="flex items-center gap-4">
                                     <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-xl" 
                                          :class="getBillStatusClass(bill).iconBg">
@@ -230,8 +230,8 @@
                                     <div class="flex-1">
                                         <h4 class="font-black text-slate-800 dark:text-slate-100 leading-tight">{{ bill.name }}</h4>
                                         <div class="flex items-center gap-2 mt-1">
-                                            <span class="text-xs font-bold text-slate-400">{{ formatDate(bill.date) }}</span>
-                                            <span v-if="getCardAutopay(bill.name)" class="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-500 rounded text-[10px] font-bold">
+                                            <span class="text-xs font-bold text-slate-500 dark:text-slate-400">{{ formatDate(bill.date) }}</span>
+                                            <span v-if="getCardAutopay(bill.name)" class="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/50 text-indigo-500 dark:text-indigo-300 rounded text-[10px] font-bold">
                                                 🏦 {{ getCardAutopay(bill.name) }}
                                             </span>
                                         </div>
@@ -245,13 +245,13 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div class="mt-4 pt-4 border-t border-slate-50 dark:border-slate-700 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity">
                                     <button @click="markAsPaid(bill.id)" class="text-xs font-bold text-emerald-500 hover:text-emerald-600">
                                         <i class="fas fa-check mr-1"></i>標記已繳
                                     </button>
                                     <div class="flex gap-3">
-                                        <button @click="editBill(bill)" class="text-xs font-bold text-indigo-500">修改</button>
-                                        <button @click="deleteBill(bill.id)" class="text-xs font-bold text-rose-400">刪除</button>
+                                        <button @click="editBill(bill)" class="text-xs font-bold text-indigo-500 dark:text-indigo-400">修改</button>
+                                        <button @click="deleteBill(bill.id)" class="text-xs font-bold text-rose-500">刪除</button>
                                     </div>
                                 </div>
                             </div>
@@ -615,8 +615,8 @@ createApp({
         ];
 
         const changelog = [
-            { version: 'v4.0.0', date: '2026/05/06', items: ['架構重寫：採用 Vue 3 + Tailwind 全面重構','登入優化：修正 Safari 彈出視窗阻擋問題','視覺升級：Glassmorphism 2.0 旗艦級設計','功能遷移：完整保留 PDF 解析與 Firestore 同步'] },
-            { version: 'v3.9.0', date: '2026/04/28', items: ['統計分析銀行篩選','歷史紀錄分段載入'] }
+            { version: 'v4.1.0', date: '2024-05-06', items: ['優化深色模式對比度', '修正統計圖表載入邏輯', '新增首頁跳轉按鈕', '調整介面風格與投資儀表板一致'] },
+            { version: 'v4.0.0', date: '2024-05-05', items: ['全面重構為 Vue 3 + Tailwind', '強化 Firebase 雲端同步系統', '導入 Glassmorphism 設計語彙', '新增離線 PDF 解析引擎'] }
         ];
 
         // Computed
@@ -1013,14 +1013,16 @@ createApp({
         watch(activePage, (p) => {
             if(p === 'analysis') {
                 nextTick(() => {
-                    setTimeout(() => renderCharts(), 100);
+                    setTimeout(() => renderCharts(), 300); // 延長延遲確保 DOM 完全穩定
                 });
             }
-        });
+        }, { immediate: true });
 
-        watch([analysisStart, analysisEnd, analysisBank], () => {
-            if(activePage.value === 'analysis') renderCharts();
-        });
+        watch([analysisStart, analysisEnd, analysisBank, bills], () => {
+            if(activePage.value === 'analysis') {
+                nextTick(() => renderCharts());
+            }
+        }, { deep: true });
 
         return {
             isLocked, pinBuffer, isLoading, loadingText, user, activePage, theme, isPrivacyOn, syncStatus, bills, cards,

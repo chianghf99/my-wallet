@@ -14,31 +14,43 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     
-    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        
         :root {
-            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --bg-color: #f8f9fa;
-            --card-bg: #ffffff;
-            --input-bg: #f8f9fa;
-            --text-color: #2d3748;
-            --text-muted: #6c757d;
-            --border-color: rgba(0,0,0,0.05);
-            --shadow-color: rgba(0,0,0,0.05);
-            --sidebar-bg: #ffffff;
+            --primary-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            --bg-color: #f3f4f6;
+            --card-bg: rgba(255, 255, 255, 0.7);
+            --input-bg: rgba(255, 255, 255, 0.5);
+            --text-color: #1f2937;
+            --text-muted: #6b7280;
+            --border-color: rgba(255, 255, 255, 0.5);
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --sidebar-bg: rgba(255, 255, 255, 0.8);
+            --glass-blur: blur(16px);
         }
 
         [data-theme="dark"] {
-            --bg-color: #111827;
-            --card-bg: #1f2937;
-            --input-bg: #374151;
-            --text-color: #f9fafb;
-            --text-muted: #9ca3af;
-            --border-color: #374151;
-            --shadow-color: rgba(0,0,0,0.3);
-            --sidebar-bg: #1f2937;
+            --bg-color: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.75);
+            --input-bg: rgba(15, 23, 42, 0.5);
+            --text-color: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --sidebar-bg: rgba(30, 41, 59, 0.8);
         }
 
-        body { background-color: var(--bg-color); color: var(--text-color); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif; padding-bottom: 90px; user-select: none; transition: background-color 0.3s, color 0.3s; }
+        body { 
+            background-color: var(--bg-color); 
+            color: var(--text-color); 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif; 
+            padding-bottom: 90px; 
+            user-select: none; 
+            transition: background-color 0.4s ease, color 0.4s ease; 
+            background-image: radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.1) 0%, transparent 400px),
+                              radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 400px);
+            background-attachment: fixed;
+        }
         
         [data-theme="dark"] .bg-light { background-color: var(--input-bg) !important; }
         [data-theme="dark"] .bg-white { background-color: var(--card-bg) !important; }
@@ -51,34 +63,62 @@
             background-color: var(--card-bg);
             color: var(--text-color);
             border: 1px solid var(--border-color);
-            box-shadow: 0 4px 6px var(--shadow-color);
-            transition: background-color 0.3s, border-color 0.3s;
+            box-shadow: 0 8px 32px var(--shadow-color);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .card:hover, .bill-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px var(--shadow-color);
         }
         
         .header-card {
             background: var(--primary-gradient); color: white;
-            border-radius: 0 0 30px 30px;
+            border-radius: 0 0 32px 32px;
             padding: 60px 20px 30px 20px;
-            box-shadow: 0 4px 20px rgba(118, 75, 162, 0.4);
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3);
             margin-bottom: 20px;
             position: relative;
+            overflow: hidden;
+        }
+
+        .header-card::after {
+            content: ''; position: absolute; top: 0; right: 0; bottom: 0; left: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 100%);
+            pointer-events: none;
         }
 
         .bill-item { border-radius: 16px; margin-bottom: 12px; padding: 15px; }
-        .bill-icon { width: 45px; height: 45px; border-radius: 12px; background: var(--input-bg); color: #667eea; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; margin-right: 15px; }
+        .bill-icon { width: 45px; height: 45px; border-radius: 12px; background: var(--input-bg); color: #6366f1; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; margin-right: 15px; }
         
-        .form-control, .form-select { background-color: var(--input-bg); color: var(--text-color); border: 1px solid var(--border-color); }
-        .form-control:focus, .form-select:focus { background-color: var(--input-bg); color: var(--text-color); border-color: #667eea; box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.25); }
+        .form-control, .form-select { 
+            background-color: var(--input-bg); 
+            color: var(--text-color); 
+            border: 1px solid var(--border-color); 
+            backdrop-filter: blur(4px);
+            transition: all 0.3s;
+        }
+        .form-control:focus, .form-select:focus { 
+            background-color: var(--input-bg); 
+            color: var(--text-color); 
+            border-color: #6366f1; 
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15); 
+        }
         
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; width: 100%;
             background: var(--card-bg); border-top: 1px solid var(--border-color); padding: 12px 0;
             display: flex; justify-content: space-around; z-index: 1000;
             padding-bottom: max(12px, env(safe-area-inset-bottom));
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
         }
-        .nav-btn { text-align: center; color: var(--text-muted); font-size: 0.75rem; background: none; border: none; flex: 1; }
-        .nav-btn.active { color: #764ba2; font-weight: 600; }
-        .nav-btn i { font-size: 1.4rem; display: block; margin-bottom: 4px; }
+        .nav-btn { text-align: center; color: var(--text-muted); font-size: 0.75rem; background: none; border: none; flex: 1; transition: 0.3s; }
+        .nav-btn.active { color: #8b5cf6; font-weight: 700; transform: translateY(-2px); }
+        .nav-btn i { font-size: 1.4rem; display: block; margin-bottom: 4px; transition: 0.3s; }
+        .nav-btn.active i { filter: drop-shadow(0 4px 6px rgba(139, 92, 246, 0.4)); }
 
         .sidebar { display: none; }
         @media (min-width: 992px) {
@@ -89,38 +129,54 @@
                 position: fixed; top: 0; left: 0; width: 260px; height: 100vh;
                 background: var(--sidebar-bg); border-right: 1px solid var(--border-color); z-index: 1000;
                 padding: 30px 20px;
+                backdrop-filter: var(--glass-blur);
+                -webkit-backdrop-filter: var(--glass-blur);
             }
             .sidebar-title { font-size: 1.5rem; font-weight: 800; color: var(--text-color); margin-bottom: 40px; padding-left: 10px; display: flex; align-items: center; cursor: pointer; }
-            .sidebar-title i { color: #667eea; margin-right: 10px; }
+            .sidebar-title i { color: #6366f1; margin-right: 10px; filter: drop-shadow(0 2px 4px rgba(99, 102, 241, 0.4)); }
             .side-btn {
                 text-align: left; padding: 15px 20px; margin-bottom: 8px;
-                border-radius: 12px; color: var(--text-muted); font-size: 1rem; font-weight: 500;
-                background: none; border: none; transition: 0.2s; display: flex; align-items: center;
+                border-radius: 12px; color: var(--text-muted); font-size: 1rem; font-weight: 600;
+                background: none; border: none; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center;
             }
-            .side-btn:hover, .side-btn.active { background: rgba(102, 126, 234, 0.1); color: #667eea; font-weight: 600; }
+            .side-btn:hover, .side-btn.active { background: rgba(99, 102, 241, 0.1); color: #6366f1; transform: translateX(5px); }
             .container { max-width: 1000px !important; padding-top: 30px; }
         }
 
-        .version-link { color: var(--text-muted); font-size: 0.8rem; padding: 10px; cursor: pointer; }
-        .badge-pill { padding: 5px 10px; border-radius: 20px; font-weight: normal; font-size: 0.75rem; }
-        .bg-urgent { background: rgba(220, 38, 38, 0.15); color: #ef4444; }
-        .bg-soon { background: rgba(217, 119, 6, 0.15); color: #f59e0b; }
-        .bg-normal { background: rgba(79, 70, 229, 0.15); color: #6366f1; }
+        .version-link { color: var(--text-muted); font-size: 0.8rem; padding: 10px; cursor: pointer; transition: 0.2s; }
+        .version-link:hover { color: #6366f1; }
+        .badge-pill { padding: 5px 12px; border-radius: 20px; font-weight: 600; font-size: 0.75rem; letter-spacing: 0.5px; }
+        .bg-urgent { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .bg-soon { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
+        .bg-normal { background: rgba(99, 102, 241, 0.15); color: #6366f1; border: 1px solid rgba(99, 102, 241, 0.3); }
         
-        .page-section { display: none; animation: fadeIn 0.3s; }
+        .page-section { display: none; animation: fadeInScale 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; transform: scale(0.98); }
         .page-section.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeInScale { to { opacity: 1; transform: scale(1); } }
         
         #pinOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); z-index: 99999; display: none; flex-direction: column; justify-content: center; align-items: center; }
-        .key-btn { width: 70px; height: 70px; border-radius: 35px; background: var(--input-bg); border: 1px solid var(--border-color); font-size: 1.5rem; color: var(--text-color); display: flex; align-items: center; justify-content: center; }
+        .key-btn { width: 75px; height: 75px; border-radius: 50%; background: var(--card-bg); border: 1px solid var(--border-color); font-size: 1.5rem; font-weight: 600; color: var(--text-color); display: flex; align-items: center; justify-content: center; backdrop-filter: var(--glass-blur); transition: 0.2s; }
+        .key-btn:active { transform: scale(0.9); background: var(--border-color); }
         .pin-dots { display: flex; gap: 15px; margin-bottom: 40px; }
-        .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--input-bg); border: 1px solid var(--border-color); }
-        .dot.active { background: #764ba2; border-color: #764ba2; transform: scale(1.2); }
-        .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; width: 280px; }
+        .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--input-bg); border: 1px solid var(--border-color); transition: 0.3s; }
+        .dot.active { background: #8b5cf6; border-color: #8b5cf6; transform: scale(1.3); box-shadow: 0 0 10px rgba(139, 92, 246, 0.5); }
+        .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 25px; width: 300px; }
         
-        #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 9998; display: none; flex-direction: column; justify-content: center; align-items: center; color: white; }
+        #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(8px); z-index: 9998; display: none; flex-direction: column; justify-content: center; align-items: center; color: white; }
+        .spinner-border { width: 3rem; height: 3rem; border-width: 0.25em; border-color: rgba(255,255,255,0.3); border-right-color: white; }
         
-        .changelog-item { position: relative; padding-left: 20px; margin-bottom: 15px; border-left: 2px solid var(--border-color); }
+        .changelog-item { position: relative; padding-left: 20px; margin-bottom: 15px; border-left: 3px solid #6366f1; }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.5); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(107, 114, 128, 0.8); }
+        
+        .btn { border-radius: 12px; transition: all 0.3s; font-weight: 600; }
+        .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .btn:active { transform: translateY(1px); }
+        .btn-primary { background: var(--primary-gradient); border: none; }
+        .btn-primary:hover { opacity: 0.9; box-shadow: 0 6px 15px rgba(99, 102, 241, 0.4); }
     </style>
 </head>
 <body>
@@ -426,25 +482,35 @@
         uList.innerHTML = '';
         const unpaids = data.bills.filter(b => b.status === 'unpaid').sort((a,b) => new Date(a.date) - new Date(b.date));
         unpaids.forEach(b => {
-            const d = Math.ceil((new Date(b.date) - new Date().setHours(0,0,0,0)) / 86400000);
             const cardSetting = data.cards.find(c => b.name.includes(c.name));
             const autopayText = cardSetting && cardSetting.autopayFrom ? `<div class="small text-primary mt-1">🏦 ${cardSetting.autopayFrom} 扣款</div>` : '';
             
             let badgeClass = 'bg-normal';
-            let statusText = `剩 ${Math.abs(d)} 天`;
-            if (d < 0) {
+            let statusText = '';
+            let dateDisplay = b.date;
+            
+            if (b.date === "未知日期" || b.date === "請手動確認" || !b.date.includes("-")) {
+                statusText = '請確認';
                 badgeClass = 'bg-urgent';
-                statusText = '過期';
-            } else if (d === 0) {
-                badgeClass = 'bg-urgent';
-                statusText = '今天到期';
-            } else if (d <= 3) {
-                badgeClass = 'bg-urgent';
-            } else if (d <= 7) {
-                badgeClass = 'bg-soon';
+                dateDisplay = '日期未知';
+            } else {
+                const d = Math.ceil((new Date(b.date) - new Date().setHours(0,0,0,0)) / 86400000);
+                statusText = `剩 ${Math.abs(d)} 天`;
+                dateDisplay = b.date.slice(5) + ' 截止';
+                if (d < 0) {
+                    badgeClass = 'bg-urgent';
+                    statusText = '過期';
+                } else if (d === 0) {
+                    badgeClass = 'bg-urgent';
+                    statusText = '今天到期';
+                } else if (d <= 3) {
+                    badgeClass = 'bg-urgent';
+                } else if (d <= 7) {
+                    badgeClass = 'bg-soon';
+                }
             }
 
-            uList.innerHTML += `<div class="bill-item d-flex align-items-center justify-content-between"><div><div class="fw-bold">${b.name}</div><div class="small text-secondary">${b.date.slice(5)} 截止</div>${autopayText}</div><div class="text-end"><div class="fw-bold">$${b.amount.toLocaleString()}</div><div class="badge-pill ${badgeClass}">${statusText}</div><div onclick="markAsPaid(${b.id})" class="text-success small cursor-pointer mt-1">標記已繳</div></div></div>`;
+            uList.innerHTML += `<div class="bill-item d-flex align-items-center justify-content-between"><div><div class="fw-bold">${b.name}</div><div class="small text-secondary">${dateDisplay}</div>${autopayText}</div><div class="text-end"><div class="fw-bold">$${b.amount.toLocaleString()}</div><div class="badge-pill ${badgeClass}">${statusText}</div><div onclick="markAsPaid(${b.id})" class="text-success small cursor-pointer mt-1">標記已繳</div></div></div>`;
         });
         renderTotal(); 
         emptyMsg.style.display = unpaids.length ? 'none' : 'block'; 
@@ -527,7 +593,22 @@
 
     function loginGoogle() {
         const provider = new firebase.auth.GoogleAuthProvider();
-        auth.signInWithPopup(provider).catch(e => alert("登入失敗: " + e.message));
+        const btn = document.getElementById('btnGoogleLogin');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>載入中...';
+        btn.disabled = true;
+        
+        auth.signInWithPopup(provider).catch(e => {
+            console.error(e);
+            if (e.code === 'auth/popup-blocked' || e.code === 'auth/cancelled-popup-request') {
+                // If popup is blocked by mobile Safari or Chrome, fallback to redirect
+                auth.signInWithRedirect(provider);
+            } else {
+                alert("登入失敗: " + e.message);
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        });
     }
 
 

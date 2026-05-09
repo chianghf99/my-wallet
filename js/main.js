@@ -1,7 +1,7 @@
 import { db, auth } from './firebase-config.js';
 import { getLocalDate, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountSign } from './utils/format.js';
 
-import { user, stocks, exchangeRate, lastUpdated, lastUpdatedTs, loadingTarget, isLoading, viewMode, isMobile, showPrivacy, defaultPrivacyHidden, hideZeroShares, showSettingsModal, isDarkMode, activeSection, showChangelog, stockStates, sectionLoading, xirrValue, xirrStartDate, xirrStartVal, xirrEndVal, xirrFlowCount, showStockNoteModal, stockNoteForm, showHistoryModal, historyRecords, historyFilterYear, availableYears, showDeleteModal, pendingDeleteTx, showEditTxModal, editTxForm, showHistoryEditModalVisible, historyEditForm, notes, showNoteModalVisible, noteForm, loanList, showLoanMgrModal, inlineNewLoan, inlineLoanName, loanForm, cashData, prevDayData, realEstateList, showRealEstateModal, realEstateForm, chartStartDate, chartEndDate, chartPnl, currentRange, divRange, divSearchQuery, divStartDate, divEndDate, realizedStartDate, realizedEndDate, transStartDate, transEndDate, transFilterType, transSearchQuery, sortKeyTrans, sortOrderTrans, sortKeyDiv, sortOrderDiv, realizedGains, realizedSearchQuery, sortKeyRealized, sortOrderRealized, realizedRange, dividendRecords, transactionHistory, showModal, isEditing, form, showTransModal, isFundMode, isLoanMode, loanCashMode, transForm, isPriceStale } from './store/index.js';
+import { user, stocks, exchangeRate, lastUpdated, lastUpdatedTs, loadingTarget, isLoading, viewMode, isMobile, showPrivacy, defaultPrivacyHidden, hideZeroShares, showSettingsModal, isDarkMode, activeSection, showChangelog, stockStates, sectionLoading, xirrValue, xirrStartDate, xirrStartVal, xirrEndVal, xirrFlowCount, showStockNoteModal, stockNoteForm, showHistoryModal, historyRecords, historyFilterYear, availableYears, showDeleteModal, pendingDeleteTx, showEditTxModal, editTxForm, showHistoryEditModalVisible, historyEditForm, notes, showNoteModalVisible, noteForm, loanList, showLoanMgrModal, inlineNewLoan, inlineLoanName, loanForm, cashData, prevDayData, realEstateList, showRealEstateModal, realEstateForm, chartStartDate, chartEndDate, chartPnl, currentRange, divRange, divSearchQuery, divStartDate, divEndDate, realizedStartDate, realizedEndDate, transStartDate, transEndDate, transFilterType, transSearchQuery, sortKeyTrans, sortOrderTrans, sortKeyDiv, sortOrderDiv, realizedGains, realizedSearchQuery, sortKeyRealized, sortOrderRealized, realizedRange, dividendRecords, transactionHistory, showModal, isEditing, form, showTransModal, isFundMode, isLoanMode, loanCashMode, transForm, isPriceStale, monthlyProfitData, monthlyProfitRange } from './store/index.js';
 const { createApp, ref, computed, onMounted, watch } = Vue;
 
         createApp({
@@ -9,7 +9,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 // --- 1. 變數定義區 ---
                 let unsubscribeRealEstate = null;
                 const fileInput = ref(null);
-                let chartInstance = null, pieTwInstance = null, pieUsInstance = null;
+                let chartInstance = null, pieTwInstance = null, pieUsInstance = null, monthlyProfitChartInstance = null;
                 let unsubscribe = null, unsubscribeTrans = null, unsubscribeCash = null, unsubscribeNotes = null, unsubscribeLoans = null;
                 
                 if (isDarkMode.value) document.documentElement.classList.add('dark');
@@ -223,6 +223,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         if (s === 'realized') fetchRealizedGains();
                         if (s === 'dividend') fetchDividends();
                         if (s === 'transactions') fetchTransactions();
+                        if (s === 'monthly') setTimeout(drawMonthlyChart, 100);
                     }
                 };
                 const jumpToFundHistory = () => { setTimeout(() => { document.querySelector('.zen-card.mb-8 h4').scrollIntoView({ behavior: 'smooth' }); }, 100); };
@@ -1539,6 +1540,120 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                      showCustomXirrModal, openCustomXirrModal, calculateCustomXirr,
                      cxStartDate, cxEndDate, cxLoading, cxXirrValue, cxDays,
                      cxRealStartDate, cxRealEndDate, cxStartGross, cxEndGross, cxInflow, cxOutflow,
+                const drawMonthlyChart = async () => {
+                    if (!user.value || !document.getElementById('monthlyProfitChart')) return;
+                    sectionLoading.value = true;
+                    try {
+                        const monthsToFetch = monthlyProfitRange.value;
+                        const today = new Date();
+                        const labels = [];
+                        const dataRealized = [];
+                        const dataDividend = [];
+                        const dataUnrealized = [];
+                        const tableData = [];
+
+                        const monthBoundaries = [];
+                        for (let i = 0; i <= monthsToFetch; i++) {
+                            const d = new Date(today.getFullYear(), today.getMonth() - i + 1, 0); 
+                            monthBoundaries.push(d.toISOString().split('T')[0]);
+                        }
+                        const earliestDate = monthBoundaries[monthBoundaries.length - 1];
+
+                        const historySnap = await db.collection('users').doc(user.value.uid).collection('history')
+                            .where('date', '>=', earliestDate)
+                            .orderBy('date', 'asc').get();
+                        const historyMap = {};
+                        historySnap.docs.forEach(doc => { historyMap[doc.id] = doc.data(); });
+
+                        const realizedSnap = await db.collection('users').doc(user.value.uid).collection('realized_gains')
+                            .where('date', '>=', earliestDate)
+                            .get();
+                        const dividendSnap = await db.collection('users').doc(user.value.uid).collection('dividends')
+                            .where('date', '>=', earliestDate)
+                            .get();
+
+                        const realizedList = realizedSnap.docs.map(d => d.data());
+                        const dividendList = dividendSnap.docs.map(d => d.data());
+
+                        for (let i = 0; i < monthsToFetch; i++) {
+                            const endOfMonth = monthBoundaries[i];
+                            const startOfMonth = monthBoundaries[i+1];
+                            const monthLabel = endOfMonth.substring(0, 7);
+
+                            const getHistoryForDate = (date) => {
+                                if (historyMap[date]) return historyMap[date];
+                                const dates = Object.keys(historyMap).filter(d => d <= date).sort();
+                                return dates.length ? historyMap[dates[dates.length-1]] : null;
+                            };
+
+                            const endHist = getHistoryForDate(endOfMonth);
+                            const startHist = getHistoryForDate(startOfMonth);
+
+                            const realized = realizedList.filter(r => r.date > startOfMonth && r.date <= endOfMonth)
+                                .reduce((acc, r) => acc + (r.currency === 'USD' ? r.pnl * exchangeRate.value : r.pnl), 0);
+                            
+                            const dividend = dividendList.filter(d => d.date > startOfMonth && d.date <= endOfMonth)
+                                .reduce((acc, d) => acc + (d.currency === 'USD' ? d.amount * exchangeRate.value : d.amount), 0);
+
+                            let unrealized = 0;
+                            if (endHist && startHist) {
+                                unrealized = (endHist.totalPnL || 0) - (startHist.totalPnL || 0) + realized;
+                            }
+
+                            labels.unshift(monthLabel);
+                            dataRealized.unshift(realized);
+                            dataDividend.unshift(dividend);
+                            dataUnrealized.unshift(unrealized);
+                            tableData.push({
+                                month: monthLabel,
+                                dividend,
+                                realized,
+                                unrealized,
+                                total: dividend + realized + unrealized
+                            });
+                        }
+
+                        monthlyProfitData.value = tableData;
+
+                        if (monthlyProfitChartInstance) monthlyProfitChartInstance.destroy();
+                        const isDark = document.documentElement.classList.contains('dark');
+                        const gridColor = isDark ? '#374151' : '#e5e7eb';
+                        
+                        monthlyProfitChartInstance = new Chart(document.getElementById('monthlyProfitChart').getContext('2d'), {
+                            type: 'bar',
+                            data: {
+                                labels: labels,
+                                datasets: [
+                                    { label: '股息', data: dataDividend, backgroundColor: '#f97316', stack: 'Stack 0' },
+                                    { label: '已實現', data: dataRealized, backgroundColor: '#3b82f6', stack: 'Stack 0' },
+                                    { label: '未實現變動', data: dataUnrealized, backgroundColor: '#a78bfa', stack: 'Stack 0' }
+                                ]
+                            },
+                            options: {
+                                responsive: true, maintainAspectRatio: false,
+                                scales: {
+                                    x: { stacked: true, grid: { display: false }, ticks: { color: isDark ? '#9ca3af' : '#666' } },
+                                    y: { stacked: true, grid: { color: gridColor }, ticks: { color: isDark ? '#9ca3af' : '#666', callback: v => formatNumber(v) } }
+                                },
+                                plugins: {
+                                    legend: { labels: { color: isDark ? '#e5e7eb' : '#666' } },
+                                    tooltip: {
+                                        callbacks: {
+                                            label: function(c) {
+                                                return c.dataset.label + ': ' + formatCurrency(c.raw, 'TWD');
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    } catch (e) {
+                        console.error('Monthly Chart Error', e);
+                    } finally {
+                        sectionLoading.value = false;
+                    }
+                };
+                      drawMonthlyChart, monthlyProfitData, monthlyProfitRange
 
                 };
             }

@@ -1483,63 +1483,6 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 const getAmountClass = (tx) => { if (tx.type === 'buy' || tx.type === 'withdraw' || tx.type === 'repay') return ''; if (tx.type === 'sell' || tx.type === 'dividend' || tx.type === 'deposit' || tx.type === 'borrow') return isDarkMode.value ? 'text-yellow-400' : 'text-yellow-600'; return ''; };
                 // getAmountSign imported from utils
 
-                return {
-                    clearAllUserData, // v3.2.1
-                    user, login, logout, stocks, exchangeRate, lastUpdated, isLoading, viewMode, isMobile, showPrivacy, isDarkMode, toggleDarkMode, activeSection, toggleSection, showChangelog, hideZeroShares, defaultPrivacyHidden,
-                    twStats, usStats, grandTotalValue, grandTotalAssets, grandTotalExposure, grandTotalPnL, twStockList, usStockList, leverageRatio, exposureRatio,
-                    showModal, isEditing, form, openModal, editStock, closeModal, saveStock, deleteStock,
-                    showTransModal, transForm, openTransModal, closeTransModal, submitTransaction, isFundMode, openFundModal,
-                    autoFetchName, autoFetchTransName, fetchPrices, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountClass, getAmountSign,
-                    chartStartDate, chartEndDate, drawChart, chartPnl, prevDayData, exportData, realizedGains, realizedTotalTw, realizedTotalUs,
-                    divRange, divSearchQuery, setDivRange, divStartDate, divEndDate, fetchDividends, dividendRecords, dividendRangeTw, dividendRangeUs,
-                    transactionHistory, fetchTransactions, deleteTransaction, deleteDividend, deleteRealized,
-                    transStartDate, transEndDate, sortTransaction, sortDividend, sortedTransactions, sortedDividends,
-                    realizedStartDate, realizedEndDate, fetchRealizedGains, cashData,
-                    transFilterType, transSearchQuery, jumpToFundHistory,
-                    showHistoryModal, historyRecords, openHistoryModal, deleteHistoryRecord,
-                    notes, openNoteModal, closeNoteModal, saveNote, deleteNote, showNoteModalVisible, noteForm,
-                    realizedSearchQuery, sortRealized, sortedRealizedGains, realizedGains,
-                    realizedRange, setRealizedRange,
-                    // v2.9.2
-                    showDeleteModal, pendingDeleteTx, executeDelete,
-                    // v2.9.4
-                    showHistoryEditModalVisible, openHistoryEditModal, saveHistoryRecord, historyEditForm, calculateHistoryNetWorth,
-                    // v2.9.5
-                    loanList, totalLoanBalance, showLoanMgrModal, loanForm, openLoanMgrModal, editLoanAccount, saveLoanAccount, deleteLoanAccount, openLoanModal, isLoanMode, loanCashMode,
-                    inlineNewLoan, inlineLoanName, saveInlineLoanAccount,
-                    // v2.9.12
-                    exportToExcel,
-                    // v2.9.15
-                    showSettingsModal, defaultPrivacyHidden, saveSettings,
-                    // v2.9.17: Restore
-                    triggerImport, fileInput, handleImport,
-                    // v3.9.0: Google Drive
-                    driveLoading, exportDataToDrive, importFromDrive,
-                    // v2.9.18: Chart & History
-                    setChartRange, currentRange, historyFilterYear, availableYears,
-                    // v2.9.20: Stock Notes
-                    openStockNoteModal, showStockNoteModal, stockNoteForm, saveStockNote,
-                    // v3.3.5: XIRR (Index Bug Fix)
-                    xirrValue, xirrStartDate, computeSystemXirr, xirrStartVal, xirrEndVal, xirrFlowCount,
-                    // v3.5.0
-                    updateSingleStock, stockStates, loadingTarget,
-                    // v3.6.0
-                    isPriceStale, lastUpdatedTs,
-                    // v3.6.0
-                    fetchStockData, detectMarketType, autoDetectMarketTypes,
-
-                    sectionLoading,
-                    showEditTxModal, editTxForm, openEditTxModal, saveEditTx,
-
-                    // v4.0.0: 房地產
-                    realEstateList, realEstateTotalMarket, realEstateTotalMortgage, realEstateNetValue, realEstateBookPnL,
-                    showRealEstateModal, realEstateForm, openRealEstateModal, saveRealEstate, deleteRealEstate,
-                    getLoanName, getReMortgageTotal, getReMortgageLoans, toggleReMortgageLoan,
-
-                     // 區間績效分析器
-                     showCustomXirrModal, openCustomXirrModal, calculateCustomXirr,
-                     cxStartDate, cxEndDate, cxLoading, cxXirrValue, cxDays,
-                     cxRealStartDate, cxRealEndDate, cxStartGross, cxEndGross, cxInflow, cxOutflow,
                 const drawMonthlyChart = async () => {
                     if (!user.value || !document.getElementById('monthlyProfitChart')) return;
                     sectionLoading.value = true;
@@ -1653,6 +1596,64 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         sectionLoading.value = false;
                     }
                 };
+
+                return {
+                    clearAllUserData, // v3.2.1
+                    user, login, logout, stocks, exchangeRate, lastUpdated, isLoading, viewMode, isMobile, showPrivacy, isDarkMode, toggleDarkMode, activeSection, toggleSection, showChangelog, hideZeroShares, defaultPrivacyHidden,
+                    twStats, usStats, grandTotalValue, grandTotalAssets, grandTotalExposure, grandTotalPnL, twStockList, usStockList, leverageRatio, exposureRatio,
+                    showModal, isEditing, form, openModal, editStock, closeModal, saveStock, deleteStock,
+                    showTransModal, transForm, openTransModal, closeTransModal, submitTransaction, isFundMode, openFundModal,
+                    autoFetchName, autoFetchTransName, fetchPrices, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountClass, getAmountSign,
+                    chartStartDate, chartEndDate, drawChart, chartPnl, prevDayData, exportData, realizedGains, realizedTotalTw, realizedTotalUs,
+                    divRange, divSearchQuery, setDivRange, divStartDate, divEndDate, fetchDividends, dividendRecords, dividendRangeTw, dividendRangeUs,
+                    transactionHistory, fetchTransactions, deleteTransaction, deleteDividend, deleteRealized,
+                    transStartDate, transEndDate, sortTransaction, sortDividend, sortedTransactions, sortedDividends,
+                    realizedStartDate, realizedEndDate, fetchRealizedGains, cashData,
+                    transFilterType, transSearchQuery, jumpToFundHistory,
+                    showHistoryModal, historyRecords, openHistoryModal, deleteHistoryRecord,
+                    notes, openNoteModal, closeNoteModal, saveNote, deleteNote, showNoteModalVisible, noteForm,
+                    realizedSearchQuery, sortRealized, sortedRealizedGains, realizedGains,
+                    realizedRange, setRealizedRange,
+                    // v2.9.2
+                    showDeleteModal, pendingDeleteTx, executeDelete,
+                    // v2.9.4
+                    showHistoryEditModalVisible, openHistoryEditModal, saveHistoryRecord, historyEditForm, calculateHistoryNetWorth,
+                    // v2.9.5
+                    loanList, totalLoanBalance, showLoanMgrModal, loanForm, openLoanMgrModal, editLoanAccount, saveLoanAccount, deleteLoanAccount, openLoanModal, isLoanMode, loanCashMode,
+                    inlineNewLoan, inlineLoanName, saveInlineLoanAccount,
+                    // v2.9.12
+                    exportToExcel,
+                    // v2.9.15
+                    showSettingsModal, defaultPrivacyHidden, saveSettings,
+                    // v2.9.17: Restore
+                    triggerImport, fileInput, handleImport,
+                    // v3.9.0: Google Drive
+                    driveLoading, exportDataToDrive, importFromDrive,
+                    // v2.9.18: Chart & History
+                    setChartRange, currentRange, historyFilterYear, availableYears,
+                    // v2.9.20: Stock Notes
+                    openStockNoteModal, showStockNoteModal, stockNoteForm, saveStockNote,
+                    // v3.3.5: XIRR (Index Bug Fix)
+                    xirrValue, xirrStartDate, computeSystemXirr, xirrStartVal, xirrEndVal, xirrFlowCount,
+                    // v3.5.0
+                    updateSingleStock, stockStates, loadingTarget,
+                    // v3.6.0
+                    isPriceStale, lastUpdatedTs,
+                    // v3.6.0
+                    fetchStockData, detectMarketType, autoDetectMarketTypes,
+
+                    sectionLoading,
+                    showEditTxModal, editTxForm, openEditTxModal, saveEditTx,
+
+                    // v4.0.0: 房地產
+                    realEstateList, realEstateTotalMarket, realEstateTotalMortgage, realEstateNetValue, realEstateBookPnL,
+                    showRealEstateModal, realEstateForm, openRealEstateModal, saveRealEstate, deleteRealEstate,
+                    getLoanName, getReMortgageTotal, getReMortgageLoans, toggleReMortgageLoan,
+
+                     // 區間績效分析器
+                     showCustomXirrModal, openCustomXirrModal, calculateCustomXirr,
+                     cxStartDate, cxEndDate, cxLoading, cxXirrValue, cxDays,
+                     cxRealStartDate, cxRealEndDate, cxStartGross, cxEndGross, cxInflow, cxOutflow,
                       drawMonthlyChart, monthlyProfitData, monthlyProfitRange
 
                 };

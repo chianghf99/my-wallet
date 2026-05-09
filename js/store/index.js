@@ -100,6 +100,3 @@ export const isPriceStale = computed(() => {
     if (h >= 9 && h < 14) return mins > 30;
     return false;
 });
-
-export const monthlyProfitData = ref([]);
-export const monthlyProfitRange = ref(12);

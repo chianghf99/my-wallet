@@ -145,7 +145,7 @@
             
             <div class="mt-auto">
                 <div class="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-between">
-                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400">VERSION 4.1.0</span>
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400">VERSION 4.2.0</span>
                     <button @click="showChangelog = true" class="text-xs text-indigo-500 font-bold hover:underline">更新日誌</button>
                 </div>
             </div>
@@ -272,9 +272,9 @@
                                 <div class="relative flex-1">
                                     <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
                                     <input type="text" v-model="historySearch" placeholder="搜尋卡片或日期..."
-                                           class="w-full pl-12 pr-4 py-4 rounded-2xl glass focus:ring-2 focus:ring-indigo-500 transition-all outline-none font-medium">
+                                           class="w-full pl-12 pr-4 py-4 rounded-2xl glass focus:ring-2 focus:ring-indigo-500 transition-all outline-none font-medium dark:text-slate-100">
                                 </div>
-                                <select v-model="historyPeriod" class="px-6 py-4 rounded-2xl glass font-bold outline-none cursor-pointer">
+                                <select v-model="historyPeriod" class="px-6 py-4 rounded-2xl glass font-bold outline-none cursor-pointer dark:text-slate-100">
                                     <option value="3m">最近三個月</option>
                                     <option value="all">全部紀錄</option>
                                 </select>
@@ -337,15 +337,15 @@
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
                                     <label class="block text-xs font-black text-slate-400 uppercase mb-2">開始日期</label>
-                                    <input type="date" v-model="analysisStart" class="w-full glass px-4 py-3 rounded-xl outline-none">
+                                    <input type="date" v-model="analysisStart" class="w-full glass px-4 py-3 rounded-xl outline-none dark:text-slate-100">
                                 </div>
                                 <div>
                                     <label class="block text-xs font-black text-slate-400 uppercase mb-2">結束日期</label>
-                                    <input type="date" v-model="analysisEnd" class="w-full glass px-4 py-3 rounded-xl outline-none">
+                                    <input type="date" v-model="analysisEnd" class="w-full glass px-4 py-3 rounded-xl outline-none dark:text-slate-100">
                                 </div>
                                 <div>
                                     <label class="block text-xs font-black text-slate-400 uppercase mb-2">銀行篩選</label>
-                                    <select v-model="analysisBank" class="w-full glass px-4 py-3 rounded-xl outline-none">
+                                    <select v-model="analysisBank" class="w-full glass px-4 py-3 rounded-xl outline-none dark:text-slate-100">
                                         <option value="all">所有銀行</option>
                                         <option v-for="bank in uniqueBanks" :key="bank" :value="bank">{{ bank }}</option>
                                     </select>
@@ -430,7 +430,7 @@
                                     <div>
                                         <label class="block text-xs font-black text-slate-400 uppercase mb-2">設定新密碼 (6位數)</label>
                                         <input type="tel" v-model="newPin" maxlength="6" placeholder="輸入 6 位數字"
-                                               class="w-full glass px-4 py-3 rounded-xl outline-none font-black tracking-[1em] text-center">
+                                               class="w-full glass px-4 py-3 rounded-xl outline-none font-black tracking-[1em] text-center dark:text-white">
                                     </div>
                                     <button @click="setPin" class="w-full py-4 bg-slate-800 dark:bg-white dark:text-slate-900 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all">
                                         更新安全密碼
@@ -470,15 +470,15 @@
                                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                                         <div>
                                             <label class="block text-xs font-bold text-slate-400 mb-1">銀行名稱</label>
-                                            <input type="text" v-model="cardForm.name" class="w-full glass px-4 py-2 rounded-lg outline-none">
+                                            <input type="text" v-model="cardForm.name" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
                                         </div>
                                         <div>
                                             <label class="block text-xs font-bold text-slate-400 mb-1">結帳日</label>
-                                            <input type="number" v-model="cardForm.day" class="w-full glass px-4 py-2 rounded-lg outline-none">
+                                            <input type="number" v-model="cardForm.day" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
                                         </div>
                                         <div>
                                             <label class="block text-xs font-bold text-slate-400 mb-1">扣款帳戶</label>
-                                            <input type="text" v-model="cardForm.autopay" class="w-full glass px-4 py-2 rounded-lg outline-none">
+                                            <input type="text" v-model="cardForm.autopay" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
                                         </div>
                                     </div>
                                     <div class="flex gap-2">
@@ -533,7 +533,7 @@
                 </div>
                 <div class="space-y-3">
                     <input type="file" @change="onFileChange" accept="application/pdf" class="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:bg-indigo-500 file:text-white hover:file:bg-indigo-600">
-                    <input type="password" v-model="pdfPassword" placeholder="PDF 密碼" class="w-full glass px-4 py-2 rounded-xl text-sm outline-none">
+                    <input type="password" v-model="pdfPassword" placeholder="PDF 密碼" class="w-full glass px-4 py-2 rounded-xl text-sm outline-none dark:text-white">
                     <button @click="parsePDF" class="w-full py-3 bg-indigo-500 text-white font-black rounded-xl text-sm shadow-lg shadow-indigo-500/20">開始解析</button>
                 </div>
             </div>
@@ -541,7 +541,7 @@
             <form @submit.prevent="submitBill" class="space-y-4">
                 <div>
                     <label class="block text-xs font-black text-slate-400 uppercase mb-1 ml-2">卡片名稱</label>
-                    <input type="text" v-model="billForm.name" required list="bankList" placeholder="選擇或輸入銀行名稱" class="w-full glass px-5 py-4 rounded-2xl outline-none font-bold">
+                    <input type="text" v-model="billForm.name" required list="bankList" placeholder="選擇或輸入銀行名稱" class="w-full glass px-5 py-4 rounded-2xl outline-none font-bold dark:text-white">
                     <datalist id="bankList">
                         <option v-for="bank in uniqueBanks" :key="bank" :value="bank"></option>
                         <option value="星展信用卡"></option>
@@ -554,11 +554,11 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-black text-slate-400 uppercase mb-1 ml-2">應繳金額</label>
-                        <input type="number" v-model="billForm.amount" required placeholder="0" class="w-full glass px-5 py-4 rounded-2xl outline-none font-bold">
+                        <input type="number" v-model="billForm.amount" required placeholder="0" class="w-full glass px-5 py-4 rounded-2xl outline-none font-bold dark:text-white">
                     </div>
                     <div>
                         <label class="block text-xs font-black text-slate-400 uppercase mb-1 ml-2">截止日期</label>
-                        <input type="date" v-model="billForm.date" required class="w-full glass px-5 py-4 rounded-2xl outline-none font-bold">
+                        <input type="date" v-model="billForm.date" required class="w-full glass px-5 py-4 rounded-2xl outline-none font-bold dark:text-white">
                     </div>
                 </div>
                 <div class="pt-4 flex gap-3">
@@ -649,6 +649,7 @@ createApp({
         ];
 
         const changelog = [
+            { version: 'v4.2.0', date: '2024-05-09', items: ['補全 10 家銀行解析規則（與 Python v3.13 同步）', '修正深色模式下輸入框文字顏色', '優化統計圖表自動載入邏輯', '修正歷史紀錄與新增項目彈窗之文字可視性'] },
             { version: 'v4.1.0', date: '2024-05-06', items: ['優化深色模式對比度', '修正統計圖表載入邏輯', '新增首頁跳轉按鈕', '調整介面風格與投資儀表板一致'] },
             { version: 'v4.0.0', date: '2024-05-05', items: ['全面重構為 Vue 3 + Tailwind', '強化 Firebase 雲端同步系統', '導入 Glassmorphism 設計語彙', '新增離線 PDF 解析引擎'] }
         ];
@@ -1148,7 +1149,9 @@ createApp({
         watch(activePage, (p) => {
             if(p === 'analysis') {
                 nextTick(() => {
-                    setTimeout(() => renderCharts(), 300); // 延長延遲確保 DOM 完全穩定
+                    // 增加多次嘗試，確保 Canvas 渲染時 DOM 已經穩定
+                    setTimeout(() => renderCharts(), 100);
+                    setTimeout(() => renderCharts(), 500);
                 });
             }
         }, { immediate: true });

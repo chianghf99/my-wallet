@@ -16,6 +16,7 @@ export const hideZeroShares = ref(localStorage.getItem('hideZeroShares') === 'tr
 export const showSettingsModal = ref(false);
 export const isDarkMode = ref(localStorage.getItem('darkMode') === 'true');
 export const activeSection = ref('');
+export const profitSubSection = ref('summary');
 export const showChangelog = ref(false);
 export const stockStates = ref({});
 export const sectionLoading = ref(false);

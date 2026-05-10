@@ -3,7 +3,7 @@ import { getLocalDate, formatNumber, formatCurrency, getPnlClass, getRoi, format
 
 import { 
     user, stocks, exchangeRate, lastUpdated, lastUpdatedTs, loadingTarget, isLoading, viewMode, isMobile, showPrivacy, defaultPrivacyHidden, hideZeroShares, showSettingsModal, isDarkMode, activeSection, showChangelog, stockStates, sectionLoading, xirrValue, xirrStartDate, xirrStartVal, xirrEndVal, xirrFlowCount, showStockNoteModal, stockNoteForm, showHistoryModal, historyRecords, historyFilterYear, availableYears, showDeleteModal, pendingDeleteTx, showEditTxModal, editTxForm, showHistoryEditModalVisible, historyEditForm, notes, showNoteModalVisible, noteForm, loanList, showLoanMgrModal, inlineNewLoan, inlineLoanName, loanForm, cashData, prevDayData, realEstateList, showRealEstateModal, realEstateForm, chartStartDate, chartEndDate, chartPnl, currentRange, divRange, divSearchQuery, divStartDate, divEndDate, realizedStartDate, realizedEndDate, transStartDate, transEndDate, transFilterType, transSearchQuery, sortKeyTrans, sortOrderTrans, sortKeyDiv, sortOrderDiv, realizedGains, realizedSearchQuery, sortKeyRealized, sortOrderRealized, realizedRange, dividendRecords, transactionHistory, showModal, isEditing, form, showTransModal, isFundMode, isLoanMode, loanCashMode, transForm, isPriceStale,
-    monthlyProfitData, monthlyProfitRange
+    monthlyProfitData, monthlyProfitRange, profitSubSection
 } from './store/index.js';
 const { createApp, ref, computed, onMounted, watch } = Vue;
 
@@ -338,9 +338,18 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         if (s === 'realized') fetchRealizedGains();
                         if (s === 'dividend') fetchDividends();
                         if (s === 'transactions') fetchTransactions();
-                        if (s === 'monthly') setTimeout(drawMonthlyChart, 100);
+                        if (s === 'monthly') {
+                            profitSubSection.value = 'summary';
+                            setTimeout(drawMonthlyChart, 100);
+                        }
                     }
                 };
+                
+                watch(profitSubSection, (val) => {
+                    if (val === 'realized') fetchRealizedGains();
+                    if (val === 'dividend') fetchDividends();
+                });
+
                 const jumpToFundHistory = () => { setTimeout(() => { document.querySelector('.zen-card.mb-8 h4').scrollIntoView({ behavior: 'smooth' }); }, 100); };
                 const loadUserData = (uid) => {
                     if (unsubscribe) unsubscribe(); unsubscribe = db.collection('users').doc(uid).collection('stocks').onSnapshot(snap => {
@@ -1601,7 +1610,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
                 return {
                     clearAllUserData, 
-                    user, login, logout, stocks, exchangeRate, lastUpdated, isLoading, viewMode, isMobile, showPrivacy, isDarkMode, toggleDarkMode, activeSection, toggleSection, showChangelog, hideZeroShares, defaultPrivacyHidden,
+                    user, login, logout, stocks, exchangeRate, lastUpdated, isLoading, viewMode, isMobile, showPrivacy, isDarkMode, toggleDarkMode, activeSection, toggleSection, showChangelog, hideZeroShares, defaultPrivacyHidden, profitSubSection,
                     twStats, usStats, grandTotalValue, grandTotalAssets, grandTotalExposure, grandTotalPnL, twStockList, usStockList, leverageRatio, exposureRatio,
                     showModal, isEditing, form, openModal, editStock, closeModal, saveStock, deleteStock,
                     showTransModal, transForm, openTransModal, closeTransModal, submitTransaction, isFundMode, openFundModal,

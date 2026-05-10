@@ -102,4 +102,4 @@ export const isPriceStale = computed(() => {
 });
 
 export const monthlyProfitData = ref([]);
-export const monthlyProfitRange = ref(12);
+export const monthlyProfitRange = ref(6);

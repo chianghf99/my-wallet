@@ -1070,10 +1070,18 @@ createApp({
             // 9. 聯邦銀行
             else if (filename.includes("聯邦") || filename.includes("ubot")) {
                 bankName = "聯邦信用卡";
-                let amtMatch = text.match(/(\d{1,3}(?:,\d{3})*).*?優惠注意事項/);
+                let amtMatch = textNoSpace.match(/之信用卡消費帳單[：:](\d{1,3}(?:,\d{3})*)/) || text.match(/(\d{1,3}(?:,\d{3})*).*?優惠注意事項/);
                 if (amtMatch) amount = parseInt(amtMatch[1].replace(/,/g, ""));
-                let allDates = text.match(/\d{3}\/\d{2}\/\d{2}/g);
-                if (allDates) dueDate = cleanDate(allDates.sort().pop());
+                
+                let idx = textNoSpace.indexOf("之信用卡消費帳單：");
+                if (idx === -1) idx = textNoSpace.indexOf("之信用卡消費帳單:");
+                if (idx !== -1) {
+                    let dateMatch = textNoSpace.substring(idx).match(/\d{3}\/\d{2}\/\d{2}/);
+                    if (dateMatch) dueDate = cleanDate(dateMatch[0]);
+                } else {
+                    let allDates = text.match(/\d{3}\/\d{2}\/\d{2}/g);
+                    if (allDates) dueDate = cleanDate(allDates.sort().pop());
+                }
             }
             // 10. 中國信託
             else if (filename.includes("ctbc") || filename.includes("中信")) {

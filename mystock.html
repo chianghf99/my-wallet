@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v4.8.0</title>
+    <title>我的投資組合 | Portfolio v4.7.0</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -298,7 +298,7 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v4.8.0</h1>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v4.7.0</h1>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -318,7 +318,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v4.8.0</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v4.7.0</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -553,6 +553,14 @@
                         :class="activeSection==='notes' ? 'btn-active' : 'btn-inactive'"
                         class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i
                             class="fa-solid fa-book mr-2"></i>投資筆記</button>
+                    <button @click="toggleSection('dividend')"
+                        :class="activeSection==='dividend' ? 'btn-active' : 'btn-inactive'"
+                        class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i
+                            class="fa-solid fa-coins mr-2"></i>股息統計</button>
+                    <button @click="toggleSection('realized')"
+                        :class="activeSection==='realized' ? 'btn-active' : 'btn-inactive'"
+                        class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i
+                            class="fa-solid fa-file-invoice-dollar mr-2"></i>已實現損益</button>
                     <!-- v4.0.0: 房地產 -->
                     <button @click="toggleSection('realestate')"
                         :class="activeSection==='realestate' ? 'btn-active' : 'btn-inactive'"
@@ -561,7 +569,7 @@
                     <button @click="toggleSection('monthly')"
                         :class="activeSection==='monthly' ? 'btn-active' : 'btn-inactive'"
                         class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i
-                            class="fa-solid fa-chart-column mr-2"></i>獲利與績效</button>
+                            class="fa-solid fa-chart-column mr-2"></i>獲利分析</button>
 
                 </div>
 
@@ -781,17 +789,8 @@
                     </div>
                 </transition>
 
-                <!-- 獲利與績效 Sub-Navigation -->
                 <transition name="collapse">
-                    <div v-if="activeSection === 'monthly'" class="flex flex-wrap gap-2 justify-center mb-4">
-                        <button @click="profitSubSection = 'summary'" :class="profitSubSection === 'summary' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' : 'bg-white text-gray-500 dark:bg-gray-800 dark:text-gray-400'" class="px-4 py-1.5 rounded-full text-sm font-medium transition shadow-sm border border-transparent hover:border-gray-200 dark:hover:border-gray-700"><i class="fa-solid fa-chart-column mr-1"></i> 每月總結</button>
-                        <button @click="profitSubSection = 'realized'" :class="profitSubSection === 'realized' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' : 'bg-white text-gray-500 dark:bg-gray-800 dark:text-gray-400'" class="px-4 py-1.5 rounded-full text-sm font-medium transition shadow-sm border border-transparent hover:border-gray-200 dark:hover:border-gray-700"><i class="fa-solid fa-file-invoice-dollar mr-1"></i> 已實現明細</button>
-                        <button @click="profitSubSection = 'dividend'" :class="profitSubSection === 'dividend' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' : 'bg-white text-gray-500 dark:bg-gray-800 dark:text-gray-400'" class="px-4 py-1.5 rounded-full text-sm font-medium transition shadow-sm border border-transparent hover:border-gray-200 dark:hover:border-gray-700"><i class="fa-solid fa-coins mr-1"></i> 股息明細</button>
-                    </div>
-                </transition>
-
-                <transition name="collapse">
-                    <div v-if="activeSection === 'monthly' && profitSubSection === 'summary'" class="zen-card p-4 md:p-6 mb-8">
+                    <div v-if="activeSection === 'monthly'" class="zen-card p-4 md:p-6 mb-8">
                         <div class="flex justify-between items-center mb-6">
                             <h3 class="font-bold dark:text-white flex items-center gap-2">
                                 <i class="fa-solid fa-chart-column text-blue-500"></i> 每月獲利總結
@@ -998,7 +997,7 @@
                 </transition>
 
                 <transition name="collapse">
-                    <div v-if="activeSection === 'monthly' && profitSubSection === 'dividend'" class="zen-card p-4 md:p-6 mb-8">
+                    <div v-if="activeSection === 'dividend'" class="zen-card p-4 md:p-6 mb-8">
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="font-bold dark:text-white">股息領取紀錄</h3>
                             <div v-if="sectionLoading" class="flex items-center gap-2 text-xs text-gray-400"><i
@@ -1097,7 +1096,7 @@
                 </transition>
 
                 <transition name="collapse">
-                    <div v-if="activeSection === 'monthly' && profitSubSection === 'realized'" class="zen-card p-4 md:p-6 mb-8">
+                    <div v-if="activeSection === 'realized'" class="zen-card p-4 md:p-6 mb-8">
                         <h3 class="font-bold mb-4 dark:text-white text-center">歷史已實現損益</h3>
                         <div v-if="sectionLoading"
                             class="flex items-center justify-center gap-2 text-xs text-gray-400 mb-4"><i
@@ -1674,12 +1673,6 @@
                             <div class="relative pl-6">
                                 <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800"></div>
                                 <div class="text-xs text-gray-400 mb-1">2026-05-10</div>
-                                <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
-                                    <div class="font-bold text-gray-800 dark:text-white mb-2">v4.8.0</div>
-                                    <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
-                                        <li>優化：重新設計「獲利與績效」分頁，將「每月總結」、「已實現明細」與「股息明細」整合為子頁籤，簡化主導覽介面</li>
-                                    </ul>
-                                </div>
                                 <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
                                     <div class="font-bold text-gray-800 dark:text-white mb-2">v4.7.0</div>
                                     <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">

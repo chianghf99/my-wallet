@@ -73,20 +73,10 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                                 unrealized = (endHist.totalPnL || 0) - (startHist.totalPnL || 0) + realized;
                             }
 
-                            let currentY = 0;
-                            const divBar = [currentY, currentY + dividend];
-                            currentY += dividend;
-                            
-                            const realBar = [currentY, currentY + realized];
-                            currentY += realized;
-                            
-                            const unrealBar = [currentY, currentY + unrealized];
-                            currentY += unrealized;
-
                             labels.unshift(monthLabel);
-                            dataDividend.unshift(divBar);
-                            dataRealized.unshift(realBar);
-                            dataUnrealized.unshift(unrealBar);
+                            dataRealized.unshift(realized);
+                            dataDividend.unshift(dividend);
+                            dataUnrealized.unshift(unrealized);
                             tableData.push({
                                 month: monthLabel,
                                 dividend,
@@ -107,24 +97,23 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                             data: {
                                 labels: labels,
                                 datasets: [
-                                    { label: '股息', data: dataDividend, backgroundColor: 'rgba(249, 115, 22, 0.75)' },
-                                    { label: '已實現', data: dataRealized, backgroundColor: 'rgba(59, 130, 246, 0.75)' },
-                                    { label: '未實現變動', data: dataUnrealized, backgroundColor: 'rgba(167, 139, 250, 0.75)' }
+                                    { label: '股息', data: dataDividend, backgroundColor: '#f97316', stack: 'Stack 0' },
+                                    { label: '已實現', data: dataRealized, backgroundColor: '#3b82f6', stack: 'Stack 0' },
+                                    { label: '未實現變動', data: dataUnrealized, backgroundColor: '#a78bfa', stack: 'Stack 0' }
                                 ]
                             },
                             options: {
                                 responsive: true, maintainAspectRatio: false,
                                 scales: {
-                                    x: { grid: { display: false }, ticks: { color: isDark ? '#9ca3af' : '#666' } },
-                                    y: { grid: { color: gridColor }, ticks: { color: isDark ? '#9ca3af' : '#666', callback: v => formatNumber(v) } }
+                                    x: { stacked: true, grid: { display: false }, ticks: { color: isDark ? '#9ca3af' : '#666' } },
+                                    y: { stacked: true, grid: { color: gridColor }, ticks: { color: isDark ? '#9ca3af' : '#666', callback: v => formatNumber(v) } }
                                 },
                                 plugins: {
                                     legend: { labels: { color: isDark ? '#e5e7eb' : '#666' } },
                                     tooltip: {
                                         callbacks: {
                                             label: function(c) {
-                                                const val = Array.isArray(c.raw) ? c.raw[1] - c.raw[0] : c.raw;
-                                                return c.dataset.label + ': ' + formatCurrency(val, 'TWD');
+                                                return c.dataset.label + ': ' + formatCurrency(c.raw, 'TWD');
                                             }
                                         }
                                     }

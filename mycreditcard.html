@@ -1063,8 +1063,13 @@ createApp({
             else if (filename.includes("玉山") || filename.includes("esun")) {
                 bankName = "玉山信用卡";
                 let allDates = text.match(/\d{3}\/\d{2}\/\d{2}/g);
-                if (allDates) dueDate = cleanDate(allDates.sort().pop());
-                let amtMatch = textNoSpace.match(/(\d{1,3}(?:,\d{3})*)元(\d{1,3}(?:,\d{3})*)元/) || textNoSpace.match(/本期應繳總金額(\d{1,3}(?:,\d{3})*)元/);
+                if (allDates) {
+                    let validDates = allDates.filter(d => d.startsWith("11"));
+                    if (validDates.length) dueDate = cleanDate(validDates.sort().pop());
+                }
+                let amtMatch = textNoSpace.match(/本期應繳總金額[：:]?(?:TWD|NT\$|twd|nt\$)?(\d{1,3}(?:,\d{3})*)/i) || 
+                               textNoSpace.match(/本期應繳總金額(\d{1,3}(?:,\d{3})*)元/) ||
+                               textNoSpace.match(/(\d{1,3}(?:,\d{3})*)元(\d{1,3}(?:,\d{3})*)元/);
                 if (amtMatch) amount = parseInt(amtMatch[1].replace(/,/g, ""));
             }
             // 9. 聯邦銀行

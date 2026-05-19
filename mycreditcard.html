@@ -1044,34 +1044,31 @@ createApp({
                 if (amtMatch) amount = parseInt(amtMatch[1].replace(/,/g, ""));
             } 
             // 6. 國泰世華
+            // pdf.js 每頁 join(" ") 成一行，改用字串位置法掃描
             else if (filename.includes("國泰") || filename.includes("消費明細")) {
                 bankName = "國泰信用卡";
-                // 找出所有獨立行日期，取最晚的（截止日 > 結帳日）
-                const lines = text.split('\n').map(line => line.trim());
-                const standaloneDates = [];
-                for (let i = 0; i < lines.length; i++) {
-                    if (/^\d{3,4}\/\d{2}\/\d{2}$/.test(lines[i])) {
-                        standaloneDates.push({ idx: i, raw: lines[i], iso: cleanDate(lines[i]) });
+                // 找出文字中所有 ROC 日期 (只接受 113~116 年)，取最晚的（截止日 > 結帳日）
+                const allDateMatches = [...text.matchAll(/\b(11[3-6])\/(\d{2})\/(\d{2})\b/g)];
+                let latestIso = "";
+                let latestPos = -1;
+                for (const m of allDateMatches) {
+                    const iso = cleanDate(m[0]);
+                    if (iso > latestIso) {
+                        latestIso = iso;
+                        latestPos = m.index + m[0].length;
                     }
                 }
-                if (standaloneDates.length > 0) {
-                    // 取 ISO 最大的日期 = 截止日
-                    const latest = standaloneDates.reduce((a, b) => a.iso > b.iso ? a : b);
-                    dueDate = latest.iso;
-                    // 往後幾行找第一個非整萬的合理金額
-                    for (let j = latest.idx + 1; j < Math.min(latest.idx + 12, lines.length); j++) {
-                        const amtLineClean = lines[j].replace(/\(cid:\d+\)/g, "").trim();
-                        const nums = amtLineClean.match(/\d{1,3}(?:,\d{3})*/g);
-                        if (nums) {
-                            for (const n of nums) {
-                                const val = parseInt(n.replace(/,/g, ""));
-                                if (val >= 100 && val < 150000 && val % 10000 !== 0) {
-                                    amount = val;
-                                    break;
-                                }
-                            }
+                if (latestIso) {
+                    dueDate = latestIso;
+                    // 只在截止日後方 800 字元內搜尋，避免誤抓後段通知文字中的雜訊
+                    const afterDate = text.slice(latestPos, latestPos + 800);
+                    const numMatches = [...afterDate.matchAll(/\b(\d{1,3}(?:,\d{3})*)\b/g)];
+                    for (const nm of numMatches) {
+                        const val = parseInt(nm[1].replace(/,/g, ""));
+                        if (val >= 100 && val < 150000 && val % 10000 !== 0) {
+                            amount = val;
+                            break;
                         }
-                        if (amount > 0) break;
                     }
                 }
             }

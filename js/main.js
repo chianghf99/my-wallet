@@ -1214,7 +1214,9 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                             if (j.msgArray?.length > 0) {
                                 j.msgArray.forEach(s => {
                                     let price = s.z;
-                                    if (price === '-' || price === '') price = (s.pz !== '-' && s.pz !== '') ? s.pz : s.y;
+                                    // z=盤中即時成交價；盤後可能為'-'
+                                    // oz=今日收盤確定值（盤後優先）；pz=前一筆；y=昨收（最後手段）
+                                    if (price === '-' || price === '') price = (s.oz && s.oz !== '-' && s.oz !== '') ? s.oz : (s.pz !== '-' && s.pz !== '') ? s.pz : s.y;
                                     const finalPrice = parseFloat(price);
                                     const prevClose = parseFloat(s.y);
                                     const market = s.ex === 'otc' ? 'otc' : 'tse';

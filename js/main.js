@@ -1159,31 +1159,16 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                                 map.set(s.SecuritiesCompanyCode, { price, prevClose: price - change, market: 'otc', name: s.CompanyName });
                         });
                     } catch (e) { console.warn('[TPEx OpenAPI] 上櫃失敗', e); }
-                    // 興櫃 (emerging)：MIS 與上市/上櫃端點都不含興櫃，需另抓 TPEx 興櫃當日行情。
-                    // 興櫃沒有集中撮合收盤價，欄位名稱與上市櫃不同，故動態判斷欄位（並於首筆印出實際欄位供確認/微調）。
+                    // v4.4.0: 加入興櫃(ESB)市場報價（非即時，但可作為 fallback）
                     try {
-                        const j = await (await fetch(CF_PROXY + encodeURIComponent('https://www.tpex.org.tw/openapi/v1/tpex_esb_latest_statistics'))).json();
-                        if (Array.isArray(j) && j.length) {
-                            if (!fetchTwSnapshotFromOpenApi._esbLogged) {
-                                console.info('[TPEx 興櫃] 範例欄位 keys =', Object.keys(j[0]));
-                                console.info('[TPEx 興櫃] 範例資料 =', j[0]);
-                                fetchTwSnapshotFromOpenApi._esbLogged = true;
-                            }
-                            const pick = (o, keys) => { for (const k of keys) { if (o[k] !== undefined && o[k] !== null && o[k] !== '') return o[k]; } return undefined; };
-                            const findCodeLike = (o) => { for (const k of Object.keys(o)) { const v = String(o[k] ?? '').trim(); if (/^\d{4,6}[A-Z]?$/.test(v)) return v; } return undefined; };
-                            j.forEach(s => {
-                                const code = (pick(s, ['SecuritiesCompanyCode', 'Code', 'CompanyCode', 'StockNo', '證券代號', '股票代號']) || findCodeLike(s) || '').toString().trim();
-                                const name = pick(s, ['CompanyName', 'Name', 'SecuritiesCompanyName', '公司名稱', '證券名稱']);
-                                const rawPrice = pick(s, ['LatestPrice', 'LastPrice', 'WeightedAvgPrice', 'DealPrice', 'Close', 'ClosingPrice', 'AvgPrice', '成交均價', '加權平均價', '最後成交價', '收盤價']);
-                                const rawChange = pick(s, ['Change', 'PriceChange', '漲跌', '漲跌價差']);
-                                const price = parseFloat(String(rawPrice ?? '').replace(/[,\s]/g, ''));
-                                const change = parseFloat(String(rawChange ?? '0').replace(/[^-\d.]/g, '') || '0');
-                                // 不覆蓋已存在的上市/上櫃代號；興櫃無撮合收盤價，找不到價就略過（讓上層維持失敗而非顯示昨收）
-                                if (code && !map.has(code) && !isNaN(price) && price > 0)
-                                    map.set(code, { price, prevClose: isNaN(change) ? price : price - change, market: 'emg', name });
-                            });
-                        }
-                    } catch (e) { console.warn('[TPEx 興櫃] 失敗', e); }
+                        const j = await (await fetch(CF_PROXY + encodeURIComponent('https://www.tpex.org.tw/openapi/v1/tpex_esb_quotes'))).json();
+                        j.forEach(s => {
+                            const price = parseFloat(s.Close?.replace(/,/g, '') || '');
+                            const change = parseFloat(s.Change?.replace(/[^-\d.]/g, '') || '0');
+                            if (!isNaN(price) && price > 0)
+                                map.set(s.SecuritiesCompanyCode, { price, prevClose: price - change, market: 'esb', name: s.CompanyName });
+                        });
+                    } catch (e) { console.warn('[TPEx OpenAPI] 興櫃失敗', e); }
                     return map;
                 };
 
@@ -1239,9 +1224,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                             if (j.msgArray?.length > 0) {
                                 j.msgArray.forEach(s => {
                                     let price = s.z;
-                                    // 只接受成交價(z)或盤後定價(pz)；不再把昨收(s.y)當現價，
-                                    // 否則無成交時會「現價=昨收、漲跌=0」並掩蓋抓取失敗，讓上層無法降級。
-                                    if (price === '-' || price === '') price = (s.pz !== '-' && s.pz !== '') ? s.pz : '';
+                                    if (price === '-' || price === '') price = (s.pz !== '-' && s.pz !== '') ? s.pz : s.y;
                                     const finalPrice = parseFloat(price);
                                     const prevClose = parseFloat(s.y);
                                     const market = s.ex === 'otc' ? 'otc' : 'tse';
@@ -1280,11 +1263,13 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     const openApiData = openApiMap.get(cleanSym);
                     const market = openApiData ? openApiData.market : 'tse'; // 預設 tse
 
-                    const misMap = await fetchMisTwse([`${market}_${cleanSym}.tw`]);
-                    const misData = misMap.get(cleanSym);
-
-                    if (misData) {
-                        return { regularMarketPrice: misData.price, previousClose: misData.prevClose };
+                    // 興櫃(esb) MIS 不支援，直接用 Open API 報價
+                    if (market !== 'esb') {
+                        const misMap = await fetchMisTwse([`${market}_${cleanSym}.tw`]);
+                        const misData = misMap.get(cleanSym);
+                        if (misData) {
+                            return { regularMarketPrice: misData.price, previousClose: misData.prevClose };
+                        }
                     }
 
                     // 3. 備用：退回到 Open API
@@ -1295,29 +1280,58 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     return null;
                 };
 
-                // ★★★ v4.3.0: 台股單支更新改走 Yahoo Finance（較 MIS 穩定）★★★
-                // v7/finance/quote 已需 cookie/crumb 驗證、無 cookie 會回 401 Unauthorized，
-                // 改用目前仍可匿名存取的 v8/finance/chart；失敗自動降級回 MIS → Open API
+                // ★★★ v4.4.0: fetchTwStockPriceYahoo 自動試兩種 suffix，修正興櫃轉上市問題 ★★★
+                // 若 marketType 記錄與實際不符（如舊興櫃轉上市），會自動偵測並修正寫回 DB
                 const fetchTwStockPriceYahoo = async (stock) => {
                     const cleanSym = stock.symbol.replace(/\.(TW|TWO)$/i, '');
-                    // 依 marketType 決定 Yahoo suffix（.TWO = 上櫃/興櫃, .TW = 上市）
-                    const suffix = (stock.marketType === 'otc' || stock.marketType === 'emg') ? '.TWO' : '.TW';
-                    const yahooSym = `${cleanSym}${suffix}`;
-                    try {
-                        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSym}?interval=1d&range=1d`;
-                        const resp = await fetchWithRetry(CF_PROXY + encodeURIComponent(url), 1, 8000);
-                        const json = await resp.json();
-                        const meta = json?.chart?.result?.[0]?.meta;
-                        if (meta && meta.regularMarketPrice > 0) {
-                            return {
-                                regularMarketPrice: meta.regularMarketPrice,
-                                previousClose: meta.chartPreviousClose || meta.previousClose || meta.regularMarketPrice
-                            };
+
+                    // 依 marketType 決定優先嘗試的 suffix
+                    // esb(興櫃) 或 otc(上櫃) → 先試 .TWO；tse(上市) 或未知 → 先試 .TW
+                    const firstSuffix = (stock.marketType === 'otc' || stock.marketType === 'esb') ? '.TWO' : '.TW';
+                    const fallbackSuffix = firstSuffix === '.TWO' ? '.TW' : '.TWO';
+
+                    const tryYahoo = async (suffix) => {
+                        const yahooSym = `${cleanSym}${suffix}`;
+                        try {
+                            const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${yahooSym}&lang=zh-TW&region=TW`;
+                            const resp = await fetchWithRetry(CF_PROXY + encodeURIComponent(url), 1, 8000);
+                            const json = await resp.json();
+                            const result = json?.quoteResponse?.result?.[0];
+                            if (result && result.regularMarketPrice > 0) {
+                                return {
+                                    regularMarketPrice: result.regularMarketPrice,
+                                    previousClose: result.regularMarketPreviousClose || result.regularMarketPrice,
+                                    detectedSuffix: suffix
+                                };
+                            }
+                        } catch (e) {
+                            console.warn(`[Yahoo] ${cleanSym}${suffix} 失敗`, e);
                         }
-                    } catch (e) {
-                        console.warn(`[Yahoo] ${yahooSym} 失敗，降級至 MIS/OpenAPI`, e);
+                        return null;
+                    };
+
+                    let data = await tryYahoo(firstSuffix);
+                    if (!data) {
+                        console.log(`[Yahoo] ${cleanSym}${firstSuffix} 無資料，自動嘗試 ${fallbackSuffix}（可能是興櫃轉上市/上櫃）`);
+                        data = await tryYahoo(fallbackSuffix);
+                        if (data && user.value && stock.id) {
+                            // 自動修正 marketType：.TW → tse，.TWO → otc
+                            const correctedMarket = fallbackSuffix === '.TW' ? 'tse' : 'otc';
+                            if (stock.marketType !== correctedMarket) {
+                                console.log(`[Yahoo] 自動修正 ${cleanSym} marketType: ${stock.marketType} → ${correctedMarket}`);
+                                stock.marketType = correctedMarket;
+                                try {
+                                    await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ marketType: correctedMarket });
+                                } catch (e) { console.warn('[Yahoo] marketType 修正寫入失敗', e); }
+                            }
+                        }
                     }
-                    return null;
+
+                    if (!data) return null;
+                    return {
+                        regularMarketPrice: data.regularMarketPrice,
+                        previousClose: data.previousClose
+                    };
                 };
 
                 // 判斷美股是否盤中 (簡單以時區判斷)
@@ -1351,31 +1365,34 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     return null;
                 };
 
-                // 一次性偵測上市/上櫃/興櫃 (用 Open API 快照偵測，不走 proxy)
+                // 一次性偵測上市/上櫃/興櫃 (v4.4.0: 加入 esb 支援；找不到回傳 null 而非預設 tse)
                 const detectMarketType = async (stock) => {
                     if (stock.currency === 'USD') return 'us';
                     const cleanSym = stock.symbol.replace(/\.(TW|TWO)$/i, '');
                     const map = await fetchTwMarketSnapshot();
                     const d = map.get(cleanSym);
-                    if (d) return d.market; // 'tse' / 'otc' / 'emg'
-                    return null; // 快照查不到（如剛掛牌）：回 null 不硬猜，保留下次重新偵測機會
+                    if (d) return d.market; // 'tse', 'otc', or 'esb'
+                    return null; // 找不到，讓呼叫端決定 fallback（避免把興櫃誤記成 tse）
                 };
 
 
                 // 啟動時為未分類股票批次自動偵測（背景執行，不阻塞 UI）
                 const autoDetectMarketTypes = async (unclassified) => {
                     if (!user.value || unclassified.length === 0) return;
-                    console.log(`[v3.6.0] 自動偵測 ${unclassified.length} 支股票的上市/上櫃/興櫃屬性...`);
+                    console.log(`[v4.4.0] 自動偵測 ${unclassified.length} 支股票的上市/上櫃/興櫃屬性...`);
                     for (const stock of unclassified) {
                         try {
                             const marketType = await detectMarketType(stock);
-                            if (!marketType) { console.warn(`[偵測] ${stock.symbol} 快照查無，暫不寫入，下次再試`); continue; }
-                            await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ marketType });
-                            console.log(`[偵測] ${stock.symbol} → ${marketType}`);
+                            if (marketType !== null) {
+                                await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ marketType });
+                                console.log(`[偵測] ${stock.symbol} → ${marketType}`);
+                            } else {
+                                console.warn(`[偵測] ${stock.symbol} 無法判斷市場類型，保留原值`);
+                            }
                         } catch (e) { console.warn(`[偵測失敗] ${stock.symbol}`, e); }
                         await new Promise(r => setTimeout(r, 600));
                     }
-                    console.log('[v3.6.0] 偵測完成！');
+                    console.log('[v4.4.0] 偵測完成！');
                 };
 
                 // v3.8.0: 統一的股價抓取入口
@@ -1402,23 +1419,20 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         const map = await fetchTwMarketSnapshot();
                         const d = map.get(cleanSym);
                         if (d) {
-                            const suffix = (d.market === 'otc' || d.market === 'emg') ? 'TWO' : 'TW';
-                            // 興櫃 MIS 查不到，直接用快照；上市/上櫃才嘗試 MIS 即時報價
-                            if (d.market !== 'emg') {
-                                const misMap = await fetchMisTwse([`${d.market}_${cleanSym}.tw`]);
-                                const misData = misMap.get(cleanSym);
-                                if (misData) {
-                                    return {
-                                        symbol: `${cleanSym}.${suffix}`,
-                                        name: d.name,
-                                        regularMarketPrice: misData.price,
-                                        previousClose: misData.prevClose
-                                    };
-                                }
+                            // 嘗試透過 MIS 抓取即時報價
+                            const misMap = await fetchMisTwse([`${d.market}_${cleanSym}.tw`]);
+                            const misData = misMap.get(cleanSym);
+                            if (misData) {
+                                return {
+                                    symbol: `${cleanSym}.${d.market === 'otc' ? 'TWO' : 'TW'}`,
+                                    name: d.name,
+                                    regularMarketPrice: misData.price,
+                                    previousClose: misData.prevClose
+                                };
                             }
-                            // 退回到 Open API 快照
+                            // 退回到 Open API
                             return {
-                                symbol: `${cleanSym}.${suffix}`,
+                                symbol: `${cleanSym}.${d.market === 'otc' ? 'TWO' : 'TW'}`,
                                 name: d.name,
                                 regularMarketPrice: d.price,
                                 previousClose: d.prevClose
@@ -1497,13 +1511,13 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     // 第二步：台股先批次預載快照（盤中走 MIS 即時，支援 40 筆分塊）
                     // =========================================================
                     if (marketType === 'TW') {
-                        // 每支股票同時送 tse + otc 兩個前綴，讓 MIS 自動回傳對的那個
-                        // 避免因為 marketType 記錯導致找不到股票
+                        // 每支股票同時送對應前綴，讓 MIS 自動回傳對的那個
+                        // 興櫃(esb) MIS 不支援，略過（會由 Open API 快照 fallback）
                         const exChList = targetStocks.flatMap(stock => {
                             const clean = stock.symbol.replace(/\.(TW|TWO)$/i, '');
-                            if (stock.marketType === 'emg') return [];   // 興櫃 MIS 查不到，靠 Open API 快照
                             if (stock.marketType === 'otc') return [`otc_${clean}.tw`];
                             if (stock.marketType === 'tse') return [`tse_${clean}.tw`];
+                            if (stock.marketType === 'esb') return []; // 興櫃不在 MIS，跳過
                             return [`tse_${clean}.tw`, `otc_${clean}.tw`]; // 未知：兩個都試
                         });
                         _twMisCache = await fetchMisTwse(exChList);

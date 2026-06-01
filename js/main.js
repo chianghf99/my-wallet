@@ -1272,49 +1272,48 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     return null;
                 };
 
-                // ★★★ v4.4.0: fetchTwStockPriceYahoo 自動試兩種 suffix，修正興櫃轉上市問題 ★★★
-                // 若 marketType 記錄與實際不符（如舊興櫃轉上市），會自動偵測並修正寫回 DB
+                // ★★★ v4.5.0: Yahoo Finance v7 已失效(Unauthorized)，改用 v8 chart API ★★★
+                // v8 endpoint: /v8/finance/chart/{symbol}?interval=1d&range=1d
+                // 回傳 chart.result[0].meta.regularMarketPrice
                 const fetchTwStockPriceYahoo = async (stock) => {
                     const cleanSym = stock.symbol.replace(/\.(TW|TWO)$/i, '');
 
-                    // 依 marketType 決定優先嘗試的 suffix
-                    // esb(興櫃) 或 otc(上櫃) → 先試 .TWO；tse(上市) 或未知 → 先試 .TW
+                    // esb/otc → 先試 .TWO；tse/未知 → 先試 .TW
                     const firstSuffix = (stock.marketType === 'otc' || stock.marketType === 'esb') ? '.TWO' : '.TW';
                     const fallbackSuffix = firstSuffix === '.TWO' ? '.TW' : '.TWO';
 
-                    const tryYahoo = async (suffix) => {
+                    const tryYahooV8 = async (suffix) => {
                         const yahooSym = `${cleanSym}${suffix}`;
                         try {
-                            const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${yahooSym}&lang=zh-TW&region=TW`;
+                            const url = `https://query2.finance.yahoo.com/v8/finance/chart/${yahooSym}?interval=1d&range=1d`;
                             const resp = await fetchWithRetry(CF_PROXY + encodeURIComponent(url), 1, 8000);
                             const json = await resp.json();
-                            const result = json?.quoteResponse?.result?.[0];
-                            if (result && result.regularMarketPrice > 0) {
+                            const meta = json?.chart?.result?.[0]?.meta;
+                            if (meta && meta.regularMarketPrice > 0) {
                                 return {
-                                    regularMarketPrice: result.regularMarketPrice,
-                                    previousClose: result.regularMarketPreviousClose || result.regularMarketPrice,
+                                    regularMarketPrice: meta.regularMarketPrice,
+                                    previousClose: meta.previousClose || meta.chartPreviousClose || meta.regularMarketPrice,
                                     detectedSuffix: suffix
                                 };
                             }
                         } catch (e) {
-                            console.warn(`[Yahoo] ${cleanSym}${suffix} 失敗`, e);
+                            console.warn(`[Yahoo v8] ${cleanSym}${suffix} 失敗`, e);
                         }
                         return null;
                     };
 
-                    let data = await tryYahoo(firstSuffix);
+                    let data = await tryYahooV8(firstSuffix);
                     if (!data) {
-                        console.log(`[Yahoo] ${cleanSym}${firstSuffix} 無資料，自動嘗試 ${fallbackSuffix}（可能是興櫃轉上市/上櫃）`);
-                        data = await tryYahoo(fallbackSuffix);
+                        console.log(`[Yahoo v8] ${cleanSym}${firstSuffix} 無資料，自動嘗試 ${fallbackSuffix}`);
+                        data = await tryYahooV8(fallbackSuffix);
                         if (data && user.value && stock.id) {
-                            // 自動修正 marketType：.TW → tse，.TWO → otc
                             const correctedMarket = fallbackSuffix === '.TW' ? 'tse' : 'otc';
                             if (stock.marketType !== correctedMarket) {
-                                console.log(`[Yahoo] 自動修正 ${cleanSym} marketType: ${stock.marketType} → ${correctedMarket}`);
+                                console.log(`[Yahoo v8] 自動修正 ${cleanSym} marketType: ${stock.marketType} → ${correctedMarket}`);
                                 stock.marketType = correctedMarket;
                                 try {
                                     await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ marketType: correctedMarket });
-                                } catch (e) { console.warn('[Yahoo] marketType 修正寫入失敗', e); }
+                                } catch (e) { console.warn('[Yahoo v8] marketType 修正寫入失敗', e); }
                             }
                         }
                     }

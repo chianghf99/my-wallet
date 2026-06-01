@@ -1159,16 +1159,6 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                                 map.set(s.SecuritiesCompanyCode, { price, prevClose: price - change, market: 'otc', name: s.CompanyName });
                         });
                     } catch (e) { console.warn('[TPEx OpenAPI] 上櫃失敗', e); }
-                    // v4.4.0: 加入興櫃(ESB)市場報價（非即時，但可作為 fallback）
-                    try {
-                        const j = await (await fetch(CF_PROXY + encodeURIComponent('https://www.tpex.org.tw/openapi/v1/tpex_esb_quotes'))).json();
-                        j.forEach(s => {
-                            const price = parseFloat(s.Close?.replace(/,/g, '') || '');
-                            const change = parseFloat(s.Change?.replace(/[^-\d.]/g, '') || '0');
-                            if (!isNaN(price) && price > 0)
-                                map.set(s.SecuritiesCompanyCode, { price, prevClose: price - change, market: 'esb', name: s.CompanyName });
-                        });
-                    } catch (e) { console.warn('[TPEx OpenAPI] 興櫃失敗', e); }
                     return map;
                 };
 
@@ -1511,18 +1501,16 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     // 第二步：台股先批次預載快照（盤中走 MIS 即時，支援 40 筆分塊）
                     // =========================================================
                     if (marketType === 'TW') {
-                        // 每支股票同時送對應前綴，讓 MIS 自動回傳對的那個
-                        // 興櫃(esb) MIS 不支援，略過（會由 Open API 快照 fallback）
+                        // v4.4.0: 一律同時送 tse_ + otc_ 兩個前綴，讓 MIS 自動回傳有效的那個
+                        // 防止 marketType 記錯（如興櫃轉上市）導致完全找不到即時報價
                         const exChList = targetStocks.flatMap(stock => {
                             const clean = stock.symbol.replace(/\.(TW|TWO)$/i, '');
-                            if (stock.marketType === 'otc') return [`otc_${clean}.tw`];
-                            if (stock.marketType === 'tse') return [`tse_${clean}.tw`];
                             if (stock.marketType === 'esb') return []; // 興櫃不在 MIS，跳過
-                            return [`tse_${clean}.tw`, `otc_${clean}.tw`]; // 未知：兩個都試
+                            return [`tse_${clean}.tw`, `otc_${clean}.tw`]; // 一律兩個前綴都送
                         });
                         _twMisCache = await fetchMisTwse(exChList);
                         _twMisCacheTs = Date.now();
-                        console.log(`[v3.8.1] 批次預載 MIS 報價，共 ${_twMisCache.size} 支`);
+                        console.log(`[v4.4.0] 批次預載 MIS 報價，共 ${_twMisCache.size} 支`);
                     }
 
 

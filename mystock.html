@@ -807,34 +807,60 @@
                             </div>
                         </div>
 
-                        <!-- v4.8.0: 投資組合分布儀表板 -->
-                        <div class="mt-4 rounded-xl border border-gray-100 dark:border-gray-700 p-4" v-if="showPrivacy">
-                            <div class="flex items-center gap-2 mb-3">
-                                <i class="fa-solid fa-chart-pie text-blue-500 text-sm"></i>
-                                <span class="font-bold text-sm dark:text-white">投資組合分布</span>
-                                <span class="ml-auto text-xs text-gray-400">統一換算台幣</span>
+                        <!-- v4.8.0: 股票 / 現金比例 -->
+                        <div class="mt-4 rounded-xl border border-gray-100 dark:border-gray-700 p-4">
+                            <div class="flex items-center gap-2 mb-4">
+                                <i class="fa-solid fa-scale-balanced text-blue-500 text-sm"></i>
+                                <span class="font-bold text-sm dark:text-white">股票 / 現金比例</span>
                             </div>
-                            <template v-if="stocks.length > 0 || cashData.twd > 0 || cashData.usd > 0">
-                                <div v-for="item in [
-                                    { label: '🇹🇼 台股', color: 'bg-blue-500', value: twStockList.reduce((a,s) => a + s.currentPrice * s.shares, 0) },
-                                    { label: '🇺🇸 美股', color: 'bg-emerald-500', value: usStockList.reduce((a,s) => a + s.currentPrice * s.shares * (exchangeRate || 1), 0) },
-                                    { label: '💵 現金', color: 'bg-gray-400', value: (cashData.twd || 0) + (cashData.usd || 0) * (exchangeRate || 1) }
-                                ]" :key="item.label" class="mb-3">
-                                    <div class="flex justify-between items-center mb-1">
-                                        <span class="text-xs font-medium text-gray-600 dark:text-gray-300">{{ item.label }}</span>
-                                        <span class="text-xs font-bold text-gray-700 dark:text-gray-200">{{ formatCurrency(item.value, 'TWD') }}</span>
-                                    </div>
-                                    <div class="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                                        <div class="h-full rounded-full transition-all duration-700" :class="item.color"
-                                            :style="{ width: (() => { const total = twStockList.reduce((a,s)=>a+s.currentPrice*s.shares,0) + usStockList.reduce((a,s)=>a+s.currentPrice*s.shares*(exchangeRate||1),0) + (cashData.twd||0) + (cashData.usd||0)*(exchangeRate||1); return total > 0 ? Math.min((item.value / total * 100), 100).toFixed(1) + '%' : '0%'; })() }">
-                                        </div>
-                                    </div>
+
+                            <!-- 台股 -->
+                            <div class="mb-4">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                        <img src="https://flagcdn.com/w20/tw.png" class="w-4 h-auto"> 台股
+                                    </span>
+                                    <span class="text-xs text-gray-400" v-if="twStockList.length > 0 || cashData.twd > 0">
+                                        <span class="text-blue-500 font-bold">{{ (twStockList.reduce((a,s)=>a+s.currentPrice*s.shares,0) / (twStockList.reduce((a,s)=>a+s.currentPrice*s.shares,0) + (cashData.twd||0)) * 100 || 0).toFixed(0) }}% 股票</span>
+                                        <span class="text-gray-300 mx-1">/</span>
+                                        <span class="text-gray-400 font-bold">{{ (100 - (twStockList.reduce((a,s)=>a+s.currentPrice*s.shares,0) / (twStockList.reduce((a,s)=>a+s.currentPrice*s.shares,0) + (cashData.twd||0)) * 100 || 0)).toFixed(0) }}% 現金</span>
+                                    </span>
                                 </div>
-                                <div class="text-[11px] text-gray-400 text-right mt-1">
-                                    總資產 {{ formatCurrency(twStockList.reduce((a,s)=>a+s.currentPrice*s.shares,0) + usStockList.reduce((a,s)=>a+s.currentPrice*s.shares*(exchangeRate||1),0) + (cashData.twd||0) + (cashData.usd||0)*(exchangeRate||1), 'TWD') }}
+                                <div class="h-3 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden flex">
+                                    <div class="h-full bg-blue-500 transition-all duration-700 rounded-l-full"
+                                        :style="{ width: (() => { const s = twStockList.reduce((a,x)=>a+x.currentPrice*x.shares,0); const c = cashData.twd||0; const t = s+c; return t>0 ? (s/t*100).toFixed(1)+'%' : '50%'; })() }">
+                                    </div>
+                                    <div class="h-full bg-gray-300 dark:bg-gray-500 flex-1 rounded-r-full"></div>
                                 </div>
-                            </template>
-                            <div v-else class="text-xs text-center text-gray-400 py-2">尚無資產資料</div>
+                                <div class="flex justify-between text-[10px] text-gray-400 mt-0.5">
+                                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-500 inline-block"></span>股票</span>
+                                    <span class="flex items-center gap-1">現金<span class="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-500 inline-block"></span></span>
+                                </div>
+                            </div>
+
+                            <!-- 美股 -->
+                            <div>
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                        <img src="https://flagcdn.com/w20/us.png" class="w-4 h-auto"> 美股
+                                    </span>
+                                    <span class="text-xs text-gray-400" v-if="usStockList.length > 0 || cashData.usd > 0">
+                                        <span class="text-emerald-500 font-bold">{{ (usStockList.reduce((a,s)=>a+s.currentPrice*s.shares,0) / (usStockList.reduce((a,s)=>a+s.currentPrice*s.shares,0) + (cashData.usd||0)) * 100 || 0).toFixed(0) }}% 股票</span>
+                                        <span class="text-gray-300 mx-1">/</span>
+                                        <span class="text-gray-400 font-bold">{{ (100 - (usStockList.reduce((a,s)=>a+s.currentPrice*s.shares,0) / (usStockList.reduce((a,s)=>a+s.currentPrice*s.shares,0) + (cashData.usd||0)) * 100 || 0)).toFixed(0) }}% 現金</span>
+                                    </span>
+                                </div>
+                                <div class="h-3 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden flex">
+                                    <div class="h-full bg-emerald-500 transition-all duration-700 rounded-l-full"
+                                        :style="{ width: (() => { const s = usStockList.reduce((a,x)=>a+x.currentPrice*x.shares,0); const c = cashData.usd||0; const t = s+c; return t>0 ? (s/t*100).toFixed(1)+'%' : '50%'; })() }">
+                                    </div>
+                                    <div class="h-full bg-gray-300 dark:bg-gray-500 flex-1 rounded-r-full"></div>
+                                </div>
+                                <div class="flex justify-between text-[10px] text-gray-400 mt-0.5">
+                                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>股票</span>
+                                    <span class="flex items-center gap-1">現金<span class="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-500 inline-block"></span></span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </transition>

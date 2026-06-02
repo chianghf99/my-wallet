@@ -774,61 +774,51 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     if (pieTwInstance) pieTwInstance.destroy();
                     if (pieUsInstance) pieUsInstance.destroy();
 
-                    // 內環共用資料：全市場 ETF / 個股 / 現金 占比（换算台幣）
                     const rate = exchangeRate.value || 1;
-                    const twEtfVal  = twStockList.value.filter(s => s.isETF).reduce((a, s) => a + s.currentPrice * s.shares, 0);
-                    const twStockVal = twStockList.value.filter(s => !s.isETF).reduce((a, s) => a + s.currentPrice * s.shares, 0);
-                    const usEtfVal  = usStockList.value.filter(s => s.isETF).reduce((a, s) => a + s.currentPrice * s.shares * rate, 0);
-                    const usStockVal = usStockList.value.filter(s => !s.isETF).reduce((a, s) => a + s.currentPrice * s.shares * rate, 0);
-                    const cashTwd   = (cashData.value.twd || 0) + (cashData.value.usd || 0) * rate;
 
-                    const innerLabels = ['台股 ETF', '台股個股', '美股 ETF', '美股個股', '現金'];
-                    const innerData   = [twEtfVal, twStockVal, usEtfVal, usStockVal, cashTwd];
-                    const innerColors = ['#60a5fa', '#1d4ed8', '#34d399', '#059669', '#9ca3af'];
+                    // 台股內環：台股ETF / 台股個股 / 台幣現金
+                    const twEtfVal   = twStockList.value.filter(s => s.isETF).reduce((a, s) => a + s.currentPrice * s.shares, 0);
+                    const twIndVal   = twStockList.value.filter(s => !s.isETF).reduce((a, s) => a + s.currentPrice * s.shares, 0);
+                    const cashTwd    = cashData.value.twd || 0;
 
-                    const innerDataset = {
-                        data: innerData,
-                        backgroundColor: innerColors,
-                        borderWidth: 2,
-                        weight: 1,
-                        hoverOffset: 4
-                    };
+                    // 美股內環：美股ETF / 美股個股 / 美元現金（保持USD）
+                    const usEtfVal   = usStockList.value.filter(s => s.isETF).reduce((a, s) => a + s.currentPrice * s.shares, 0);
+                    const usIndVal   = usStockList.value.filter(s => !s.isETF).reduce((a, s) => a + s.currentPrice * s.shares, 0);
+                    const cashUsd    = cashData.value.usd || 0;
 
-                    const tooltipPlugin = {
+                    const makeTooltip = (currency) => ({
                         callbacks: {
                             label: function(c) {
                                 const l = c.label || '';
                                 const v = c.raw;
-                                // 外環 dataset index = 0，內環 = 1
-                                const isOuter = c.datasetIndex === 0;
                                 const total = c.chart._metasets[c.datasetIndex].total;
                                 const p = total > 0 ? ((v / total) * 100).toFixed(1) + '%' : '0%';
-                                // 內環数値都是台幣（已換算）
-                                const fv = (!isOuter)
-                                    ? formatCurrency(v, 'TWD')
-                                    : (c.chart.canvas.id === 'pieTw' ? formatCurrency(v, 'TWD') : formatCurrency(v, 'USD'));
-                                return `${l}: ${fv} (${p})`;
+                                return `${l}: ${formatCurrency(v, currency)} (${p})`;
                             }
                         }
-                    };
+                    });
 
                     if (document.getElementById('pieTw') && twStockList.value.length) {
                         const outerTw = {
                             data: twStockList.value.map(s => s.currentPrice * s.shares),
                             backgroundColor: ['#3b82f6','#2563eb','#1d4ed8','#60a5fa','#93c5fd','#bfdbfe','#1e40af','#0ea5e9','#0284c7','#0369a1'],
-                            borderWidth: 2,
-                            weight: 2,
-                            hoverOffset: 8
+                            borderWidth: 2, weight: 2, hoverOffset: 8
+                        };
+                        const innerTw = {
+                            data: [twEtfVal, twIndVal, cashTwd],
+                            labels: ['台股 ETF', '台股個股', '現金 (TWD)'],
+                            backgroundColor: ['#60a5fa', '#1d4ed8', '#9ca3af'],
+                            borderWidth: 2, weight: 1, hoverOffset: 4
                         };
                         pieTwInstance = new Chart(document.getElementById('pieTw'), {
                             type: 'doughnut',
                             data: {
                                 labels: twStockList.value.map(s => s.name || s.symbol),
-                                datasets: [outerTw, { ...innerDataset, labels: innerLabels }]
+                                datasets: [outerTw, innerTw]
                             },
                             options: {
                                 responsive: true, maintainAspectRatio: false,
-                                plugins: { tooltip: tooltipPlugin, legend: { display: false } }
+                                plugins: { tooltip: makeTooltip('TWD'), legend: { display: false } }
                             }
                         });
                     }
@@ -837,19 +827,23 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         const outerUs = {
                             data: usStockList.value.map(s => s.currentPrice * s.shares),
                             backgroundColor: ['#ef4444','#dc2626','#b91c1c','#f87171','#fca5a5','#fee2e2','#991b1b','#f97316','#ea580c','#c2410c'],
-                            borderWidth: 2,
-                            weight: 2,
-                            hoverOffset: 8
+                            borderWidth: 2, weight: 2, hoverOffset: 8
+                        };
+                        const innerUs = {
+                            data: [usEtfVal, usIndVal, cashUsd],
+                            labels: ['美股 ETF', '美股個股', '現金 (USD)'],
+                            backgroundColor: ['#34d399', '#059669', '#9ca3af'],
+                            borderWidth: 2, weight: 1, hoverOffset: 4
                         };
                         pieUsInstance = new Chart(document.getElementById('pieUs'), {
                             type: 'doughnut',
                             data: {
                                 labels: usStockList.value.map(s => s.name || s.symbol),
-                                datasets: [outerUs, { ...innerDataset, labels: innerLabels }]
+                                datasets: [outerUs, innerUs]
                             },
                             options: {
                                 responsive: true, maintainAspectRatio: false,
-                                plugins: { tooltip: tooltipPlugin, legend: { display: false } }
+                                plugins: { tooltip: makeTooltip('USD'), legend: { display: false } }
                             }
                         });
                     }

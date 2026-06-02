@@ -348,7 +348,10 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         if (stocks.value.length > 0) saveDailySnapshot();
                         // v3.6.0: 自動偵測未分類股票的市場類型（背景執行，不阻塞 UI）
                         const unclassified = stocks.value.filter(s => !s.marketType && s.currency !== 'USD');
+                        // v4.8.0: 同時偵測已分類但市場可能有變動的股票（如興櫃轉上市）
+                        const misclassified = stocks.value.filter(s => (s.marketType === 'tse' || s.marketType === 'otc') && s.currency !== 'USD');
                         if (unclassified.length > 0) setTimeout(() => autoDetectMarketTypes(unclassified), 5000);
+                        if (misclassified.length > 0) setTimeout(() => autoCorrectMarketTypes(misclassified), 12000);
                     });
                 };
                 const fetchCash = (uid) => { if (unsubscribeCash) unsubscribeCash(); unsubscribeCash = db.collection('users').doc(uid).collection('portfolio').doc('cash').onSnapshot(doc => { if (doc.exists) cashData.value = doc.data(); else cashData.value = { twd: 0, usd: 0, loan: 0 }; if (cashData.value.loan > 0 && loanList.value.length === 0) { setTimeout(() => migrateLegacyLoan(uid, cashData.value.loan), 1000); } setTimeout(saveDailySnapshot, 1000); }); };
@@ -767,7 +770,90 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         }
                     });
                 };
-                const drawPieCharts = () => { if (pieTwInstance) pieTwInstance.destroy(); if (pieUsInstance) pieUsInstance.destroy(); const tooltipOptions = { callbacks: { label: function (c) { const l = c.label || ''; const v = c.raw; const t = c.chart._metasets[c.datasetIndex].total; const p = t > 0 ? ((v / t) * 100).toFixed(1) + '%' : '0%'; const fv = c.chart.canvas.id === 'pieTw' ? formatCurrency(v, 'TWD') : formatCurrency(v, 'USD'); return `${l}: ${fv} (${p})`; } } }; if (document.getElementById('pieTw') && twStockList.value.length) pieTwInstance = new Chart(document.getElementById('pieTw'), { type: 'doughnut', data: { labels: twStockList.value.map(s => s.name || s.symbol), datasets: [{ data: twStockList.value.map(s => s.currentPrice * s.shares), backgroundColor: ['#3b82f6', '#2563eb', '#1d4ed8', '#60a5fa', '#93c5fd'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { tooltip: tooltipOptions } } }); if (document.getElementById('pieUs') && usStockList.value.length) pieUsInstance = new Chart(document.getElementById('pieUs'), { type: 'doughnut', data: { labels: usStockList.value.map(s => s.name || s.symbol), datasets: [{ data: usStockList.value.map(s => s.currentPrice * s.shares), backgroundColor: ['#ef4444', '#dc2626', '#b91c1c', '#f87171', '#fca5a5'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { tooltip: tooltipOptions } } }); };
+                const drawPieCharts = () => {
+                    if (pieTwInstance) pieTwInstance.destroy();
+                    if (pieUsInstance) pieUsInstance.destroy();
+
+                    // 內環共用資料：全市場 ETF / 個股 / 現金 占比（换算台幣）
+                    const rate = exchangeRate.value || 1;
+                    const twEtfVal  = twStockList.value.filter(s => s.isETF).reduce((a, s) => a + s.currentPrice * s.shares, 0);
+                    const twStockVal = twStockList.value.filter(s => !s.isETF).reduce((a, s) => a + s.currentPrice * s.shares, 0);
+                    const usEtfVal  = usStockList.value.filter(s => s.isETF).reduce((a, s) => a + s.currentPrice * s.shares * rate, 0);
+                    const usStockVal = usStockList.value.filter(s => !s.isETF).reduce((a, s) => a + s.currentPrice * s.shares * rate, 0);
+                    const cashTwd   = (cashData.value.twd || 0) + (cashData.value.usd || 0) * rate;
+
+                    const innerLabels = ['台股 ETF', '台股個股', '美股 ETF', '美股個股', '現金'];
+                    const innerData   = [twEtfVal, twStockVal, usEtfVal, usStockVal, cashTwd];
+                    const innerColors = ['#60a5fa', '#1d4ed8', '#34d399', '#059669', '#9ca3af'];
+
+                    const innerDataset = {
+                        data: innerData,
+                        backgroundColor: innerColors,
+                        borderWidth: 2,
+                        weight: 1,
+                        hoverOffset: 4
+                    };
+
+                    const tooltipPlugin = {
+                        callbacks: {
+                            label: function(c) {
+                                const l = c.label || '';
+                                const v = c.raw;
+                                // 外環 dataset index = 0，內環 = 1
+                                const isOuter = c.datasetIndex === 0;
+                                const total = c.chart._metasets[c.datasetIndex].total;
+                                const p = total > 0 ? ((v / total) * 100).toFixed(1) + '%' : '0%';
+                                // 內環数値都是台幣（已換算）
+                                const fv = (!isOuter)
+                                    ? formatCurrency(v, 'TWD')
+                                    : (c.chart.canvas.id === 'pieTw' ? formatCurrency(v, 'TWD') : formatCurrency(v, 'USD'));
+                                return `${l}: ${fv} (${p})`;
+                            }
+                        }
+                    };
+
+                    if (document.getElementById('pieTw') && twStockList.value.length) {
+                        const outerTw = {
+                            data: twStockList.value.map(s => s.currentPrice * s.shares),
+                            backgroundColor: ['#3b82f6','#2563eb','#1d4ed8','#60a5fa','#93c5fd','#bfdbfe','#1e40af','#0ea5e9','#0284c7','#0369a1'],
+                            borderWidth: 2,
+                            weight: 2,
+                            hoverOffset: 8
+                        };
+                        pieTwInstance = new Chart(document.getElementById('pieTw'), {
+                            type: 'doughnut',
+                            data: {
+                                labels: twStockList.value.map(s => s.name || s.symbol),
+                                datasets: [outerTw, { ...innerDataset, labels: innerLabels }]
+                            },
+                            options: {
+                                responsive: true, maintainAspectRatio: false,
+                                plugins: { tooltip: tooltipPlugin, legend: { display: false } }
+                            }
+                        });
+                    }
+
+                    if (document.getElementById('pieUs') && usStockList.value.length) {
+                        const outerUs = {
+                            data: usStockList.value.map(s => s.currentPrice * s.shares),
+                            backgroundColor: ['#ef4444','#dc2626','#b91c1c','#f87171','#fca5a5','#fee2e2','#991b1b','#f97316','#ea580c','#c2410c'],
+                            borderWidth: 2,
+                            weight: 2,
+                            hoverOffset: 8
+                        };
+                        pieUsInstance = new Chart(document.getElementById('pieUs'), {
+                            type: 'doughnut',
+                            data: {
+                                labels: usStockList.value.map(s => s.name || s.symbol),
+                                datasets: [outerUs, { ...innerDataset, labels: innerLabels }]
+                            },
+                            options: {
+                                responsive: true, maintainAspectRatio: false,
+                                plugins: { tooltip: tooltipPlugin, legend: { display: false } }
+                            }
+                        });
+                    }
+                };
 
                 const calculateNewAvg = () => { if (transForm.value.type !== 'buy' || !transForm.value.shares || !transForm.value.totalAmount) return transForm.value.currentAvg; const old = transForm.value.currentShares * transForm.value.currentAvg; return (old + transForm.value.totalAmount) / (transForm.value.currentShares + transForm.value.shares); };
                 const openTransModal = (s, type = 'buy') => { if (s) { transForm.value = { id: s.id, type: 'buy', symbol: s.symbol, name: s.name, shares: '', totalAmount: '', currentShares: s.shares, currentAvg: s.avgCost, date: getLocalDate(), memo: '' }; form.value.currency = s.currency; } else { transForm.value = { id: null, type: type, symbol: '', name: '', shares: '', totalAmount: '', currentShares: 0, currentAvg: 0, date: getLocalDate(), memo: '' }; form.value.currency = 'TWD'; } isFundMode.value = false; isLoanMode.value = false; showTransModal.value = true; };
@@ -827,8 +913,8 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     if (isFundMode.value) { if (!transForm.value.totalAmount) return alert('請輸入金額'); const amount = transForm.value.type === 'deposit' ? transForm.value.totalAmount : -transForm.value.totalAmount; await updateCash(form.value.currency, amount, 0); await db.collection('users').doc(user.value.uid).collection('transactions').add(logData); closeTransModal(); setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'chart') drawChart(); }, 500); return; } if (transForm.value.type === 'dividend') { if (!transForm.value.totalAmount) return alert('請輸入金額'); const dividendData = { ...logData, amount: transForm.value.totalAmount }; await db.collection('users').doc(user.value.uid).collection('dividends').add(dividendData); await db.collection('users').doc(user.value.uid).collection('transactions').add(logData); await updateCash(form.value.currency, transForm.value.totalAmount, 0); const existingStock = stocks.value.find(s => s.symbol === transForm.value.symbol); if (existingStock) { await db.collection('users').doc(user.value.uid).collection('stocks').doc(existingStock.id).update({ dividends: (existingStock.dividends || 0) + transForm.value.totalAmount }); } closeTransModal(); setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'chart') drawChart(); }, 500); return; } if (!transForm.value.shares || !transForm.value.totalAmount) return alert('請輸入完整資訊'); logData.price = transForm.value.totalAmount / transForm.value.shares; let stockId = transForm.value.id; let currentShares = transForm.value.currentShares; let currentAvg = transForm.value.currentAvg; if (!stockId) { const existing = stocks.value.find(s => s.symbol === transForm.value.symbol); if (existing) { stockId = existing.id; currentShares = existing.shares; currentAvg = existing.avgCost; } else if (transForm.value.type === 'buy') { const newDoc = await db.collection('users').doc(user.value.uid).collection('stocks').add({ symbol: transForm.value.symbol, name: transForm.value.name, currency: form.value.currency, marketType: form.value.currency === 'USD' ? 'us' : '', shares: 0, avgCost: 0, currentPrice: 0, dividends: 0 }); stockId = newDoc.id; } else { const pnl = transForm.value.totalAmount - 0; await db.collection('users').doc(user.value.uid).collection('realized_gains').add({ ...logData, pnl: pnl, price: logData.price }); await db.collection('users').doc(user.value.uid).collection('transactions').add(logData); await updateCash(form.value.currency, transForm.value.totalAmount, 0); closeTransModal(); return; } } let ns = 0, na = 0; if (transForm.value.type === 'buy') { ns = currentShares + transForm.value.shares; const oldTotal = currentShares * currentAvg; na = (oldTotal + transForm.value.totalAmount) / ns; await updateCash(form.value.currency, -transForm.value.totalAmount, 0); } else { if (transForm.value.shares > currentShares) return alert('股數不足'); ns = currentShares - transForm.value.shares; na = currentAvg; const pnl = transForm.value.totalAmount - (transForm.value.shares * currentAvg); await db.collection('users').doc(user.value.uid).collection('realized_gains').add({ ...logData, pnl: pnl, price: logData.price }); await updateCash(form.value.currency, transForm.value.totalAmount, 0); } await db.collection('users').doc(user.value.uid).collection('transactions').add(logData); if (stockId) { const ref = db.collection('users').doc(user.value.uid).collection('stocks').doc(stockId); await ref.update({ shares: ns, avgCost: na }); if (ns === 0 && confirm('股數歸零，是否刪除此庫存項目？')) await ref.delete(); } setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'transactions') fetchTransactions(); if (activeSection.value === 'chart') drawChart(); }, 500); closeTransModal();
                 };
 
-                const openModal = () => { isEditing.value = false; form.value = { id: Date.now().toString(), symbol: '', name: '', currency: 'TWD', marketType: '', shares: 0, avgCost: 0, totalCostInput: 0, currentPrice: 0, dividends: 0, previousClose: 0, multiplier: 1 }; showModal.value = true; };
-                const editStock = (s) => { isEditing.value = true; form.value = { ...s, totalCostInput: parseFloat((s.shares * s.avgCost).toFixed(2)), multiplier: s.multiplier || 1 }; showModal.value = true; };
+                const openModal = () => { isEditing.value = false; form.value = { id: Date.now().toString(), symbol: '', name: '', currency: 'TWD', marketType: '', shares: 0, avgCost: 0, totalCostInput: 0, currentPrice: 0, dividends: 0, previousClose: 0, multiplier: 1, isETF: false }; showModal.value = true; };
+                const editStock = (s) => { isEditing.value = true; form.value = { ...s, totalCostInput: parseFloat((s.shares * s.avgCost).toFixed(2)), multiplier: s.multiplier || 1, isETF: s.isETF || false }; showModal.value = true; };
                 const closeModal = () => showModal.value = false;
                 const saveStock = async () => { if (!user.value || !form.value.symbol) return; const d = { ...form.value }; if (form.value.shares > 0 && form.value.totalCostInput > 0) { d.avgCost = form.value.totalCostInput / form.value.shares; } delete d.totalCostInput; const r = db.collection('users').doc(user.value.uid).collection('stocks'); if (isEditing.value) await r.doc(d.id).update(d); else await r.doc(d.id).set(d); closeModal(); };
 
@@ -1384,6 +1470,26 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         await new Promise(r => setTimeout(r, 600));
                     }
                     console.log('[v4.4.0] 偵測完成！');
+                };
+
+                // v4.8.0: 檢查已分類但可能已轉市場的股票（如興櫃轉上市）並自動修正
+                const autoCorrectMarketTypes = async (classified) => {
+                    if (!user.value || classified.length === 0) return;
+                    const map = await fetchTwMarketSnapshot();
+                    let correctedCount = 0;
+                    for (const stock of classified) {
+                        try {
+                            const clean = stock.symbol.replace(/\.(TW|TWO)$/i, '');
+                            const d = map.get(clean);
+                            if (d && d.market !== stock.marketType) {
+                                console.log(`[v4.8.0] 修正 ${stock.symbol}: ${stock.marketType} → ${d.market}`);
+                                await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ marketType: d.market });
+                                correctedCount++;
+                            }
+                        } catch (e) { console.warn(`[v4.8.0] 修正失敗 ${stock.symbol}`, e); }
+                        await new Promise(r => setTimeout(r, 300));
+                    }
+                    if (correctedCount > 0) console.log(`[v4.8.0] 共修正 ${correctedCount} 支股票的 marketType`);
                 };
 
                 // v3.8.0: 統一的股價抓取入口

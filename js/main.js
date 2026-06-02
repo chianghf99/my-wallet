@@ -235,6 +235,33 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 const realizedTotalTw = computed(() => sortedRealizedGains.value.filter(r => r.currency === 'TWD').reduce((acc, cur) => acc + cur.pnl, 0));
                 const realizedTotalUs = computed(() => sortedRealizedGains.value.filter(r => r.currency === 'USD').reduce((acc, cur) => acc + cur.pnl, 0));
 
+                // v4.8.1: 計算台股與美股各自的 ETF、個股和現金的比例 (用於圖例百分比顯示)
+                const twPieRatios = computed(() => {
+                    const etf = twStockList.value.filter(s => s.isETF).reduce((a, s) => a + s.currentPrice * s.shares, 0);
+                    const ind = twStockList.value.filter(s => !s.isETF).reduce((a, s) => a + s.currentPrice * s.shares, 0);
+                    const cash = cashData.value.twd || 0;
+                    const total = etf + ind + cash;
+                    if (total === 0) return { etf: 0, ind: 0, cash: 0 };
+                    return {
+                        etf: ((etf / total) * 100).toFixed(1),
+                        ind: ((ind / total) * 100).toFixed(1),
+                        cash: ((cash / total) * 100).toFixed(1)
+                    };
+                });
+
+                const usPieRatios = computed(() => {
+                    const etf = usStockList.value.filter(s => s.isETF).reduce((a, s) => a + s.currentPrice * s.shares, 0);
+                    const ind = usStockList.value.filter(s => !s.isETF).reduce((a, s) => a + s.currentPrice * s.shares, 0);
+                    const cash = cashData.value.usd || 0;
+                    const total = etf + ind + cash;
+                    if (total === 0) return { etf: 0, ind: 0, cash: 0 };
+                    return {
+                        etf: ((etf / total) * 100).toFixed(1),
+                        ind: ((ind / total) * 100).toFixed(1),
+                        cash: ((cash / total) * 100).toFixed(1)
+                    };
+                });
+
                 // Bug fix: 套用日期篩選，讓加總與下方列表一致
                 const dividendRangeTw = computed(() => dividendRecords.value.filter(r => r.currency === 'TWD' && (!divStartDate.value || r.date >= divStartDate.value) && (!divEndDate.value || r.date <= divEndDate.value)).reduce((acc, cur) => acc + cur.amount, 0));
                 const dividendRangeUs = computed(() => dividendRecords.value.filter(r => r.currency === 'USD' && (!divStartDate.value || r.date >= divStartDate.value) && (!divEndDate.value || r.date <= divEndDate.value)).reduce((acc, cur) => acc + cur.amount, 0));
@@ -1738,7 +1765,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 return {
                     clearAllUserData, 
                     user, login, logout, stocks, exchangeRate, lastUpdated, isLoading, viewMode, isMobile, showPrivacy, isDarkMode, toggleDarkMode, activeSection, toggleSection, showChangelog, hideZeroShares, defaultPrivacyHidden,
-                    twStats, usStats, grandTotalValue, grandTotalAssets, grandTotalExposure, grandTotalPnL, twStockList, usStockList, leverageRatio, exposureRatio,
+                    twStats, usStats, grandTotalValue, grandTotalAssets, grandTotalExposure, grandTotalPnL, twPieRatios, usPieRatios, twStockList, usStockList, leverageRatio, exposureRatio,
                     showModal, isEditing, form, openModal, editStock, closeModal, saveStock, deleteStock,
                     showTransModal, transForm, openTransModal, closeTransModal, submitTransaction, isFundMode, openFundModal,
                     autoFetchName, autoFetchTransName, fetchPrices, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountClass, getAmountSign,

@@ -1340,45 +1340,6 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     return map;
                 };
 
-                const fetchTwStockPrice = async (symbol) => {
-                    const cleanSym = symbol.replace(/\.(TW|TWO)$/i, '');
-
-                    // 1. 先看 MIS 的快取 (有效期間只有 30 秒，通常在 batch更新時生成)
-                    if (Date.now() - _twMisCacheTs < 30 * 1000) {
-                        if (_twMisCache.has(cleanSym)) {
-                            const d = _twMisCache.get(cleanSym);
-                            return { regularMarketPrice: d.price, previousClose: d.prevClose };
-                        } else {
-                            // 批次快取中沒有此檔股票，直接退回 Open API（避免對未能成功抓取的股票狂發單獨請求）
-                            const openApiMap = await fetchTwMarketSnapshot();
-                            const d = openApiMap.get(cleanSym);
-                            if (d) return { regularMarketPrice: d.price, previousClose: d.prevClose };
-                            return null;
-                        }
-                    }
-
-                    // 2. 獨立抓取單一檔 (透過 MIS，需要市場類別前綴)
-                    const openApiMap = await fetchTwMarketSnapshot();
-                    const openApiData = openApiMap.get(cleanSym);
-                    const market = openApiData ? openApiData.market : 'tse'; // 預設 tse
-
-                    // 興櫃(esb) MIS 不支援，直接用 Open API 報價
-                    if (market !== 'esb') {
-                        const misMap = await fetchMisTwse([`${market}_${cleanSym}.tw`]);
-                        const misData = misMap.get(cleanSym);
-                        if (misData) {
-                            return { regularMarketPrice: misData.price, previousClose: misData.prevClose };
-                        }
-                    }
-
-                    // 3. 備用：退回到 Open API
-                    if (openApiData) {
-                        return { regularMarketPrice: openApiData.price, previousClose: openApiData.prevClose };
-                    }
-
-                    return null;
-                };
-
                 // ★★★ v4.5.0: Yahoo Finance v7 已失效(Unauthorized)，改用 v8 chart API ★★★
                 // v8 endpoint: /v8/finance/chart/{symbol}?interval=1d&range=1d
                 // 回傳 chart.result[0].meta.regularMarketPrice
@@ -1430,6 +1391,48 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         regularMarketPrice: data.regularMarketPrice,
                         previousClose: data.previousClose
                     };
+                };
+
+                // v4.8.2: 統一的台股個股取價入口 (Yahoo -> MIS -> Open API)
+                const fetchTwStockPriceUnified = async (stock) => {
+                    // 1. 第一優先：Yahoo Finance v8 (實時且最穩定)
+                    let data = await fetchTwStockPriceYahoo(stock);
+                    if (data) return data;
+
+                    console.log(`[Unified Fetch] ${stock.symbol} Yahoo 無資料，降級至 MIS`);
+
+                    // 2. 第二優先：TWSE MIS 單股即時查詢 (只查詢特定市場，不打包雙前綴)
+                    let mt = stock.marketType;
+                    if (!mt) {
+                        mt = await detectMarketType(stock) || 'tse';
+                    }
+                    const cleanSym = stock.symbol.replace(/\.(TW|TWO)$/i, '');
+                    if (mt !== 'esb') { // 興櫃不在 MIS
+                        try {
+                            const misMap = await fetchMisTwse([`${mt}_${cleanSym}.tw`]);
+                            const misData = misMap.get(cleanSym);
+                            if (misData) {
+                                return {
+                                    regularMarketPrice: misData.price,
+                                    previousClose: misData.prevClose
+                                };
+                            }
+                        } catch (e) {
+                            console.warn(`[Unified Fetch] MIS 查詢失敗: ${stock.symbol}`, e);
+                        }
+                    }
+
+                    // 3. 第三優先：Open API 快照保底 (昨收價)
+                    const openApiMap = await fetchTwMarketSnapshot();
+                    const openApiData = openApiMap.get(cleanSym);
+                    if (openApiData) {
+                        return {
+                            regularMarketPrice: openApiData.price,
+                            previousClose: openApiData.prevClose
+                        };
+                    }
+
+                    return null;
                 };
 
                 // 判斷美股是否盤中 (簡單以時區判斷)
@@ -1521,8 +1524,8 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     if (isUs) {
                         return await fetchUsStockPrice(stock.symbol);
                     } else {
-                        // 台股：Open API 自動分辨上市/上櫃
-                        return await fetchTwStockPrice(stock.symbol);
+                        // 台股：統一取價路徑 (Yahoo -> MIS -> Open API)
+                        return await fetchTwStockPriceUnified(stock);
                     }
                 };
 
@@ -1622,37 +1625,20 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                             console.log(`匯率已更新: ${newRate}`);
                         }
                     } catch (e) {
-                        console.warn('匯率更新失敗，將没用舊匯率', e);
+                        console.warn('匯率更新失敗，將使用舊匯率', e);
                     }
 
                     // =========================================================
-                    // 第二步：台股先批次預載快照（盤中走 MIS 即時，支援 40 筆分塊）
-                    // =========================================================
-                    if (marketType === 'TW') {
-                        // v4.4.0: 一律同時送 tse_ + otc_ 兩個前綴，讓 MIS 自動回傳有效的那個
-                        // 防止 marketType 記錯（如興櫃轉上市）導致完全找不到即時報價
-                        const exChList = targetStocks.flatMap(stock => {
-                            const clean = stock.symbol.replace(/\.(TW|TWO)$/i, '');
-                            if (stock.marketType === 'esb') return []; // 興櫃不在 MIS，跳過
-                            return [`tse_${clean}.tw`, `otc_${clean}.tw`]; // 一律兩個前綴都送
-                        });
-                        _twMisCache = await fetchMisTwse(exChList);
-                        _twMisCacheTs = Date.now();
-                        console.log(`[v4.4.0] 批次預載 MIS 報價，共 ${_twMisCache.size} 支`);
-                    }
-
-
-                    // =========================================================
-                    // 第三步：開始更新股票迴圈
+                    // 第二步：開始更新股票迴圈 (統一調用 fetchStockData)
                     // =========================================================
                     const batch = db.batch();
                     let hasUpdates = false;
                     let successCount = 0;
                     let failCount = 0;
 
-                    // 台股：快照已預載，迴圈純 lookup（可大並行）；美股：Finnhub 60 req/min
-                    const CONCURRENT_LIMIT = marketType === 'US' ? 3 : 10;
-                    const BATCH_DELAY = marketType === 'US' ? 3050 : 0;
+                    // 台股與美股分流限速：台股每秒 concurrent 4, delay 400ms；美股 Finnhub 每秒 concurrent 3, delay 3050ms
+                    const CONCURRENT_LIMIT = marketType === 'US' ? 3 : 4;
+                    const BATCH_DELAY = marketType === 'US' ? 3050 : 400;
 
                     for (let i = 0; i < targetStocks.length; i += CONCURRENT_LIMIT) {
                         const batchStocks = targetStocks.slice(i, i + CONCURRENT_LIMIT);
@@ -1704,27 +1690,15 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     const typeName = marketType === 'TW' ? '台股' : (marketType === 'US' ? '美股' : '全部');
                     alert(`${typeName} 更新完成！\n\n✅ 成功: ${successCount} 筆\n❌ 失敗: ${failCount} 筆`);
                 };
-                // [v4.3.0] 單一股票更新：台股優先走 Yahoo Finance，失敗降級至 MIS→OpenAPI
+
+                // [v4.8.2] 單一股票更新：統一走 fetchStockData (Yahoo -> MIS -> OpenAPI)
                 const updateSingleStock = async (stock) => {
                     if (!user.value) return;
 
                     stockStates.value[stock.id] = 'loading';
 
                     try {
-                        const isUs = stock.marketType === 'us' || (!stock.marketType && stock.currency === 'USD');
-                        let data = null;
-
-                        if (!isUs) {
-                            // 台股：Yahoo Finance 優先
-                            data = await fetchTwStockPriceYahoo(stock);
-                            if (!data) {
-                                console.log(`[updateSingleStock] ${stock.symbol} Yahoo 無資料，降級至 MIS`);
-                                data = await fetchStockData(stock);
-                            }
-                        } else {
-                            // 美股：Finnhub（不變）
-                            data = await fetchStockData(stock);
-                        }
+                        const data = await fetchStockData(stock);
 
                         if (data) {
                             stock.currentPrice = data.regularMarketPrice;
@@ -1741,7 +1715,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                             stockStates.value[stock.id] = 'error';
                         }
                     } catch (e) {
-                        console.error(e);
+                        console.error(`Single update failed for ${stock.symbol}`, e);
                         stockStates.value[stock.id] = 'error';
                     }
 

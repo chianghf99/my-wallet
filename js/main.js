@@ -1735,7 +1735,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 // --- 新增：市場情緒 (Fear & Greed) 與 VIX 指數 ---
                 const fetchMarketSentiment = async () => {
                     try {
-                        const url = CF_PROXY + encodeURIComponent('https://feargreedchart.com/api');
+                        const url = CF_PROXY + encodeURIComponent(`https://feargreedchart.com/api?t=${Date.now()}`);
                         const res = await fetch(url);
                         const data = await res.json();
                         if (data) {

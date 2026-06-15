@@ -3,8 +3,7 @@ import { getLocalDate, formatNumber, formatCurrency, getPnlClass, getRoi, format
 
 import { 
     user, stocks, exchangeRate, lastUpdated, lastUpdatedTs, loadingTarget, isLoading, viewMode, isMobile, showPrivacy, defaultPrivacyHidden, hideZeroShares, showSettingsModal, isDarkMode, activeSection, showChangelog, stockStates, sectionLoading, xirrValue, xirrStartDate, xirrStartVal, xirrEndVal, xirrFlowCount, showStockNoteModal, stockNoteForm, showHistoryModal, historyRecords, historyFilterYear, availableYears, showDeleteModal, pendingDeleteTx, showEditTxModal, editTxForm, showHistoryEditModalVisible, historyEditForm, notes, showNoteModalVisible, noteForm, loanList, showLoanMgrModal, inlineNewLoan, inlineLoanName, loanForm, cashData, prevDayData, realEstateList, showRealEstateModal, realEstateForm, chartStartDate, chartEndDate, chartPnl, currentRange, divRange, divSearchQuery, divStartDate, divEndDate, realizedStartDate, realizedEndDate, transStartDate, transEndDate, transFilterType, transSearchQuery, sortKeyTrans, sortOrderTrans, sortKeyDiv, sortOrderDiv, realizedGains, realizedSearchQuery, sortKeyRealized, sortOrderRealized, realizedRange, dividendRecords, transactionHistory, showModal, isEditing, form, showTransModal, isFundMode, isLoanMode, loanCashMode, transForm, isPriceStale,
-    monthlyProfitData, monthlyProfitRange,
-    fearGreed, vix
+    monthlyProfitData, monthlyProfitRange
 } from './store/index.js';
 const { createApp, ref, computed, onMounted, watch } = Vue;
 
@@ -164,7 +163,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         else { stocks.value = []; realizedGains.value = []; dividendRecords.value = []; transactionHistory.value = []; cashData.value = { twd: 0, usd: 0, loan: 0 }; notes.value = []; loanList.value = []; realEstateList.value = []; }
                     });
                     fetchExchangeRate();
-                    fetchMarketSentiment();
+
                 });
 
                 // --- 3. 計算屬性 ---
@@ -1690,7 +1689,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     loadingTarget.value = null;
 
                     if (marketType === 'US') {
-                        fetchMarketSentiment();
+
                     }
 
                     const typeName = marketType === 'TW' ? '台股' : (marketType === 'US' ? '美股' : '全部');
@@ -1732,87 +1731,6 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     }, 300000);
                 };
 
-                // --- 新增：市場情緒 (Fear & Greed) 與 VIX 指數 ---
-                const fetchMarketSentiment = async () => {
-                    try {
-                        const url = CF_PROXY + encodeURIComponent(`https://feargreedchart.com/api?t=${Date.now()}`);
-                        const res = await fetch(url);
-                        const data = await res.json();
-                        if (data) {
-                            let score = null;
-                            if (data.score && typeof data.score.score === 'number') {
-                                score = data.score.score;
-                            } else if (data.recent && data.recent.length > 0) {
-                                score = data.recent[data.recent.length - 1].score;
-                            }
-
-                            if (score !== null) {
-                                let label = '中立';
-                                if (score <= 20) label = '極度恐懼';
-                                else if (score <= 40) label = '恐懼';
-                                else if (score <= 60) label = '中立';
-                                else if (score <= 80) label = '貪婪';
-                                else label = '極度貪婪';
-
-                                fearGreed.value = {
-                                    score: score,
-                                    date: new Date().toISOString().split('T')[0],
-                                    label: label,
-                                    lastUpdated: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })
-                                };
-                            }
-                        }
-                    } catch (e) {
-                        console.warn('無法獲取 Fear & Greed 指數', e);
-                    }
-
-                    try {
-                        const url = CF_PROXY + encodeURIComponent('https://query2.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=1d');
-                        const res = await fetch(url);
-                        const data = await res.json();
-                        const meta = data?.chart?.result?.[0]?.meta;
-                        if (meta && meta.regularMarketPrice > 0) {
-                            const price = meta.regularMarketPrice;
-                            const prevClose = meta.previousClose || meta.chartPreviousClose || price;
-                            const change = price - prevClose;
-                            const changePercent = (change / prevClose) * 100;
-
-                            vix.value = {
-                                price: price,
-                                previousClose: prevClose,
-                                changePercent: changePercent,
-                                lastUpdated: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })
-                            };
-                        }
-                    } catch (e) {
-                        console.warn('無法獲取 VIX 指數', e);
-                    }
-                };
-
-                const getFearGreedBorderClass = (score) => {
-                    if (score === null) return 'border-gray-300 dark:border-gray-700';
-                    if (score <= 20) return 'border-red-500 dark:border-red-500';
-                    if (score <= 40) return 'border-orange-400 dark:border-orange-400';
-                    if (score <= 60) return 'border-yellow-400 dark:border-yellow-400';
-                    if (score <= 80) return 'border-green-400 dark:border-green-400';
-                    return 'border-green-600 dark:border-green-600';
-                };
-
-                const getFearGreedBgClass = (score) => {
-                    if (score === null) return 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400';
-                    if (score <= 20) return 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400';
-                    if (score <= 40) return 'bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400';
-                    if (score <= 60) return 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/40 dark:text-yellow-400';
-                    if (score <= 80) return 'bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400';
-                    return 'bg-green-200 text-green-800 dark:bg-green-900 dark:text-green-200';
-                };
-
-                const getVixBorderClass = (price) => {
-                    if (price === null) return 'border-gray-300 dark:border-gray-700';
-                    if (price >= 30) return 'border-red-600 dark:border-red-600';
-                    if (price >= 20) return 'border-orange-500 dark:border-orange-500';
-                    return 'border-green-500 dark:border-green-500';
-                };
 
                 const fetchExchangeRate = async () => { try { const r = await fetch('https://api.exchangerate-api.com/v4/latest/USD'); const d = await r.json(); exchangeRate.value = d.rates.TWD; } catch (e) { } };
 

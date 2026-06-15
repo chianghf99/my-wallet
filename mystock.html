@@ -368,56 +368,7 @@
             </nav>
 
             <div class="max-w-6xl mx-auto px-4 mt-6">
-                <!-- 市場情緒儀表板 -->
-                <div class="zen-card p-4 mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4 items-center relative group">
-                    <button @click="fetchMarketSentiment" class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 dark:hover:text-white transition text-xs" title="更新情緒指數">
-                        <i class="fa-solid fa-arrows-rotate"></i>
-                    </button>
-                    
-                    <!-- 恐懼貪婪 -->
-                    <div class="flex items-center gap-4">
-                        <div class="relative w-16 h-16 flex items-center justify-center rounded-full border-4 transition-colors duration-300" 
-                             :class="getFearGreedBorderClass(fearGreed.score)">
-                            <div class="text-center">
-                                <span class="text-[10px] text-gray-400 block leading-tight font-medium">Sentiment</span>
-                                <span class="text-xl font-bold dark:text-white">{{ fearGreed.score !== null ? fearGreed.score : '--' }}</span>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="text-sm font-bold flex items-center gap-2">
-                                <span>美股恐懼貪婪指數</span>
-                                <span class="px-2 py-0.5 rounded text-xs transition-colors duration-300 font-medium" :class="getFearGreedBgClass(fearGreed.score)">
-                                    {{ fearGreed.label }}
-                                </span>
-                            </div>
-                            <div class="text-[11px] text-gray-400 mt-1">
-                                更新時間: {{ fearGreed.lastUpdated }}
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- VIX -->
-                    <div class="flex items-center gap-4 border-t sm:border-t-0 sm:border-l border-gray-200 dark:border-gray-700 pt-4 sm:pt-0 sm:pl-4">
-                        <div class="relative w-16 h-16 flex items-center justify-center rounded-full border-4 transition-colors duration-300"
-                             :class="getVixBorderClass(vix.price)">
-                            <div class="text-center">
-                                <span class="text-[10px] text-gray-400 block leading-tight font-medium">VIX</span>
-                                <span class="text-lg font-bold dark:text-white">{{ vix.price !== null ? vix.price.toFixed(2) : '--' }}</span>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="text-sm font-bold flex items-center gap-2">
-                                <span>波動率指數 (VIX)</span>
-                                <span class="text-xs font-semibold px-2 py-0.5 rounded" :class="vix.changePercent >= 0 ? 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400' : 'bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400'">
-                                    {{ vix.changePercent >= 0 ? '+' : '' }}{{ vix.changePercent !== null ? vix.changePercent.toFixed(2) : '0.00' }}%
-                                </span>
-                            </div>
-                            <div class="text-[11px] text-gray-400 mt-1">
-                                更新時間: {{ vix.lastUpdated }}
-                            </div>
-                        </div>
-                    </div>
-                </div>
+
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     <!-- Card 1: 淨資產 -->

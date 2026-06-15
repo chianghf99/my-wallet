@@ -103,7 +103,3 @@ export const isPriceStale = computed(() => {
 
 export const monthlyProfitData = ref([]);
 export const monthlyProfitRange = ref(6);
-
-export const fearGreed = ref({ score: null, date: '', label: '-', lastUpdated: '-' });
-export const vix = ref({ price: null, changePercent: null, previousClose: null, lastUpdated: '-' });
-

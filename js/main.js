@@ -1782,8 +1782,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     showCustomXirrModal, openCustomXirrModal, calculateCustomXirr,
                     cxStartDate, cxEndDate, cxLoading, cxXirrValue, cxDays,
                     cxRealStartDate, cxRealEndDate, cxStartGross, cxEndGross, cxInflow, cxOutflow,
-                    monthlyProfitData, monthlyProfitRange, drawMonthlyChart,
-                    fearGreed, vix, fetchMarketSentiment, getFearGreedBorderClass, getFearGreedBgClass, getVixBorderClass
+                    monthlyProfitData, monthlyProfitRange, drawMonthlyChart
                 };
             }
         }).mount('#app');

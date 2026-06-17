@@ -18,7 +18,6 @@ export const activeSection = ref('');
 export const showChangelog = ref(false);
 export const stockStates = ref({});
 export const sectionLoading = ref(false);
-export const roiIncludeRealEstate = ref(false);
 
 
 

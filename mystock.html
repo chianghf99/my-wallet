@@ -413,30 +413,11 @@
                                 </span>
                                 <span v-else class="text-gray-300 dark:text-gray-600">****</span>
                             </div>
-                            <div class="flex justify-between text-sm items-center">
-                                <span class="text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
-                                    總未實現損益
-                                    <button
-                                        v-if="realEstateList.length > 0"
-                                        @click="roiIncludeRealEstate = !roiIncludeRealEstate"
-                                        :title="roiIncludeRealEstate ? '目前：含房地產，點擊切換為純股票' : '目前：純股票，點擊切換為含房地產'"
-                                        class="text-[10px] px-1.5 py-0.5 rounded border transition-colors"
-                                        :class="roiIncludeRealEstate
-                                            ? 'border-emerald-400 text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20'
-                                            : 'border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500 hover:border-gray-400'">
-                                        {{ roiIncludeRealEstate ? '含房產' : '純股票' }}
-                                    </button>
-                                </span>
-                                <span v-if="showPrivacy" :class="getPnlClass(roiIncludeRealEstate ? grandTotalPnL + realEstateBookPnL : grandTotalPnL)">
-                                    {{ formatCurrency(roiIncludeRealEstate ? grandTotalPnL + realEstateBookPnL : grandTotalPnL, 'TWD') }}
-                                    <span class="text-xs ml-1">
-                                        <template v-if="roiIncludeRealEstate">
-                                            ({{ getRoi(twStats.cost + usStats.cost * exchangeRate + (cashData.twd || 0) + (cashData.usd || 0) * exchangeRate + (realEstateTotalMarket - realEstateBookPnL), grandTotalPnL + realEstateBookPnL) }})
-                                        </template>
-                                        <template v-else>
-                                            ({{ getRoi(twStats.cost + usStats.cost * exchangeRate + (cashData.twd || 0) + (cashData.usd || 0) * exchangeRate, grandTotalPnL) }})
-                                        </template>
-                                    </span>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-500 dark:text-gray-400">總未實現損益</span>
+                                <span v-if="showPrivacy" :class="getPnlClass(grandTotalPnL)">
+                                    {{ formatCurrency(grandTotalPnL, 'TWD') }}
+                                    <span class="text-xs ml-1">({{ getRoi(grandTotalValue - grandTotalPnL, grandTotalPnL) }})</span>
                                 </span>
                                 <span v-else class="text-gray-300 dark:text-gray-600">****</span>
                             </div>

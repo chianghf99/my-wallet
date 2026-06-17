@@ -434,7 +434,7 @@
                                             ({{ getRoi(grandTotalValue - grandTotalPnL, grandTotalPnL) }})
                                         </template>
                                         <template v-else>
-                                            ({{ getRoi(twStats.cost + usStats.cost * exchangeRate, grandTotalPnL) }})
+                                            ({{ getRoi(twStats.cost + usStats.cost * exchangeRate + (cashData.twd || 0) + (cashData.usd || 0) * exchangeRate, grandTotalPnL) }})
                                         </template>
                                     </span>
                                 </span>

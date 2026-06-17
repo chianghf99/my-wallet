@@ -18,12 +18,9 @@ export const activeSection = ref('');
 export const showChangelog = ref(false);
 export const stockStates = ref({});
 export const sectionLoading = ref(false);
+export const roiIncludeRealEstate = ref(false);
 
-export const xirrValue = ref(0.0);
-export const xirrStartDate = ref('-');
-export const xirrStartVal = ref(0);
-export const xirrEndVal = ref(0);
-export const xirrFlowCount = ref(0);
+
 
 export const showStockNoteModal = ref(false);
 export const stockNoteForm = ref({ id: '', symbol: '', name: '', content: '' });

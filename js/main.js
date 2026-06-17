@@ -2,7 +2,7 @@ import { db, auth } from './firebase-config.js';
 import { getLocalDate, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountSign } from './utils/format.js';
 
 import { 
-    user, stocks, exchangeRate, lastUpdated, loadingTarget, isLoading, viewMode, isMobile, showPrivacy, defaultPrivacyHidden, hideZeroShares, showSettingsModal, isDarkMode, activeSection, showChangelog, stockStates, sectionLoading, xirrValue, xirrStartDate, xirrStartVal, xirrEndVal, xirrFlowCount, showStockNoteModal, stockNoteForm, showHistoryModal, historyRecords, historyFilterYear, availableYears, showDeleteModal, pendingDeleteTx, showEditTxModal, editTxForm, showHistoryEditModalVisible, historyEditForm, notes, showNoteModalVisible, noteForm, loanList, showLoanMgrModal, inlineNewLoan, inlineLoanName, loanForm, cashData, prevDayData, realEstateList, showRealEstateModal, realEstateForm, chartStartDate, chartEndDate, chartPnl, currentRange, divRange, divSearchQuery, divStartDate, divEndDate, realizedStartDate, realizedEndDate, transStartDate, transEndDate, transFilterType, transSearchQuery, sortKeyTrans, sortOrderTrans, sortKeyDiv, sortOrderDiv, realizedGains, realizedSearchQuery, sortKeyRealized, sortOrderRealized, realizedRange, dividendRecords, transactionHistory, showModal, isEditing, form, showTransModal, isFundMode, isLoanMode, loanCashMode, transForm,
+    user, stocks, exchangeRate, lastUpdated, loadingTarget, isLoading, viewMode, isMobile, showPrivacy, defaultPrivacyHidden, hideZeroShares, showSettingsModal, isDarkMode, activeSection, showChangelog, stockStates, sectionLoading, roiIncludeRealEstate, showStockNoteModal, stockNoteForm, showHistoryModal, historyRecords, historyFilterYear, availableYears, showDeleteModal, pendingDeleteTx, showEditTxModal, editTxForm, showHistoryEditModalVisible, historyEditForm, notes, showNoteModalVisible, noteForm, loanList, showLoanMgrModal, inlineNewLoan, inlineLoanName, loanForm, cashData, prevDayData, realEstateList, showRealEstateModal, realEstateForm, chartStartDate, chartEndDate, chartPnl, currentRange, divRange, divSearchQuery, divStartDate, divEndDate, realizedStartDate, realizedEndDate, transStartDate, transEndDate, transFilterType, transSearchQuery, sortKeyTrans, sortOrderTrans, sortKeyDiv, sortOrderDiv, realizedGains, realizedSearchQuery, sortKeyRealized, sortOrderRealized, realizedRange, dividendRecords, transactionHistory, showModal, isEditing, form, showTransModal, isFundMode, isLoanMode, loanCashMode, transForm,
     monthlyProfitData, monthlyProfitRange
 } from './store/index.js';
 const { createApp, ref, computed, onMounted, watch } = Vue;
@@ -302,13 +302,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     });
                 });
 
-                // v3.6.0: XIRR debounce
-                let xirrDebounceTimer = null;
-                const debouncedXirr = () => { clearTimeout(xirrDebounceTimer); xirrDebounceTimer = setTimeout(computeSystemXirr, 3000); };
-                // 觸發計算
-                watch(grandTotalValue, () => {
-                    if (grandTotalValue.value > 0) debouncedXirr();
-                });
+
 
                 // --- 4. 輔助函數 ---
                 const sortRealized = (key) => { if (sortKeyRealized.value === key) sortOrderRealized.value = sortOrderRealized.value === 'asc' ? 'desc' : 'asc'; else { sortKeyRealized.value = key; sortOrderRealized.value = 'desc'; } };
@@ -645,7 +639,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     } finally {
                         sectionLoading.value = false;
                     }
-                    debouncedXirr();
+
                 };
 
                 const openHistoryModal = async () => { 
@@ -661,10 +655,10 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         alert('載入歷史資料失敗：' + err.message);
                     }
                 };
-                const deleteHistoryRecord = async (date) => { if (!confirm(`確定要刪除 ${date} 的歷史紀錄嗎？`)) return; await db.collection('users').doc(user.value.uid).collection('history').doc(date).delete(); await openHistoryModal(); drawChart(); debouncedXirr(); };
+                const deleteHistoryRecord = async (date) => { if (!confirm(`確定要刪除 ${date} 的歷史紀錄嗎？`)) return; await db.collection('users').doc(user.value.uid).collection('history').doc(date).delete(); await openHistoryModal(); drawChart(); };
                 const openHistoryEditModal = (rec) => { historyEditForm.value = { date: rec.date, twVal: rec.twVal || 0, usVal: rec.usVal || 0, twCash: rec.twCash || 0, usCash: rec.usCash || 0, loan: rec.loan || 0, realestate: rec.realestate || rec.realEstateVal || 0 }; showHistoryEditModalVisible.value = true; };
                 const calculateHistoryNetWorth = () => { const asset = (historyEditForm.value.twVal || 0) + (historyEditForm.value.twCash || 0) + ((historyEditForm.value.usVal || 0) + (historyEditForm.value.usCash || 0)) * exchangeRate.value + (historyEditForm.value.realestate || 0); const loan = historyEditForm.value.loan || 0; return asset - loan; };
-                const saveHistoryRecord = async () => { if (!user.value) return; const newNetWorth = calculateHistoryNetWorth(); await db.collection('users').doc(user.value.uid).collection('history').doc(historyEditForm.value.date).update({ twVal: historyEditForm.value.twVal, usVal: historyEditForm.value.usVal, twCash: historyEditForm.value.twCash, usCash: historyEditForm.value.usCash, loan: historyEditForm.value.loan, realestate: historyEditForm.value.realestate, totalVal: newNetWorth }); showHistoryEditModalVisible.value = false; await openHistoryModal(); drawChart(); debouncedXirr(); };
+                const saveHistoryRecord = async () => { if (!user.value) return; const newNetWorth = calculateHistoryNetWorth(); await db.collection('users').doc(user.value.uid).collection('history').doc(historyEditForm.value.date).update({ twVal: historyEditForm.value.twVal, usVal: historyEditForm.value.usVal, twCash: historyEditForm.value.twCash, usCash: historyEditForm.value.usCash, loan: historyEditForm.value.loan, realestate: historyEditForm.value.realestate, totalVal: newNetWorth }); showHistoryEditModalVisible.value = false; await openHistoryModal(); drawChart(); };
                 const openLoanMgrModal = () => { showLoanMgrModal.value = true; loanForm.value = { id: null, name: '', balance: 0 }; };
                 const editLoanAccount = (l) => { loanForm.value = { ...l }; };
                 const saveLoanAccount = async () => { if (!user.value || !loanForm.value.name) return alert('請輸入名稱'); const data = { name: loanForm.value.name, balance: loanForm.value.balance || 0, currency: 'TWD' }; if (loanForm.value.id) await db.collection('users').doc(user.value.uid).collection('loans').doc(loanForm.value.id).update(data); else await db.collection('users').doc(user.value.uid).collection('loans').add(data); loanForm.value = { id: null, name: '', balance: 0 }; };
@@ -703,7 +697,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 const executeDelete = async (revertCash) => { showDeleteModal.value = false; const tx = pendingDeleteTx.value; if (!tx) return; if (revertCash) { if (tx.type === 'deposit') await updateCash(tx.currency, -Math.abs(tx.totalAmount), 0); else if (tx.type === 'withdraw') await updateCash(tx.currency, Math.abs(tx.totalAmount), 0); else if (tx.type === 'borrow') { if (tx.loanId) await updateLoanBalance(tx.loanId, -Math.abs(tx.totalAmount)); else alert('此為舊版借款紀錄，請手動調整對應帳戶餘額。'); if (tx.cashSynced === true) await updateCash(tx.currency || 'TWD', -Math.abs(tx.totalAmount), 0); } else if (tx.type === 'repay') { if (tx.loanId) await updateLoanBalance(tx.loanId, Math.abs(tx.totalAmount)); if (tx.cashSynced === true) await updateCash(tx.currency || 'TWD', Math.abs(tx.totalAmount), 0); } else if (tx.type === 'dividend') { await updateCash(tx.currency, -Math.abs(tx.totalAmount), 0); const stock = stocks.value.find(s => s.symbol === tx.symbol); if (stock) { await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ dividends: Math.max(0, (stock.dividends || 0) - tx.totalAmount) }); } } else if (tx.type === 'buy') { await updateCash(tx.currency, Math.abs(tx.totalAmount), 0); const stock = stocks.value.find(s => s.symbol === tx.symbol); if (stock) { const ns = stock.shares - tx.shares; if (ns <= 0) { await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).delete(); } else { const remainingValue = (stock.shares * stock.avgCost) - tx.totalAmount; const na = remainingValue > 0 ? remainingValue / ns : 0; await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ shares: ns, avgCost: na }); } } } else if (tx.type === 'sell') { alert('系統提示：已將您的賣出金額從現金中扣除。但因系統無法追蹤原銷售股票之成本紀錄，請您手動至「已實現損益」與「庫存」調整對應股數與紀錄，以確保資料正確。'); await updateCash(tx.currency, -Math.abs(tx.totalAmount), 0); } } await db.collection('users').doc(user.value.uid).collection('transactions').doc(tx.id).delete(); fetchTransactions(); setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'transactions') fetchTransactions(); if (activeSection.value === 'realized') fetchRealizedGains(); if (activeSection.value === 'chart') drawChart(); }, 500); pendingDeleteTx.value = null; };
                 const deleteDividend = async (rec) => { if (!confirm('刪除股息？(現金將自動扣回)')) return; const stock = stocks.value.find(s => s.symbol === rec.symbol); if (stock) { await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ dividends: Math.max(0, (stock.dividends || 0) - rec.amount) }); } await updateCash(rec.currency, -rec.amount, 0); await db.collection('users').doc(user.value.uid).collection('dividends').doc(rec.id).delete(); fetchDividends(); setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'chart') drawChart(); }, 500); };
                 const deleteRealized = async (id) => { if (!confirm('刪除？')) return; await db.collection('users').doc(user.value.uid).collection('realized_gains').doc(id).delete(); fetchRealizedGains(); };
-                const saveDailySnapshot = async () => { if (!user.value) return; const todayStr = getLocalDate(); const historyRef = db.collection('users').doc(user.value.uid).collection('history').doc(todayStr); const currentHour = new Date().getHours(); const snapshot = { date: todayStr, timestamp: firebase.firestore.FieldValue.serverTimestamp(), savedHour: currentHour, totalVal: grandTotalValue.value, twVal: twStats.value.value, usVal: usStats.value.value, twCash: cashData.value.twd || 0, usCash: cashData.value.usd || 0, loan: totalLoanBalance.value, totalPnL: grandTotalPnL.value, twPnL: twStats.value.pnl, usPnL: usStats.value.pnl, realestate: realEstateTotalMarket.value, leverage: leverageRatio.value, exposure: exposureRatio.value }; if (currentHour >= 21) { const doc = await historyRef.get(); if (doc.exists) { const existingSavedHour = doc.data().savedHour; if (existingSavedHour !== undefined && existingSavedHour < 21 && doc.data().totalVal > 0) { return; } } } await historyRef.set(snapshot, { merge: true }); debouncedXirr(); };
+                const saveDailySnapshot = async () => { if (!user.value) return; const todayStr = getLocalDate(); const historyRef = db.collection('users').doc(user.value.uid).collection('history').doc(todayStr); const currentHour = new Date().getHours(); const snapshot = { date: todayStr, timestamp: firebase.firestore.FieldValue.serverTimestamp(), savedHour: currentHour, totalVal: grandTotalValue.value, twVal: twStats.value.value, usVal: usStats.value.value, twCash: cashData.value.twd || 0, usCash: cashData.value.usd || 0, loan: totalLoanBalance.value, totalPnL: grandTotalPnL.value, twPnL: twStats.value.pnl, usPnL: usStats.value.pnl, realestate: realEstateTotalMarket.value, leverage: leverageRatio.value, exposure: exposureRatio.value }; if (currentHour >= 21) { const doc = await historyRef.get(); if (doc.exists) { const existingSavedHour = doc.data().savedHour; if (existingSavedHour !== undefined && existingSavedHour < 21 && doc.data().totalVal > 0) { return; } } } await historyRef.set(snapshot, { merge: true }); };
 
                 const updateCash = async (currency, amount, loanAmount = 0) => {
                     if (!user.value) return;
@@ -986,249 +980,6 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     return new Date(str.replace(/-/g, '/'));
                 };
 
-                // v3.3.4: XIRR 核心邏輯
-                const calcXIRR = (transactions) => {
-                    if (transactions.length < 2) return 0;
-                    transactions.sort((a, b) => a.dateObj - b.dateObj);
-
-                    if (transactions.length === 2) {
-                        const start = transactions[0];
-                        const end = transactions[1];
-                        if (start.amount >= 0 || end.amount <= 0) return 0;
-
-                        const days = (end.dateObj - start.dateObj) / (1000 * 60 * 60 * 24);
-                        if (days <= 0) return 0;
-
-                        const ratio = end.amount / Math.abs(start.amount);
-                        const rate = Math.pow(ratio, 365 / days) - 1;
-                        return isNaN(rate) ? 0 : rate * 100;
-                    }
-
-                    const guesses = [0.1, -0.1, 0.5, -0.5, 0.9, 2.0, 5.0, 10.0];
-                    const tol = 1e-6;
-                    const maxIter = 50;
-
-                    for (let guess of guesses) {
-                        let rate = guess;
-                        for (let i = 0; i < maxIter; i++) {
-                            let fValue = 0;
-                            let fDerivative = 0;
-                            for (const t of transactions) {
-                                const days = (t.dateObj - transactions[0].dateObj) / (1000 * 60 * 60 * 24);
-                                const factor = Math.pow(1 + rate, days / 365);
-                                if (factor === 0) continue;
-                                fValue += t.amount / factor;
-                                fDerivative -= (days / 365) * t.amount / (factor * (1 + rate));
-                            }
-
-                            if (Math.abs(fValue) < tol) return rate * 100;
-                            if (Math.abs(fDerivative) < 1e-9) break;
-
-                            const newRate = rate - fValue / fDerivative;
-                            if (Math.abs(newRate - rate) < tol) return newRate * 100;
-
-                            rate = newRate;
-                            if (isNaN(rate) || Math.abs(rate) > 10000) break;
-                            if (rate <= -1) rate = -0.99;
-                        }
-                    }
-
-                    // Last Resort
-                    const totalIn = transactions.filter(t => t.amount < 0).reduce((a, b) => a + b.amount, 0);
-                    const totalOut = transactions.filter(t => t.amount > 0).reduce((a, b) => a + b.amount, 0);
-                    const totalDays = (transactions[transactions.length - 1].dateObj - transactions[0].dateObj) / (1000 * 60 * 60 * 24);
-                    if (Math.abs(totalIn) > 0 && totalDays > 0) {
-                        const simpleRoi = (totalOut / Math.abs(totalIn)) - 1;
-                        const simpleAnnual = Math.pow(1 + simpleRoi, 365 / totalDays) - 1;
-                        return simpleAnnual * 100;
-                    }
-
-                    return 0;
-                };
-
-                // v3.7.5: Option B XIRR — 槓桿策略版
-                // 起始值：總資產（淨資產 + 貸款）
-                // 流量：入出金 + 借款(cashSynced=true 正流入) + 還款(cashSynced=true 負流出)
-                // 終值：grandTotalAssets（總資產，不扣貸款）
-                const computeSystemXirr = async () => {
-                    if (!user.value || grandTotalAssets.value === 0) return;
-
-                    try {
-                        const historySnap = await db.collection('users').doc(user.value.uid).collection('history').orderBy('date', 'asc').limit(1).get();
-                        if (historySnap.empty) { xirrValue.value = 0; xirrStartDate.value = '-'; return; }
-
-                        const startData = historySnap.docs[0].data();
-                        const startDate = startData.date;
-
-                        // v3.7.5: 起始值改用「總資產」（淨資產 + 當時貸款）
-                        let rawVal = startData.totalVal;
-                        if (typeof rawVal === 'string') rawVal = rawVal.replace(/,/g, '');
-                        const startNetWorth = Number(rawVal) || 0;
-                        const startLoan = Number(startData.loan) || 0;
-                        const startGrossAssets = startNetWorth + startLoan;
-
-                        xirrStartDate.value = startDate;
-                        xirrStartVal.value = formatCurrency(startGrossAssets, 'TWD');
-                        xirrEndVal.value = formatCurrency(grandTotalAssets.value, 'TWD');
-
-                        const txSnap = await db.collection('users').doc(user.value.uid).collection('transactions')
-                            .where('date', '>', startDate)
-                            .get();
-
-                        const flows = [];
-                        // 起始：投入總資產（負值）
-                        flows.push({ amount: -Math.abs(startGrossAssets), dateObj: parseDate(startDate) });
-
-                        txSnap.docs.forEach(doc => {
-                            const t = doc.data();
-                            const twd = (currency) => currency === 'USD' ? t.totalAmount * exchangeRate.value : t.totalAmount;
-
-                            if (t.type === 'deposit') {
-                                // 個人入金 → 你的錢流出 → 負
-                                flows.push({ amount: -Math.abs(twd(t.currency)), dateObj: parseDate(t.date) });
-                            } else if (t.type === 'withdraw') {
-                                // 個人出金 → 你的錢流回 → 正
-                                flows.push({ amount: Math.abs(twd(t.currency)), dateObj: parseDate(t.date) });
-                            } else if (t.type === 'borrow' && t.cashSynced === true) {
-                                // v3.7.5: 借款入帳 → 資金流入總資產池 → 正
-                                flows.push({ amount: Math.abs(twd(t.currency)), dateObj: parseDate(t.date) });
-                            } else if (t.type === 'repay' && t.cashSynced === true) {
-                                // v3.7.5: 還款出帳 → 資金流出總資產池 → 負
-                                flows.push({ amount: -Math.abs(twd(t.currency)), dateObj: parseDate(t.date) });
-                            }
-                        });
-
-                        // 終值：當前總資產（不扣貸款）
-                        flows.push({ amount: grandTotalAssets.value, dateObj: new Date() });
-
-                        xirrFlowCount.value = flows.length;
-
-                        const result = calcXIRR(flows);
-                        xirrValue.value = (typeof result === 'number') ? result.toFixed(2) : result;
-                    } catch (e) {
-                        console.error("XIRR Error:", e);
-                        xirrValue.value = "Err";
-                    }
-                };
-
-                // --- 新增：特定區間 XIRR ---
-                const showCustomXirrModal = ref(false);
-                const cxDays = ref(0);
-                const cxStartDate = ref('');
-                const cxEndDate = ref('');
-                const cxRealStartDate = ref('');
-                const cxRealEndDate = ref('');
-                const cxStartGross = ref(0);
-                const cxEndGross = ref(0);
-                const cxInflow = ref(0);
-                const cxOutflow = ref(0);
-                const cxXirrValue = ref(null);
-                const cxLoading = ref(false);
-
-                const openCustomXirrModal = () => {
-                    const d = new Date();
-                    d.setMonth(d.getMonth() - 1); 
-                    cxStartDate.value = d.toISOString().split('T')[0];
-                    cxEndDate.value = getLocalDate();
-                    cxXirrValue.value = null;
-                    showCustomXirrModal.value = true;
-                };
-
-                const calculateCustomXirr = async () => {
-                    if(!cxStartDate.value || !cxEndDate.value) return alert('請選擇完整的起訖日期！');
-                    if(cxStartDate.value >= cxEndDate.value) return alert('開始日期必須早於結束日期！');
-                    cxLoading.value = true;
-                    try {
-                        const startSnap = await db.collection('users').doc(user.value.uid).collection('history')
-                            .where('date', '<=', cxStartDate.value)
-                            .orderBy('date', 'desc').limit(1).get();
-                            
-                        let startBase = 0;
-                        let realStartDate = cxStartDate.value;
-                        if (!startSnap.empty) {
-                            const d = startSnap.docs[0].data();
-                            startBase = (Number(String(d.totalVal).replace(/,/g, '')) || 0) + (Number(d.loan) || 0);
-                            realStartDate = d.date;
-                        } else {
-                            const firstSnap = await db.collection('users').doc(user.value.uid).collection('history')
-                                .orderBy('date', 'asc').limit(1).get();
-                            if(firstSnap.empty) { cxLoading.value = false; return alert('無歷史資料可計算'); }
-                            const d = firstSnap.docs[0].data();
-                            startBase = (Number(String(d.totalVal).replace(/,/g, '')) || 0) + (Number(d.loan) || 0);
-                            realStartDate = d.date;
-                            cxStartDate.value = realStartDate;
-                        }
-                        
-                        cxStartGross.value = startBase;
-                        cxRealStartDate.value = realStartDate;
-                        cxDays.value = 0; // reset
-                        
-                        let endBase = 0;
-                        let realEndDate = cxEndDate.value;
-                        if(cxEndDate.value >= getLocalDate()) {
-                            endBase = grandTotalAssets.value;
-                            realEndDate = '今日即時';
-                        } else {
-                            const endSnap = await db.collection('users').doc(user.value.uid).collection('history')
-                                .where('date', '<=', cxEndDate.value)
-                                .orderBy('date', 'desc').limit(1).get();
-                            if(!endSnap.empty) {
-                                const d = endSnap.docs[0].data();
-                                endBase = (Number(String(d.totalVal).replace(/,/g, '')) || 0) + (Number(d.loan) || 0);
-                                realEndDate = d.date;
-                            } else {
-                                endBase = startBase;
-                            }
-                        }
-                        cxEndGross.value = endBase;
-                        cxRealEndDate.value = realEndDate;
-                        // 計算實際天數
-                        const startD = parseDate(realStartDate);
-                        const endD = realEndDate === '今日即時' ? new Date() : parseDate(realEndDate);
-                        cxDays.value = Math.round((endD - startD) / (1000 * 60 * 60 * 24));
-                        
-                        const txSnap = await db.collection('users').doc(user.value.uid).collection('transactions')
-                            .where('date', '>', realStartDate)
-                            .where('date', '<=', realEndDate === '今日即時' ? getLocalDate() : realEndDate)
-                            .get();
-                            
-                        const flows = [];
-                        flows.push({ amount: -Math.abs(startBase), dateObj: parseDate(realStartDate) });
-                        
-                        let tin = 0, tout = 0;
-                        txSnap.docs.forEach(doc => {
-                            const t = doc.data();
-                            const twd = (currency) => currency === 'USD' ? t.totalAmount * exchangeRate.value : t.totalAmount;
-                            if (t.type === 'deposit') {
-                                tin += twd(t.currency);
-                                flows.push({ amount: -Math.abs(twd(t.currency)), dateObj: parseDate(t.date) });
-                            } else if (t.type === 'withdraw') {
-                                tout += twd(t.currency);
-                                flows.push({ amount: Math.abs(twd(t.currency)), dateObj: parseDate(t.date) });
-                            } else if (t.type === 'borrow' && t.cashSynced === true) {
-                                tin += twd(t.currency); 
-                                flows.push({ amount: Math.abs(twd(t.currency)), dateObj: parseDate(t.date) });
-                            } else if (t.type === 'repay' && t.cashSynced === true) {
-                                tout += twd(t.currency);
-                                flows.push({ amount: -Math.abs(twd(t.currency)), dateObj: parseDate(t.date) });
-                            }
-                        });
-                        
-                        cxInflow.value = tin;
-                        cxOutflow.value = tout;
-                        
-                        const endDateParsed = realEndDate === '今日即時' ? new Date() : parseDate(realEndDate);
-                        flows.push({ amount: endBase, dateObj: endDateParsed });
-                        
-                        const result = calcXIRR(flows);
-                        cxXirrValue.value = (typeof result === 'number') ? result.toFixed(2) : result;
-                        
-                    } catch (e) {
-                        console.error('Custom XIRR Error', e);
-                        alert('計算發生錯誤，請稍後再試。');
-                    }
-                    cxLoading.value = false;
-                };
 
 
                 // ★★★ v3.8.0: 直連 API ★★★
@@ -1740,7 +1491,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 return {
                     clearAllUserData, 
                     user, login, logout, stocks, exchangeRate, lastUpdated, isLoading, viewMode, isMobile, showPrivacy, isDarkMode, toggleDarkMode, activeSection, toggleSection, showChangelog, hideZeroShares, defaultPrivacyHidden,
-                    twStats, usStats, grandTotalValue, grandTotalAssets, grandTotalExposure, grandTotalPnL, twPieRatios, usPieRatios, twStockList, usStockList, leverageRatio, exposureRatio,
+                    twStats, usStats, grandTotalValue, grandTotalAssets, grandTotalExposure, grandTotalPnL, twPieRatios, usPieRatios, twStockList, usStockList, leverageRatio, exposureRatio, roiIncludeRealEstate,
                     showModal, isEditing, form, openModal, editStock, closeModal, saveStock, deleteStock,
                     showTransModal, transForm, openTransModal, closeTransModal, submitTransaction, isFundMode, openFundModal,
                     autoFetchName, autoFetchTransName, fetchPrices, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountClass, getAmountSign,
@@ -1764,7 +1515,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     driveLoading, exportDataToDrive, importFromDrive,
                     setChartRange, currentRange, historyFilterYear, availableYears,
                     openStockNoteModal, showStockNoteModal, stockNoteForm, saveStockNote,
-                    xirrValue, xirrStartDate, computeSystemXirr, xirrStartVal, xirrEndVal, xirrFlowCount,
+
                     updateSingleStock, stockStates, loadingTarget,
                     fetchStockData, detectMarketType, autoDetectMarketTypes,
                     sectionLoading,
@@ -1772,9 +1523,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     realEstateList, realEstateTotalMarket, realEstateTotalMortgage, realEstateNetValue, realEstateBookPnL,
                     showRealEstateModal, realEstateForm, openRealEstateModal, saveRealEstate, deleteRealEstate,
                     getLoanName, getReMortgageTotal, getReMortgageLoans, toggleReMortgageLoan,
-                    showCustomXirrModal, openCustomXirrModal, calculateCustomXirr,
-                    cxStartDate, cxEndDate, cxLoading, cxXirrValue, cxDays,
-                    cxRealStartDate, cxRealEndDate, cxStartGross, cxEndGross, cxInflow, cxOutflow,
+
                     monthlyProfitData, monthlyProfitRange, drawMonthlyChart
                 };
             }

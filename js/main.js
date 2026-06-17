@@ -2,7 +2,7 @@ import { db, auth } from './firebase-config.js';
 import { getLocalDate, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountSign } from './utils/format.js';
 
 import { 
-    user, stocks, exchangeRate, lastUpdated, lastUpdatedTs, loadingTarget, isLoading, viewMode, isMobile, showPrivacy, defaultPrivacyHidden, hideZeroShares, showSettingsModal, isDarkMode, activeSection, showChangelog, stockStates, sectionLoading, xirrValue, xirrStartDate, xirrStartVal, xirrEndVal, xirrFlowCount, showStockNoteModal, stockNoteForm, showHistoryModal, historyRecords, historyFilterYear, availableYears, showDeleteModal, pendingDeleteTx, showEditTxModal, editTxForm, showHistoryEditModalVisible, historyEditForm, notes, showNoteModalVisible, noteForm, loanList, showLoanMgrModal, inlineNewLoan, inlineLoanName, loanForm, cashData, prevDayData, realEstateList, showRealEstateModal, realEstateForm, chartStartDate, chartEndDate, chartPnl, currentRange, divRange, divSearchQuery, divStartDate, divEndDate, realizedStartDate, realizedEndDate, transStartDate, transEndDate, transFilterType, transSearchQuery, sortKeyTrans, sortOrderTrans, sortKeyDiv, sortOrderDiv, realizedGains, realizedSearchQuery, sortKeyRealized, sortOrderRealized, realizedRange, dividendRecords, transactionHistory, showModal, isEditing, form, showTransModal, isFundMode, isLoanMode, loanCashMode, transForm, isPriceStale,
+    user, stocks, exchangeRate, lastUpdated, loadingTarget, isLoading, viewMode, isMobile, showPrivacy, defaultPrivacyHidden, hideZeroShares, showSettingsModal, isDarkMode, activeSection, showChangelog, stockStates, sectionLoading, xirrValue, xirrStartDate, xirrStartVal, xirrEndVal, xirrFlowCount, showStockNoteModal, stockNoteForm, showHistoryModal, historyRecords, historyFilterYear, availableYears, showDeleteModal, pendingDeleteTx, showEditTxModal, editTxForm, showHistoryEditModalVisible, historyEditForm, notes, showNoteModalVisible, noteForm, loanList, showLoanMgrModal, inlineNewLoan, inlineLoanName, loanForm, cashData, prevDayData, realEstateList, showRealEstateModal, realEstateForm, chartStartDate, chartEndDate, chartPnl, currentRange, divRange, divSearchQuery, divStartDate, divEndDate, realizedStartDate, realizedEndDate, transStartDate, transEndDate, transFilterType, transSearchQuery, sortKeyTrans, sortOrderTrans, sortKeyDiv, sortOrderDiv, realizedGains, realizedSearchQuery, sortKeyRealized, sortOrderRealized, realizedRange, dividendRecords, transactionHistory, showModal, isEditing, form, showTransModal, isFundMode, isLoanMode, loanCashMode, transForm,
     monthlyProfitData, monthlyProfitRange
 } from './store/index.js';
 const { createApp, ref, computed, onMounted, watch } = Vue;
@@ -369,7 +369,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         if (s === 'monthly') setTimeout(drawMonthlyChart, 100);
                     }
                 };
-                const jumpToFundHistory = () => { setTimeout(() => { document.querySelector('.zen-card.mb-8 h4').scrollIntoView({ behavior: 'smooth' }); }, 100); };
+                const jumpToFundHistory = () => { setTimeout(() => { const el = document.querySelector('[data-section="fund-history"]'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }, 100); };
                 const loadUserData = (uid) => {
                     if (unsubscribe) unsubscribe(); unsubscribe = db.collection('users').doc(uid).collection('stocks').onSnapshot(snap => {
                         stocks.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -377,7 +377,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         // v3.6.0: 自動偵測未分類股票的市場類型（背景執行，不阻塞 UI）
                         const unclassified = stocks.value.filter(s => !s.marketType && s.currency !== 'USD');
                         // v4.8.0: 同時偵測已分類但市場可能有變動的股票（如興櫃轉上市）
-                        const misclassified = stocks.value.filter(s => (s.marketType === 'tse' || s.marketType === 'otc') && s.currency !== 'USD');
+                        const misclassified = stocks.value.filter(s => (s.marketType === 'tse' || s.marketType === 'otc' || s.marketType === 'esb') && s.currency !== 'USD');
                         if (unclassified.length > 0) setTimeout(() => autoDetectMarketTypes(unclassified), 5000);
                         if (misclassified.length > 0) setTimeout(() => autoCorrectMarketTypes(misclassified), 12000);
                     });
@@ -1448,21 +1448,19 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 };
 
                 const fetchUsStockPrice = async (symbol) => {
-                    for (let attempt = 0; attempt <= 1; attempt++) {
-                        try {
-                            const r = await fetchWithRetry(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_API_KEY}`, 1, 8000);
-                            const j = await r.json();
-                            // Finnhub: c = 最新成交價(盤中即時/盤後即為當日收盤), pc = 前一個交易日收盤
-                            // 注意：盤後 j.c 就是當日收盤，不應再 fallback 到 j.pc（那才是更前一天）
-                            if (j.c && j.c > 0) {
-                                return {
-                                    regularMarketPrice: j.c,
-                                    previousClose: j.pc || j.c
-                                };
-                            }
-                        } catch (e) {
-                            console.warn(`[Finnhub] ${symbol} 失敗`, e);
+                    try {
+                        const r = await fetchWithRetry(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_API_KEY}`, 1, 8000);
+                        const j = await r.json();
+                        // Finnhub: c = 最新成交價(盤中即時/盤後即為當日收盤), pc = 前一個交易日收盤
+                        // 注意：盤後 j.c 就是當日收盤，不應再 fallback 到 j.pc（那才是更前一天）
+                        if (j.c && j.c > 0) {
+                            return {
+                                regularMarketPrice: j.c,
+                                previousClose: j.pc || j.c
+                            };
                         }
+                    } catch (e) {
+                        console.warn(`[Finnhub] ${symbol} 失敗`, e);
                     }
                     return null;
                 };
@@ -1683,14 +1681,10 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
                     const now = new Date();
                     lastUpdated.value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-                    lastUpdatedTs.value = now.getTime();
 
                     // 更新結束，重置按鈕狀態
                     loadingTarget.value = null;
 
-                    if (marketType === 'US') {
-
-                    }
 
                     const typeName = marketType === 'TW' ? '台股' : (marketType === 'US' ? '美股' : '全部');
                     alert(`${typeName} 更新完成！\n\n✅ 成功: ${successCount} 筆\n❌ 失敗: ${failCount} 筆`);
@@ -1739,7 +1733,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
                 function calculateStats(subset) { let v = 0, c = 0, d = 0; subset.forEach(s => { v += s.currentPrice * s.shares; c += s.avgCost * s.shares; d += (s.dividends || 0); }); return { value: v, cost: c, dividend: d, pnl: v - c }; }
                 // Formatting functions imported from utils
-                const getAmountClass = (tx) => { if (tx.type === 'buy' || tx.type === 'withdraw' || tx.type === 'repay') return ''; if (tx.type === 'sell' || tx.type === 'dividend' || tx.type === 'deposit' || tx.type === 'borrow') return isDarkMode.value ? 'text-yellow-400' : 'text-yellow-600'; return ''; };
+                const getAmountClass = (tx) => { if (tx.type === 'buy' || tx.type === 'withdraw' || tx.type === 'repay' || tx.type === 'borrow') return ''; if (tx.type === 'sell' || tx.type === 'dividend' || tx.type === 'deposit') return isDarkMode.value ? 'text-yellow-400' : 'text-yellow-600'; return ''; };
                 // getAmountSign imported from utils
 
 
@@ -1772,7 +1766,6 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     openStockNoteModal, showStockNoteModal, stockNoteForm, saveStockNote,
                     xirrValue, xirrStartDate, computeSystemXirr, xirrStartVal, xirrEndVal, xirrFlowCount,
                     updateSingleStock, stockStates, loadingTarget,
-                    isPriceStale, lastUpdatedTs,
                     fetchStockData, detectMarketType, autoDetectMarketTypes,
                     sectionLoading,
                     showEditTxModal, editTxForm, openEditTxModal, saveEditTx,

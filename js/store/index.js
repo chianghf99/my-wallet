@@ -5,7 +5,6 @@ export const user = ref(null);
 export const stocks = ref([]);
 export const exchangeRate = ref(32.5);
 export const lastUpdated = ref('-');
-export const lastUpdatedTs = ref(0);
 export const loadingTarget = ref(null);
 export const isLoading = computed(() => loadingTarget.value !== null);
 export const viewMode = ref('auto');
@@ -93,13 +92,6 @@ export const isLoanMode = ref(false);
 export const loanCashMode = ref('sync');
 export const transForm = ref({ id: null, type: 'buy', symbol: '', name: '', shares: '', totalAmount: '', currentShares: 0, currentAvg: 0, date: '', loanId: '', memo: '' });
 
-export const isPriceStale = computed(() => {
-    if (!lastUpdatedTs.value) return false;
-    const mins = (Date.now() - lastUpdatedTs.value) / 60000;
-    const h = new Date().getHours();
-    if (h >= 9 && h < 14) return mins > 30;
-    return false;
-});
 
 export const monthlyProfitData = ref([]);
 export const monthlyProfitRange = ref(6);

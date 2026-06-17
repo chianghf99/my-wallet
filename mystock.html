@@ -338,9 +338,7 @@
                     class="border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 transition-colors">
                     <div class="max-w-6xl mx-auto px-4 py-2 flex justify-between items-center">
                         <div class="text-xs text-gray-500 dark:text-gray-400">USD/TWD: {{ exchangeRate.toFixed(2) }}
-                            <span class="hidden sm:inline"> | 更新: {{ lastUpdated }}</span><span v-if="isPriceStale"
-                                class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-full text-xs bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400 font-medium"><i
-                                    class="fa-solid fa-clock-rotate-left mr-1 text-[10px]"></i>報價可能過時</span>
+                            <span class="hidden sm:inline"> | 更新: {{ lastUpdated }}</span>
                         </div>
                         <div class="flex gap-2 items-center">
                             <button @click="fetchPrices('TW')" :disabled="loadingTarget !== null"

@@ -427,11 +427,11 @@
                                         {{ roiIncludeRealEstate ? '含房產' : '純股票' }}
                                     </button>
                                 </span>
-                                <span v-if="showPrivacy" :class="getPnlClass(grandTotalPnL)">
-                                    {{ formatCurrency(grandTotalPnL, 'TWD') }}
+                                <span v-if="showPrivacy" :class="getPnlClass(roiIncludeRealEstate ? grandTotalPnL + realEstateBookPnL : grandTotalPnL)">
+                                    {{ formatCurrency(roiIncludeRealEstate ? grandTotalPnL + realEstateBookPnL : grandTotalPnL, 'TWD') }}
                                     <span class="text-xs ml-1">
                                         <template v-if="roiIncludeRealEstate">
-                                            ({{ getRoi(grandTotalValue - grandTotalPnL, grandTotalPnL) }})
+                                            ({{ getRoi(twStats.cost + usStats.cost * exchangeRate + (cashData.twd || 0) + (cashData.usd || 0) * exchangeRate + (realEstateTotalMarket - realEstateBookPnL), grandTotalPnL + realEstateBookPnL) }})
                                         </template>
                                         <template v-else>
                                             ({{ getRoi(twStats.cost + usStats.cost * exchangeRate + (cashData.twd || 0) + (cashData.usd || 0) * exchangeRate, grandTotalPnL) }})

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v4.8.2</title>
+    <title>我的投資組合 | Portfolio v4.9.0</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -298,7 +298,7 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v4.8.2</h1>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v4.9.0</h1>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -318,7 +318,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v4.8.2</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v4.9.0</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -628,10 +628,10 @@
                                 <div class="w-full max-w-[300px] h-[300px] relative"><canvas id="pieUs"></canvas></div>
                             </div>
                         </div>
-                        <!-- v4.8.1: 內環圖例說明與比例呈現 -->
+                        <!-- v4.9.0: 圖例說明與比例呈現 -->
                         <div class="mt-4 grid grid-cols-2 gap-4 text-center">
                             <div>
-                                <div class="text-[10px] font-bold text-gray-400 mb-1 uppercase tracking-wide">台股內環占比</div>
+                                <div class="text-[10px] font-bold text-gray-400 mb-1 uppercase tracking-wide">台股配置占比</div>
                                 <div class="flex flex-wrap justify-center gap-x-3 gap-y-1">
                                     <span class="flex items-center gap-1 text-xs text-gray-500"><span class="w-3 h-3 rounded-sm inline-block" style="background:#60a5fa"></span>台股 ETF ({{ twPieRatios.etf }}%)</span>
                                     <span class="flex items-center gap-1 text-xs text-gray-500"><span class="w-3 h-3 rounded-sm inline-block" style="background:#1d4ed8"></span>台股個股 ({{ twPieRatios.ind }}%)</span>
@@ -639,17 +639,18 @@
                                 </div>
                             </div>
                             <div>
-                                <div class="text-[10px] font-bold text-gray-400 mb-1 uppercase tracking-wide">美股內環占比</div>
+                                <div class="text-[10px] font-bold text-gray-400 mb-1 uppercase tracking-wide">美股配置占比</div>
                                 <div class="flex flex-wrap justify-center gap-x-3 gap-y-1">
                                     <span class="flex items-center gap-1 text-xs text-gray-500"><span class="w-3 h-3 rounded-sm inline-block" style="background:#34d399"></span>美股 ETF ({{ usPieRatios.etf }}%)</span>
                                     <span class="flex items-center gap-1 text-xs text-gray-500"><span class="w-3 h-3 rounded-sm inline-block" style="background:#059669"></span>美股個股 ({{ usPieRatios.ind }}%)</span>
                                     <span class="flex items-center gap-1 text-xs text-gray-500"><span class="w-3 h-3 rounded-sm inline-block" style="background:#9ca3af"></span>現金 ({{ usPieRatios.cash }}%)</span>
                                 </div>
                             </div>
-                            <div class="col-span-2 text-[10px] text-gray-400 mt-1">內環 = 各幣別圖區的 ETF／個股／現金占比，外環 = 各股占比</div>
+                            <div class="col-span-2 text-[10px] text-gray-400 mt-1">各片 = 個別持股，灰片 = 同幣別現金，分母 = 股票現值 + 同幣別現金</div>
                         </div>
                     </div>
                 </transition>
+
 
                 <transition name="collapse">
                     <div v-if="activeSection === 'cash'" class="zen-card p-4 md:p-6 mb-8">
@@ -1725,9 +1726,22 @@
 
                     <div class="p-6 overflow-y-auto custom-scrollbar">
                         <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
-                            <!-- v4.8.2: 最新版本節點 -->
+                            <!-- v4.9.0: 最新版本節點 -->
                             <div class="relative pl-6">
                                 <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800"></div>
+                                <div class="text-xs text-gray-400 mb-1">2026-06-18</div>
+                                <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
+                                    <div class="font-bold text-gray-800 dark:text-white mb-2">v4.9.0</div>
+                                    <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                        <li>改造：資金配置圓餅改回單環設計，圖片更清晰，每片為個別持股，最後一片為現金</li>
+                                        <li>改造：園餅區占比分母紽入現金（台股含台幣現金、美股含美元現金），占比更反映實際資金配置狀況</li>
+                                        <li>清除：移除未使用的 XIRR 計算功能與相關介面元素</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <!-- v4.8.2: 舊版本節點 -->
+                            <div class="relative pl-6">
+                                <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-2 border-white dark:border-gray-800"></div>
                                 <div class="text-xs text-gray-400 mb-1">2026-06-03</div>
                                 <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
                                     <div class="font-bold text-gray-800 dark:text-white mb-2">v4.8.2</div>

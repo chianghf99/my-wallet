@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v4.9.3</title>
+    <title>我的投資組合 | Portfolio v4.9.4</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -298,7 +298,7 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v4.9.3</h1>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v4.9.4</h1>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -318,7 +318,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v4.9.3</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v4.9.4</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -769,13 +769,19 @@
                                 <div class="flex items-start gap-1">
                                     <i class="fa-solid fa-circle-info mt-0.5 flex-shrink-0"></i>
                                     <div>
-                                        <strong>金融總資產 / 淨資產 (財務槓桿)</strong>：若要降此槓桿，必須將股票換現並<strong>還清負債</strong>（若僅賣股換成現金留在帳戶而不還債，財務槓桿不會下降）。
+                                        <strong>金融總曝險</strong> = 股票曝險 (市值 × 槓桿倍數) + 現金
                                     </div>
                                 </div>
                                 <div class="flex items-start gap-1">
                                     <i class="fa-solid fa-circle-info mt-0.5 flex-shrink-0"></i>
                                     <div>
-                                        <strong>金融總曝險 (商品槓桿)</strong>：加計正 2 等槓桿商品後的實質市場曝險。若要降此曝險，可將正 2 換成一般股票或換成現金。
+                                        <strong>金融淨資產</strong> = 金融總資產 (股票市值 + 現金) - 金融負債
+                                    </div>
+                                </div>
+                                <div class="flex items-start gap-1">
+                                    <i class="fa-solid fa-circle-info mt-0.5 flex-shrink-0"></i>
+                                    <div>
+                                        <strong>金融負債</strong> = 總借款 - 一般房貸 (包含已勾選投資用途之增貸)
                                     </div>
                                 </div>
                             </div>
@@ -1720,9 +1726,20 @@
 
                     <div class="p-6 overflow-y-auto custom-scrollbar">
                         <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
-                            <!-- v4.9.3: 最新版本節點 -->
+                            <!-- v4.9.4: 最新版本節點 -->
                             <div class="relative pl-6">
                                 <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800"></div>
+                                <div class="text-xs text-gray-400 mb-1">2026-06-19</div>
+                                <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
+                                    <div class="font-bold text-gray-800 dark:text-white mb-2">v4.9.4</div>
+                                    <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                        <li>修正：重寫槓桿儀表板下方的說明備註，改為條列公式定義（金融總曝險、金融淨資產、金融負債之具體算法），方便理解</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <!-- v4.9.3: 舊版本節點 -->
+                            <div class="relative pl-6">
+                                <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-2 border-white dark:border-gray-800"></div>
                                 <div class="text-xs text-gray-400 mb-1">2026-06-19</div>
                                 <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
                                     <div class="font-bold text-gray-800 dark:text-white mb-2">v4.9.3</div>

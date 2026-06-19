@@ -244,14 +244,18 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     if (financialNetWorth.value <= 0) return 1;
                     return financialAssets.value / financialNetWorth.value;
                 });
-                // v4.5.0: 曝險比例 = 金融總曝險 / 金融淨資產
-                const exposureRatio = computed(() => {
-                    if (financialNetWorth.value <= 0) return 1;
+                // 金融總曝險
+                const financialExposure = computed(() => {
                     const twExposure = twStockList.value.reduce((acc, s) => acc + (s.currentPrice * s.shares * (s.multiplier || 1)), 0);
                     const usExposure = usStockList.value.reduce((acc, s) => acc + (s.currentPrice * s.shares * (s.multiplier || 1)), 0) * exchangeRate.value;
                     const cashVal = (cashData.value.twd || 0) + ((cashData.value.usd || 0) * exchangeRate.value);
-                    const financialExposure = twExposure + usExposure + cashVal;
-                    return financialExposure / financialNetWorth.value;
+                    return twExposure + usExposure + cashVal;
+                });
+
+                // v4.5.0: 曝險比例 = 金融總曝險 / 金融淨資產
+                const exposureRatio = computed(() => {
+                    if (financialNetWorth.value <= 0) return 1;
+                    return financialExposure.value / financialNetWorth.value;
                 });
                 const realizedTotalTw = computed(() => sortedRealizedGains.value.filter(r => r.currency === 'TWD').reduce((acc, cur) => acc + cur.pnl, 0));
                 const realizedTotalUs = computed(() => sortedRealizedGains.value.filter(r => r.currency === 'USD').reduce((acc, cur) => acc + cur.pnl, 0));
@@ -1489,6 +1493,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     clearAllUserData, 
                     user, login, logout, stocks, exchangeRate, lastUpdated, isLoading, viewMode, isMobile, showPrivacy, isDarkMode, toggleDarkMode, activeSection, toggleSection, showChangelog, hideZeroShares, defaultPrivacyHidden,
                     twStats, usStats, grandTotalValue, grandTotalAssets, grandTotalExposure, grandTotalPnL, twPieRatios, usPieRatios, twStockList, usStockList, leverageRatio, exposureRatio,
+                    financialAssets, financialLoans, financialNetWorth, financialExposure,
                     showModal, isEditing, form, openModal, editStock, closeModal, saveStock, deleteStock,
                     showTransModal, transForm, openTransModal, closeTransModal, submitTransaction, isFundMode, openFundModal,
                     autoFetchName, autoFetchTransName, fetchPrices, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountClass, getAmountSign,

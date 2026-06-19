@@ -223,15 +223,35 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 // v4.0.0: 淨資產 = 總資產 - 所有負債(貸款)
                 const grandTotalValue = computed(() => grandTotalAssets.value - totalLoanBalance.value);
                 const grandTotalPnL = computed(() => twStats.value.pnl + (usStats.value.pnl * exchangeRate.value));
-                // v4.4.0: 帳戶槓桿 = 總資產 / 淨資產
-                const leverageRatio = computed(() => {
-                    if (grandTotalValue.value <= 0) return 1;
-                    return grandTotalAssets.value / grandTotalValue.value;
+                
+                // 金融資產（不含房地產）
+                const financialAssets = computed(() => {
+                    const stockVal = twStats.value.value + (usStats.value.value * exchangeRate.value);
+                    const cashVal = (cashData.value.twd || 0) + ((cashData.value.usd || 0) * exchangeRate.value);
+                    return stockVal + cashVal;
                 });
-                // v4.5.0: 曝險比例 = 總曝險 / 淨資產
+                // 金融負債（排除非投資用途的房貸）
+                const financialLoans = computed(() => {
+                    return loanList.value
+                        .filter(l => l.isInvestmentUse === true || l.type !== 'realestate')
+                        .reduce((acc, cur) => acc + (cur.balance || 0), 0);
+                });
+                // 金融淨資產
+                const financialNetWorth = computed(() => financialAssets.value - financialLoans.value);
+
+                // v4.4.0: 帳戶槓桿 = 金融資產 / 金融淨資產
+                const leverageRatio = computed(() => {
+                    if (financialNetWorth.value <= 0) return 1;
+                    return financialAssets.value / financialNetWorth.value;
+                });
+                // v4.5.0: 曝險比例 = 金融總曝險 / 金融淨資產
                 const exposureRatio = computed(() => {
-                    if (grandTotalValue.value <= 0) return 1;
-                    return grandTotalExposure.value / grandTotalValue.value;
+                    if (financialNetWorth.value <= 0) return 1;
+                    const twExposure = twStockList.value.reduce((acc, s) => acc + (s.currentPrice * s.shares * (s.multiplier || 1)), 0);
+                    const usExposure = usStockList.value.reduce((acc, s) => acc + (s.currentPrice * s.shares * (s.multiplier || 1)), 0) * exchangeRate.value;
+                    const cashVal = (cashData.value.twd || 0) + ((cashData.value.usd || 0) * exchangeRate.value);
+                    const financialExposure = twExposure + usExposure + cashVal;
+                    return financialExposure / financialNetWorth.value;
                 });
                 const realizedTotalTw = computed(() => sortedRealizedGains.value.filter(r => r.currency === 'TWD').reduce((acc, cur) => acc + cur.pnl, 0));
                 const realizedTotalUs = computed(() => sortedRealizedGains.value.filter(r => r.currency === 'USD').reduce((acc, cur) => acc + cur.pnl, 0));
@@ -659,14 +679,14 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 const openHistoryEditModal = (rec) => { historyEditForm.value = { date: rec.date, twVal: rec.twVal || 0, usVal: rec.usVal || 0, twCash: rec.twCash || 0, usCash: rec.usCash || 0, loan: rec.loan || 0, realestate: rec.realestate || rec.realEstateVal || 0 }; showHistoryEditModalVisible.value = true; };
                 const calculateHistoryNetWorth = () => { const asset = (historyEditForm.value.twVal || 0) + (historyEditForm.value.twCash || 0) + ((historyEditForm.value.usVal || 0) + (historyEditForm.value.usCash || 0)) * exchangeRate.value + (historyEditForm.value.realestate || 0); const loan = historyEditForm.value.loan || 0; return asset - loan; };
                 const saveHistoryRecord = async () => { if (!user.value) return; const newNetWorth = calculateHistoryNetWorth(); await db.collection('users').doc(user.value.uid).collection('history').doc(historyEditForm.value.date).update({ twVal: historyEditForm.value.twVal, usVal: historyEditForm.value.usVal, twCash: historyEditForm.value.twCash, usCash: historyEditForm.value.usCash, loan: historyEditForm.value.loan, realestate: historyEditForm.value.realestate, totalVal: newNetWorth }); showHistoryEditModalVisible.value = false; await openHistoryModal(); drawChart(); };
-                const openLoanMgrModal = () => { showLoanMgrModal.value = true; loanForm.value = { id: null, name: '', balance: 0 }; };
-                const editLoanAccount = (l) => { loanForm.value = { ...l }; };
-                const saveLoanAccount = async () => { if (!user.value || !loanForm.value.name) return alert('請輸入名稱'); const data = { name: loanForm.value.name, balance: loanForm.value.balance || 0, currency: 'TWD' }; if (loanForm.value.id) await db.collection('users').doc(user.value.uid).collection('loans').doc(loanForm.value.id).update(data); else await db.collection('users').doc(user.value.uid).collection('loans').add(data); loanForm.value = { id: null, name: '', balance: 0 }; };
+                const openLoanMgrModal = () => { showLoanMgrModal.value = true; loanForm.value = { id: null, name: '', balance: 0, type: 'other', isInvestmentUse: false }; };
+                const editLoanAccount = (l) => { loanForm.value = { type: 'other', isInvestmentUse: false, ...l }; };
+                const saveLoanAccount = async () => { if (!user.value || !loanForm.value.name) return alert('請輸入名稱'); const data = { name: loanForm.value.name, balance: loanForm.value.balance || 0, currency: 'TWD', type: loanForm.value.type || 'other', isInvestmentUse: !!loanForm.value.isInvestmentUse }; if (loanForm.value.id) await db.collection('users').doc(user.value.uid).collection('loans').doc(loanForm.value.id).update(data); else await db.collection('users').doc(user.value.uid).collection('loans').add(data); loanForm.value = { id: null, name: '', balance: 0, type: 'other', isInvestmentUse: false }; };
                 const deleteLoanAccount = async (l) => { if (!confirm(`確定刪除 ${l.name}？(這不會影響已發生的交易紀錄)`)) return; await db.collection('users').doc(user.value.uid).collection('loans').doc(l.id).delete(); };
                 // Inline 新增帳戶（從到 Modal 內創建，建完自動選中）
                 const saveInlineLoanAccount = async () => {
                     if (!user.value || !inlineLoanName.value) return;
-                    const data = { name: inlineLoanName.value.trim(), balance: 0, currency: 'TWD' };
+                    const data = { name: inlineLoanName.value.trim(), balance: 0, currency: 'TWD', type: 'other', isInvestmentUse: false };
                     const docRef = await db.collection('users').doc(user.value.uid).collection('loans').add(data);
                     // 建完自動選中此帳戶
                     transForm.value.loanId = docRef.id;

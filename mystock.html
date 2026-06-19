@@ -2273,13 +2273,35 @@
                             class="text-gray-300 hover:text-white"><i class="fa-solid fa-times"></i></button>
                     </div>
                     <div class="p-6 space-y-4">
-                        <div class="space-y-2"><label class="block text-xs font-bold text-gray-500">帳戶名稱</label><input
-                                type="text" v-model="loanForm.name" class="zen-input" placeholder="例如: 股票質押"><label
-                                class="block text-xs font-bold text-gray-500 mt-2">目前餘額 (TWD)</label><input
-                                type="number" v-model.number="loanForm.balance" class="zen-input" placeholder="0">
-                            <p class="text-xs text-gray-400 mt-1">※ 直接修改餘額不會產生交易紀錄，適合期初設定或拆分帳戶使用。</p><button
-                                @click="saveLoanAccount"
-                                class="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition mt-2">儲存帳戶</button>
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold text-gray-500">帳戶名稱</label>
+                            <input type="text" v-model="loanForm.name" class="zen-input" placeholder="例如: 股票質押">
+                            
+                            <div class="grid grid-cols-2 gap-2 mt-2">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500">帳戶種類</label>
+                                    <select v-model="loanForm.type" class="zen-input mt-1">
+                                        <option value="other">其他 / 一般</option>
+                                        <option value="realestate">房屋貸款 / 增貸</option>
+                                        <option value="personal">個人信用貸款</option>
+                                        <option value="leverage">股票質押 / 融資</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500">目前餘額 (TWD)</label>
+                                    <input type="number" v-model.number="loanForm.balance" class="zen-input mt-1" placeholder="0">
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center gap-2 py-1 mt-2">
+                                <input type="checkbox" id="loanInvestmentUse" v-model="loanForm.isInvestmentUse" class="w-4 h-4 rounded text-purple-600 border-gray-300 focus:ring-purple-500">
+                                <label for="loanInvestmentUse" class="text-xs font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
+                                    資金用於投資 / 買股 (計算股票槓桿)
+                                </label>
+                            </div>
+                            
+                            <p class="text-[10px] text-gray-400 mt-1">※ 直接修改餘額不會產生交易紀錄，適合期初設定或拆分帳戶使用。</p>
+                            <button @click="saveLoanAccount" class="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition mt-2 font-medium">儲存帳戶</button>
                         </div>
                         <div class="border-t border-gray-100 dark:border-gray-700 pt-4">
                             <div class="text-xs text-gray-400 mb-2">現有帳戶列表</div>
@@ -2287,8 +2309,14 @@
                                 <div v-for="l in loanList" :key="l.id"
                                     class="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-2 rounded">
                                     <div>
-                                        <div class="text-sm dark:text-gray-200 font-bold">{{ l.name }}</div>
-                                        <div class="text-xs text-purple-600 dark:text-purple-300">{{
+                                        <div class="flex items-center gap-1.5 flex-wrap">
+                                            <span class="text-sm dark:text-gray-200 font-bold">{{ l.name }}</span>
+                                            <span v-if="l.type === 'realestate'" class="text-[9px] px-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded font-medium">房貸</span>
+                                            <span v-if="l.type === 'personal'" class="text-[9px] px-1 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 rounded font-medium">信貸</span>
+                                            <span v-if="l.type === 'leverage'" class="text-[9px] px-1 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 rounded font-medium">質押</span>
+                                            <span v-if="l.isInvestmentUse" class="text-[9px] px-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 rounded font-medium">投資用</span>
+                                        </div>
+                                        <div class="text-xs text-purple-600 dark:text-purple-300 mt-0.5">{{
                                             formatCurrency(l.balance, 'TWD') }}</div>
                                     </div>
                                     <div class="flex gap-2"><button @click="editLoanAccount(l)"

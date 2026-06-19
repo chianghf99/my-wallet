@@ -1,0 +1,9 @@
+.DS_Store
+js/.DS_Store
+js/store/.DS_Store
+Build_Bot_in_windows/
+esun_pypdf.txt
+esun_text.txt
+*_backup.html
+*backup*.html
+test_pdfjs.js

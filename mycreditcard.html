@@ -459,102 +459,110 @@
                                 </button>
                             </div>
                             
-                            <!-- Card Management -->
-                            <div class="md:col-span-2 glass p-8 rounded-3xl">
-                                <div class="flex items-center justify-between mb-8">
-                                    <h4 class="text-lg font-black text-slate-800 dark:text-white">卡片設定管理</h4>
-                                    <button @click="startAddCard" class="text-indigo-500 font-bold text-sm">+ 新增卡片</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card Management Page -->
+                    <div v-else-if="activePage === 'cards'" key="cards" class="space-y-8">
+                        <div class="flex items-center justify-between px-2">
+                            <h3 class="text-xl font-black text-slate-800 dark:text-white">卡片設定管理</h3>
+                            <button @click="startAddCard" class="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white font-black text-sm rounded-xl shadow-md transition-all active:scale-95">+ 新增卡片</button>
+                        </div>
+                        
+                        <!-- Card Editor Form -->
+                        <div v-if="showCardEditor" class="mb-8 p-6 rounded-3xl bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-200 dark:border-indigo-800">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-400 mb-1">銀行名稱</label>
+                                    <input type="text" v-model="cardForm.name" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
                                 </div>
-                                
-                                <!-- Card Editor Form -->
-                                <div v-if="showCardEditor" class="mb-8 p-6 rounded-3xl bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-200 dark:border-indigo-800">
-                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                                        <div>
-                                            <label class="block text-xs font-bold text-slate-400 mb-1">銀行名稱</label>
-                                            <input type="text" v-model="cardForm.name" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-400 mb-1">結帳日</label>
+                                    <input type="number" v-model="cardForm.day" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-400 mb-1">扣款帳戶</label>
+                                    <input type="text" v-model="cardForm.autopay" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-400 mb-1">信用卡卡號</label>
+                                    <input type="text" v-model="cardForm.number" placeholder="1234567812345678" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-400 mb-1">到期日 (MM/YY)</label>
+                                    <input type="text" v-model="cardForm.expiry" placeholder="12/29" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-400 mb-1">背面末三碼 (CVV)</label>
+                                    <input type="password" v-model="cardForm.cvv" placeholder="***" maxlength="4" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-400 mb-1">信用額度 (NT$)</label>
+                                    <input type="number" v-model="cardForm.limit" placeholder="例如: 150000" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="block text-xs font-bold text-slate-400 mb-1">帳單通訊地址</label>
+                                    <input type="text" v-model="cardForm.address" placeholder="請輸入信用卡對帳通訊地址" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
+                                </div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button @click="saveCard" class="flex-1 py-3 bg-indigo-500 text-white font-bold rounded-xl">{{ editingCardIndex !== null ? '更新' : '新增' }}</button>
+                                <button @click="showCardEditor = false" class="px-6 py-3 bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-300 font-bold rounded-xl">取消</button>
+                            </div>
+                        </div>
+                        
+                        <!-- 分組折疊卡片列表 -->
+                        <div class="space-y-6">
+                            <div v-for="group in groupedCards" :key="group.bank" class="border border-slate-100 dark:border-slate-800/80 rounded-2xl overflow-hidden bg-slate-50/30 dark:bg-slate-900/10">
+                                <!-- 銀行標題列 (點選切換折疊) -->
+                                <div @click="expandedBanks[group.bank] = !expandedBanks[group.bank]" 
+                                     class="flex items-center justify-between px-6 py-4 cursor-pointer hover:bg-slate-100/40 dark:hover:bg-slate-800/20 transition-all select-none border-b border-slate-100/50 dark:border-slate-800/30">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 rounded-full bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
+                                            <i class="fas fa-university text-sm"></i>
                                         </div>
                                         <div>
-                                            <label class="block text-xs font-bold text-slate-400 mb-1">結帳日</label>
-                                            <input type="number" v-model="cardForm.day" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
-                                        </div>
-                                        <div>
-                                            <label class="block text-xs font-bold text-slate-400 mb-1">扣款帳戶</label>
-                                            <input type="text" v-model="cardForm.autopay" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
-                                        </div>
-                                        <div>
-                                            <label class="block text-xs font-bold text-slate-400 mb-1">信用卡卡號</label>
-                                            <input type="text" v-model="cardForm.number" placeholder="1234567812345678" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
-                                        </div>
-                                        <div>
-                                            <label class="block text-xs font-bold text-slate-400 mb-1">到期日 (MM/YY)</label>
-                                            <input type="text" v-model="cardForm.expiry" placeholder="12/29" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
-                                        </div>
-                                        <div>
-                                            <label class="block text-xs font-bold text-slate-400 mb-1">背面末三碼 (CVV)</label>
-                                            <input type="password" v-model="cardForm.cvv" placeholder="***" maxlength="4" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
-                                        </div>
-                                        <div class="md:col-span-3">
-                                            <label class="block text-xs font-bold text-slate-400 mb-1">帳單通訊地址</label>
-                                            <input type="text" v-model="cardForm.address" placeholder="請輸入信用卡對帳通訊地址" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
+                                            <span class="font-black text-slate-800 dark:text-white">{{ group.bank }}</span>
+                                            <span class="text-xs text-slate-400 font-bold ml-2">({{ group.cards.length }} 張卡片)</span>
                                         </div>
                                     </div>
-                                    <div class="flex gap-2">
-                                        <button @click="saveCard" class="flex-1 py-3 bg-indigo-500 text-white font-bold rounded-xl">{{ editingCardIndex !== null ? '更新' : '新增' }}</button>
-                                        <button @click="showCardEditor = false" class="px-6 py-3 bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-300 font-bold rounded-xl">取消</button>
+                                    <div>
+                                        <i class="fas" :class="expandedBanks[group.bank] ? 'fa-chevron-up' : 'fa-chevron-down'" class="text-slate-400 text-sm transition-all duration-300"></i>
                                     </div>
                                 </div>
                                 
-                                <!-- 分組折疊卡片列表 -->
-                                <div class="space-y-6">
-                                    <div v-for="group in groupedCards" :key="group.bank" class="border border-slate-100 dark:border-slate-800/80 rounded-2xl overflow-hidden bg-slate-50/30 dark:bg-slate-900/10">
-                                        <!-- 銀行標題列 (點選切換折疊) -->
-                                        <div @click="expandedBanks[group.bank] = !expandedBanks[group.bank]" 
-                                             class="flex items-center justify-between px-6 py-4 cursor-pointer hover:bg-slate-100/40 dark:hover:bg-slate-800/20 transition-all select-none border-b border-slate-100/50 dark:border-slate-800/30">
-                                            <div class="flex items-center gap-3">
-                                                <div class="w-8 h-8 rounded-full bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
-                                                    <i class="fas fa-university text-sm"></i>
-                                                </div>
-                                                <div>
-                                                    <span class="font-black text-slate-800 dark:text-white">{{ group.bank }}</span>
-                                                    <span class="text-xs text-slate-400 font-bold ml-2">({{ group.cards.length }} 張卡片)</span>
-                                                </div>
-                                            </div>
+                                <!-- 該銀行底下的卡片清單 -->
+                                <div v-show="expandedBanks[group.bank]" class="p-6 bg-white/10 dark:bg-slate-950/5">
+                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        <div v-for="card in group.cards" :key="card.originalIndex" class="p-4 border border-slate-100 dark:border-slate-800 rounded-2xl flex flex-col justify-between bg-white dark:bg-slate-900/40 shadow-sm">
                                             <div>
-                                                <i class="fas" :class="expandedBanks[group.bank] ? 'fa-chevron-up' : 'fa-chevron-down'" class="text-slate-400 text-sm transition-all duration-300"></i>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- 該銀行底下的卡片清單 -->
-                                        <div v-show="expandedBanks[group.bank]" class="p-6 bg-white/10 dark:bg-slate-950/5">
-                                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                                <div v-for="card in group.cards" :key="card.originalIndex" class="p-4 border border-slate-100 dark:border-slate-800 rounded-2xl flex flex-col justify-between bg-white dark:bg-slate-900/40 shadow-sm">
+                                                <div class="flex items-center justify-between">
                                                     <div>
-                                                        <div class="flex items-center justify-between">
-                                                            <div>
-                                                                <div class="font-black text-slate-700 dark:text-slate-200">{{ card.displayName }}</div>
-                                                                <div class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{{ card.day }}號 結帳</div>
-                                                                <div v-if="card.autopayFrom" class="text-[10px] text-indigo-400 font-bold mt-1 tracking-tighter italic">🏦 {{ card.autopayFrom }}</div>
-                                                            </div>
-                                                            <div class="flex gap-1">
-                                                                <!-- 眼睛圖示，用來展開明文資訊 -->
-                                                                <button @click="card._show = !card._show" class="w-8 h-8 rounded-lg hover:bg-indigo-50 text-indigo-500 flex items-center justify-center transition-all">
-                                                                    <i :class="card._show ? 'fas fa-eye-slash' : 'fas fa-eye'" class="text-xs"></i>
-                                                                </button>
-                                                                <button @click="editCard(card.originalIndex)" class="w-8 h-8 rounded-lg hover:bg-amber-50 text-amber-500 flex items-center justify-center transition-all"><i class="fas fa-edit text-xs"></i></button>
-                                                                <button @click="deleteCard(card.originalIndex)" class="w-8 h-8 rounded-lg hover:bg-rose-50 text-rose-500 flex items-center justify-center transition-all"><i class="fas fa-trash text-xs"></i></button>
-                                                            </div>
-                                                        </div>
-                                                        <!-- 安全敏感欄位展開區 -->
-                                                        <div v-if="card._show" class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/50 text-xs text-slate-500 dark:text-slate-400 space-y-1">
-                                                            <div>卡號：<span class="font-mono">{{ card.enc_number ? decryptField(card.enc_number, getPinKey()) : '無' }}</span></div>
-                                                            <div>到期日：<span class="font-mono">{{ card.enc_expiry ? decryptField(card.enc_expiry, getPinKey()) : '無' }}</span></div>
-                                                            <div>背面末三碼：<span class="font-mono">{{ card.enc_cvv ? decryptField(card.enc_cvv, getPinKey()) : '無' }}</span></div>
-                                                            <div class="break-all">地址：<span>{{ card.enc_address ? decryptField(card.enc_address, getPinKey()) : '無' }}</span></div>
-                                                        </div>
-                                                        <div v-else class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/50 text-xs text-slate-400 space-y-1">
-                                                            <div>卡號：<span class="font-mono">{{ card.last4 ? '**** **** **** ' + card.last4 : '無記錄' }}</span></div>
-                                                        </div>
+                                                        <div class="font-black text-slate-700 dark:text-slate-200">{{ card.displayName }}</div>
+                                                        <div class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{{ card.day }}號 結帳</div>
+                                                        <div v-if="card.autopayFrom" class="text-[10px] text-indigo-400 font-bold mt-1 tracking-tighter italic">🏦 {{ card.autopayFrom }}</div>
+                                                        <div v-if="card.limit" class="text-[10px] text-emerald-500 font-bold mt-1 tracking-tighter">💳 額度: NT$ {{ Number(card.limit).toLocaleString() }}</div>
                                                     </div>
+                                                    <div class="flex gap-1">
+                                                        <!-- 眼睛圖示，用來展開明文資訊 -->
+                                                        <button @click="card._show = !card._show" class="w-8 h-8 rounded-lg hover:bg-indigo-50 text-indigo-500 flex items-center justify-center transition-all">
+                                                            <i :class="card._show ? 'fas fa-eye-slash' : 'fas fa-eye'" class="text-xs"></i>
+                                                        </button>
+                                                        <button @click="editCard(card.originalIndex)" class="w-8 h-8 rounded-lg hover:bg-amber-50 text-amber-500 flex items-center justify-center transition-all"><i class="fas fa-edit text-xs"></i></button>
+                                                        <button @click="deleteCard(card.originalIndex)" class="w-8 h-8 rounded-lg hover:bg-rose-50 text-rose-500 flex items-center justify-center transition-all"><i class="fas fa-trash text-xs"></i></button>
+                                                    </div>
+                                                </div>
+                                                <!-- 安全敏感欄位展開區 -->
+                                                <div v-if="card._show" class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/50 text-xs text-slate-500 dark:text-slate-400 space-y-1">
+                                                    <div>卡號：<span class="font-mono">{{ card.enc_number ? decryptField(card.enc_number, getPinKey()) : '無' }}</span></div>
+                                                    <div>到期日：<span class="font-mono">{{ card.enc_expiry ? decryptField(card.enc_expiry, getPinKey()) : '無' }}</span></div>
+                                                    <div>背面末三碼：<span class="font-mono">{{ card.enc_cvv ? decryptField(card.enc_cvv, getPinKey()) : '無' }}</span></div>
+                                                    <div v-if="card.limit" class="text-emerald-500 font-bold">信用額度：NT$ {{ Number(card.limit).toLocaleString() }}</div>
+                                                    <div class="break-all">地址：<span>{{ card.enc_address ? decryptField(card.enc_address, getPinKey()) : '無' }}</span></div>
+                                                </div>
+                                                <div v-else class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/50 text-xs text-slate-400 space-y-1">
+                                                    <div>卡號：<span class="font-mono">{{ card.last4 ? '**** **** **** ' + card.last4 : '無記錄' }}</span></div>
                                                 </div>
                                             </div>
                                         </div>
@@ -689,7 +697,7 @@ createApp({
         
         const billForm = reactive({ name: '', amount: '', date: '' });
         const editingBillId = ref(null);
-        const cardForm = reactive({ name: '', day: '', autopay: '', number: '', expiry: '', cvv: '', address: '' });
+        const cardForm = reactive({ name: '', day: '', autopay: '', number: '', expiry: '', cvv: '', address: '', limit: '' });
         const editingCardIndex = ref(null);
         
         const pdfFile = ref(null);
@@ -706,10 +714,12 @@ createApp({
             { id: 'dashboard', label: '待繳帳單', shortLabel: '待繳', icon: 'fas fa-wallet' },
             { id: 'history', label: '歷史紀錄', shortLabel: '歷史', icon: 'fas fa-history' },
             { id: 'analysis', label: '統計分析', shortLabel: '分析', icon: 'fas fa-chart-pie' },
+            { id: 'cards', label: '卡片管理', shortLabel: '卡片', icon: 'fas fa-credit-card' },
             { id: 'settings', label: '系統設定', shortLabel: '設定', icon: 'fas fa-cog' },
         ];
 
         const changelog = [
+            { version: 'v4.3.0', date: '2026-06-20', items: ['卡片管理獨立為專屬功能分頁，與系統設定完全分離', '引入 CryptoJS AES 加密保護信用卡敏感資訊（卡號、到期日、CVV、地址）', '信用卡列表升級為「按銀行智慧分組折疊」結構', '新增信用卡「信用額度」記錄欄位，支援格式化數值展示'] },
             { version: 'v4.2.0', date: '2024-05-09', items: ['補全 10 家銀行解析規則（與 Python v3.13 同步）', '修正深色模式下輸入框文字顏色', '優化統計圖表自動載入邏輯', '修正歷史紀錄與新增項目彈窗之文字可視性'] },
             { version: 'v4.1.0', date: '2024-05-06', items: ['優化深色模式對比度', '修正統計圖表載入邏輯', '新增首頁跳轉按鈕', '調整介面風格與投資儀表板一致'] },
             { version: 'v4.0.0', date: '2024-05-05', items: ['全面重構為 Vue 3 + Tailwind', '強化 Firebase 雲端同步系統', '導入 Glassmorphism 設計語彙', '新增離線 PDF 解析引擎'] }
@@ -1011,6 +1021,7 @@ createApp({
             cardForm.expiry = '';
             cardForm.cvv = '';
             cardForm.address = '';
+            cardForm.limit = '';
             showCardEditor.value = true; 
         };
         
@@ -1024,6 +1035,7 @@ createApp({
             cardForm.expiry = c.enc_expiry ? decryptField(c.enc_expiry, pin) : '';
             cardForm.cvv = c.enc_cvv ? decryptField(c.enc_cvv, pin) : '';
             cardForm.address = c.enc_address ? decryptField(c.enc_address, pin) : '';
+            cardForm.limit = c.limit || '';
             editingCardIndex.value = i; 
             showCardEditor.value = true;
         };
@@ -1039,6 +1051,7 @@ createApp({
                 name: cardForm.name, 
                 day: parseInt(cardForm.day), 
                 autopayFrom: cardForm.autopay,
+                limit: cardForm.limit ? parseInt(cardForm.limit) : '',
                 enc_number: encryptField(cardForm.number, pin),
                 enc_expiry: encryptField(cardForm.expiry, pin),
                 enc_cvv: encryptField(cardForm.cvv, pin),

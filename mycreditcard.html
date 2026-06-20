@@ -10,6 +10,7 @@
     <!-- Dependencies -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -480,6 +481,22 @@
                                             <label class="block text-xs font-bold text-slate-400 mb-1">扣款帳戶</label>
                                             <input type="text" v-model="cardForm.autopay" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
                                         </div>
+                                        <div>
+                                            <label class="block text-xs font-bold text-slate-400 mb-1">信用卡卡號</label>
+                                            <input type="text" v-model="cardForm.number" placeholder="1234567812345678" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-bold text-slate-400 mb-1">到期日 (MM/YY)</label>
+                                            <input type="text" v-model="cardForm.expiry" placeholder="12/29" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-bold text-slate-400 mb-1">背面末三碼 (CVV)</label>
+                                            <input type="password" v-model="cardForm.cvv" placeholder="***" maxlength="4" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
+                                        </div>
+                                        <div class="md:col-span-3">
+                                            <label class="block text-xs font-bold text-slate-400 mb-1">帳單通訊地址</label>
+                                            <input type="text" v-model="cardForm.address" placeholder="請輸入信用卡對帳通訊地址" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
+                                        </div>
                                     </div>
                                     <div class="flex gap-2">
                                         <button @click="saveCard" class="flex-1 py-3 bg-indigo-500 text-white font-bold rounded-xl">{{ editingCardIndex !== null ? '更新' : '新增' }}</button>
@@ -488,15 +505,33 @@
                                 </div>
                                 
                                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    <div v-for="(card, i) in cards" :key="i" class="p-4 border border-slate-100 dark:border-slate-800 rounded-2xl flex items-center justify-between">
+                                    <div v-for="(card, i) in cards" :key="i" class="p-4 border border-slate-100 dark:border-slate-800 rounded-2xl flex flex-col justify-between">
                                         <div>
-                                            <div class="font-black text-slate-700 dark:text-slate-200">{{ card.name }}</div>
-                                            <div class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{{ card.day }}號 結帳</div>
-                                            <div v-if="card.autopayFrom" class="text-[10px] text-indigo-400 font-bold mt-1 tracking-tighter italic">🏦 {{ card.autopayFrom }}</div>
-                                        </div>
-                                        <div class="flex gap-1">
-                                            <button @click="editCard(i)" class="w-8 h-8 rounded-lg hover:bg-amber-50 text-amber-500 flex items-center justify-center transition-all"><i class="fas fa-edit text-xs"></i></button>
-                                            <button @click="deleteCard(i)" class="w-8 h-8 rounded-lg hover:bg-rose-50 text-rose-500 flex items-center justify-center transition-all"><i class="fas fa-trash text-xs"></i></button>
+                                            <div class="flex items-center justify-between">
+                                                <div>
+                                                    <div class="font-black text-slate-700 dark:text-slate-200">{{ card.name }}</div>
+                                                    <div class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{{ card.day }}號 結帳</div>
+                                                    <div v-if="card.autopayFrom" class="text-[10px] text-indigo-400 font-bold mt-1 tracking-tighter italic">🏦 {{ card.autopayFrom }}</div>
+                                                </div>
+                                                <div class="flex gap-1">
+                                                    <!-- 眼睛圖示，用來展開明文資訊 -->
+                                                    <button @click="card._show = !card._show" class="w-8 h-8 rounded-lg hover:bg-indigo-50 text-indigo-500 flex items-center justify-center transition-all">
+                                                        <i :class="card._show ? 'fas fa-eye-slash' : 'fas fa-eye'" class="text-xs"></i>
+                                                    </button>
+                                                    <button @click="editCard(i)" class="w-8 h-8 rounded-lg hover:bg-amber-50 text-amber-500 flex items-center justify-center transition-all"><i class="fas fa-edit text-xs"></i></button>
+                                                    <button @click="deleteCard(i)" class="w-8 h-8 rounded-lg hover:bg-rose-50 text-rose-500 flex items-center justify-center transition-all"><i class="fas fa-trash text-xs"></i></button>
+                                                </div>
+                                            </div>
+                                            <!-- 安全敏感欄位展開區 -->
+                                            <div v-if="card._show" class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/50 text-xs text-slate-500 dark:text-slate-400 space-y-1">
+                                                <div>卡號：<span class="font-mono">{{ card.enc_number ? decryptField(card.enc_number, getPinKey()) : '無' }}</span></div>
+                                                <div>到期日：<span class="font-mono">{{ card.enc_expiry ? decryptField(card.enc_expiry, getPinKey()) : '無' }}</span></div>
+                                                <div>背面末三碼：<span class="font-mono">{{ card.enc_cvv ? decryptField(card.enc_cvv, getPinKey()) : '無' }}</span></div>
+                                                <div class="break-all">地址：<span>{{ card.enc_address ? decryptField(card.enc_address, getPinKey()) : '無' }}</span></div>
+                                            </div>
+                                            <div v-else class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/50 text-xs text-slate-400 space-y-1">
+                                                <div>卡號：<span class="font-mono">{{ card.last4 ? '**** **** **** ' + card.last4 : '無記錄' }}</span></div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -629,7 +664,7 @@ createApp({
         
         const billForm = reactive({ name: '', amount: '', date: '' });
         const editingBillId = ref(null);
-        const cardForm = reactive({ name: '', day: '', autopay: '' });
+        const cardForm = reactive({ name: '', day: '', autopay: '', number: '', expiry: '', cvv: '', address: '' });
         const editingCardIndex = ref(null);
         
         const pdfFile = ref(null);
@@ -872,19 +907,75 @@ createApp({
         };
 
         // Cards
-        const startAddCard = () => { editingCardIndex.value = null; cardForm.name = ''; cardForm.day = ''; cardForm.autopay = ''; showCardEditor.value = true; };
+        const encryptField = (text, key) => {
+            if (!text || !key) return '';
+            return CryptoJS.AES.encrypt(text, key).toString();
+        };
+
+        const decryptField = (ciphertext, key) => {
+            if (!ciphertext || !key) return '';
+            try {
+                const bytes = CryptoJS.AES.decrypt(ciphertext, key);
+                return bytes.toString(CryptoJS.enc.Utf8);
+            } catch (e) {
+                return '解密失敗';
+            }
+        };
+
+        const getPinKey = () => localStorage.getItem('app_pin') || '';
+
+        const startAddCard = () => { 
+            editingCardIndex.value = null; 
+            cardForm.name = ''; 
+            cardForm.day = ''; 
+            cardForm.autopay = ''; 
+            cardForm.number = '';
+            cardForm.expiry = '';
+            cardForm.cvv = '';
+            cardForm.address = '';
+            showCardEditor.value = true; 
+        };
+        
         const editCard = (i) => {
             const c = cards.value[i];
-            cardForm.name = c.name; cardForm.day = c.day; cardForm.autopay = c.autopayFrom || '';
-            editingCardIndex.value = i; showCardEditor.value = true;
+            const pin = getPinKey();
+            cardForm.name = c.name; 
+            cardForm.day = c.day; 
+            cardForm.autopay = c.autopayFrom || '';
+            cardForm.number = c.enc_number ? decryptField(c.enc_number, pin) : '';
+            cardForm.expiry = c.enc_expiry ? decryptField(c.enc_expiry, pin) : '';
+            cardForm.cvv = c.enc_cvv ? decryptField(c.enc_cvv, pin) : '';
+            cardForm.address = c.enc_address ? decryptField(c.enc_address, pin) : '';
+            editingCardIndex.value = i; 
+            showCardEditor.value = true;
         };
+        
         const saveCard = () => {
-            const c = { name: cardForm.name, day: parseInt(cardForm.day), autopayFrom: cardForm.autopay };
+            const pin = getPinKey();
+            if (!pin && (cardForm.number || cardForm.expiry || cardForm.cvv || cardForm.address)) {
+                alert('請先在設定中啟用 PIN 碼鎖定，系統需要 PIN 密鑰來加密敏感資訊。');
+                return;
+            }
+            
+            const c = { 
+                name: cardForm.name, 
+                day: parseInt(cardForm.day), 
+                autopayFrom: cardForm.autopay,
+                enc_number: encryptField(cardForm.number, pin),
+                enc_expiry: encryptField(cardForm.expiry, pin),
+                enc_cvv: encryptField(cardForm.cvv, pin),
+                enc_address: encryptField(cardForm.address, pin),
+                last4: cardForm.number ? cardForm.number.slice(-4) : ''
+            };
+            
             if(editingCardIndex.value !== null) cards.value[editingCardIndex.value] = c;
             else cards.value.push(c);
-            saveLocal(); showCardEditor.value = false;
+            
+            saveLocal(); 
+            showCardEditor.value = false;
             if(user.value) triggerSync('upload', true);
         };
+        
         const deleteCard = (i) => { if(confirm('刪除卡片設定？')) { cards.value.splice(i, 1); saveLocal(); if(user.value) triggerSync('upload', true); } };
 
         // Helper
@@ -1249,7 +1340,7 @@ createApp({
             loginGoogle, logout, triggerSync, pressKey, setPin, newPin, toggleTheme, togglePrivacy,
             submitBill, markAsPaid, editBill, deleteBill, startAddCard, editCard, saveCard, deleteCard,
             formatDate, getBillIcon, getBillStatusClass, getCardAutopay, getUrgencyBar, formatMonthLabel, setAnalysisPeriod,
-            onFileChange, parsePDF, exportToExcel
+            onFileChange, parsePDF, exportToExcel, decryptField, getPinKey
         };
     }
 }).mount('#app');

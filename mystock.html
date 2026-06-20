@@ -396,23 +396,7 @@
                                     formatCurrency(grandTotalAssets, 'TWD') }}</span>
                                 <span v-else class="text-gray-300 dark:text-gray-600">****</span>
                             </div>
-                            <!-- v4.4.0: 槓桿比 -->
-                            <div class="flex justify-between text-sm items-center" v-if="totalLoanBalance > 0">
-                                <div class="text-gray-500 dark:text-gray-400 group relative cursor-help">
-                                    槓桿比 (Leverage) <i class="fa-regular fa-circle-question ml-0.5 text-xs"></i>
-                                    <div class="absolute bottom-full left-0 mb-2 hidden group-hover:block bg-gray-800 text-white text-xs p-3 rounded whitespace-nowrap z-10 shadow-lg leading-relaxed border border-gray-600">
-                                        <div class="font-bold text-yellow-400 mb-1">&#x69d3;桿比 = 總資產 / 淨資產</div>
-                                        <div>總資產 (Gross): {{ formatCurrency(grandTotalAssets, 'TWD') }}</div>
-                                        <div>淨資產 (Net): {{ formatCurrency(grandTotalValue, 'TWD') }}</div>
-                                        <div>負債: {{ formatCurrency(totalLoanBalance, 'TWD') }}</div>
-                                    </div>
-                                </div>
-                                <span v-if="showPrivacy" class="font-bold text-sm"
-                                    :class="leverageRatio >= 2.5 ? 'text-red-500 dark:text-red-400' : leverageRatio >= 1.5 ? 'text-orange-500 dark:text-orange-400' : 'text-gray-700 dark:text-gray-200'">
-                                    {{ leverageRatio.toFixed(2) }}x
-                                </span>
-                                <span v-else class="text-gray-300 dark:text-gray-600">****</span>
-                            </div>
+
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-500 dark:text-gray-400">總未實現損益</span>
                                 <span v-if="showPrivacy" :class="getPnlClass(grandTotalPnL)">

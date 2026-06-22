@@ -872,6 +872,7 @@ createApp({
         ];
 
         const changelog = [
+            { version: 'v5.2.0', date: '2026-06-22', items: ['新增相同銀行信用卡自動帶入功能，若新增同銀行第二張卡時會自動帶入結帳日、繳費日、扣款帳戶與帳單地址，省去重複輸入的繁瑣步驟'] },
             { version: 'v5.1.0', date: '2026-06-22', items: ['重新加入並大幅優化信用卡「出帳自動提醒」功能，支援動態推估出帳日期與一鍵「此期無帳單」略過機制'] },
             { version: 'v5.0.0', date: '2026-06-22', items: ['信用卡編輯重構為 Modal 彈窗呈現，優化流暢度', '導入台灣主要銀行 datalist 搜尋下拉選單，修正銀行名稱判定縮寫之 bug', '安全鎖密碼解鎖支援實體鍵盤操作（數字鍵、Backspace、Esc）', '擴充信用卡欄位：卡片暱稱、繳費截止日、發卡組織、電子票證功能', '重構卡片與帳單關聯（cardId），新增帳單支援關聯卡片、自動帶入名稱與根據 dueDay 自動推估下個截止日，並支援 PDF 智慧自動配對卡片'] },
             { version: 'v4.3.0', date: '2026-06-20', items: ['卡片管理獨立為專屬功能分頁，與系統設定完全分離', '引入 CryptoJS AES 加密保護信用卡敏感資訊（卡號、到期日、CVV、地址）', '信用卡列表升級為「按銀行智慧分組折疊」結構', '新增信用卡「信用額度」記錄欄位，支援格式化數值展示'] },
@@ -1810,6 +1811,31 @@ createApp({
                 nextTick(() => renderCharts());
             }
         }, { deep: true });
+
+        watch(() => cardForm.name, (newName) => {
+            if (editingCardIndex.value !== null) return;
+            if (!newName || newName.trim().length < 2) return;
+            
+            const cleanNew = newName.replace(/銀行|商銀/g, '').trim();
+            const matchedCard = cards.value.find(c => {
+                const cleanC = c.name.replace(/銀行|商銀/g, '').trim();
+                return cleanNew && cleanC && (cleanNew.includes(cleanC) || cleanC.includes(cleanNew));
+            });
+            
+            if (matchedCard) {
+                cardForm.day = cardForm.day || matchedCard.day || '';
+                cardForm.dueDay = cardForm.dueDay || matchedCard.dueDay || '';
+                cardForm.autopay = cardForm.autopay || matchedCard.autopayFrom || '';
+                cardForm.org = cardForm.org || matchedCard.org || '';
+                
+                if (!cardForm.address && matchedCard.enc_address) {
+                    const pin = getPinKey();
+                    if (pin) {
+                        cardForm.address = decryptField(matchedCard.enc_address, pin);
+                    }
+                }
+            }
+        });
 
         return {
             isLocked, pinBuffer, isLoading, loadingText, user, activePage, theme, isPrivacyOn, syncStatus, bills, cards,

@@ -146,11 +146,60 @@
             
             <div class="mt-auto">
                 <div class="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-between">
-                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400">VERSION 4.2.0</span>
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400">VERSION {{ changelog[0]?.version || 'v5.2.0' }}</span>
                     <button @click="showChangelog = true" class="text-xs text-indigo-500 font-bold hover:underline">更新日誌</button>
                 </div>
             </div>
         </aside>
+
+        <!-- Mobile Header -->
+        <header class="lg:hidden sticky top-0 left-0 right-0 glass border-b border-slate-200 dark:border-slate-800 z-[90] px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3 cursor-pointer" @click="activePage = 'dashboard'">
+                <div class="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                    <i class="fas fa-wallet text-white text-base"></i>
+                </div>
+                <h1 class="text-lg font-black text-slate-800 dark:text-white tracking-tight">卡片管家</h1>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <a href="https://chianghf99.github.io/my-wallet/" class="w-8 h-8 rounded-lg glass flex items-center justify-center text-slate-400 hover:text-indigo-500 transition-colors" title="回到主頁">
+                    <i class="fas fa-home"></i>
+                </a>
+                <button @click="showMobileMenu = true" class="w-8 h-8 rounded-lg glass flex items-center justify-center text-slate-500 dark:text-slate-300">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Mobile Menu Drawer -->
+        <div v-if="showMobileMenu" class="lg:hidden fixed inset-0 z-[1000] overflow-hidden" @click="showMobileMenu = false">
+            <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300"></div>
+            <div class="absolute right-0 top-0 bottom-0 w-64 glass border-l border-slate-200 dark:border-slate-800 p-6 flex flex-col z-10 animate-in slide-in-from-right duration-300" @click.stop>
+                <div class="flex justify-between items-center mb-8">
+                    <span class="font-black text-slate-800 dark:text-white">選單</span>
+                    <button @click="showMobileMenu = false" class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <nav class="flex-1 space-y-2">
+                    <button v-for="item in navItems" :key="item.id" 
+                            @click="activePage = item.id; showMobileMenu = false"
+                            class="w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all font-bold text-left"
+                            :class="activePage === item.id ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-500 dark:text-slate-400 hover:bg-indigo-50 dark:hover:bg-slate-800/50 hover:text-indigo-500'">
+                        <i :class="item.icon" class="text-lg"></i>
+                        {{ item.label }}
+                    </button>
+                </nav>
+                
+                <div class="mt-auto">
+                    <div class="p-4 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-between">
+                        <span class="text-xs font-bold text-slate-500 dark:text-slate-400">VERSION {{ changelog[0]?.version || 'v5.2.0' }}</span>
+                        <button @click="showChangelog = true; showMobileMenu = false" class="text-xs text-indigo-500 font-bold hover:underline">更新日誌</button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- Main Wrapper -->
         <main class="flex-1 overflow-x-hidden relative">
@@ -213,20 +262,31 @@
                             </button>
                         </div>
                         
-                        <!-- Statement Closing Alerts -->
-                        <div v-if="statementAlerts.length > 0" class="space-y-3 px-2">
-                            <div v-for="alert in statementAlerts" :key="alert.cardId" 
-                                 class="p-4 rounded-3xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 flex justify-between items-center text-amber-800 dark:text-amber-300">
-                                <div class="flex items-center gap-3">
-                                    <i class="fas fa-bell text-amber-500 text-lg"></i>
-                                    <div>
-                                        <div class="font-black text-sm">{{ alert.cardName }}{{ alert.nickname ? ` (${alert.nickname})` : '' }} 應已出帳</div>
-                                        <div class="text-xs opacity-75">結帳日：{{ alert.day }} 號 (最新出帳估計：{{ alert.stmtDateString }})，尚未收到帳單。</div>
+                        <!-- Statement Closing Alerts (Grouped by Bank) -->
+                        <div v-if="groupedStatementAlerts.length > 0" class="space-y-3 px-2">
+                            <div v-for="group in groupedStatementAlerts" :key="group.bankName" 
+                                 class="p-5 rounded-3xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 space-y-4">
+                                <div class="flex items-center gap-3 text-amber-800 dark:text-amber-300">
+                                    <i class="fas fa-university text-amber-500 text-lg"></i>
+                                    <span class="font-black text-base">{{ group.bankName }} 帳單出帳提醒</span>
+                                </div>
+                                <div class="space-y-3">
+                                    <div v-for="alert in group.alerts" :key="alert.cardId" 
+                                         class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-amber-500/5 dark:bg-amber-500/10 border border-amber-200/40 dark:border-amber-900/30">
+                                        <div class="text-amber-800 dark:text-amber-300">
+                                            <div class="font-bold text-sm">{{ alert.cardName }}{{ alert.nickname ? ` (${alert.nickname})` : '' }}</div>
+                                            <div class="text-xs opacity-75 mt-0.5">結帳日：{{ alert.day }} 號 (估計：{{ alert.stmtDateString }})</div>
+                                        </div>
+                                        <div class="flex gap-2 self-end sm:self-center">
+                                            <button @click="quickAddBillForCard(alert)" class="px-3 py-1.5 bg-indigo-500 text-white font-black text-xs rounded-xl hover:bg-indigo-600 active:scale-95 transition-all flex items-center gap-1 shadow-sm">
+                                                <i class="fas fa-plus"></i>新增帳單
+                                            </button>
+                                            <button @click="skipCardStatement(alert)" class="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 font-black text-xs rounded-xl active:scale-95 transition-all">
+                                                此期無帳單
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                                <button @click="skipCardStatement(alert)" class="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 font-black text-xs rounded-xl transition-all">
-                                    此期無帳單
-                                </button>
                             </div>
                         </div>
 
@@ -621,16 +681,6 @@
                 </transition>
             </div>
 
-            <!-- Mobile Navbar -->
-            <nav class="lg:hidden fixed bottom-0 left-0 right-0 glass border-t border-slate-200 dark:border-slate-800 z-[100] px-4 flex justify-around safe-bottom">
-                <button v-for="item in navItems" :key="item.id" 
-                        @click="activePage = item.id"
-                        class="flex flex-col items-center py-4 transition-all"
-                        :class="activePage === item.id ? 'text-indigo-500 -translate-y-1' : 'text-slate-400'">
-                    <i :class="item.icon" class="text-xl mb-1"></i>
-                    <span class="text-[10px] font-black uppercase tracking-widest">{{ item.shortLabel || item.label }}</span>
-                </button>
-            </nav>
         </main>
     </div>
 
@@ -655,18 +705,10 @@
             
             <form @submit.prevent="submitBill" class="space-y-4">
                 <div>
-                    <label class="block text-xs font-black text-slate-400 uppercase mb-1 ml-2">關聯信用卡</label>
-                    <select v-model="billForm.cardId" @change="onBillCardChange" class="w-full glass px-5 py-4 rounded-2xl outline-none font-bold dark:text-white dark:bg-slate-800">
-                        <option value="">-- 手動輸入 / 非信用卡 --</option>
-                        <option v-for="card in cards" :key="card.id" :value="card.id">
-                            {{ card.name }}{{ card.nickname ? ` (${card.nickname})` : '' }} (末碼: {{ card.last4 || '無' }})
-                        </option>
-                    </select>
-                </div>
-                <div v-if="!billForm.cardId">
-                    <label class="block text-xs font-black text-slate-400 uppercase mb-1 ml-2">帳單項目名稱</label>
-                    <input type="text" v-model="billForm.name" required list="bankList" placeholder="選擇或輸入銀行名稱" class="w-full glass px-5 py-4 rounded-2xl outline-none font-bold dark:text-white">
-                    <datalist id="bankList">
+                    <label class="block text-xs font-black text-slate-400 uppercase mb-1 ml-2">帳單項目名稱 / 搜尋已儲存卡片</label>
+                    <input type="text" v-model="billForm.name" @input="onBillNameInput" required list="billCards" placeholder="選擇信用卡或輸入帳單名稱" class="w-full glass px-5 py-4 rounded-2xl outline-none font-bold dark:text-white">
+                    <datalist id="billCards">
+                        <option v-for="card in cards" :key="card.id" :value="card.name + (card.nickname ? ' (' + card.nickname + ')' : '')"></option>
                         <option v-for="bank in uniqueBanks" :key="bank" :value="bank"></option>
                         <option value="星展信用卡"></option>
                         <option value="富邦信用卡"></option>
@@ -675,6 +717,10 @@
                         <option value="國泰信用卡"></option>
                         <option value="新光信用卡"></option>
                     </datalist>
+                    <div v-if="associatedCard" class="mt-2 flex items-center gap-1.5 text-xs text-indigo-500 dark:text-indigo-400 font-bold ml-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                        <i class="fas fa-link"></i>
+                        <span>已關聯信用卡：{{ associatedCard.name }}{{ associatedCard.nickname ? ` (${associatedCard.nickname})` : '' }}</span>
+                    </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
@@ -847,6 +893,7 @@ createApp({
         const showAddModal = ref(false);
         const showChangelog = ref(false);
         const showCardEditor = ref(false);
+        const showMobileMenu = ref(false);
         
         const billForm = reactive({ name: '', amount: '', date: '', cardId: '' });
         const editingBillId = ref(null);
@@ -904,7 +951,8 @@ createApp({
                 }
                 
                 const hasBill = bills.value.some(b => {
-                    const isLinked = b.cardId === card.id || b.name.includes(card.name) || (card.nickname && b.name.includes(card.nickname));
+                    const isLinked = b.cardId === card.id || 
+                                     (getBankKeyword(b.name) && getBankKeyword(b.name) === getBankKeyword(card.name));
                     if (!isLinked) return false;
                     if (!b.date || b.date === '未知日期') return false;
                     const billDate = new Date(b.date);
@@ -922,6 +970,24 @@ createApp({
                 }
             });
             return alerts;
+        });
+
+        const groupedStatementAlerts = computed(() => {
+            const list = statementAlerts.value;
+            if (list.length === 0) return [];
+            
+            const groups = {};
+            list.forEach(alert => {
+                const bank = getBankKeyword(alert.cardName) || "其他銀行";
+                if (!groups[bank]) {
+                    groups[bank] = {
+                        bankName: bank,
+                        alerts: []
+                    };
+                }
+                groups[bank].alerts.push(alert);
+            });
+            return Object.values(groups);
         });
 
         const filteredHistory = computed(() => {
@@ -1185,35 +1251,72 @@ createApp({
             }
         };
 
-        // Bills
         const startAddBill = () => {
             resetBillForm();
             showAddModal.value = true;
         };
 
-        const onBillCardChange = () => {
-            if (billForm.cardId) {
-                const c = cards.value.find(card => card.id === billForm.cardId);
-                if (c) {
-                    billForm.name = c.name + (c.nickname ? ` (${c.nickname})` : '');
-                    
-                    // Auto-推算下個截止日 (基於 dueDay)
-                    if (c.dueDay) {
-                        const now = new Date();
-                        let year = now.getFullYear();
-                        let month = now.getMonth(); // 0-11
-                        
-                        if (now.getDate() > c.dueDay) {
-                            month++;
-                            if (month > 11) {
-                                month = 0;
-                                year++;
-                            }
+        const quickAddBillForCard = (alertObj) => {
+            resetBillForm();
+            billForm.cardId = alertObj.cardId;
+            const card = cards.value.find(c => c.id === alertObj.cardId);
+            if (card) {
+                billForm.name = card.name;
+                if (card.dueDay) {
+                    const now = new Date();
+                    let year = now.getFullYear();
+                    let month = now.getMonth();
+                    if (now.getDate() > card.dueDay) {
+                        month++;
+                        if (month > 11) {
+                            month = 0;
+                            year++;
                         }
-                        const dueString = `${year}-${String(month + 1).padStart(2, '0')}-${String(c.dueDay).padStart(2, '0')}`;
-                        billForm.date = dueString;
                     }
+                    billForm.date = `${year}-${String(month + 1).padStart(2, '0')}-${String(card.dueDay).padStart(2, '0')}`;
                 }
+            }
+            showAddModal.value = true;
+        };
+
+        const associatedCard = computed(() => {
+            if (!billForm.cardId) return null;
+            return cards.value.find(c => c.id === billForm.cardId);
+        });
+
+        const onBillNameInput = () => {
+            const val = billForm.name.trim();
+            if (!val) {
+                billForm.cardId = '';
+                return;
+            }
+            
+            // 尋找完全匹配的卡片
+            const matched = cards.value.find(c => {
+                const formatName = c.name + (c.nickname ? ` (${c.nickname})` : '');
+                return val === formatName || val === c.name || (c.nickname && val === c.nickname);
+            });
+            
+            if (matched) {
+                billForm.cardId = matched.id;
+                // Auto-推算下個截止日 (基於 dueDay)
+                if (matched.dueDay) {
+                    const now = new Date();
+                    let year = now.getFullYear();
+                    let month = now.getMonth(); // 0-11
+                    
+                    if (now.getDate() > matched.dueDay) {
+                        month++;
+                        if (month > 11) {
+                            month = 0;
+                            year++;
+                        }
+                    }
+                    const dueString = `${year}-${String(month + 1).padStart(2, '0')}-${String(matched.dueDay).padStart(2, '0')}`;
+                    billForm.date = dueString;
+                }
+            } else {
+                billForm.cardId = '';
             }
         };
 
@@ -1224,7 +1327,7 @@ createApp({
             if (billForm.cardId) {
                 const c = cards.value.find(card => card.id === billForm.cardId);
                 if (c) {
-                    billName = c.name + (c.nickname ? ` (${c.nickname})` : '');
+                    billName = c.name;
                 }
             }
 
@@ -1405,17 +1508,26 @@ createApp({
         };
 
         const getBillCardInfo = (bill) => {
-            let card;
-            if (bill.cardId) {
-                card = cards.value.find(c => c.id === bill.cardId);
+            const billKeyword = getBankKeyword(bill.name);
+            if (!billKeyword) return null;
+            
+            // 尋找同銀行的所有已存卡片
+            const matchedCards = cards.value.filter(c => getBankKeyword(c.name) === billKeyword);
+            if (matchedCards.length === 0) return null;
+            
+            const bankName = matchedCards[0].name.replace(/銀行|商銀|商業銀行/g, '').trim() + '銀行';
+            const nicknames = matchedCards.map(c => c.nickname).filter(Boolean).join(', ');
+            
+            let info = bankName;
+            if (nicknames) {
+                info += ` (${nicknames})`;
             }
-            if (!card) {
-                card = cards.value.find(c => bill.name.includes(c.name) || c.name.includes(bill.name));
-            }
-            if (!card) return null;
-            let info = card.name + (card.nickname ? ` (${card.nickname})` : '');
-            if (card.autopayFrom) {
-                info += ` 🏦 扣款: ${card.autopayFrom}`;
+            
+            // 自動扣款帳戶
+            const autopayList = matchedCards.map(c => c.autopayFrom).filter(Boolean);
+            if (autopayList.length > 0) {
+                const uniqueAutopay = [...new Set(autopayList)].join(', ');
+                info += ` 🏦 扣款: ${uniqueAutopay}`;
             }
             return info;
         };
@@ -1812,14 +1924,40 @@ createApp({
             }
         }, { deep: true });
 
+        const getBankKeyword = (name) => {
+            if (!name) return "";
+            const clean = name.replace(/銀行|商銀|商業銀行|信用卡/g, "").trim();
+            const keywords = [
+                "富邦", "國泰", "台新", "玉山", "中信", "中國信託", "永豐", "兆豐", "聯邦", "元大", 
+                "第一", "華南", "彰化", "合作金庫", "合庫", "土地", "土銀", "台灣", "臺銀", "上海", 
+                "星展", "花旗", "渣打", "滙豐", "匯豐", "新光", "遠東", "凱基", "陽信", "台中",
+                "郵局", "郵政", "中華郵政", "將來", "連線", "樂天"
+            ];
+            for (const kw of keywords) {
+                if (clean.includes(kw)) {
+                    if (kw === "中國信託") return "中信";
+                    if (kw === "合庫") return "合作金庫";
+                    if (kw === "土銀") return "土地";
+                    if (kw === "臺銀") return "台灣";
+                    if (kw === "匯豐") return "滙豐";
+                    if (kw === "郵局") return "郵政";
+                    if (kw === "中華郵政") return "郵政";
+                    return kw;
+                }
+            }
+            return clean.substring(0, 2);
+        };
+
         watch(() => cardForm.name, (newName) => {
             if (editingCardIndex.value !== null) return;
             if (!newName || newName.trim().length < 2) return;
             
-            const cleanNew = newName.replace(/銀行|商銀/g, '').trim();
+            const newKeyword = getBankKeyword(newName);
+            if (!newKeyword) return;
+            
             const matchedCard = cards.value.find(c => {
-                const cleanC = c.name.replace(/銀行|商銀/g, '').trim();
-                return cleanNew && cleanC && (cleanNew.includes(cleanC) || cleanC.includes(cleanNew));
+                const cKeyword = getBankKeyword(c.name);
+                return cKeyword && cKeyword === newKeyword;
             });
             
             if (matchedCard) {
@@ -1839,14 +1977,14 @@ createApp({
 
         return {
             isLocked, pinBuffer, isLoading, loadingText, user, activePage, theme, isPrivacyOn, syncStatus, bills, cards,
-            showAddModal, showChangelog, showCardEditor, billForm, editingBillId, cardForm, editingCardIndex,
+            showAddModal, showChangelog, showCardEditor, showMobileMenu, billForm, editingBillId, cardForm, editingCardIndex,
             pdfPassword, historySearch, historyPeriod, analysisStart, analysisEnd, analysisBank,
-            navItems, changelog, unpaidBills, totalUnpaidAmount, filteredHistory, groupedHistory, analysisBills, analysisTotal, uniqueBanks, statementAlerts,
+            navItems, changelog, unpaidBills, totalUnpaidAmount, filteredHistory, groupedHistory, analysisBills, analysisTotal, uniqueBanks, statementAlerts, groupedStatementAlerts,
             loginGoogle, logout, triggerSync, pressKey, setPin, newPin, toggleTheme, togglePrivacy,
-            submitBill, markAsPaid, editBill, deleteBill, startAddCard, editCard, saveCard, deleteCard, skipCardStatement,
+            submitBill, markAsPaid, editBill, deleteBill, startAddCard, editCard, saveCard, deleteCard, skipCardStatement, quickAddBillForCard,
             formatDate, getBillIcon, getBillStatusClass, getCardAutopay, getUrgencyBar, formatMonthLabel, setAnalysisPeriod, getBankGradientClass,
             onFileChange, parsePDF, exportToExcel, decryptField, getPinKey, groupedCards, expandedBanks, expandedCards, totalCardsCount, totalCardsLimit,
-            commonBanksList, startAddBill, onBillCardChange, getCardOrgIcon, getBillCardInfo
+            commonBanksList, startAddBill, associatedCard, onBillNameInput, getCardOrgIcon, getBillCardInfo
         };
     }
 }).mount('#app');

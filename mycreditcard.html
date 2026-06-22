@@ -468,6 +468,20 @@
                             <button @click="startAddCard" class="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white font-black text-sm rounded-xl shadow-md transition-all active:scale-95">+ 新增卡片</button>
                         </div>
                         
+                        <!-- Cards Overview Stats -->
+                        <div class="grid grid-cols-2 gap-4 px-2">
+                            <div class="glass p-5 rounded-3xl relative overflow-hidden group">
+                                <div class="absolute -right-6 -top-6 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl group-hover:bg-indigo-500/20 transition-all"></div>
+                                <div class="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">持有卡片總數</div>
+                                <div class="text-3xl font-black text-slate-800 dark:text-white">{{ totalCardsCount }} <span class="text-sm font-bold text-slate-500">張</span></div>
+                            </div>
+                            <div class="glass p-5 rounded-3xl relative overflow-hidden group">
+                                <div class="absolute -right-6 -top-6 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all"></div>
+                                <div class="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">總信用額度</div>
+                                <div class="text-2xl font-black text-slate-800 dark:text-white"><span class="text-sm mr-1">NT$</span>{{ totalCardsLimit.toLocaleString() }}</div>
+                            </div>
+                        </div>
+                        
                         <!-- Card Editor Form -->
                         <div v-if="showCardEditor" class="mb-8 p-6 rounded-3xl bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-200 dark:border-indigo-800">
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -533,34 +547,80 @@
                                 <!-- 該銀行底下的卡片清單 -->
                                 <div v-show="expandedBanks[group.bank] !== false" class="p-6 bg-white/10 dark:bg-slate-950/5">
                                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                        <div v-for="card in group.cards" :key="card.originalIndex" class="p-4 border border-slate-100 dark:border-slate-800 rounded-2xl flex flex-col justify-between bg-white dark:bg-slate-900/40 shadow-sm">
-                                            <div>
-                                                <div class="flex items-center justify-between">
-                                                    <div>
-                                                        <div class="font-black text-slate-700 dark:text-slate-200">{{ card.displayName }}</div>
-                                                        <div class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{{ card.day }}號 結帳</div>
-                                                        <div v-if="card.autopayFrom" class="text-[10px] text-indigo-400 font-bold mt-1 tracking-tighter italic">🏦 {{ card.autopayFrom }}</div>
-                                                        <div v-if="card.limit" class="text-[10px] text-emerald-500 font-bold mt-1 tracking-tighter">💳 額度: NT$ {{ Number(card.limit).toLocaleString() }}</div>
+                                        <div v-for="card in group.cards" :key="card.originalIndex" class="group">
+                                            <!-- 3D Card Container -->
+                                            <div class="relative w-full h-48 [perspective:1000px] cursor-pointer" @click="expandedCards[card.originalIndex] = !expandedCards[card.originalIndex]">
+                                                <!-- Inner Card Container -->
+                                                <div class="w-full h-full transition-transform duration-700 [transform-style:preserve-3d] shadow-lg rounded-2xl group-hover:shadow-xl"
+                                                     :class="expandedCards[card.originalIndex] ? '[transform:rotateY(180deg)]' : ''">
+                                                    
+                                                    <!-- Front -->
+                                                    <div class="absolute inset-0 [backface-visibility:hidden] rounded-2xl p-5 text-white flex flex-col justify-between overflow-hidden"
+                                                         :class="getBankGradientClass(group.bank)">
+                                                        <div class="absolute -right-10 -bottom-10 opacity-10 text-9xl">
+                                                            <i class="fas fa-university"></i>
+                                                        </div>
+                                                        <!-- Front Content -->
+                                                        <div class="flex justify-between items-start relative z-10">
+                                                            <span class="font-black text-lg tracking-widest opacity-90">{{ group.bank }}</span>
+                                                            <i class="fas fa-microchip text-2xl opacity-80"></i>
+                                                        </div>
+                                                        
+                                                        <div class="relative z-10">
+                                                            <div class="text-[10px] opacity-70 uppercase tracking-widest mb-1">Card Number</div>
+                                                            <div class="font-mono text-xl tracking-[0.15em] opacity-90">{{ card.last4 ? '**** **** **** ' + card.last4 : '**** **** **** ****' }}</div>
+                                                        </div>
+                                                        
+                                                        <div class="flex justify-between items-end relative z-10">
+                                                            <div>
+                                                                <div class="text-[9px] opacity-70 uppercase tracking-wider mb-0.5">Cardholder</div>
+                                                                <div class="font-bold tracking-widest uppercase truncate max-w-[130px]">{{ card.displayName }}</div>
+                                                            </div>
+                                                            <div class="text-right">
+                                                                <div v-if="card.limit" class="text-[9px] opacity-70 uppercase tracking-wider mb-0.5">Credit Limit</div>
+                                                                <div v-if="card.limit" class="font-black text-sm tracking-wide">NT$ {{ Number(card.limit).toLocaleString() }}</div>
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <div class="flex gap-1">
-                                                        <!-- 眼睛圖示，用來展開明文資訊 -->
-                                                        <button @click="expandedCards[card.originalIndex] = !expandedCards[card.originalIndex]" class="w-8 h-8 rounded-lg hover:bg-indigo-50 text-indigo-500 flex items-center justify-center transition-all">
-                                                            <i :class="expandedCards[card.originalIndex] ? 'fas fa-eye-slash' : 'fas fa-eye'" class="text-xs"></i>
-                                                        </button>
-                                                        <button @click="editCard(card.originalIndex)" class="w-8 h-8 rounded-lg hover:bg-amber-50 text-amber-500 flex items-center justify-center transition-all"><i class="fas fa-edit text-xs"></i></button>
-                                                        <button @click="deleteCard(card.originalIndex)" class="w-8 h-8 rounded-lg hover:bg-rose-50 text-rose-500 flex items-center justify-center transition-all"><i class="fas fa-trash text-xs"></i></button>
+
+                                                    <!-- Back -->
+                                                    <div class="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] rounded-2xl bg-slate-800 text-slate-300 flex flex-col"
+                                                         :class="getBankGradientClass(group.bank) + ' bg-blend-overlay bg-black/60'">
+                                                        <!-- Magnetic Stripe -->
+                                                        <div class="w-full h-10 bg-black/80 mt-6"></div>
+                                                        <!-- Back Content -->
+                                                        <div class="p-5 pt-3 flex-1 flex flex-col gap-2 text-xs">
+                                                            <div class="bg-white/20 p-2 rounded flex justify-between items-center shadow-inner">
+                                                                <span class="font-mono text-slate-100 tracking-widest">{{ card.enc_number ? decryptField(card.enc_number, getPinKey()) : (card.last4 ? '**** **** **** ' + card.last4 : '無記錄') }}</span>
+                                                                <span class="font-mono bg-white/30 px-2 py-0.5 rounded text-white italic tracking-widest">{{ card.enc_cvv ? decryptField(card.enc_cvv, getPinKey()) : '***' }}</span>
+                                                            </div>
+                                                            <div class="flex justify-between text-slate-200">
+                                                                <div>EXP: <span class="font-mono text-white tracking-widest">{{ card.enc_expiry ? decryptField(card.enc_expiry, getPinKey()) : 'MM/YY' }}</span></div>
+                                                                <div>結帳日: <span class="text-white font-bold">{{ card.day }}號</span></div>
+                                                            </div>
+                                                            <div class="truncate text-[10px] opacity-80 mt-auto bg-black/20 p-1.5 rounded" :title="card.enc_address ? decryptField(card.enc_address, getPinKey()) : '無記錄'">
+                                                                <i class="fas fa-map-marker-alt mr-1"></i> {{ card.enc_address ? decryptField(card.enc_address, getPinKey()) : '無記錄' }}
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                <!-- 安全敏感欄位展開區 -->
-                                                <div v-if="expandedCards[card.originalIndex]" class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/50 text-xs text-slate-500 dark:text-slate-400 space-y-1">
-                                                    <div>卡號：<span class="font-mono">{{ card.enc_number ? decryptField(card.enc_number, getPinKey()) : '無' }}</span></div>
-                                                    <div>到期日：<span class="font-mono">{{ card.enc_expiry ? decryptField(card.enc_expiry, getPinKey()) : '無' }}</span></div>
-                                                    <div>背面末三碼：<span class="font-mono">{{ card.enc_cvv ? decryptField(card.enc_cvv, getPinKey()) : '無' }}</span></div>
-                                                    <div v-if="card.limit" class="text-emerald-500 font-bold">信用額度：NT$ {{ Number(card.limit).toLocaleString() }}</div>
-                                                    <div class="break-all">地址：<span>{{ card.enc_address ? decryptField(card.enc_address, getPinKey()) : '無' }}</span></div>
+                                            </div>
+
+                                            <!-- Controls below the card -->
+                                            <div class="mt-4 flex justify-between items-center px-1">
+                                                <div class="text-[10px] font-bold">
+                                                    <span v-if="card.autopayFrom" class="text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-lg border border-indigo-100 dark:border-indigo-800"><i class="fas fa-university mr-1"></i>自動扣款: {{ card.autopayFrom }}</span>
                                                 </div>
-                                                <div v-else class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/50 text-xs text-slate-400 space-y-1">
-                                                    <div>卡號：<span class="font-mono">{{ card.last4 ? '**** **** **** ' + card.last4 : '無記錄' }}</span></div>
+                                                <div class="flex gap-1.5">
+                                                    <button @click.stop="expandedCards[card.originalIndex] = !expandedCards[card.originalIndex]" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-indigo-100 hover:text-indigo-600 transition-all flex items-center justify-center group/btn shadow-sm">
+                                                        <i class="fas fa-sync-alt text-xs group-hover/btn:rotate-180 transition-transform duration-500"></i>
+                                                    </button>
+                                                    <button @click.stop="editCard(card.originalIndex)" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-amber-100 hover:text-amber-600 transition-all flex items-center justify-center shadow-sm">
+                                                        <i class="fas fa-edit text-xs"></i>
+                                                    </button>
+                                                    <button @click.stop="deleteCard(card.originalIndex)" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-rose-100 hover:text-rose-600 transition-all flex items-center justify-center shadow-sm">
+                                                        <i class="fas fa-trash text-xs"></i>
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
@@ -824,6 +884,11 @@ createApp({
                 });
             });
             return Object.values(groups);
+        });
+
+        const totalCardsCount = computed(() => cards.value.length);
+        const totalCardsLimit = computed(() => {
+            return cards.value.reduce((sum, card) => sum + (Number(card.limit) || 0), 0);
         });
 
         // Firebase Logic
@@ -1106,6 +1171,20 @@ createApp({
         const formatMonthLabel = (ym) => {
             const [y, m] = ym.split('-');
             return `${y} \u5e74 ${parseInt(m)} \u6708`;
+        };
+
+        const getBankGradientClass = (bankName) => {
+            if (!bankName) return 'bg-gradient-to-br from-slate-700 to-slate-900';
+            if (bankName.includes('中信') || bankName.includes('中國信託')) return 'bg-gradient-to-br from-emerald-500 to-emerald-800';
+            if (bankName.includes('國泰')) return 'bg-gradient-to-br from-green-600 to-green-800';
+            if (bankName.includes('台新')) return 'bg-gradient-to-br from-rose-500 to-red-700';
+            if (bankName.includes('富邦')) return 'bg-gradient-to-br from-blue-500 to-cyan-600';
+            if (bankName.includes('玉山')) return 'bg-gradient-to-br from-lime-500 to-green-600';
+            if (bankName.includes('星展')) return 'bg-gradient-to-br from-red-600 to-rose-900';
+            if (bankName.includes('聯邦')) return 'bg-gradient-to-br from-cyan-500 to-blue-600';
+            if (bankName.includes('永豐')) return 'bg-gradient-to-br from-rose-700 to-red-900';
+            if (bankName.includes('新光')) return 'bg-gradient-to-br from-red-500 to-pink-600';
+            return 'bg-gradient-to-br from-indigo-500 to-indigo-800';
         };
 
         const setAnalysisPeriod = (period) => {
@@ -1427,8 +1506,8 @@ createApp({
             navItems, changelog, unpaidBills, totalUnpaidAmount, filteredHistory, groupedHistory, analysisBills, analysisTotal, uniqueBanks,
             loginGoogle, logout, triggerSync, pressKey, setPin, newPin, toggleTheme, togglePrivacy,
             submitBill, markAsPaid, editBill, deleteBill, startAddCard, editCard, saveCard, deleteCard,
-            formatDate, getBillIcon, getBillStatusClass, getCardAutopay, getUrgencyBar, formatMonthLabel, setAnalysisPeriod,
-            onFileChange, parsePDF, exportToExcel, decryptField, getPinKey, groupedCards, expandedBanks, expandedCards
+            formatDate, getBillIcon, getBillStatusClass, getCardAutopay, getUrgencyBar, formatMonthLabel, setAnalysisPeriod, getBankGradientClass,
+            onFileChange, parsePDF, exportToExcel, decryptField, getPinKey, groupedCards, expandedBanks, expandedCards, totalCardsCount, totalCardsLimit
         };
     }
 }).mount('#app');

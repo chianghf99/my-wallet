@@ -1107,7 +1107,13 @@ createApp({
 
         const totalCardsCount = computed(() => cards.value.length);
         const totalCardsLimit = computed(() => {
-            return cards.value.reduce((sum, card) => sum + (Number(card.limit) || 0), 0);
+            const bankLimits = {};
+            cards.value.forEach(card => {
+                const bank = getBankKeyword(card.name) || card.id;
+                const limit = Number(card.limit) || 0;
+                bankLimits[bank] = Math.max(bankLimits[bank] || 0, limit);
+            });
+            return Object.values(bankLimits).reduce((sum, val) => sum + val, 0);
         });
 
         // Firebase Logic
@@ -1989,6 +1995,7 @@ createApp({
                 cardForm.dueDay = cardForm.dueDay || matchedCard.dueDay || '';
                 cardForm.autopay = cardForm.autopay || matchedCard.autopayFrom || '';
                 cardForm.org = cardForm.org || matchedCard.org || '';
+                cardForm.limit = cardForm.limit || matchedCard.limit || '';
                 
                 if (!cardForm.address && matchedCard.enc_address) {
                     const pin = getPinKey();

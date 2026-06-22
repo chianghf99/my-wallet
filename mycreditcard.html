@@ -208,7 +208,7 @@
                     <div v-if="activePage === 'dashboard'" key="dash" class="space-y-6">
                         <div class="flex justify-between items-center px-2">
                             <h3 class="text-xl font-black text-slate-800 dark:text-white">待繳帳單</h3>
-                            <button @click="showAddModal = true" class="px-6 py-2 bg-indigo-500 text-white rounded-2xl font-bold shadow-lg shadow-indigo-500/20 active:scale-95 transition-all">
+                            <button @click="startAddBill()" class="px-6 py-2 bg-indigo-500 text-white rounded-2xl font-bold shadow-lg shadow-indigo-500/20 active:scale-95 transition-all">
                                 <i class="fas fa-plus mr-2"></i>新增項目
                             </button>
                         </div>
@@ -239,8 +239,8 @@
                                             <h4 class="font-black text-slate-800 dark:text-slate-100 leading-tight truncate">{{ bill.name }}</h4>
                                             <div class="flex items-center gap-2 mt-1 flex-wrap">
                                                 <span class="text-xs font-bold text-slate-500 dark:text-slate-400">{{ formatDate(bill.date) }}</span>
-                                                <span v-if="getCardAutopay(bill.name)" class="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/50 text-indigo-500 dark:text-indigo-300 rounded text-[10px] font-bold">
-                                                    🏦 {{ getCardAutopay(bill.name) }}
+                                                <span v-if="getBillCardInfo(bill)" class="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/50 text-indigo-500 dark:text-indigo-300 rounded text-[10px] font-bold">
+                                                    💳 {{ getBillCardInfo(bill) }}
                                                 </span>
                                             </div>
                                         </div>
@@ -482,47 +482,7 @@
                             </div>
                         </div>
                         
-                        <!-- Card Editor Form -->
-                        <div v-if="showCardEditor" class="mb-8 p-6 rounded-3xl bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-200 dark:border-indigo-800">
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                                <div>
-                                    <label class="block text-xs font-bold text-slate-400 mb-1">銀行名稱</label>
-                                    <input type="text" v-model="cardForm.name" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-slate-400 mb-1">結帳日</label>
-                                    <input type="number" v-model="cardForm.day" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-slate-400 mb-1">扣款帳戶</label>
-                                    <input type="text" v-model="cardForm.autopay" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-slate-400 mb-1">信用卡卡號</label>
-                                    <input type="text" v-model="cardForm.number" placeholder="1234567812345678" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-slate-400 mb-1">到期日 (MM/YY)</label>
-                                    <input type="text" v-model="cardForm.expiry" placeholder="12/29" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-slate-400 mb-1">背面末三碼 (CVV)</label>
-                                    <input type="password" v-model="cardForm.cvv" placeholder="***" maxlength="4" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-slate-400 mb-1">信用額度 (NT$)</label>
-                                    <input type="number" v-model="cardForm.limit" placeholder="例如: 150000" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
-                                </div>
-                                <div class="md:col-span-2">
-                                    <label class="block text-xs font-bold text-slate-400 mb-1">帳單通訊地址</label>
-                                    <input type="text" v-model="cardForm.address" placeholder="請輸入信用卡對帳通訊地址" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
-                                </div>
-                            </div>
-                            <div class="flex gap-2">
-                                <button @click="saveCard" class="flex-1 py-3 bg-indigo-500 text-white font-bold rounded-xl">{{ editingCardIndex !== null ? '更新' : '新增' }}</button>
-                                <button @click="showCardEditor = false" class="px-6 py-3 bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-300 font-bold rounded-xl">取消</button>
-                            </div>
-                        </div>
+                        <!-- Card Editor Form has been moved to Modal Popup at the bottom -->
                         
                         <!-- 分組折疊卡片列表 -->
                         <div class="space-y-6">
@@ -562,8 +522,14 @@
                                                         </div>
                                                         <!-- Front Content -->
                                                         <div class="flex justify-between items-start relative z-10">
-                                                            <span class="font-black text-lg tracking-widest opacity-90">{{ group.bank }}</span>
-                                                            <i class="fas fa-microchip text-2xl opacity-80"></i>
+                                                            <div class="flex flex-col">
+                                                                <span class="font-black text-lg tracking-widest opacity-90 leading-tight">{{ group.bank }}</span>
+                                                                <span v-if="card.nickname" class="text-xs opacity-75 font-bold -mt-0.5">{{ card.nickname }}</span>
+                                                            </div>
+                                                            <div class="flex items-center gap-2">
+                                                                <i v-if="getCardOrgIcon(card.org)" :class="getCardOrgIcon(card.org)" class="text-2xl opacity-90"></i>
+                                                                <i v-else class="fas fa-microchip text-2xl opacity-85"></i>
+                                                            </div>
                                                         </div>
                                                         
                                                         <div class="relative z-10">
@@ -577,8 +543,11 @@
                                                                 <div class="font-bold tracking-widest uppercase truncate max-w-[130px]">{{ card.displayName }}</div>
                                                             </div>
                                                             <div class="text-right">
-                                                                <div v-if="card.limit" class="text-[9px] opacity-70 uppercase tracking-wider mb-0.5">Credit Limit</div>
-                                                                <div v-if="card.limit" class="font-black text-sm tracking-wide">NT$ {{ Number(card.limit).toLocaleString() }}</div>
+                                                                <span v-if="card.ticket" class="inline-block text-[8px] bg-white/20 px-1.5 py-0.5 rounded mr-2 font-bold align-middle uppercase tracking-widest">{{ card.ticket }}</span>
+                                                                <div v-if="card.limit" class="inline-block text-left align-middle">
+                                                                    <div class="text-[9px] opacity-70 uppercase tracking-wider mb-0.5">Credit Limit</div>
+                                                                    <div class="font-black text-sm tracking-wide">NT$ {{ Number(card.limit).toLocaleString() }}</div>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -596,7 +565,10 @@
                                                             </div>
                                                             <div class="flex justify-between text-slate-200">
                                                                 <div>EXP: <span class="font-mono text-white tracking-widest">{{ card.enc_expiry ? decryptField(card.enc_expiry, getPinKey()) : 'MM/YY' }}</span></div>
-                                                                <div>結帳日: <span class="text-white font-bold">{{ card.day }}號</span></div>
+                                                                <div class="flex gap-2">
+                                                                    <div>結帳日: <span class="text-white font-bold">{{ card.day }}號</span></div>
+                                                                    <div v-if="card.dueDay">繳費日: <span class="text-white font-bold">{{ card.dueDay }}號</span></div>
+                                                                </div>
                                                             </div>
                                                             <div class="truncate text-[10px] opacity-80 mt-auto bg-black/20 p-1.5 rounded" :title="card.enc_address ? decryptField(card.enc_address, getPinKey()) : '無記錄'">
                                                                 <i class="fas fa-map-marker-alt mr-1"></i> {{ card.enc_address ? decryptField(card.enc_address, getPinKey()) : '無記錄' }}
@@ -666,7 +638,16 @@
             
             <form @submit.prevent="submitBill" class="space-y-4">
                 <div>
-                    <label class="block text-xs font-black text-slate-400 uppercase mb-1 ml-2">卡片名稱</label>
+                    <label class="block text-xs font-black text-slate-400 uppercase mb-1 ml-2">關聯信用卡</label>
+                    <select v-model="billForm.cardId" @change="onBillCardChange" class="w-full glass px-5 py-4 rounded-2xl outline-none font-bold dark:text-white dark:bg-slate-800">
+                        <option value="">-- 手動輸入 / 非信用卡 --</option>
+                        <option v-for="card in cards" :key="card.id" :value="card.id">
+                            {{ card.name }}{{ card.nickname ? ` (${card.nickname})` : '' }} (末碼: {{ card.last4 || '無' }})
+                        </option>
+                    </select>
+                </div>
+                <div v-if="!billForm.cardId">
+                    <label class="block text-xs font-black text-slate-400 uppercase mb-1 ml-2">帳單項目名稱</label>
                     <input type="text" v-model="billForm.name" required list="bankList" placeholder="選擇或輸入銀行名稱" class="w-full glass px-5 py-4 rounded-2xl outline-none font-bold dark:text-white">
                     <datalist id="bankList">
                         <option v-for="bank in uniqueBanks" :key="bank" :value="bank"></option>
@@ -719,10 +700,107 @@
             </div>
         </div>
     </div>
+
+    <!-- Card Editor Modal -->
+    <div v-if="showCardEditor" class="fixed inset-0 z-[1000] flex items-center justify-center px-4">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" @click="showCardEditor = false"></div>
+        <div class="glass w-full max-w-2xl rounded-[2.5rem] p-8 relative z-10 max-h-[90vh] flex flex-col animate-in fade-in zoom-in duration-300">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-black text-slate-800 dark:text-white">{{ editingCardIndex !== null ? '編輯信用卡' : '新增信用卡' }}</h3>
+                <button @click="showCardEditor = false" class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto space-y-4 pr-2">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1">銀行名稱</label>
+                        <input type="text" v-model="cardForm.name" list="banks" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white" placeholder="選擇或輸入銀行">
+                        <datalist id="banks">
+                            <option v-for="bank in commonBanksList" :key="bank" :value="bank"></option>
+                        </datalist>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1">卡片暱稱 (選填)</label>
+                        <input type="text" v-model="cardForm.nickname" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white" placeholder="例如：黑狗卡、玫瑰卡">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1">結帳日 (每月幾號)</label>
+                        <input type="number" min="1" max="31" v-model="cardForm.day" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white" placeholder="例如: 10">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1">繳費截止日 (每月幾號)</label>
+                        <input type="number" min="1" max="31" v-model="cardForm.dueDay" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white" placeholder="例如: 25">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1">發卡組織</label>
+                        <select v-model="cardForm.org" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white dark:bg-slate-800">
+                            <option value="">選擇組織 (選填)</option>
+                            <option value="Visa">Visa</option>
+                            <option value="Mastercard">Mastercard</option>
+                            <option value="JCB">JCB</option>
+                            <option value="American Express">American Express (美運)</option>
+                            <option value="UnionPay">UnionPay (銀聯)</option>
+                            <option value="Other">其他</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1">電子票證功能</label>
+                        <select v-model="cardForm.ticket" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white dark:bg-slate-800">
+                            <option value="">無 (選填)</option>
+                            <option value="悠遊卡">悠遊卡</option>
+                            <option value="一卡通">一卡通</option>
+                            <option value="愛金卡">icash 愛金卡</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1">自動扣款帳戶 (選填)</label>
+                        <input type="text" v-model="cardForm.autopay" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white" placeholder="例如: 中信活存、郵局">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1">信用卡卡號 (敏感資訊)</label>
+                        <input type="text" v-model="cardForm.number" placeholder="1234567812345678" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1">到期日 (MM/YY)</label>
+                        <input type="text" v-model="cardForm.expiry" placeholder="12/29" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1">背面末三碼 (CVV)</label>
+                        <input type="password" v-model="cardForm.cvv" placeholder="***" maxlength="4" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1">信用額度 (NT$)</label>
+                        <input type="number" v-model="cardForm.limit" placeholder="例如: 150000" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-bold text-slate-400 mb-1">帳單通訊地址</label>
+                        <input type="text" v-model="cardForm.address" placeholder="請輸入信用卡對帳通訊地址" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex gap-3 pt-4 border-t border-slate-100 dark:border-slate-800 mt-4">
+                <button @click="saveCard" class="flex-1 py-3.5 bg-indigo-500 hover:bg-indigo-600 text-white font-black rounded-2xl shadow-lg active:scale-95 transition-all">
+                    {{ editingCardIndex !== null ? '儲存更新' : '確認新增' }}
+                </button>
+                <button @click="showCardEditor = false" class="px-8 py-3.5 bg-slate-100 dark:bg-slate-800 text-slate-500 font-black rounded-2xl">
+                    取消
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
-const { createApp, ref, reactive, computed, onMounted, watch, nextTick } = Vue;
+const { createApp, ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } = Vue;
+
+const commonBanksList = [
+    '中華郵政', '台灣銀行', '土地銀行', '合作金庫', '第一銀行', '華南銀行', '彰化銀行', '上海商業儲蓄銀行', 
+    '台北富邦', '國泰世華', '高雄銀行', '兆豐銀行', '花旗銀行', '渣打銀行', '台中銀行', '京城銀行', 
+    '瑞興銀行', '華泰銀行', '臺灣新光商業銀行', '陽信銀行', '板信商業銀行', '三信商業銀行', '聯邦銀行', 
+    '遠東商銀', '元大銀行', '永豐銀行', '玉山銀行', '凱基銀行', '星展銀行', '台新銀行', '日盛商銀', 
+    '安泰銀行', '中國信託', '滙豐銀行', '樂天國際商業銀行', '連線商業銀行', '將來商業銀行'
+];
 
 const firebaseConfig = {
     apiKey: "AIzaSyAh94_Z-wA_riNIXmn_btCXbTtaZny1CQg",
@@ -753,9 +831,9 @@ createApp({
         const showChangelog = ref(false);
         const showCardEditor = ref(false);
         
-        const billForm = reactive({ name: '', amount: '', date: '' });
+        const billForm = reactive({ name: '', amount: '', date: '', cardId: '' });
         const editingBillId = ref(null);
-        const cardForm = reactive({ name: '', day: '', autopay: '', number: '', expiry: '', cvv: '', address: '', limit: '' });
+        const cardForm = reactive({ name: '', nickname: '', day: '', dueDay: '', autopay: '', number: '', expiry: '', cvv: '', address: '', limit: '', org: '', ticket: '' });
         const editingCardIndex = ref(null);
         
         const pdfFile = ref(null);
@@ -777,6 +855,7 @@ createApp({
         ];
 
         const changelog = [
+            { version: 'v5.0.0', date: '2026-06-22', items: ['信用卡編輯重構為 Modal 彈窗呈現，優化流暢度', '導入台灣主要銀行 datalist 搜尋下拉選單，修正銀行名稱判定縮寫之 bug', '安全鎖密碼解鎖支援實體鍵盤操作（數字鍵、Backspace、Esc）', '擴充信用卡欄位：卡片暱稱、繳費截止日、發卡組織、電子票證功能', '重構卡片與帳單關聯（cardId），新增帳單支援關聯卡片、自動帶入名稱與根據 dueDay 自動推估下個截止日，並支援 PDF 智慧自動配對卡片'] },
             { version: 'v4.3.0', date: '2026-06-20', items: ['卡片管理獨立為專屬功能分頁，與系統設定完全分離', '引入 CryptoJS AES 加密保護信用卡敏感資訊（卡號、到期日、CVV、地址）', '信用卡列表升級為「按銀行智慧分組折疊」結構', '新增信用卡「信用額度」記錄欄位，支援格式化數值展示'] },
             { version: 'v4.2.0', date: '2024-05-09', items: ['補全 10 家銀行解析規則（與 Python v3.13 同步）', '修正深色模式下輸入框文字顏色', '優化統計圖表自動載入邏輯', '修正歷史紀錄與新增項目彈窗之文字可視性'] },
             { version: 'v4.1.0', date: '2024-05-06', items: ['優化深色模式對比度', '修正統計圖表載入邏輯', '新增首頁跳轉按鈕', '調整介面風格與投資儀表板一致'] },
@@ -819,7 +898,18 @@ createApp({
 
         const uniqueBanks = computed(() => {
             const banks = new Set();
-            bills.value.forEach(b => { if(b.name) banks.add(b.name.substring(0, 2)) });
+            cards.value.forEach(c => {
+                if (c.name) {
+                    const cleanName = commonBanksList.find(b => c.name.includes(b)) || c.name.substring(0, 4);
+                    banks.add(cleanName);
+                }
+            });
+            bills.value.forEach(b => { 
+                if (b.name) {
+                    const cleanName = commonBanksList.find(bank => b.name.includes(bank)) || b.name.substring(0, 2);
+                    banks.add(cleanName);
+                } 
+            });
             return Array.from(banks).sort();
         });
 
@@ -843,7 +933,13 @@ createApp({
                 let bank = '其他銀行';
                 let cardName = cardNameRaw;
                 
-                if (cardNameRaw.includes('-')) {
+                // Try matching full common bank name first
+                const foundBank = commonBanksList.find(b => cardNameRaw.includes(b));
+                if (foundBank) {
+                    bank = foundBank;
+                    cardName = cardNameRaw.replace(foundBank, '').trim().replace(/^[-_ ]+/, '').trim();
+                    if (!cardName) cardName = card.nickname || '信用卡';
+                } else if (cardNameRaw.includes('-')) {
                     const parts = cardNameRaw.split('-');
                     bank = parts[0].trim();
                     cardName = parts[1].trim();
@@ -870,7 +966,11 @@ createApp({
                 }
                 
                 if (!bank.endsWith('銀行') && !bank.endsWith('商銀') && !bank.endsWith('郵局') && bank !== '其他銀行') {
-                    bank = bank + '銀行';
+                    if (bank === '國泰世華') bank = '國泰世華銀行';
+                    else if (bank === '台北富邦') bank = '台北富邦銀行';
+                    else if (bank === '中國信託') bank = '中國信託銀行';
+                    else if (bank === '中華郵政') bank = '中華郵政';
+                    else bank = bank + '銀行';
                 }
                 
                 if (!groups[bank]) {
@@ -930,7 +1030,21 @@ createApp({
                         const d = snap.data();
                         // 確保資料結構正確才套用
                         if (d.bills) bills.value = Array.isArray(d.bills) ? d.bills : [];
-                        if (d.cards) cards.value = Array.isArray(d.cards) ? d.cards : [];
+                        if (d.cards) {
+                            const downloadedCards = Array.isArray(d.cards) ? d.cards : [];
+                            let migrated = false;
+                            downloadedCards.forEach(c => {
+                                if (!c.id) {
+                                    c.id = Date.now().toString() + Math.random().toString(36).substr(2, 5);
+                                    migrated = true;
+                                }
+                            });
+                            cards.value = downloadedCards;
+                            if (migrated) {
+                                saveLocal();
+                                triggerSync('upload', true);
+                            }
+                        }
                         syncStatus.value = '同步自雲端 ' + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                         saveLocal();
                     } else {
@@ -1003,22 +1117,80 @@ createApp({
                 const d = JSON.parse(s);
                 bills.value = d.bills || [];
                 cards.value = d.cards || [];
+                
+                // Migrate: Ensure every card has a unique ID
+                let migrated = false;
+                cards.value.forEach(c => {
+                    if (!c.id) {
+                        c.id = Date.now().toString() + Math.random().toString(36).substr(2, 5);
+                        migrated = true;
+                    }
+                });
+                if (migrated) {
+                    saveLocal();
+                }
             }
         };
 
         // Bills
+        const startAddBill = () => {
+            resetBillForm();
+            showAddModal.value = true;
+        };
+
+        const onBillCardChange = () => {
+            if (billForm.cardId) {
+                const c = cards.value.find(card => card.id === billForm.cardId);
+                if (c) {
+                    billForm.name = c.name + (c.nickname ? ` (${c.nickname})` : '');
+                    
+                    // Auto-推算下個截止日 (基於 dueDay)
+                    if (c.dueDay) {
+                        const now = new Date();
+                        let year = now.getFullYear();
+                        let month = now.getMonth(); // 0-11
+                        
+                        if (now.getDate() > c.dueDay) {
+                            month++;
+                            if (month > 11) {
+                                month = 0;
+                                year++;
+                            }
+                        }
+                        const dueString = `${year}-${String(month + 1).padStart(2, '0')}-${String(c.dueDay).padStart(2, '0')}`;
+                        billForm.date = dueString;
+                    }
+                }
+            }
+        };
+
         const submitBill = () => {
+            if(!billForm.name && !billForm.cardId) { alert('請輸入帳單名稱或選擇卡片'); return; }
+            
+            let billName = billForm.name;
+            if (billForm.cardId) {
+                const c = cards.value.find(card => card.id === billForm.cardId);
+                if (c) {
+                    billName = c.name + (c.nickname ? ` (${c.nickname})` : '');
+                }
+            }
+
             const billData = {
-                id: editingBillId.value || Date.now(),
-                name: billForm.name,
+                id: editingBillId.value || Date.now().toString(),
+                name: billName,
                 amount: Number(billForm.amount),
                 date: billForm.date,
+                cardId: billForm.cardId || '',
                 status: 'unpaid'
             };
             
             if (editingBillId.value) {
                 const idx = bills.value.findIndex(b => b.id === editingBillId.value);
-                if(idx !== -1) bills.value[idx] = billData;
+                if(idx !== -1) {
+                    // Preserve status
+                    billData.status = bills.value[idx].status || 'unpaid';
+                    bills.value[idx] = billData;
+                }
             } else {
                 bills.value.push(billData);
             }
@@ -1030,7 +1202,7 @@ createApp({
         };
 
         const resetBillForm = () => {
-            billForm.name = ''; billForm.amount = ''; billForm.date = ''; editingBillId.value = null;
+            billForm.name = ''; billForm.amount = ''; billForm.date = ''; billForm.cardId = ''; editingBillId.value = null;
         };
 
         const markAsPaid = (id) => {
@@ -1043,7 +1215,10 @@ createApp({
         };
 
         const editBill = (bill) => {
-            billForm.name = bill.name; billForm.amount = bill.amount; billForm.date = bill.date;
+            billForm.name = bill.name; 
+            billForm.amount = bill.amount; 
+            billForm.date = bill.date;
+            billForm.cardId = bill.cardId || '';
             editingBillId.value = bill.id;
             showAddModal.value = true;
         };
@@ -1077,27 +1252,35 @@ createApp({
         const startAddCard = () => { 
             editingCardIndex.value = null; 
             cardForm.name = ''; 
+            cardForm.nickname = '';
             cardForm.day = ''; 
+            cardForm.dueDay = '';
             cardForm.autopay = ''; 
             cardForm.number = '';
             cardForm.expiry = '';
             cardForm.cvv = '';
             cardForm.address = '';
             cardForm.limit = '';
+            cardForm.org = '';
+            cardForm.ticket = '';
             showCardEditor.value = true; 
         };
         
         const editCard = (i) => {
             const c = cards.value[i];
             const pin = getPinKey();
-            cardForm.name = c.name; 
-            cardForm.day = c.day; 
+            cardForm.name = c.name || ''; 
+            cardForm.nickname = c.nickname || '';
+            cardForm.day = c.day || ''; 
+            cardForm.dueDay = c.dueDay || '';
             cardForm.autopay = c.autopayFrom || '';
             cardForm.number = c.enc_number ? decryptField(c.enc_number, pin) : '';
             cardForm.expiry = c.enc_expiry ? decryptField(c.enc_expiry, pin) : '';
             cardForm.cvv = c.enc_cvv ? decryptField(c.enc_cvv, pin) : '';
             cardForm.address = c.enc_address ? decryptField(c.enc_address, pin) : '';
             cardForm.limit = c.limit || '';
+            cardForm.org = c.org || '';
+            cardForm.ticket = c.ticket || '';
             editingCardIndex.value = i; 
             showCardEditor.value = true;
         };
@@ -1109,11 +1292,20 @@ createApp({
                 return;
             }
             
+            // Preserve or generate unique ID for linking
+            const existingId = editingCardIndex.value !== null ? cards.value[editingCardIndex.value].id : null;
+            const cardId = existingId || (Date.now().toString() + Math.random().toString(36).substr(2, 5));
+            
             const c = { 
+                id: cardId,
                 name: cardForm.name, 
-                day: parseInt(cardForm.day), 
+                nickname: cardForm.nickname,
+                day: cardForm.day ? parseInt(cardForm.day) : '', 
+                dueDay: cardForm.dueDay ? parseInt(cardForm.dueDay) : '',
                 autopayFrom: cardForm.autopay,
                 limit: cardForm.limit ? parseInt(cardForm.limit) : '',
+                org: cardForm.org,
+                ticket: cardForm.ticket,
                 enc_number: encryptField(cardForm.number, pin),
                 enc_expiry: encryptField(cardForm.expiry, pin),
                 enc_cvv: encryptField(cardForm.cvv, pin),
@@ -1130,6 +1322,33 @@ createApp({
         };
         
         const deleteCard = (i) => { if(confirm('刪除卡片設定？')) { cards.value.splice(i, 1); saveLocal(); if(user.value) triggerSync('upload', true); } };
+
+        const getCardOrgIcon = (org) => {
+            if (!org) return '';
+            const o = org.toLowerCase();
+            if (o.includes('visa')) return 'fab fa-cc-visa';
+            if (o.includes('master')) return 'fab fa-cc-mastercard';
+            if (o.includes('jcb')) return 'fab fa-cc-jcb';
+            if (o.includes('amex') || o.includes('american')) return 'fab fa-cc-amex';
+            if (o.includes('union') || o.includes('銀聯')) return 'fab fa-cc-discover'; // Discover / general credit card
+            return '';
+        };
+
+        const getBillCardInfo = (bill) => {
+            let card;
+            if (bill.cardId) {
+                card = cards.value.find(c => c.id === bill.cardId);
+            }
+            if (!card) {
+                card = cards.value.find(c => bill.name.includes(c.name) || c.name.includes(bill.name));
+            }
+            if (!card) return null;
+            let info = card.name + (card.nickname ? ` (${card.nickname})` : '');
+            if (card.autopayFrom) {
+                info += ` 🏦 扣款: ${card.autopayFrom}`;
+            }
+            return info;
+        };
 
         // Helper
         const formatDate = (d) => {
@@ -1240,10 +1459,17 @@ createApp({
                         
                         const result = processBankRules(pdfFile.value.name, fullText);
                         if (result.amount > 0) {
-                            billForm.name = result.bankName;
+                            const matchedCard = cards.value.find(c => result.bankName.includes(c.name) || c.name.includes(result.bankName));
+                            if (matchedCard) {
+                                billForm.cardId = matchedCard.id;
+                                billForm.name = matchedCard.name + (matchedCard.nickname ? ` (${matchedCard.nickname})` : '');
+                            } else {
+                                billForm.cardId = '';
+                                billForm.name = result.bankName;
+                            }
                             billForm.amount = result.amount;
                             billForm.date = result.dueDate === '未知日期' ? '' : result.dueDate;
-                            alert(`解析成功：${result.bankName} $${result.amount}`);
+                            alert(`解析成功：${billForm.name} $${result.amount}`);
                         } else {
                             alert("解析失敗，請確認檔案格式。");
                         }
@@ -1476,11 +1702,28 @@ createApp({
             });
         };
 
+        const handleGlobalKeydown = (e) => {
+            if (isLocked.value) {
+                if (e.key >= '0' && e.key <= '9') {
+                    pressKey(parseInt(e.key));
+                } else if (e.key === 'Backspace') {
+                    pressKey('del');
+                } else if (e.key === 'Escape' || e.key === 'c' || e.key === 'C') {
+                    pressKey('clear');
+                }
+            }
+        };
+
         onMounted(() => {
             document.documentElement.classList.toggle('dark', theme.value === 'dark');
             loadLocal();
             checkLock();
             initFirebase();
+            window.addEventListener('keydown', handleGlobalKeydown);
+        });
+
+        onUnmounted(() => {
+            window.removeEventListener('keydown', handleGlobalKeydown);
         });
 
         watch(activePage, (p) => {
@@ -1507,7 +1750,8 @@ createApp({
             loginGoogle, logout, triggerSync, pressKey, setPin, newPin, toggleTheme, togglePrivacy,
             submitBill, markAsPaid, editBill, deleteBill, startAddCard, editCard, saveCard, deleteCard,
             formatDate, getBillIcon, getBillStatusClass, getCardAutopay, getUrgencyBar, formatMonthLabel, setAnalysisPeriod, getBankGradientClass,
-            onFileChange, parsePDF, exportToExcel, decryptField, getPinKey, groupedCards, expandedBanks, expandedCards, totalCardsCount, totalCardsLimit
+            onFileChange, parsePDF, exportToExcel, decryptField, getPinKey, groupedCards, expandedBanks, expandedCards, totalCardsCount, totalCardsLimit,
+            commonBanksList, startAddBill, onBillCardChange, getCardOrgIcon, getBillCardInfo
         };
     }
 }).mount('#app');

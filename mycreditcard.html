@@ -213,6 +213,23 @@
                             </button>
                         </div>
                         
+                        <!-- Statement Closing Alerts -->
+                        <div v-if="statementAlerts.length > 0" class="space-y-3 px-2">
+                            <div v-for="alert in statementAlerts" :key="alert.cardId" 
+                                 class="p-4 rounded-3xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 flex justify-between items-center text-amber-800 dark:text-amber-300">
+                                <div class="flex items-center gap-3">
+                                    <i class="fas fa-bell text-amber-500 text-lg"></i>
+                                    <div>
+                                        <div class="font-black text-sm">{{ alert.cardName }}{{ alert.nickname ? ` (${alert.nickname})` : '' }} 應已出帳</div>
+                                        <div class="text-xs opacity-75">結帳日：{{ alert.day }} 號 (最新出帳估計：{{ alert.stmtDateString }})，尚未收到帳單。</div>
+                                    </div>
+                                </div>
+                                <button @click="skipCardStatement(alert)" class="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 font-black text-xs rounded-xl transition-all">
+                                    此期無帳單
+                                </button>
+                            </div>
+                        </div>
+
                         <div v-if="unpaidBills.length === 0" class="glass rounded-3xl p-12 text-center border-dashed border-2">
                             <div class="w-20 h-20 bg-indigo-50 dark:bg-indigo-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <i class="fas fa-check-circle text-indigo-500 text-3xl"></i>
@@ -855,6 +872,7 @@ createApp({
         ];
 
         const changelog = [
+            { version: 'v5.1.0', date: '2026-06-22', items: ['重新加入並大幅優化信用卡「出帳自動提醒」功能，支援動態推估出帳日期與一鍵「此期無帳單」略過機制'] },
             { version: 'v5.0.0', date: '2026-06-22', items: ['信用卡編輯重構為 Modal 彈窗呈現，優化流暢度', '導入台灣主要銀行 datalist 搜尋下拉選單，修正銀行名稱判定縮寫之 bug', '安全鎖密碼解鎖支援實體鍵盤操作（數字鍵、Backspace、Esc）', '擴充信用卡欄位：卡片暱稱、繳費截止日、發卡組織、電子票證功能', '重構卡片與帳單關聯（cardId），新增帳單支援關聯卡片、自動帶入名稱與根據 dueDay 自動推估下個截止日，並支援 PDF 智慧自動配對卡片'] },
             { version: 'v4.3.0', date: '2026-06-20', items: ['卡片管理獨立為專屬功能分頁，與系統設定完全分離', '引入 CryptoJS AES 加密保護信用卡敏感資訊（卡號、到期日、CVV、地址）', '信用卡列表升級為「按銀行智慧分組折疊」結構', '新增信用卡「信用額度」記錄欄位，支援格式化數值展示'] },
             { version: 'v4.2.0', date: '2024-05-09', items: ['補全 10 家銀行解析規則（與 Python v3.13 同步）', '修正深色模式下輸入框文字顏色', '優化統計圖表自動載入邏輯', '修正歷史紀錄與新增項目彈窗之文字可視性'] },
@@ -869,6 +887,40 @@ createApp({
 
         const totalUnpaidAmount = computed(() => {
             return unpaidBills.value.reduce((sum, b) => sum + (Number(b.amount) || 0), 0);
+        });
+
+        const statementAlerts = computed(() => {
+            const alerts = [];
+            const now = new Date();
+            const currentDay = now.getDate();
+            
+            cards.value.forEach(card => {
+                if (!card.day) return;
+                
+                let stmtDate = new Date(now.getFullYear(), now.getMonth(), card.day);
+                if (currentDay < card.day) {
+                    stmtDate.setMonth(stmtDate.getMonth() - 1);
+                }
+                
+                const hasBill = bills.value.some(b => {
+                    const isLinked = b.cardId === card.id || b.name.includes(card.name) || (card.nickname && b.name.includes(card.nickname));
+                    if (!isLinked) return false;
+                    if (!b.date || b.date === '未知日期') return false;
+                    const billDate = new Date(b.date);
+                    return billDate >= stmtDate;
+                });
+                
+                if (!hasBill) {
+                    alerts.push({
+                        cardId: card.id,
+                        cardName: card.name,
+                        nickname: card.nickname,
+                        day: card.day,
+                        stmtDateString: `${stmtDate.getFullYear()}/${stmtDate.getMonth() + 1}/${card.day}`
+                    });
+                }
+            });
+            return alerts;
         });
 
         const filteredHistory = computed(() => {
@@ -1323,6 +1375,23 @@ createApp({
         
         const deleteCard = (i) => { if(confirm('刪除卡片設定？')) { cards.value.splice(i, 1); saveLocal(); if(user.value) triggerSync('upload', true); } };
 
+        const skipCardStatement = (alertObj) => {
+            const card = cards.value.find(c => c.id === alertObj.cardId);
+            if (!card) return;
+            const todayStr = new Date().toISOString().split('T')[0];
+            const dummyBill = {
+                id: Date.now().toString(),
+                name: card.name + (card.nickname ? ` (${card.nickname})` : '') + ' - 無帳單',
+                amount: 0,
+                date: todayStr,
+                cardId: card.id,
+                status: 'skipped'
+            };
+            bills.value.push(dummyBill);
+            saveLocal();
+            if(user.value) triggerSync('upload', true);
+        };
+
         const getCardOrgIcon = (org) => {
             if (!org) return '';
             const o = org.toLowerCase();
@@ -1746,9 +1815,9 @@ createApp({
             isLocked, pinBuffer, isLoading, loadingText, user, activePage, theme, isPrivacyOn, syncStatus, bills, cards,
             showAddModal, showChangelog, showCardEditor, billForm, editingBillId, cardForm, editingCardIndex,
             pdfPassword, historySearch, historyPeriod, analysisStart, analysisEnd, analysisBank,
-            navItems, changelog, unpaidBills, totalUnpaidAmount, filteredHistory, groupedHistory, analysisBills, analysisTotal, uniqueBanks,
+            navItems, changelog, unpaidBills, totalUnpaidAmount, filteredHistory, groupedHistory, analysisBills, analysisTotal, uniqueBanks, statementAlerts,
             loginGoogle, logout, triggerSync, pressKey, setPin, newPin, toggleTheme, togglePrivacy,
-            submitBill, markAsPaid, editBill, deleteBill, startAddCard, editCard, saveCard, deleteCard,
+            submitBill, markAsPaid, editBill, deleteBill, startAddCard, editCard, saveCard, deleteCard, skipCardStatement,
             formatDate, getBillIcon, getBillStatusClass, getCardAutopay, getUrgencyBar, formatMonthLabel, setAnalysisPeriod, getBankGradientClass,
             onFileChange, parsePDF, exportToExcel, decryptField, getPinKey, groupedCards, expandedBanks, expandedCards, totalCardsCount, totalCardsLimit,
             commonBanksList, startAddBill, onBillCardChange, getCardOrgIcon, getBillCardInfo

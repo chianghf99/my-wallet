@@ -617,7 +617,12 @@
                                             <span class="text-xs text-slate-400 font-bold ml-2">({{ group.cards.length }} 張卡片)</span>
                                         </div>
                                     </div>
-                                    <div>
+                                    <div class="flex items-center gap-3">
+                                        <button @click.stop="quickAddCardForBank(group.bank)" 
+                                                class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 font-black text-xs rounded-xl shadow-sm transition-all active:scale-95 flex items-center gap-1 cursor-pointer"
+                                                title="新增此銀行卡片">
+                                            <i class="fas fa-plus text-[9px]"></i> 新增卡片
+                                        </button>
                                         <i class="fas" :class="expandedBanks[group.bank] !== false ? 'fa-chevron-up' : 'fa-chevron-down'" class="text-slate-400 text-sm transition-all duration-300"></i>
                                     </div>
                                 </div>
@@ -1623,6 +1628,11 @@ createApp({
             cardForm.ticket = '';
             showCardEditor.value = true; 
         };
+
+        const quickAddCardForBank = (bankName) => {
+            startAddCard();
+            cardForm.name = bankName;
+        };
         
         const editCard = (i) => {
             const c = cards.value[i];
@@ -2188,7 +2198,7 @@ createApp({
             formatDate, getBillIcon, getBillStatusClass, getCardAutopay, getUrgencyBar, formatMonthLabel, setAnalysisPeriod, getBankGradientClass,
             onFileChange, parsePDF, exportToExcel, decryptField, getPinKey, groupedCards, expandedBanks, expandedCards, totalCardsCount, totalCardsLimit,
             commonBanksList, startAddBill, associatedCard, onBillNameInput, getCardOrgIcon, getBillCardInfo,
-            exportBackup, importBackup, getOfficialBankName, getTicketBadgeClass, getTicketIcon
+            exportBackup, importBackup, getOfficialBankName, getTicketBadgeClass, getTicketIcon, quickAddCardForBank
         };
     }
 }).mount('#app');

@@ -1537,6 +1537,10 @@ createApp({
                 }
             }
 
+            if (billName) {
+                billName = getOfficialBankName(billName);
+            }
+
             const billData = {
                 id: editingBillId.value || Date.now().toString(),
                 name: billName,
@@ -1855,10 +1859,10 @@ createApp({
                             const matchedCard = cards.value.find(c => result.bankName.includes(c.name) || c.name.includes(result.bankName));
                             if (matchedCard) {
                                 billForm.cardId = matchedCard.id;
-                                billForm.name = matchedCard.name;
+                                billForm.name = getOfficialBankName(matchedCard.name);
                             } else {
                                 billForm.cardId = '';
-                                billForm.name = result.bankName;
+                                billForm.name = getOfficialBankName(result.bankName);
                             }
                             billForm.amount = result.amount;
                             billForm.date = result.dueDate === '未知日期' ? '' : result.dueDate;

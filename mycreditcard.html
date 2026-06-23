@@ -122,16 +122,17 @@
         
         <!-- Sidebar (Desktop) -->
         <aside class="hidden lg:flex w-72 h-screen sticky top-0 flex-col glass border-r border-slate-200 dark:border-slate-800 p-8 z-50">
-            <div class="mb-12 flex items-center justify-between">
-                <div class="flex items-center gap-3 cursor-pointer" @click="activePage = 'dashboard'">
-                    <div class="w-10 h-10 rounded-xl bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-                        <i class="fas fa-wallet text-white text-xl"></i>
-                    </div>
-                    <h1 class="text-xl font-black text-slate-800 dark:text-white tracking-tight">卡片管家 <span class="text-indigo-500">Pro</span></h1>
-                </div>
-                <a href="https://chianghf99.github.io/my-wallet/" class="w-10 h-10 rounded-xl glass flex items-center justify-center text-slate-400 hover:text-indigo-500 transition-colors" title="回到主頁">
-                    <i class="fas fa-home"></i>
+            <div class="mb-12 flex items-center gap-3">
+                <a href="https://chianghf99.github.io/my-wallet/" class="w-10 h-10 rounded-xl glass flex items-center justify-center text-slate-400 hover:text-indigo-500 hover:bg-white/50 dark:hover:bg-slate-800 transition-colors" title="回到首頁">
+                    <i class="fas fa-home text-lg"></i>
                 </a>
+                <div class="flex items-center gap-2">
+                    <h1 class="text-xl font-black text-slate-800 dark:text-white tracking-tight">卡片管家</h1>
+                    <span @click="showChangelog = true" 
+                          class="cursor-pointer bg-indigo-50 dark:bg-slate-800 text-[10px] font-black px-2 py-0.5 rounded-lg text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-slate-700 transition-all select-none">
+                        v{{ changelog[0]?.version || '4.2.0' }}
+                    </span>
+                </div>
             </div>
             
             <nav class="flex-1 space-y-2">
@@ -143,13 +144,6 @@
                     {{ page.label }}
                 </button>
             </nav>
-            
-            <div class="mt-auto">
-                <div class="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-between">
-                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400">VERSION {{ changelog[0]?.version || 'v5.2.0' }}</span>
-                    <button @click="showChangelog = true" class="text-xs text-indigo-500 font-bold hover:underline">更新日誌</button>
-                </div>
-            </div>
         </aside>
 
         <!-- Mobile Header -->
@@ -229,19 +223,10 @@
                         </div>
                         
                         <div class="flex gap-3">
-                            <a href="https://chianghf99.github.io/my-wallet/" class="w-12 h-12 rounded-2xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all">
-                                <i class="fas fa-home"></i>
-                            </a>
-                            <button @click="togglePrivacy" class="w-12 h-12 rounded-2xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all">
+                            <button @click="togglePrivacy" class="w-12 h-12 rounded-2xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all" title="隱私模式">
                                 <i :class="isPrivacyOn ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
                             </button>
-                            <button @click="triggerSync('download')" class="w-12 h-12 rounded-2xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all">
-                                <i class="fas fa-sync-alt"></i>
-                            </button>
-                            <button @click="triggerSync('upload')" class="w-12 h-12 rounded-2xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all">
-                                <i class="fas fa-cloud-upload-alt"></i>
-                            </button>
-                            <button @click="exportToExcel" class="w-12 h-12 rounded-2xl bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/30 transition-all active:scale-95">
+                            <button @click="exportToExcel" class="w-12 h-12 rounded-2xl bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/30 transition-all active:scale-95" title="匯出 Excel">
                                 <i class="fas fa-file-csv"></i>
                             </button>
                         </div>
@@ -388,12 +373,17 @@
                                         <p class="text-xs text-slate-400">{{ item.date }}</p>
                                     </div>
                                 </div>
-                                <div class="text-right">
-                                    <div class="font-bold text-slate-700 dark:text-slate-300">${{ item.amount.toLocaleString() }}</div>
-                                    <div class="text-[10px] font-black uppercase mt-0.5"
-                                         :class="item.status === 'paid' ? 'text-emerald-500' : 'text-slate-400'">
-                                        {{ item.status === 'paid' ? '✓ 已入帳' : '略過' }}
+                                <div class="flex items-center gap-4">
+                                    <div class="text-right">
+                                        <div class="font-bold text-slate-700 dark:text-slate-300">${{ item.amount.toLocaleString() }}</div>
+                                        <div class="text-[10px] font-black uppercase mt-0.5"
+                                             :class="item.status === 'paid' ? 'text-emerald-500' : 'text-slate-400'">
+                                            {{ item.status === 'paid' ? '✓ 已入帳' : '略過' }}
+                                        </div>
                                     </div>
+                                    <button @click="deleteBill(item.id)" class="w-8 h-8 rounded-lg flex items-center justify-center text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all cursor-pointer" title="刪除">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -502,17 +492,25 @@
                                     <div class="w-12 h-12 rounded-2xl bg-rose-500 flex items-center justify-center text-white">
                                         <i class="fas fa-lock"></i>
                                     </div>
-                                    <h4 class="text-lg font-black text-slate-800 dark:text-white">安全鎖</h4>
+                                    <div>
+                                        <h4 class="text-lg font-black text-slate-800 dark:text-white">安全鎖</h4>
+                                        <p class="text-xs text-slate-400">目前狀態: <span :class="isPinSet ? 'text-emerald-500 font-bold' : 'text-slate-400 font-bold'">{{ isPinSet ? '已啟用' : '未啟用' }}</span></p>
+                                    </div>
                                 </div>
                                 <div class="space-y-4">
                                     <div>
-                                        <label class="block text-xs font-black text-slate-400 uppercase mb-2">設定新密碼 (6位數)</label>
+                                        <label class="block text-xs font-black text-slate-400 uppercase mb-2">{{ isPinSet ? '修改密碼 (6位數)' : '設定新密碼 (6位數)' }}</label>
                                         <input type="tel" v-model="newPin" maxlength="6" placeholder="輸入 6 位數字"
                                                class="w-full glass px-4 py-3 rounded-xl outline-none font-black tracking-[1em] text-center dark:text-white">
                                     </div>
-                                    <button @click="setPin" class="w-full py-4 bg-slate-800 dark:bg-white dark:text-slate-900 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all">
-                                        更新安全密碼
-                                    </button>
+                                    <div class="flex gap-2">
+                                        <button @click="setPin" class="flex-1 py-4 bg-indigo-500 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all">
+                                            {{ isPinSet ? '更新密碼' : '設定啟用' }}
+                                        </button>
+                                        <button v-if="isPinSet" @click="removePin" class="py-4 px-6 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/20 dark:hover:bg-rose-950/40 text-rose-500 font-black rounded-2xl active:scale-95 transition-all">
+                                            關閉密碼鎖
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                             
@@ -535,8 +533,51 @@
                                     </div>
                                 </button>
                             </div>
+
+                            <!-- Backup & Restore Section -->
+                            <div class="glass p-8 rounded-3xl md:col-span-2">
+                                <div class="flex items-center gap-4 mb-6">
+                                    <div class="w-12 h-12 rounded-2xl bg-emerald-500 flex items-center justify-center text-white">
+                                        <i class="fas fa-file-archive"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-lg font-black text-slate-800 dark:text-white">資料備份與還原</h4>
+                                        <p class="text-xs text-slate-400">管理您的資料，防範意外遺失</p>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <!-- 本機備份 -->
+                                    <div class="p-5 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-3">
+                                        <h5 class="text-sm font-bold text-slate-700 dark:text-slate-300">本機備份 (離線 JSON)</h5>
+                                        <p class="text-xs text-slate-400 leading-relaxed">下載備份檔案存放在電腦，即使不登入 Google 也可以在任何時候匯入還原所有卡片與帳單資料。</p>
+                                        <div class="flex flex-wrap gap-2 pt-2">
+                                            <button @click="exportBackup" class="px-4 py-2.5 bg-slate-800 dark:bg-white dark:text-slate-900 text-white font-bold text-xs rounded-xl hover:bg-slate-700 active:scale-95 transition-all flex items-center gap-1.5 shadow-sm">
+                                                <i class="fas fa-download text-[10px]"></i> 匯出備份檔案
+                                            </button>
+                                            <label class="px-4 py-2.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs rounded-xl hover:bg-slate-300 dark:hover:bg-slate-600 active:scale-95 transition-all flex items-center gap-1.5 shadow-sm cursor-pointer">
+                                                <i class="fas fa-upload text-[10px]"></i> 匯入還原檔案
+                                                <input type="file" @change="importBackup" accept=".json" class="hidden">
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <!-- 雲端備份管理 -->
+                                    <div class="p-5 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-3">
+                                        <h5 class="text-sm font-bold text-slate-700 dark:text-slate-300">雲端同步備份 (雲端)</h5>
+                                        <p class="text-xs text-slate-400 leading-relaxed">手動執行上傳備份至雲端或下載最新雲端存檔覆蓋本地，適合有多裝置同步需求的使用者。</p>
+                                        <div class="flex flex-wrap gap-2 pt-2">
+                                            <button :disabled="!user" @click="triggerSync('upload')" class="px-4 py-2.5 bg-indigo-500 text-white font-bold text-xs rounded-xl hover:bg-indigo-600 active:scale-95 transition-all flex items-center gap-1.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                                                <i class="fas fa-cloud-upload-alt text-[10px]"></i> 手動上傳備份
+                                            </button>
+                                            <button :disabled="!user" @click="triggerSync('download')" class="px-4 py-2.5 bg-indigo-500 text-white font-bold text-xs rounded-xl hover:bg-indigo-600 active:scale-95 transition-all flex items-center gap-1.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                                                <i class="fas fa-cloud-download-alt text-[10px]"></i> 手動下載還原
+                                            </button>
+                                        </div>
+                                        <p v-if="!user" class="text-[10px] text-rose-500 font-bold"><i class="fas fa-exclamation-triangle"></i> 請先在上方登入 Google 帳號以啟用雲端備份</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
+                    </div>
 
                     <!-- Card Management Page -->
                     <div v-else-if="activePage === 'cards'" key="cards" class="space-y-8">
@@ -620,7 +661,12 @@
                                                                 <div class="font-bold tracking-widest uppercase truncate max-w-[130px]">{{ card.displayName }}</div>
                                                             </div>
                                                             <div class="text-right">
-                                                                <span v-if="card.ticket" class="inline-block text-[8px] bg-white/20 px-1.5 py-0.5 rounded mr-2 font-bold align-middle uppercase tracking-widest">{{ card.ticket }}</span>
+                                                                <span v-if="card.ticket" 
+                                                                      :class="getTicketBadgeClass(card.ticket)" 
+                                                                      class="inline-flex items-center gap-1 text-[9px] px-2 py-0.5 rounded-full mr-2 font-black align-middle uppercase tracking-wider scale-90 origin-right transition-all">
+                                                                    <i :class="getTicketIcon(card.ticket)" class="text-[9px]"></i>
+                                                                    {{ card.ticket === '愛金卡' ? 'icash' : card.ticket }}
+                                                                </span>
                                                                 <div v-if="card.limit" class="inline-block text-left align-middle">
                                                                     <div class="text-[9px] opacity-70 uppercase tracking-wider mb-0.5">Credit Limit</div>
                                                                     <div class="font-black text-sm tracking-wide">NT$ {{ Number(card.limit).toLocaleString() }}</div>
@@ -886,6 +932,7 @@ createApp({
         const theme = ref(localStorage.getItem('theme') || 'light');
         const isPrivacyOn = ref(localStorage.getItem('privacy') === 'true');
         const syncStatus = ref('未同步');
+        const isPinSet = ref(!!localStorage.getItem('app_pin'));
         
         const bills = ref([]);
         const cards = ref([]);
@@ -937,6 +984,21 @@ createApp({
             return unpaidBills.value.reduce((sum, b) => sum + (Number(b.amount) || 0), 0);
         });
 
+        const getSafeDate = (year, month, day) => {
+            const maxDays = new Date(year, month + 1, 0).getDate();
+            const safeDay = Math.min(day, maxDays);
+            return new Date(year, month, safeDay);
+        };
+
+        const getOfficialBankName = (name) => {
+            if (!name) return "其他";
+            const kw = getBankKeyword(name);
+            if (!kw) return name;
+            const found = commonBanksList.find(b => b.includes(kw) || kw.includes(b));
+            if (found) return found;
+            return kw;
+        };
+
         const statementAlerts = computed(() => {
             const alerts = [];
             const now = new Date();
@@ -945,10 +1007,16 @@ createApp({
             cards.value.forEach(card => {
                 if (!card.day) return;
                 
-                let stmtDate = new Date(now.getFullYear(), now.getMonth(), card.day);
+                let targetYear = now.getFullYear();
+                let targetMonth = now.getMonth();
                 if (currentDay < card.day) {
-                    stmtDate.setMonth(stmtDate.getMonth() - 1);
+                    targetMonth--;
+                    if (targetMonth < 0) {
+                        targetMonth = 11;
+                        targetYear--;
+                    }
                 }
+                const stmtDate = getSafeDate(targetYear, targetMonth, card.day);
                 
                 const hasBill = bills.value.some(b => {
                     const isLinked = b.cardId === card.id || 
@@ -965,7 +1033,7 @@ createApp({
                         cardName: card.name,
                         nickname: card.nickname,
                         day: card.day,
-                        stmtDateString: `${stmtDate.getFullYear()}/${stmtDate.getMonth() + 1}/${card.day}`
+                        stmtDateString: `${stmtDate.getFullYear()}/${stmtDate.getMonth() + 1}/${stmtDate.getDate()}`
                     });
                 }
             });
@@ -1006,7 +1074,8 @@ createApp({
         const analysisBills = computed(() => {
             return bills.value.filter(b => {
                 const inRange = b.date >= analysisStart.value && b.date <= analysisEnd.value;
-                const matchBank = analysisBank.value === 'all' || b.name.includes(analysisBank.value);
+                const matchBank = analysisBank.value === 'all' || 
+                                  getOfficialBankName(b.name) === getOfficialBankName(analysisBank.value);
                 return inRange && matchBank && b.status !== 'skipped';
             });
         });
@@ -1019,14 +1088,12 @@ createApp({
             const banks = new Set();
             cards.value.forEach(c => {
                 if (c.name) {
-                    const cleanName = commonBanksList.find(b => c.name.includes(b)) || c.name.substring(0, 4);
-                    banks.add(cleanName);
+                    banks.add(getOfficialBankName(c.name));
                 }
             });
             bills.value.forEach(b => { 
                 if (b.name) {
-                    const cleanName = commonBanksList.find(bank => b.name.includes(bank)) || b.name.substring(0, 2);
-                    banks.add(cleanName);
+                    banks.add(getOfficialBankName(b.name));
                 } 
             });
             return Array.from(banks).sort();
@@ -1216,13 +1283,104 @@ createApp({
         };
 
         const setPin = () => {
-            if(newPin.value.length === 6) {
+            if(newPin.value.length === 6 && !isNaN(newPin.value)) {
                 localStorage.setItem('app_pin', newPin.value);
+                isPinSet.value = true;
                 alert('密碼已設定');
                 newPin.value = "";
             } else { alert('請輸入 6 位數字'); }
         };
+        const removePin = () => {
+            if (confirm('確定要關閉安全密碼鎖嗎？關閉後，您的敏感欄位（卡號、帳單地址等）將會直接顯示。')) {
+                localStorage.removeItem('app_pin');
+                isPinSet.value = false;
+                alert('安全鎖已關閉');
+            }
+        };
         const newPin = ref("");
+
+        const exportBackup = () => {
+            const myCreditDataStr = localStorage.getItem('myCreditData') || '{"bills":[],"cards":[]}';
+            const backupData = {
+                myCreditData: myCreditDataStr,
+                app_pin: localStorage.getItem('app_pin') || '',
+                theme: localStorage.getItem('theme') || 'light',
+                privacy: localStorage.getItem('privacy') || 'false'
+            };
+            const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const dateStr = new Date().toISOString().split('T')[0];
+            a.href = url;
+            a.download = `mycreditcard_backup_${dateStr}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        };
+
+        const importBackup = (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data.myCreditData) {
+                        const parsed = JSON.parse(data.myCreditData);
+                        if (parsed.cards && parsed.bills) {
+                            localStorage.setItem('myCreditData', data.myCreditData);
+                            if (data.app_pin) {
+                                localStorage.setItem('app_pin', data.app_pin);
+                            } else {
+                                localStorage.removeItem('app_pin');
+                            }
+                            if (data.theme) localStorage.setItem('theme', data.theme);
+                            if (data.privacy) localStorage.setItem('privacy', data.privacy);
+                            
+                            alert('還原成功！網頁即將自動重新整理以載入資料。');
+                            window.location.reload();
+                        } else {
+                            alert('備份檔案格式不正確，找不到 cards 或 bills 欄位。');
+                        }
+                    } else {
+                        alert('無效的備份檔案格式。');
+                    }
+                } catch (err) {
+                    alert('讀取或解析備份檔案時出錯：' + err.message);
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        };
+
+        const getTicketBadgeClass = (ticket) => {
+            if (!ticket) return '';
+            if (ticket.includes('悠遊卡')) {
+                return 'bg-gradient-to-r from-teal-400 via-emerald-500 to-indigo-500 text-white shadow-sm';
+            }
+            if (ticket.includes('一卡通') || ticket.includes('iPass')) {
+                return 'bg-gradient-to-r from-sky-400 via-indigo-500 to-emerald-400 text-white shadow-sm';
+            }
+            if (ticket.includes('愛金卡') || ticket.includes('icash')) {
+                return 'bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-white shadow-sm';
+            }
+            return 'bg-white/20 text-white';
+        };
+
+        const getTicketIcon = (ticket) => {
+            if (!ticket) return '';
+            if (ticket.includes('悠遊卡')) {
+                return 'fab fa-pagelines';
+            }
+            if (ticket.includes('一卡通') || ticket.includes('iPass')) {
+                return 'fas fa-compass';
+            }
+            if (ticket.includes('愛金卡') || ticket.includes('icash')) {
+                return 'fas fa-store';
+            }
+            return 'fas fa-credit-card';
+        };
 
         const toggleTheme = () => {
             theme.value = theme.value === 'dark' ? 'light' : 'dark';
@@ -1303,7 +1461,8 @@ createApp({
                             year++;
                         }
                     }
-                    billForm.date = `${year}-${String(month + 1).padStart(2, '0')}-${String(card.dueDay).padStart(2, '0')}`;
+                    const dueSafeDate = getSafeDate(year, month, card.dueDay);
+                    billForm.date = `${dueSafeDate.getFullYear()}-${String(dueSafeDate.getMonth() + 1).padStart(2, '0')}-${String(dueSafeDate.getDate()).padStart(2, '0')}`;
                 }
             }
             showAddModal.value = true;
@@ -1342,7 +1501,8 @@ createApp({
                             year++;
                         }
                     }
-                    const dueString = `${year}-${String(month + 1).padStart(2, '0')}-${String(matched.dueDay).padStart(2, '0')}`;
+                    const dueSafeDate = getSafeDate(year, month, matched.dueDay);
+                    const dueString = `${dueSafeDate.getFullYear()}-${String(dueSafeDate.getMonth() + 1).padStart(2, '0')}-${String(dueSafeDate.getDate()).padStart(2, '0')}`;
                     billForm.date = dueString;
                 }
             } else {
@@ -1354,10 +1514,22 @@ createApp({
             if(!billForm.name && !billForm.cardId) { alert('請輸入帳單名稱或選擇卡片'); return; }
             
             let billName = billForm.name;
-            if (billForm.cardId) {
-                const c = cards.value.find(card => card.id === billForm.cardId);
+            let finalCardId = billForm.cardId || '';
+
+            if (finalCardId) {
+                const c = cards.value.find(card => card.id === finalCardId);
                 if (c) {
                     billName = c.name;
+                }
+            } else if (billName) {
+                // 兜底：若無卡片 ID，使用銀行關鍵字嘗試對應
+                const kw = getBankKeyword(billName);
+                if (kw) {
+                    const matched = cards.value.find(c => getBankKeyword(c.name) === kw);
+                    if (matched) {
+                        finalCardId = matched.id;
+                        billName = matched.name;
+                    }
                 }
             }
 
@@ -1366,7 +1538,7 @@ createApp({
                 name: billName,
                 amount: Number(billForm.amount),
                 date: billForm.date,
-                cardId: billForm.cardId || '',
+                cardId: finalCardId,
                 status: 'unpaid'
             };
             
@@ -1674,7 +1846,7 @@ createApp({
                             const matchedCard = cards.value.find(c => result.bankName.includes(c.name) || c.name.includes(result.bankName));
                             if (matchedCard) {
                                 billForm.cardId = matchedCard.id;
-                                billForm.name = matchedCard.name + (matchedCard.nickname ? ` (${matchedCard.nickname})` : '');
+                                billForm.name = matchedCard.name;
                             } else {
                                 billForm.cardId = '';
                                 billForm.name = result.bankName;
@@ -1888,7 +2060,7 @@ createApp({
 
             const bankData = {}; const monthData = {};
             analysisBills.value.forEach(b => {
-                const bank = b.name.substring(0,2); bankData[bank] = (bankData[bank] || 0) + b.amount;
+                const bank = getOfficialBankName(b.name); bankData[bank] = (bankData[bank] || 0) + b.amount;
                 const month = b.date.substring(0,7); monthData[month] = (monthData[month] || 0) + b.amount;
             });
 
@@ -2011,11 +2183,12 @@ createApp({
             showAddModal, showChangelog, showCardEditor, showMobileMenu, billForm, editingBillId, cardForm, editingCardIndex,
             pdfPassword, historySearch, historyPeriod, analysisStart, analysisEnd, analysisBank,
             navItems, changelog, unpaidBills, totalUnpaidAmount, filteredHistory, groupedHistory, analysisBills, analysisTotal, uniqueBanks, statementAlerts, groupedStatementAlerts,
-            loginGoogle, logout, triggerSync, pressKey, setPin, newPin, toggleTheme, togglePrivacy,
+            loginGoogle, logout, triggerSync, pressKey, setPin, removePin, isPinSet, newPin, toggleTheme, togglePrivacy,
             submitBill, markAsPaid, editBill, deleteBill, startAddCard, editCard, saveCard, deleteCard, skipCardStatement, quickAddBillForCard,
             formatDate, getBillIcon, getBillStatusClass, getCardAutopay, getUrgencyBar, formatMonthLabel, setAnalysisPeriod, getBankGradientClass,
             onFileChange, parsePDF, exportToExcel, decryptField, getPinKey, groupedCards, expandedBanks, expandedCards, totalCardsCount, totalCardsLimit,
-            commonBanksList, startAddBill, associatedCard, onBillNameInput, getCardOrgIcon, getBillCardInfo
+            commonBanksList, startAddBill, associatedCard, onBillNameInput, getCardOrgIcon, getBillCardInfo,
+            exportBackup, importBackup, getOfficialBankName, getTicketBadgeClass, getTicketIcon
         };
     }
 }).mount('#app');

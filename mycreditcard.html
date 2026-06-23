@@ -646,8 +646,7 @@
                                                         <!-- Front Content -->
                                                         <div class="flex justify-between items-start relative z-10">
                                                             <div class="flex flex-col">
-                                                                <span class="font-black text-lg tracking-widest opacity-90 leading-tight">{{ group.bank }}</span>
-                                                                <span v-if="card.nickname" class="text-xs opacity-75 font-bold -mt-0.5">{{ card.nickname }}</span>
+                                                                <span class="font-black text-lg tracking-widest opacity-90 leading-tight">{{ card.nickname || '預設卡' }}</span>
                                                             </div>
                                                             <div class="flex items-center gap-2">
                                                                 <i v-if="getCardOrgIcon(card.org)" :class="getCardOrgIcon(card.org)" class="text-2xl opacity-90"></i>
@@ -661,18 +660,18 @@
                                                         </div>
                                                         
                                                         <div class="flex justify-between items-end relative z-10">
-                                                            <div>
-                                                                <div class="text-[9px] opacity-70 uppercase tracking-wider mb-0.5">Cardholder</div>
-                                                                <div class="font-bold tracking-widest uppercase truncate max-w-[130px]">{{ card.displayName }}</div>
-                                                            </div>
-                                                            <div class="text-right">
+                                                            <!-- 左下角：電子票證 (取代原 Cardholder) -->
+                                                            <div class="h-9 flex items-end">
                                                                 <span v-if="card.ticket" 
                                                                       :class="getTicketBadgeClass(card.ticket)" 
-                                                                      class="inline-flex items-center gap-1 text-[9px] px-2 py-0.5 rounded-full mr-2 font-black align-middle uppercase tracking-wider scale-90 origin-right transition-all">
-                                                                    <i :class="getTicketIcon(card.ticket)" class="text-[9px]"></i>
+                                                                      class="inline-flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded-full font-black uppercase tracking-wider shadow-md shadow-black/10 select-none">
+                                                                    <i :class="getTicketIcon(card.ticket)" class="text-[10px]"></i>
                                                                     {{ card.ticket === '愛金卡' ? 'icash' : card.ticket }}
                                                                 </span>
-                                                                <div v-if="card.limit" class="inline-block text-left align-middle">
+                                                            </div>
+                                                            <!-- 右下角：額度 -->
+                                                            <div class="text-right">
+                                                                <div v-if="card.limit" class="inline-block text-left">
                                                                     <div class="text-[9px] opacity-70 uppercase tracking-wider mb-0.5">Credit Limit</div>
                                                                     <div class="font-black text-sm tracking-wide">NT$ {{ Number(card.limit).toLocaleString() }}</div>
                                                                 </div>

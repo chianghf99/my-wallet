@@ -1405,11 +1405,16 @@ createApp({
                 bills.value = d.bills || [];
                 cards.value = d.cards || [];
                 
-                // Migrate: Ensure every card has a unique ID
+                // Migrate: Ensure every card has a unique ID, and normalize names to official bank names
                 let migrated = false;
                 cards.value.forEach(c => {
                     if (!c.id) {
                         c.id = Date.now().toString() + Math.random().toString(36).substr(2, 5);
+                        migrated = true;
+                    }
+                    const officialName = getOfficialBankName(c.name);
+                    if (c.name !== officialName) {
+                        c.name = officialName;
                         migrated = true;
                     }
                 });
@@ -1419,9 +1424,12 @@ createApp({
                     // 1. 如果已有 cardId，確保名稱與卡片名稱完全統一
                     if (b.cardId) {
                         const card = cards.value.find(c => c.id === b.cardId);
-                        if (card && b.name !== card.name) {
-                            b.name = card.name;
-                            migrated = true;
+                        if (card) {
+                            const officialBillName = getOfficialBankName(card.name);
+                            if (b.name !== officialBillName) {
+                                b.name = officialBillName;
+                                migrated = true;
+                            }
                         }
                     } else {
                         // 2. 如果沒有 cardId，嘗試根據名稱模糊匹配關聯卡片
@@ -1430,8 +1438,20 @@ createApp({
                             const matchedCard = cards.value.find(c => getBankKeyword(c.name) === billKeyword);
                             if (matchedCard) {
                                 b.cardId = matchedCard.id;
-                                b.name = matchedCard.name;
+                                b.name = getOfficialBankName(matchedCard.name);
                                 migrated = true;
+                            } else {
+                                const officialBillName = getOfficialBankName(b.name);
+                                if (b.name !== officialBillName) {
+                                    b.name = officialBillName;
+                                    migrated = true;
+                                }
+                            }
+                        } else {
+                            const officialBillName = getOfficialBankName(b.name);
+                            if (b.name !== officialBillName) {
+                                    b.name = officialBillName;
+                                    migrated = true;
                             }
                         }
                     }

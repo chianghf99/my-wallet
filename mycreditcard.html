@@ -998,6 +998,7 @@ createApp({
             if (!name) return "其他";
             const kw = getBankKeyword(name);
             if (!kw) return name;
+            if (kw === "中信") return "中國信託";
             const found = commonBanksList.find(b => b.includes(kw) || kw.includes(b));
             if (found) return found;
             return kw;

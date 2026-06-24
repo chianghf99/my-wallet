@@ -936,7 +936,7 @@ createApp({
         const theme = ref(localStorage.getItem('theme') || 'light');
         const isPrivacyOn = ref(localStorage.getItem('privacy') === 'true');
         const syncStatus = ref('未同步');
-        const isPinSet = ref(!!localStorage.getItem('app_pin'));
+        const isPinSet = ref(!!(localStorage.getItem('app_pin_hash') || localStorage.getItem('app_pin')));
         
         const bills = ref([]);
         const cards = ref([]);
@@ -1270,16 +1270,81 @@ createApp({
         };
 
         // UI & Logic
-        const checkLock = () => { if(localStorage.getItem('app_pin')) isLocked.value = true; };
+        // In-memory session key — never touches localStorage
+        let _sessionKey = '';
+        const getSessionKey = () => _sessionKey;
+
+        // Derive AES key from PIN using PBKDF2
+        const deriveKey = (pin, salt) => {
+            return CryptoJS.PBKDF2(pin, salt, { keySize: 256 / 32, iterations: 100000 }).toString();
+        };
+
+        const checkLock = () => {
+            if (localStorage.getItem('app_pin_hash') || localStorage.getItem('app_pin')) {
+                isLocked.value = true;
+            }
+        };
+
         const pressKey = (k) => {
-            if(k === 'clear') pinBuffer.value = "";
-            else if(k === 'del') pinBuffer.value = pinBuffer.value.slice(0, -1);
-            else if(pinBuffer.value.length < 6) pinBuffer.value += k;
-            
-            if(pinBuffer.value.length === 6) {
-                if(pinBuffer.value === localStorage.getItem('app_pin')) {
-                    isLocked.value = false;
-                    pinBuffer.value = "";
+            if (k === 'clear') pinBuffer.value = "";
+            else if (k === 'del') pinBuffer.value = pinBuffer.value.slice(0, -1);
+            else if (pinBuffer.value.length < 6) pinBuffer.value += k;
+
+            if (pinBuffer.value.length === 6) {
+                const pin = pinBuffer.value;
+                const storedHash = localStorage.getItem('app_pin_hash');
+                const legacyPin = localStorage.getItem('app_pin');
+
+                if (storedHash) {
+                    // New scheme: compare SHA-256 hash
+                    const inputHash = CryptoJS.SHA256(pin).toString();
+                    if (inputHash === storedHash) {
+                        const salt = localStorage.getItem('app_pin_salt') || '';
+                        _sessionKey = deriveKey(pin, salt);
+                        isLocked.value = false;
+                        pinBuffer.value = "";
+                    } else {
+                        alert('密碼錯誤');
+                        pinBuffer.value = "";
+                    }
+                } else if (legacyPin) {
+                    // Legacy scheme: plaintext compare, then migrate
+                    if (pin === legacyPin) {
+                        // Migrate: re-encrypt all cards with new PBKDF2 key
+                        const salt = CryptoJS.lib.WordArray.random(16).toString();
+                        const newKey = deriveKey(pin, salt);
+                        const storedData = localStorage.getItem('myCreditData');
+                        if (storedData) {
+                            try {
+                                const parsed = JSON.parse(storedData);
+                                parsed.cards = (parsed.cards || []).map(card => {
+                                    const fields = ['enc_number', 'enc_expiry', 'enc_cvv', 'enc_address'];
+                                    fields.forEach(f => {
+                                        if (card[f]) {
+                                            try {
+                                                const plain = CryptoJS.AES.decrypt(card[f], legacyPin).toString(CryptoJS.enc.Utf8);
+                                                if (plain) card[f] = CryptoJS.AES.encrypt(plain, newKey).toString();
+                                            } catch(e) {}
+                                        }
+                                    });
+                                    return card;
+                                });
+                                localStorage.setItem('myCreditData', JSON.stringify(parsed));
+                                cards.value = parsed.cards || [];
+                                bills.value = parsed.bills || [];
+                            } catch(e) {}
+                        }
+                        localStorage.setItem('app_pin_hash', CryptoJS.SHA256(pin).toString());
+                        localStorage.setItem('app_pin_salt', salt);
+                        localStorage.removeItem('app_pin');
+                        _sessionKey = newKey;
+                        isLocked.value = false;
+                        pinBuffer.value = "";
+                        console.log('[Security] Migrated PIN to PBKDF2 scheme.');
+                    } else {
+                        alert('密碼錯誤');
+                        pinBuffer.value = "";
+                    }
                 } else {
                     alert('密碼錯誤');
                     pinBuffer.value = "";
@@ -1288,8 +1353,42 @@ createApp({
         };
 
         const setPin = () => {
-            if(newPin.value.length === 6 && !isNaN(newPin.value)) {
-                localStorage.setItem('app_pin', newPin.value);
+            if (newPin.value.length === 6 && !isNaN(newPin.value)) {
+                const pin = newPin.value;
+                const salt = CryptoJS.lib.WordArray.random(16).toString();
+                const hash = CryptoJS.SHA256(pin).toString();
+                const newKey = deriveKey(pin, salt);
+
+                // Re-encrypt all existing cards with the new key
+                const oldKey = _sessionKey || localStorage.getItem('app_pin') || '';
+                if (oldKey) {
+                    const storedData = localStorage.getItem('myCreditData');
+                    if (storedData) {
+                        try {
+                            const parsed = JSON.parse(storedData);
+                            parsed.cards = (parsed.cards || []).map(card => {
+                                const fields = ['enc_number', 'enc_expiry', 'enc_cvv', 'enc_address'];
+                                fields.forEach(f => {
+                                    if (card[f]) {
+                                        try {
+                                            const plain = CryptoJS.AES.decrypt(card[f], oldKey).toString(CryptoJS.enc.Utf8);
+                                            if (plain) card[f] = CryptoJS.AES.encrypt(plain, newKey).toString();
+                                        } catch(e) {}
+                                    }
+                                });
+                                return card;
+                            });
+                            localStorage.setItem('myCreditData', JSON.stringify(parsed));
+                            cards.value = parsed.cards || [];
+                            bills.value = parsed.bills || [];
+                        } catch(e) {}
+                    }
+                }
+
+                localStorage.setItem('app_pin_hash', hash);
+                localStorage.setItem('app_pin_salt', salt);
+                localStorage.removeItem('app_pin'); // clean legacy
+                _sessionKey = newKey;
                 isPinSet.value = true;
                 alert('密碼已設定');
                 newPin.value = "";
@@ -1297,7 +1396,10 @@ createApp({
         };
         const removePin = () => {
             if (confirm('確定要關閉安全密碼鎖嗎？關閉後，您的敏感欄位（卡號、帳單地址等）將會直接顯示。')) {
+                localStorage.removeItem('app_pin_hash');
+                localStorage.removeItem('app_pin_salt');
                 localStorage.removeItem('app_pin');
+                _sessionKey = '';
                 isPinSet.value = false;
                 alert('安全鎖已關閉');
             }
@@ -1306,9 +1408,9 @@ createApp({
 
         const exportBackup = () => {
             const myCreditDataStr = localStorage.getItem('myCreditData') || '{"bills":[],"cards":[]}';
+            // PIN credentials are intentionally excluded from backup for security
             const backupData = {
                 myCreditData: myCreditDataStr,
-                app_pin: localStorage.getItem('app_pin') || '',
                 theme: localStorage.getItem('theme') || 'light',
                 privacy: localStorage.getItem('privacy') || 'false'
             };
@@ -1335,15 +1437,12 @@ createApp({
                         const parsed = JSON.parse(data.myCreditData);
                         if (parsed.cards && parsed.bills) {
                             localStorage.setItem('myCreditData', data.myCreditData);
-                            if (data.app_pin) {
-                                localStorage.setItem('app_pin', data.app_pin);
-                            } else {
-                                localStorage.removeItem('app_pin');
-                            }
+                            // Note: PIN credentials are not restored from backup.
+                            // User must re-configure PIN after import if needed.
                             if (data.theme) localStorage.setItem('theme', data.theme);
                             if (data.privacy) localStorage.setItem('privacy', data.privacy);
                             
-                            alert('還原成功！網頁即將自動重新整理以載入資料。');
+                            alert('還原成功！\n\n注意：安全密碼鎖不會隨備份還原，請還原後至「設定」重新設定 PIN。\n\n網頁即將自動重新整理以載入資料。');
                             window.location.reload();
                         } else {
                             alert('備份檔案格式不正確，找不到 cards 或 bills 欄位。');
@@ -1634,7 +1733,8 @@ createApp({
             }
         };
 
-        const getPinKey = () => localStorage.getItem('app_pin') || '';
+        // Key lives only in memory — never read from localStorage
+        const getPinKey = () => _sessionKey;
 
         const startAddCard = () => { 
             editingCardIndex.value = null; 

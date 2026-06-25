@@ -1464,6 +1464,7 @@ createApp({
                 isPinSet.value = true;
                 alert('密碼已設定');
                 newPin.value = "";
+                if (user.value) triggerSync('upload', true);
             } else { alert('請輸入 6 位數字'); }
         };
         const removePin = () => {
@@ -1500,6 +1501,7 @@ createApp({
                 _sessionKey.value = '';
                 isPinSet.value = false;
                 alert('安全鎖已關閉');
+                if (user.value) triggerSync('upload', true);
             }
         };
         const newPin = ref("");

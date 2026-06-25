@@ -1274,9 +1274,13 @@ createApp({
         const _sessionKey = ref('');
         const getSessionKey = () => _sessionKey.value;
 
-        // Derive AES key from PIN using PBKDF2
-        const deriveKey = (pin, salt) => {
-            return CryptoJS.PBKDF2(pin, salt, { keySize: 256 / 32, iterations: 100000 }).toString();
+        // Fixed salt: no need to store/transfer salt across devices.
+        // Any device with the same PIN derives the same key.
+        const _FIXED_SALT = 'mywallet-pbkdf2-v2';
+
+        // Derive AES key from PIN using PBKDF2 with fixed salt
+        const deriveKey = (pin) => {
+            return CryptoJS.PBKDF2(pin, _FIXED_SALT, { keySize: 256 / 32, iterations: 10000 }).toString();
         };
 
         const checkLock = () => {
@@ -1299,20 +1303,68 @@ createApp({
                     // New scheme: compare SHA-256 hash
                     const inputHash = CryptoJS.SHA256(pin).toString();
                     if (inputHash === storedHash) {
-                        const salt = localStorage.getItem('app_pin_salt') || '';
-                        _sessionKey.value = deriveKey(pin, salt);
+                        const newKey = deriveKey(pin); // fixed-salt PBKDF2
+
+                        // Check if data needs migration (encrypted with old random-salt PBKDF2 or raw PIN)
+                        const storedData = localStorage.getItem('myCreditData');
+                        let needsMigration = false;
+                        if (storedData) {
+                            try {
+                                const parsed = JSON.parse(storedData);
+                                const sampleCard = (parsed.cards || []).find(c => c.enc_number);
+                                if (sampleCard) {
+                                    const testBytes = CryptoJS.AES.decrypt(sampleCard.enc_number, newKey);
+                                    const testPlain = testBytes.toString(CryptoJS.enc.Utf8);
+                                    if (!testPlain) needsMigration = true;
+                                }
+                            } catch(e) { needsMigration = true; }
+                        }
+
+                        if (needsMigration && storedData) {
+                            const oldSalt = localStorage.getItem('app_pin_salt') || '';
+                            const oldKeys = [pin]; // raw PIN
+                            if (oldSalt) {
+                                oldKeys.push(CryptoJS.PBKDF2(pin, oldSalt, { keySize: 256/32, iterations: 100000 }).toString());
+                            }
+                            try {
+                                const parsed = JSON.parse(storedData);
+                                parsed.cards = (parsed.cards || []).map(card => {
+                                    const fields = ['enc_number', 'enc_expiry', 'enc_cvv', 'enc_address'];
+                                    fields.forEach(f => {
+                                        if (card[f]) {
+                                            for (const oldKey of oldKeys) {
+                                                try {
+                                                    const plain = CryptoJS.AES.decrypt(card[f], oldKey).toString(CryptoJS.enc.Utf8);
+                                                    if (plain) {
+                                                        card[f] = CryptoJS.AES.encrypt(plain, newKey).toString();
+                                                        break;
+                                                    }
+                                                } catch(e) {}
+                                            }
+                                        }
+                                    });
+                                    return card;
+                                });
+                                localStorage.setItem('myCreditData', JSON.stringify(parsed));
+                                cards.value = parsed.cards || [];
+                                bills.value = parsed.bills || [];
+                                localStorage.removeItem('app_pin_salt');
+                                console.log('[Security] Migrated to fixed-salt PBKDF2 scheme.');
+                            } catch(e) {}
+                        }
+
+                        _sessionKey.value = newKey;
                         isLocked.value = false;
                         pinBuffer.value = "";
                     } else {
-                        alert('密碼錯誤');
+                        alert('\u5bc6\u78bc\u932f\u8aa4');
                         pinBuffer.value = "";
                     }
                 } else if (legacyPin) {
                     // Legacy scheme: plaintext compare, then migrate
                     if (pin === legacyPin) {
                         // Migrate: re-encrypt all cards with new PBKDF2 key
-                        const salt = CryptoJS.lib.WordArray.random(16).toString();
-                        const newKey = deriveKey(pin, salt);
+                        const newKey = deriveKey(pin);
                         const storedData = localStorage.getItem('myCreditData');
                         if (storedData) {
                             try {
@@ -1335,7 +1387,7 @@ createApp({
                             } catch(e) {}
                         }
                         localStorage.setItem('app_pin_hash', CryptoJS.SHA256(pin).toString());
-                        localStorage.setItem('app_pin_salt', salt);
+                        localStorage.removeItem('app_pin_salt'); // not needed with fixed salt
                         localStorage.removeItem('app_pin');
                         _sessionKey.value = newKey;
                         isLocked.value = false;
@@ -1357,7 +1409,7 @@ createApp({
                 const pin = newPin.value;
                 const salt = CryptoJS.lib.WordArray.random(16).toString();
                 const hash = CryptoJS.SHA256(pin).toString();
-                const newKey = deriveKey(pin, salt);
+                const newKey = deriveKey(pin);
 
                 // Re-encrypt all existing cards with the new key
                 const oldKey = _sessionKey.value || localStorage.getItem('app_pin') || '';
@@ -1386,7 +1438,7 @@ createApp({
                 }
 
                 localStorage.setItem('app_pin_hash', hash);
-                localStorage.setItem('app_pin_salt', salt);
+                localStorage.removeItem('app_pin_salt'); // not needed with fixed salt
                 localStorage.removeItem('app_pin'); // clean legacy
                 _sessionKey.value = newKey;
                 isPinSet.value = true;

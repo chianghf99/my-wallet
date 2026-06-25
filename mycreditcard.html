@@ -2445,21 +2445,33 @@ createApp({
 
         const getBankKeyword = (name) => {
             if (!name) return "";
-            const clean = name.replace(/銀行|商銀|商業銀行|信用卡/g, "").trim();
+            const clean = name.toLowerCase().replace(/臺/g, "台").replace(/銀行|商銀|商業銀行|信用卡/g, "").trim();
+            
+            // Map aliases to keywords
+            if (clean.includes("line") || clean.includes("連線")) return "連線";
+            if (clean.includes("next") || clean.includes("將來")) return "將來";
+            if (clean.includes("rakuten") || clean.includes("樂天")) return "樂天";
+            if (clean.includes("hsbc") || clean.includes("滙豐") || clean.includes("匯豐")) return "滙豐";
+            if (clean.includes("fubon") || clean.includes("富邦")) return "富邦";
+            if (clean.includes("cathay") || clean.includes("國泰")) return "國泰";
+            if (clean.includes("taishin") || clean.includes("台新")) return "台新";
+            if (clean.includes("esun") || clean.includes("玉山")) return "玉山";
+            if (clean.includes("ctbc") || clean.includes("中信") || clean.includes("中國信託")) return "中信";
+            
             const keywords = [
                 "富邦", "國泰", "台新", "玉山", "中信", "中國信託", "永豐", "兆豐", "聯邦", "元大", 
-                "第一", "華南", "彰化", "彰銀", "合作金庫", "合庫", "土地", "土銀", "台灣", "臺銀", "上海", 
+                "第一", "華南", "彰化", "彰銀", "合作金庫", "合庫", "土地", "土銀", "台灣", "台銀", "上海", 
                 "星展", "花旗", "渣打", "滙豐", "匯豐", "新光", "遠東", "凱基", "陽信", "台中",
-                "郵局", "郵政", "中華郵政", "將來", "連線", "樂天"
+                "郵局", "郵政", "中華郵政", "將來", "連線", "樂天", "台企銀", "臺灣企銀", "台灣企銀",
+                "高雄", "京城", "瑞興", "華泰", "板信", "三信", "安泰", "日盛"
             ];
             for (const kw of keywords) {
-                if (clean.includes(kw)) {
+                if (clean.includes(kw.toLowerCase())) {
                     if (kw === "中國信託") return "中信";
                     if (kw === "彰銀") return "彰化";
                     if (kw === "合庫") return "合作金庫";
                     if (kw === "土銀") return "土地";
-                    if (kw === "臺銀") return "台灣";
-                    if (kw === "匯豐") return "滙豐";
+                    if (kw === "台銀") return "台灣";
                     if (kw === "郵局") return "郵政";
                     if (kw === "中華郵政") return "郵政";
                     return kw;

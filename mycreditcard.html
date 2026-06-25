@@ -697,8 +697,11 @@
                                                                     <div v-if="card.dueDay">繳費日: <span class="text-white font-bold">{{ card.dueDay }}號</span></div>
                                                                 </div>
                                                             </div>
-                                                            <div class="truncate text-[10px] opacity-80 mt-auto bg-black/20 p-1.5 rounded" :title="card.enc_address ? decryptField(card.enc_address, getPinKey()) : '無記錄'">
-                                                                <i class="fas fa-map-marker-alt mr-1"></i> {{ card.enc_address ? decryptField(card.enc_address, getPinKey()) : '無記錄' }}
+                                                            <div class="truncate text-[10px] opacity-80 mt-auto bg-black/20 p-1.5 rounded" :title="card.address || '無記錄'">
+                                                                <i class="fas fa-map-marker-alt mr-1"></i> {{ card.address || '無記錄' }}
+                                                            </div>
+                                                            <div v-if="card.notes" class="truncate text-[10px] opacity-80 bg-black/20 p-1.5 rounded mt-1" :title="card.notes">
+                                                                <i class="fas fa-sticky-note mr-1"></i> {{ card.notes }}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -889,6 +892,10 @@
                         <label class="block text-xs font-bold text-slate-400 mb-1">帳單通訊地址</label>
                         <input type="text" v-model="cardForm.address" placeholder="請輸入信用卡對帳通訊地址" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
                     </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-bold text-slate-400 mb-1">備註 (選填)</label>
+                        <textarea v-model="cardForm.notes" placeholder="請輸入備註資訊 (例如: 專屬優惠、年費條件等)" rows="2" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white resize-none"></textarea>
+                    </div>
                 </div>
             </div>
             
@@ -948,7 +955,7 @@ createApp({
         
         const billForm = reactive({ name: '', amount: '', date: '', cardId: '' });
         const editingBillId = ref(null);
-        const cardForm = reactive({ name: '', nickname: '', day: '', dueDay: '', autopay: '', number: '', expiry: '', cvv: '', address: '', limit: '', org: '', ticket: '' });
+        const cardForm = reactive({ name: '', nickname: '', day: '', dueDay: '', autopay: '', number: '', expiry: '', cvv: '', address: '', limit: '', org: '', ticket: '', notes: '' });
         const editingCardIndex = ref(null);
         
         const pdfFile = ref(null);
@@ -1235,6 +1242,28 @@ createApp({
                                     c.id = Date.now().toString() + Math.random().toString(36).substr(2, 5);
                                     migrated = true;
                                 }
+                                const officialName = getOfficialBankName(c.name);
+                                if (c.name !== officialName) {
+                                    c.name = officialName;
+                                    migrated = true;
+                                }
+                                // Migrate _tmp_address to address
+                                if (c._tmp_address !== undefined) {
+                                    c.address = c._tmp_address;
+                                    delete c._tmp_address;
+                                    migrated = true;
+                                }
+                                // Migrate enc_address to address (if we have key)
+                                if (c.enc_address && _sessionKey.value) {
+                                    try {
+                                        const plain = CryptoJS.AES.decrypt(c.enc_address, _sessionKey.value).toString(CryptoJS.enc.Utf8);
+                                        if (plain) {
+                                            c.address = plain;
+                                            delete c.enc_address;
+                                            migrated = true;
+                                        }
+                                    } catch(e) {}
+                                }
                             });
                             cards.value = downloadedCards;
                             if (migrated) {
@@ -1366,6 +1395,7 @@ createApp({
                         _sessionKey.value = newKey;
                         isLocked.value = false;
                         pinBuffer.value = "";
+                        migrateAddressToPlain(newKey);
                     } else {
                         alert('\u5bc6\u78bc\u932f\u8aa4');
                         pinBuffer.value = "";
@@ -1402,6 +1432,7 @@ createApp({
                         _sessionKey.value = newKey;
                         isLocked.value = false;
                         pinBuffer.value = "";
+                        migrateAddressToPlain(newKey);
                         console.log('[Security] Migrated PIN to PBKDF2 scheme.');
                     } else {
                         alert('密碼錯誤');
@@ -1426,8 +1457,8 @@ createApp({
                         const parsed = JSON.parse(storedData);
                         const oldKey = _sessionKey.value || localStorage.getItem('app_pin') || '';
                         parsed.cards = (parsed.cards || []).map(card => {
-                            const ENC_FIELDS = ['enc_number', 'enc_expiry', 'enc_cvv', 'enc_address'];
-                            const TMP_FIELDS = ['_tmp_number', '_tmp_expiry', '_tmp_cvv', '_tmp_address'];
+                            const ENC_FIELDS = ['enc_number', 'enc_expiry', 'enc_cvv'];
+                            const TMP_FIELDS = ['_tmp_number', '_tmp_expiry', '_tmp_cvv'];
 
                             // Case 1: re-encrypt from current session key
                             if (oldKey) {
@@ -1476,8 +1507,8 @@ createApp({
                     if (storedData) {
                         try {
                             const parsed = JSON.parse(storedData);
-                            const ENC_FIELDS = ['enc_number', 'enc_expiry', 'enc_cvv', 'enc_address'];
-                            const TMP_FIELDS = ['_tmp_number', '_tmp_expiry', '_tmp_cvv', '_tmp_address'];
+                            const ENC_FIELDS = ['enc_number', 'enc_expiry', 'enc_cvv'];
+                            const TMP_FIELDS = ['_tmp_number', '_tmp_expiry', '_tmp_cvv'];
                             parsed.cards = (parsed.cards || []).map(card => {
                                 ENC_FIELDS.forEach((f, i) => {
                                     if (card[f]) {
@@ -1629,6 +1660,12 @@ createApp({
                     const officialName = getOfficialBankName(c.name);
                     if (c.name !== officialName) {
                         c.name = officialName;
+                        migrated = true;
+                    }
+                    // Migrate _tmp_address to address
+                    if (c._tmp_address !== undefined) {
+                        c.address = c._tmp_address;
+                        delete c._tmp_address;
                         migrated = true;
                     }
                 });
@@ -1847,6 +1884,35 @@ createApp({
             }
         };
 
+        const migrateAddressToPlain = (key) => {
+            if (!key) return;
+            let cardsMigrated = false;
+            cards.value = cards.value.map(card => {
+                if (card.enc_address) {
+                    try {
+                        const plain = CryptoJS.AES.decrypt(card.enc_address, key).toString(CryptoJS.enc.Utf8);
+                        if (plain) {
+                            card.address = plain;
+                            delete card.enc_address;
+                            cardsMigrated = true;
+                        }
+                    } catch(e) {
+                        console.error('Failed to decrypt address during migration:', e);
+                    }
+                }
+                if (card._tmp_address !== undefined) {
+                    card.address = card._tmp_address;
+                    delete card._tmp_address;
+                    cardsMigrated = true;
+                }
+                return card;
+            });
+            if (cardsMigrated) {
+                saveLocal();
+                if (user.value) triggerSync('upload', true);
+            }
+        };
+
         // Key lives only in memory — never read from localStorage
         const getPinKey = () => _sessionKey.value;
 
@@ -1864,6 +1930,7 @@ createApp({
             cardForm.limit = '';
             cardForm.org = '';
             cardForm.ticket = '';
+            cardForm.notes = '';
             showCardEditor.value = true; 
         };
 
@@ -1883,17 +1950,18 @@ createApp({
             cardForm.number = c.enc_number ? decryptField(c.enc_number, pin) : '';
             cardForm.expiry = c.enc_expiry ? decryptField(c.enc_expiry, pin) : '';
             cardForm.cvv = c.enc_cvv ? decryptField(c.enc_cvv, pin) : '';
-            cardForm.address = c.enc_address ? decryptField(c.enc_address, pin) : '';
+            cardForm.address = c.address || (c.enc_address ? decryptField(c.enc_address, pin) : '');
             cardForm.limit = c.limit || '';
             cardForm.org = c.org || '';
             cardForm.ticket = c.ticket || '';
+            cardForm.notes = c.notes || '';
             editingCardIndex.value = i; 
             showCardEditor.value = true;
         };
         
         const saveCard = () => {
             const pin = getPinKey();
-            if (!pin && (cardForm.number || cardForm.expiry || cardForm.cvv || cardForm.address)) {
+            if (!pin && (cardForm.number || cardForm.expiry || cardForm.cvv)) {
                 alert('請先在設定中啟用 PIN 碼鎖定，系統需要 PIN 密鑰來加密敏感資訊。');
                 return;
             }
@@ -1915,7 +1983,8 @@ createApp({
                 enc_number: encryptField(cardForm.number, pin),
                 enc_expiry: encryptField(cardForm.expiry, pin),
                 enc_cvv: encryptField(cardForm.cvv, pin),
-                enc_address: encryptField(cardForm.address, pin),
+                address: cardForm.address,
+                notes: cardForm.notes,
                 last4: cardForm.number ? cardForm.number.slice(-4) : ''
             };
             
@@ -2418,10 +2487,14 @@ createApp({
                 cardForm.org = cardForm.org || matchedCard.org || '';
                 cardForm.limit = cardForm.limit || matchedCard.limit || '';
                 
-                if (!cardForm.address && matchedCard.enc_address) {
-                    const pin = getPinKey();
-                    if (pin) {
-                        cardForm.address = decryptField(matchedCard.enc_address, pin);
+                if (!cardForm.address) {
+                    if (matchedCard.address) {
+                        cardForm.address = matchedCard.address;
+                    } else if (matchedCard.enc_address) {
+                        const pin = getPinKey();
+                        if (pin) {
+                            cardForm.address = decryptField(matchedCard.enc_address, pin);
+                        }
                     }
                 }
             }

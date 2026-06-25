@@ -1417,20 +1417,21 @@ createApp({
         const setPin = () => {
             if (newPin.value.length === 6 && !isNaN(newPin.value)) {
                 const pin = newPin.value;
-                const salt = CryptoJS.lib.WordArray.random(16).toString();
                 const hash = CryptoJS.SHA256(pin).toString();
                 const newKey = deriveKey(pin);
 
-                // Re-encrypt all existing cards with the new key
-                const oldKey = _sessionKey.value || localStorage.getItem('app_pin') || '';
-                if (oldKey) {
-                    const storedData = localStorage.getItem('myCreditData');
-                    if (storedData) {
-                        try {
-                            const parsed = JSON.parse(storedData);
-                            parsed.cards = (parsed.cards || []).map(card => {
-                                const fields = ['enc_number', 'enc_expiry', 'enc_cvv', 'enc_address'];
-                                fields.forEach(f => {
+                const storedData = localStorage.getItem('myCreditData');
+                if (storedData) {
+                    try {
+                        const parsed = JSON.parse(storedData);
+                        const oldKey = _sessionKey.value || localStorage.getItem('app_pin') || '';
+                        parsed.cards = (parsed.cards || []).map(card => {
+                            const ENC_FIELDS = ['enc_number', 'enc_expiry', 'enc_cvv', 'enc_address'];
+                            const TMP_FIELDS = ['_tmp_number', '_tmp_expiry', '_tmp_cvv', '_tmp_address'];
+
+                            // Case 1: re-encrypt from current session key
+                            if (oldKey) {
+                                ENC_FIELDS.forEach(f => {
                                     if (card[f]) {
                                         try {
                                             const plain = CryptoJS.AES.decrypt(card[f], oldKey).toString(CryptoJS.enc.Utf8);
@@ -1438,18 +1439,27 @@ createApp({
                                         } catch(e) {}
                                     }
                                 });
-                                return card;
+                            }
+
+                            // Case 2: encrypt from _tmp_* fields (set by removePin)
+                            TMP_FIELDS.forEach((tf, i) => {
+                                if (card[tf]) {
+                                    card[ENC_FIELDS[i]] = CryptoJS.AES.encrypt(card[tf], newKey).toString();
+                                    delete card[tf];
+                                }
                             });
-                            localStorage.setItem('myCreditData', JSON.stringify(parsed));
-                            cards.value = parsed.cards || [];
-                            bills.value = parsed.bills || [];
-                        } catch(e) {}
-                    }
+
+                            return card;
+                        });
+                        localStorage.setItem('myCreditData', JSON.stringify(parsed));
+                        cards.value = parsed.cards || [];
+                        bills.value = parsed.bills || [];
+                    } catch(e) {}
                 }
 
                 localStorage.setItem('app_pin_hash', hash);
-                localStorage.removeItem('app_pin_salt'); // not needed with fixed salt
-                localStorage.removeItem('app_pin'); // clean legacy
+                localStorage.removeItem('app_pin_salt');
+                localStorage.removeItem('app_pin');
                 _sessionKey.value = newKey;
                 isPinSet.value = true;
                 alert('密碼已設定');
@@ -1458,6 +1468,32 @@ createApp({
         };
         const removePin = () => {
             if (confirm('確定要關閉安全密碼鎖嗎？關閉後，您的敏感欄位（卡號、帳單地址等）將會直接顯示。')) {
+                const currentKey = _sessionKey.value;
+                // Decrypt enc_* fields into _tmp_* so setPin can re-encrypt later
+                if (currentKey) {
+                    const storedData = localStorage.getItem('myCreditData');
+                    if (storedData) {
+                        try {
+                            const parsed = JSON.parse(storedData);
+                            const ENC_FIELDS = ['enc_number', 'enc_expiry', 'enc_cvv', 'enc_address'];
+                            const TMP_FIELDS = ['_tmp_number', '_tmp_expiry', '_tmp_cvv', '_tmp_address'];
+                            parsed.cards = (parsed.cards || []).map(card => {
+                                ENC_FIELDS.forEach((f, i) => {
+                                    if (card[f]) {
+                                        try {
+                                            const plain = CryptoJS.AES.decrypt(card[f], currentKey).toString(CryptoJS.enc.Utf8);
+                                            card[TMP_FIELDS[i]] = plain || '';
+                                        } catch(e) { card[TMP_FIELDS[i]] = ''; }
+                                        card[f] = ''; // clear encrypted field
+                                    }
+                                });
+                                return card;
+                            });
+                            localStorage.setItem('myCreditData', JSON.stringify(parsed));
+                            cards.value = parsed.cards || [];
+                        } catch(e) {}
+                    }
+                }
                 localStorage.removeItem('app_pin_hash');
                 localStorage.removeItem('app_pin_salt');
                 localStorage.removeItem('app_pin');

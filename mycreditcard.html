@@ -1243,6 +1243,15 @@ createApp({
                             }
                         }
                         syncStatus.value = '同步自雲端 ' + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                        // Sync PIN hash so other devices know to show lock screen
+                        if (d.app_pin_hash) {
+                            localStorage.setItem('app_pin_hash', d.app_pin_hash);
+                            isPinSet.value = true;
+                            // If not already locked, lock now so user must authenticate
+                            if (!isLocked.value && !_sessionKey.value) {
+                                isLocked.value = true;
+                            }
+                        }
                         saveLocal();
                     } else {
                         if (!silent) alert('雲端尚無備份資料');
@@ -1253,6 +1262,7 @@ createApp({
                     const dataToSave = {
                         bills: JSON.parse(JSON.stringify(bills.value)),
                         cards: JSON.parse(JSON.stringify(cards.value)),
+                        app_pin_hash: localStorage.getItem('app_pin_hash') || '',
                         last_sync: Date.now(),
                         updated_at: firebase.firestore.FieldValue.serverTimestamp()
                     };

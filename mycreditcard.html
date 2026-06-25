@@ -1408,9 +1408,12 @@ createApp({
 
         const exportBackup = () => {
             const myCreditDataStr = localStorage.getItem('myCreditData') || '{"bills":[],"cards":[]}';
-            // PIN credentials are intentionally excluded from backup for security
+            // Include hash & salt so encrypted card fields can be decrypted on other devices
+            // with the correct PIN. The raw PIN is never stored or exported.
             const backupData = {
                 myCreditData: myCreditDataStr,
+                app_pin_hash: localStorage.getItem('app_pin_hash') || '',
+                app_pin_salt: localStorage.getItem('app_pin_salt') || '',
                 theme: localStorage.getItem('theme') || 'light',
                 privacy: localStorage.getItem('privacy') || 'false'
             };
@@ -1437,12 +1440,23 @@ createApp({
                         const parsed = JSON.parse(data.myCreditData);
                         if (parsed.cards && parsed.bills) {
                             localStorage.setItem('myCreditData', data.myCreditData);
-                            // Note: PIN credentials are not restored from backup.
-                            // User must re-configure PIN after import if needed.
+                            // Restore PIN hash & salt so PBKDF2 key can be re-derived on this device
+                            if (data.app_pin_hash) {
+                                localStorage.setItem('app_pin_hash', data.app_pin_hash);
+                                localStorage.setItem('app_pin_salt', data.app_pin_salt || '');
+                            } else {
+                                // Legacy backup (no hash/salt): clear any existing PIN setup
+                                localStorage.removeItem('app_pin_hash');
+                                localStorage.removeItem('app_pin_salt');
+                                localStorage.removeItem('app_pin');
+                            }
                             if (data.theme) localStorage.setItem('theme', data.theme);
                             if (data.privacy) localStorage.setItem('privacy', data.privacy);
-                            
-                            alert('還原成功！\n\n注意：安全密碼鎖不會隨備份還原，請還原後至「設定」重新設定 PIN。\n\n網頁即將自動重新整理以載入資料。');
+
+                            const pinMsg = data.app_pin_hash
+                                ? '安全密碼鎖已一併還原，請用原本的 PIN 解鎖即可。'
+                                : '注意：此備份不含安全密碼設定，請還原後至「設定」重新設定 PIN。';
+                            alert(`還原成功！\n\n${pinMsg}\n\n網頁即將自動重新整理以載入資料。`);
                             window.location.reload();
                         } else {
                             alert('備份檔案格式不正確，找不到 cards 或 bills 欄位。');

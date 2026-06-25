@@ -1270,9 +1270,9 @@ createApp({
         };
 
         // UI & Logic
-        // In-memory session key — never touches localStorage
-        let _sessionKey = '';
-        const getSessionKey = () => _sessionKey;
+        // In-memory session key — reactive ref so Vue re-renders card fields on unlock
+        const _sessionKey = ref('');
+        const getSessionKey = () => _sessionKey.value;
 
         // Derive AES key from PIN using PBKDF2
         const deriveKey = (pin, salt) => {
@@ -1300,7 +1300,7 @@ createApp({
                     const inputHash = CryptoJS.SHA256(pin).toString();
                     if (inputHash === storedHash) {
                         const salt = localStorage.getItem('app_pin_salt') || '';
-                        _sessionKey = deriveKey(pin, salt);
+                        _sessionKey.value = deriveKey(pin, salt);
                         isLocked.value = false;
                         pinBuffer.value = "";
                     } else {
@@ -1337,7 +1337,7 @@ createApp({
                         localStorage.setItem('app_pin_hash', CryptoJS.SHA256(pin).toString());
                         localStorage.setItem('app_pin_salt', salt);
                         localStorage.removeItem('app_pin');
-                        _sessionKey = newKey;
+                        _sessionKey.value = newKey;
                         isLocked.value = false;
                         pinBuffer.value = "";
                         console.log('[Security] Migrated PIN to PBKDF2 scheme.');
@@ -1360,7 +1360,7 @@ createApp({
                 const newKey = deriveKey(pin, salt);
 
                 // Re-encrypt all existing cards with the new key
-                const oldKey = _sessionKey || localStorage.getItem('app_pin') || '';
+                const oldKey = _sessionKey.value || localStorage.getItem('app_pin') || '';
                 if (oldKey) {
                     const storedData = localStorage.getItem('myCreditData');
                     if (storedData) {
@@ -1388,7 +1388,7 @@ createApp({
                 localStorage.setItem('app_pin_hash', hash);
                 localStorage.setItem('app_pin_salt', salt);
                 localStorage.removeItem('app_pin'); // clean legacy
-                _sessionKey = newKey;
+                _sessionKey.value = newKey;
                 isPinSet.value = true;
                 alert('密碼已設定');
                 newPin.value = "";
@@ -1399,7 +1399,7 @@ createApp({
                 localStorage.removeItem('app_pin_hash');
                 localStorage.removeItem('app_pin_salt');
                 localStorage.removeItem('app_pin');
-                _sessionKey = '';
+                _sessionKey.value = '';
                 isPinSet.value = false;
                 alert('安全鎖已關閉');
             }
@@ -1748,7 +1748,7 @@ createApp({
         };
 
         // Key lives only in memory — never read from localStorage
-        const getPinKey = () => _sessionKey;
+        const getPinKey = () => _sessionKey.value;
 
         const startAddCard = () => { 
             editingCardIndex.value = null; 

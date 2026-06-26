@@ -606,15 +606,18 @@
                         <div class="space-y-6">
                             <div v-for="group in groupedCards" :key="group.bank" class="border border-slate-100 dark:border-slate-800/80 rounded-2xl overflow-hidden bg-slate-50/30 dark:bg-slate-900/10">
                                 <!-- 銀行標題列 (點選切換折疊) -->
-                                <div @click="expandedBanks[group.bank] = expandedBanks[group.bank] === false" 
+                                <div @click="expandedBanks[group.bank] = !expandedBanks[group.bank]"
                                      class="flex items-center justify-between px-6 py-4 cursor-pointer hover:bg-slate-100/40 dark:hover:bg-slate-800/20 transition-all select-none border-b border-slate-100/50 dark:border-slate-800/30">
                                     <div class="flex items-center gap-3">
                                         <div class="w-8 h-8 rounded-full bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
                                             <i class="fas fa-university text-sm"></i>
                                         </div>
-                                        <div>
+                                        <div class="flex items-center flex-wrap gap-2">
                                             <span class="font-black text-slate-800 dark:text-white">{{ group.bank }}</span>
-                                            <span class="text-xs text-slate-400 font-bold ml-2">({{ group.cards.length }} 張卡片)</span>
+                                            <span class="text-xs text-slate-400 font-bold">({{ group.cards.length }} 張卡片)</span>
+                                            <span v-if="group.cards[0] && group.cards[0].day" class="text-[10px] bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded-lg border border-indigo-100/50 dark:border-indigo-900/30 font-bold">
+                                                結帳日: {{ group.cards[0].day }}號<span v-if="group.cards[0].dueDay"> / 繳費日: {{ group.cards[0].dueDay }}號</span>
+                                            </span>
                                         </div>
                                     </div>
                                     <div class="flex items-center gap-3">
@@ -623,12 +626,12 @@
                                                 title="新增此銀行卡片">
                                             <i class="fas fa-plus text-[9px]"></i> 新增卡片
                                         </button>
-                                        <i class="fas" :class="expandedBanks[group.bank] !== false ? 'fa-chevron-up' : 'fa-chevron-down'" class="text-slate-400 text-sm transition-all duration-300"></i>
+                                        <i class="fas text-slate-400 text-sm transition-all duration-300" :class="expandedBanks[group.bank] ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
                                     </div>
                                 </div>
                                 
                                 <!-- 該銀行底下的卡片清單 -->
-                                <div v-show="expandedBanks[group.bank] !== false" class="p-6 bg-white/10 dark:bg-slate-950/5">
+                                 <div v-show="expandedBanks[group.bank]" class="p-6 bg-white/10 dark:bg-slate-950/5">
                                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                         <div v-for="card in group.cards" :key="card.originalIndex" class="group">
                                             <!-- 3D Card Container -->
@@ -690,13 +693,9 @@
                                                                 <span class="font-mono text-slate-100 tracking-widest">{{ card.enc_number ? decryptField(card.enc_number, getPinKey()) : (card.last4 ? '**** **** **** ' + card.last4 : '無記錄') }}</span>
                                                                 <span class="font-mono bg-white/30 px-2 py-0.5 rounded text-white italic tracking-widest">{{ card.enc_cvv ? decryptField(card.enc_cvv, getPinKey()) : '***' }}</span>
                                                             </div>
-                                                            <div class="flex justify-between text-slate-200">
-                                                                <div>EXP: <span class="font-mono text-white tracking-widest">{{ card.enc_expiry ? decryptField(card.enc_expiry, getPinKey()) : 'MM/YY' }}</span></div>
-                                                                <div class="flex gap-2">
-                                                                    <div>結帳日: <span class="text-white font-bold">{{ card.day }}號</span></div>
-                                                                    <div v-if="card.dueDay">繳費日: <span class="text-white font-bold">{{ card.dueDay }}號</span></div>
-                                                                </div>
-                                                            </div>
+                                                             <div class="flex justify-between text-slate-200">
+                                                                 <div>EXP: <span class="font-mono text-white tracking-widest">{{ card.enc_expiry ? decryptField(card.enc_expiry, getPinKey()) : 'MM/YY' }}</span></div>
+                                                             </div>
                                                             <div class="truncate text-[10px] opacity-80 mt-auto bg-black/20 p-1.5 rounded" :title="card.address || '無記錄'">
                                                                 <i class="fas fa-map-marker-alt mr-1"></i> {{ card.address || '無記錄' }}
                                                             </div>
@@ -711,7 +710,7 @@
                                             <!-- Controls below the card -->
                                             <div class="mt-4 flex justify-between items-center px-1">
                                                 <div class="text-[10px] font-bold">
-                                                    <span v-if="card.autopayFrom" class="text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-lg border border-indigo-100 dark:border-indigo-800"><i class="fas fa-university mr-1"></i>自動扣款: {{ card.autopayFrom }}</span>
+                                                    <span v-if="card.autopayFrom" class="text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-lg border border-indigo-100 dark:border-indigo-800"><i class="fas fa-university mr-1"></i>自動扣款(末五碼): {{ card.autopayFrom }}</span>
                                                 </div>
                                                 <div class="flex gap-1.5">
                                                     <button @click.stop="expandedCards[card.originalIndex] = !expandedCards[card.originalIndex]" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-indigo-100 hover:text-indigo-600 transition-all flex items-center justify-center group/btn shadow-sm">
@@ -870,8 +869,8 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-400 mb-1">自動扣款帳戶 (選填)</label>
-                        <input type="text" v-model="cardForm.autopay" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white" placeholder="例如: 中信活存、郵局">
+                        <label class="block text-xs font-bold text-slate-400 mb-1">自動扣款帳戶(末五碼) (選填)</label>
+                        <input type="text" v-model="cardForm.autopay" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white" placeholder="例如: 12345">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-400 mb-1">信用卡卡號 (敏感資訊)</label>
@@ -1991,6 +1990,23 @@ createApp({
             
             if(editingCardIndex.value !== null) cards.value[editingCardIndex.value] = c;
             else cards.value.push(c);
+            
+            // 同步同一家銀行的共用欄位：結帳日、繳費截止日、自動扣款帳戶(末5碼)、信用額度、通訊地址
+            const targetKeyword = getBankKeyword(c.name);
+            if (targetKeyword) {
+                cards.value.forEach(otherCard => {
+                    if (otherCard.id !== c.id) {
+                        const otherKeyword = getBankKeyword(otherCard.name);
+                        if (otherKeyword && otherKeyword === targetKeyword) {
+                            otherCard.day = c.day;
+                            otherCard.dueDay = c.dueDay;
+                            otherCard.autopayFrom = c.autopayFrom;
+                            otherCard.limit = c.limit;
+                            otherCard.address = c.address;
+                        }
+                    }
+                });
+            }
             
             saveLocal(); 
             showCardEditor.value = false;

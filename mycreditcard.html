@@ -77,11 +77,24 @@
         
         input[type="number"]::-webkit-inner-spin-button, 
         input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+        @keyframes toast-in {
+            from { transform: translate(-50%, -20px); opacity: 0; }
+            to { transform: translate(-50%, 0); opacity: 1; }
+        }
+        .toast-animate {
+            animation: toast-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
     </style>
 </head>
 <body class="transition-colors duration-500">
 
 <div id="app" v-cloak>
+    <!-- Toast Notification -->
+    <div v-if="toastMessage" class="fixed top-5 left-1/2 -translate-x-1/2 z-[20000] bg-slate-900/90 text-white px-5 py-2.5 rounded-full text-xs font-black shadow-xl backdrop-blur-md border border-white/10 flex items-center gap-2 toast-animate">
+        <i class="fas fa-check-circle text-emerald-400"></i>
+        <span>{{ toastMessage }}</span>
+    </div>
     <!-- PIN Overlay -->
     <div v-if="isLocked" class="fixed inset-0 z-[10000] bg-gray-50 dark:bg-slate-900 flex flex-col justify-center items-center">
         <div class="mb-8 text-center">
@@ -690,7 +703,12 @@
                                                         <!-- Back Content -->
                                                         <div class="p-5 pt-3 flex-1 flex flex-col gap-2 text-xs">
                                                             <div class="bg-white/20 p-2 rounded flex justify-between items-center shadow-inner">
-                                                                <span class="font-mono text-slate-100 tracking-widest">{{ card.enc_number ? decryptField(card.enc_number, getPinKey()) : (card.last4 ? '**** **** **** ' + card.last4 : '無記錄') }}</span>
+                                                                 <div @click.stop="copyCardNumber(card)" 
+                                                                      class="font-mono text-slate-100 tracking-widest cursor-pointer hover:text-white hover:bg-white/10 px-2 py-0.5 rounded transition-all flex items-center gap-1.5 group/num" 
+                                                                      title="點擊複製完整卡號">
+                                                                     <span>{{ card.enc_number ? decryptField(card.enc_number, getPinKey()) : (card.last4 ? '**** **** **** ' + card.last4 : '無記錄') }}</span>
+                                                                     <i v-if="card.enc_number && getPinKey()" class="far fa-copy text-[10px] opacity-60 group-hover/num:opacity-100 transition-opacity"></i>
+                                                                 </div>
                                                                 <span class="font-mono bg-white/30 px-2 py-0.5 rounded text-white italic tracking-widest">{{ card.enc_cvv ? decryptField(card.enc_cvv, getPinKey()) : '***' }}</span>
                                                             </div>
                                                              <div class="flex justify-between text-slate-200">
@@ -943,6 +961,13 @@ createApp({
         const theme = ref(localStorage.getItem('theme') || 'light');
         const isPrivacyOn = ref(localStorage.getItem('privacy') === 'true');
         const syncStatus = ref('未同步');
+        const toastMessage = ref('');
+        const showToast = (msg) => {
+            toastMessage.value = msg;
+            setTimeout(() => {
+                if (toastMessage.value === msg) toastMessage.value = '';
+            }, 2000);
+        };
         const isPinSet = ref(!!(localStorage.getItem('app_pin_hash') || localStorage.getItem('app_pin')));
         
         const bills = ref([]);
@@ -1915,6 +1940,20 @@ createApp({
 
         // Key lives only in memory — never read from localStorage
         const getPinKey = () => _sessionKey.value;
+        const copyCardNumber = (card) => {
+            const pin = getPinKey();
+            const rawNumber = card.enc_number ? decryptField(card.enc_number, pin) : '';
+            if (!rawNumber || rawNumber === '解密失敗') {
+                showToast('請先解鎖以複製卡號');
+                return;
+            }
+            const cleanNumber = rawNumber.replace(/\s+/g, '');
+            navigator.clipboard.writeText(cleanNumber).then(() => {
+                showToast('卡號已複製到剪貼簿！');
+            }).catch(err => {
+                showToast('複製失敗，請手動複製');
+            });
+        };
 
         const startAddCard = () => { 
             editingCardIndex.value = null; 
@@ -2530,6 +2569,7 @@ createApp({
         });
 
         return {
+            toastMessage, copyCardNumber,
             isLocked, pinBuffer, isLoading, loadingText, user, activePage, theme, isPrivacyOn, syncStatus, bills, cards,
             showAddModal, showChangelog, showCardEditor, showMobileMenu, billForm, editingBillId, cardForm, editingCardIndex,
             pdfPassword, historySearch, historyPeriod, analysisStart, analysisEnd, analysisBank,

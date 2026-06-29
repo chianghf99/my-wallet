@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v5.2.0</title>
+    <title>我的投資組合 | Portfolio v5.2.1</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -298,7 +298,7 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.2.0</h1>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.2.1</h1>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -318,7 +318,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.2.0</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.2.1</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -674,20 +674,32 @@
                                                 class="fa-solid fa-pen-to-square"></i> 記帳</button>
                                     </div>
                                 </div>
-                                <div class="text-2xl font-bold text-purple-700 dark:text-purple-300 text-center mb-2">
+                                <div class="text-2xl font-bold text-purple-700 dark:text-purple-300 text-center mb-1">
                                     <span v-if="showPrivacy">{{ formatCurrency(totalLoanBalance, 'TWD') }}</span><span
+                                        v-else>****</span>
+                                </div>
+                                <div v-if="totalMonthlyPayment > 0" class="text-xs text-purple-500 dark:text-purple-400 text-center mb-2 font-medium">
+                                    每月還款總計: 
+                                    <span v-if="showPrivacy">{{ formatCurrency(totalMonthlyPayment, 'TWD') }}</span><span
                                         v-else>****</span>
                                 </div>
                                 <div class="space-y-1 max-h-24 overflow-y-auto custom-scrollbar">
                                     <div v-for="l in loanList" :key="l.id"
-                                        class="flex justify-between text-xs border-b border-purple-100 dark:border-purple-800 pb-1 last:border-0">
-                                        <span class="text-purple-800 dark:text-purple-200">{{ l.name }}</span>
-                                        <span class="font-bold text-purple-700 dark:text-purple-300"><span
-                                                v-if="showPrivacy">{{ formatCurrency(l.balance, 'TWD') }}</span><span
-                                                v-else>****</span></span>
+                                        class="border-b border-purple-100 dark:border-purple-800 pb-1 last:border-0">
+                                        <div class="flex justify-between text-xs">
+                                            <span class="text-purple-800 dark:text-purple-200">
+                                                {{ l.name }}
+                                                <span v-if="l.note" class="text-[10px] text-gray-400 dark:text-gray-500 ml-1">({{ l.note }})</span>
+                                            </span>
+                                            <span class="font-bold text-purple-700 dark:text-purple-300"><span
+                                                    v-if="showPrivacy">{{ formatCurrency(l.balance, 'TWD') }}</span><span
+                                                    v-else>****</span></span>
+                                        </div>
+                                        <div v-if="l.monthlyPayment > 0" class="text-[10px] text-purple-500/80 dark:text-purple-400/80 text-right mt-0.5">
+                                            月還: <span v-if="showPrivacy">{{ formatCurrency(l.monthlyPayment, 'TWD') }}</span><span v-else>****</span>
+                                        </div>
                                     </div>
-                                    <div v-if="loanList.length===0" class="text-center text-xs text-purple-300">無借款
-                                    </div>
+                                    <div v-if="loanList.length===0" class="text-center text-xs text-purple-300">無借款</div>
                                 </div>
                             </div>
                         </div>
@@ -1710,9 +1722,21 @@
 
                     <div class="p-6 overflow-y-auto custom-scrollbar">
                         <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
-                            <!-- v5.2.0: 最新版本節點 -->
+                            <!-- v5.2.1: 最新版本節點 -->
                             <div class="relative pl-6">
                                 <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800"></div>
+                                <div class="text-xs text-gray-400 mb-1">2026-06-29</div>
+                                <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
+                                    <div class="font-bold text-gray-800 dark:text-white mb-2">v5.2.1</div>
+                                    <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                        <li>新增：借款帳戶管理中新增「每月還款金額」與「借款備註」欄位。</li>
+                                        <li>優化：資金管理之借款區塊新增每月還款金額統計加總及各借款備註與月還明細。</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <!-- v5.2.0: 舊版本節點 -->
+                            <div class="relative pl-6">
+                                <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-2 border-white dark:border-gray-800"></div>
                                 <div class="text-xs text-gray-400 mb-1">2026-06-22</div>
                                 <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
                                     <div class="font-bold text-gray-800 dark:text-white mb-2">v5.2.0</div>
@@ -2335,6 +2359,17 @@
                                 </div>
                             </div>
                             
+                            <div class="grid grid-cols-2 gap-2 mt-2">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500">每月還款金額 (TWD)</label>
+                                    <input type="number" v-model.number="loanForm.monthlyPayment" class="zen-input mt-1" placeholder="0">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500">借款備註</label>
+                                    <input type="text" v-model="loanForm.note" class="zen-input mt-1" placeholder="如：寬限期中、信貸">
+                                </div>
+                            </div>
+                            
                             <div class="flex items-center gap-2 py-1 mt-2">
                                 <input type="checkbox" id="loanInvestmentUse" v-model="loanForm.isInvestmentUse" class="w-4 h-4 rounded text-purple-600 border-gray-300 focus:ring-purple-500">
                                 <label for="loanInvestmentUse" class="text-xs font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
@@ -2358,8 +2393,13 @@
                                             <span v-if="l.type === 'leverage'" class="text-[9px] px-1 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 rounded font-medium">質押</span>
                                             <span v-if="l.isInvestmentUse" class="text-[9px] px-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 rounded font-medium">投資用</span>
                                         </div>
-                                        <div class="text-xs text-purple-600 dark:text-purple-300 mt-0.5">{{
-                                            formatCurrency(l.balance, 'TWD') }}</div>
+                                        <div class="text-xs text-purple-600 dark:text-purple-300 mt-0.5">
+                                            餘額: {{ formatCurrency(l.balance, 'TWD') }}
+                                            <span v-if="l.monthlyPayment > 0" class="ml-2 text-gray-500 dark:text-gray-400">月還: {{ formatCurrency(l.monthlyPayment, 'TWD') }}</span>
+                                        </div>
+                                        <div v-if="l.note" class="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 italic">
+                                            備註: {{ l.note }}
+                                        </div>
                                     </div>
                                     <div class="flex gap-2"><button @click="editLoanAccount(l)"
                                             class="text-gray-400 hover:text-blue-500"><i

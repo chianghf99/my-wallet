@@ -42,7 +42,7 @@ export const loanList = ref([]);
 export const showLoanMgrModal = ref(false);
 export const inlineNewLoan = ref(false);
 export const inlineLoanName = ref('');
-export const loanForm = ref({ id: null, name: '', balance: 0, type: 'other', isInvestmentUse: false });
+export const loanForm = ref({ id: null, name: '', balance: 0, type: 'other', isInvestmentUse: false, monthlyPayment: 0, note: '' });
 export const cashData = ref({ twd: 0, usd: 0, loan: 0 });
 export const prevDayData = ref(null);
 

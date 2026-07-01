@@ -1082,7 +1082,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                                     const prevClose = parseFloat(s.y);
                                     const market = s.ex === 'otc' ? 'otc' : 'tse';
                                     if (!isNaN(finalPrice) && finalPrice > 0)
-                                        map.set(s.c, { price: finalPrice, prevClose: isNaN(prevClose) ? finalPrice : prevClose, market });
+                                        map.set(s.c, { price: finalPrice, prevClose: isNaN(prevClose) ? finalPrice : prevClose, market, name: s.n || s.nf || "" });
                                 });
                             }
                         } catch (e) {
@@ -1310,6 +1310,21 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                                 regularMarketPrice: d.price,
                                 previousClose: d.prevClose
                             };
+                        }
+                        // 備援方案：若 Open API 查無此代號（可能 TPEx API 遭阻擋或新股上市），直接向 MIS 查詢雙通道
+                        try {
+                            const misMap = await fetchMisTwse([`tse_${cleanSym}.tw`, `otc_${cleanSym}.tw`]);
+                            const misData = misMap.get(cleanSym);
+                            if (misData) {
+                                return {
+                                    symbol: `${cleanSym}.${misData.market === 'otc' ? 'TWO' : 'TW'}`,
+                                    name: misData.name || cleanSym,
+                                    regularMarketPrice: misData.price,
+                                    previousClose: misData.prevClose
+                                };
+                            }
+                        } catch (e) {
+                            console.warn('[getYahooData] MIS 直連查詢失敗', e);
                         }
                         return null;
                     }

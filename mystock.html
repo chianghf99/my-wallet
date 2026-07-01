@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v5.2.2</title>
+    <title>我的投資組合 | Portfolio v5.2.3</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -298,7 +298,7 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.2.2</h1>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.2.3</h1>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -318,7 +318,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.2.2</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.2.3</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -684,7 +684,7 @@
                                         v-else>****</span>
                                 </div>
                                 <div class="space-y-1 max-h-24 overflow-y-auto custom-scrollbar">
-                                    <div v-for="l in loanList" :key="l.id"
+                                    <div v-for="l in activeLoans" :key="l.id"
                                         class="border-b border-purple-100 dark:border-purple-800 pb-1 last:border-0">
                                         <div class="flex justify-between text-xs">
                                             <span class="text-purple-800 dark:text-purple-200">
@@ -699,7 +699,7 @@
                                             月還: <span v-if="showPrivacy">{{ formatCurrency(l.monthlyPayment, 'TWD') }}</span><span v-else>****</span>
                                         </div>
                                     </div>
-                                    <div v-if="loanList.length===0" class="text-center text-xs text-purple-300">無借款</div>
+                                    <div v-if="activeLoans.length===0" class="text-center text-xs text-purple-300">無借款</div>
                                 </div>
                             </div>
                         </div>
@@ -1722,9 +1722,21 @@
 
                     <div class="p-6 overflow-y-auto custom-scrollbar">
                         <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
-                            <!-- v5.2.2: 最新版本節點 -->
+                            <!-- v5.2.3: 最新版本節點 -->
                             <div class="relative pl-6">
                                 <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800"></div>
+                                <div class="text-xs text-gray-400 mb-1">2026-07-01</div>
+                                <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
+                                    <div class="font-bold text-gray-800 dark:text-white mb-2">v5.2.3</div>
+                                    <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                        <li>新增：借款帳戶「結清封存 / 歸檔」機制。</li>
+                                        <li>優化：已結清的帳戶將自動在首頁資金管理、記帳下拉選單、房貸綁定等主要 UI 中隱藏，並移至管理彈窗下方的可摺疊封存區，支援隨時「重新啟用」以確保歷史記帳紀錄與報表名稱不遺失。</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <!-- v5.2.2: 舊版本節點 -->
+                            <div class="relative pl-6">
+                                <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-2 border-white dark:border-gray-800"></div>
                                 <div class="text-xs text-gray-400 mb-1">2026-07-01</div>
                                 <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
                                     <div class="font-bold text-gray-800 dark:text-white mb-2">v5.2.2</div>
@@ -2318,9 +2330,9 @@
                         <div v-if="realEstateForm.purchaseCost > 0 && realEstateForm.marketValue > 0" class="text-xs text-right" :class="getPnlClass(realEstateForm.marketValue - realEstateForm.purchaseCost)">帳面損益：{{ formatCurrency(realEstateForm.marketValue - realEstateForm.purchaseCost, 'TWD') }}</div>
                         <div>
                             <label class="block text-xs font-bold text-gray-500 mb-1">連結房貸帳戶（可多選）</label>
-                            <div v-if="loanList.length === 0" class="text-xs text-gray-400 py-2">尚未建立任何借款帳戶</div>
+                            <div v-if="activeLoans.length === 0" class="text-xs text-gray-400 py-2">尚未建立任何借款帳戶</div>
                             <div v-else class="space-y-1 max-h-28 overflow-y-auto border border-gray-200 dark:border-gray-600 rounded p-2">
-                                <label v-for="l in loanList" :key="l.id"
+                                <label v-for="l in activeLoans" :key="l.id"
                                     class="flex items-center justify-between gap-2 py-1 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 px-1 rounded">
                                     <div class="flex items-center gap-2">
                                         <input type="checkbox"
@@ -2395,7 +2407,7 @@
                         <div class="border-t border-gray-100 dark:border-gray-700 pt-4">
                             <div class="text-xs text-gray-400 mb-2">現有帳戶列表</div>
                             <div class="space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
-                                <div v-for="l in loanList" :key="l.id"
+                                <div v-for="l in activeLoans" :key="l.id"
                                     class="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-2 rounded">
                                     <div>
                                         <div class="flex items-center gap-1.5 flex-wrap">
@@ -2413,13 +2425,47 @@
                                             備註: {{ l.note }}
                                         </div>
                                     </div>
-                                    <div class="flex gap-2"><button @click="editLoanAccount(l)"
+                                    <div class="flex gap-2">
+                                        <button @click="toggleArchiveLoan(l)" title="結清帳戶"
+                                            class="text-gray-400 hover:text-emerald-500"><i
+                                                class="fa-solid fa-circle-check"></i></button>
+                                        <button @click="editLoanAccount(l)"
                                             class="text-gray-400 hover:text-blue-500"><i
-                                                class="fa-solid fa-pen"></i></button><button
-                                            @click="deleteLoanAccount(l)" class="text-gray-400 hover:text-red-500"><i
-                                                class="fa-solid fa-trash"></i></button></div>
+                                                class="fa-solid fa-pen"></i></button>
+                                        <button @click="deleteLoanAccount(l)" class="text-gray-400 hover:text-red-500"><i
+                                                class="fa-solid fa-trash"></i></button>
+                                    </div>
                                 </div>
-                                <div v-if="loanList.length===0" class="text-center text-xs text-gray-400">尚無帳戶</div>
+                                <div v-if="activeLoans.length===0" class="text-center text-xs text-gray-400">尚無帳戶</div>
+                            </div>
+                        </div>
+
+                        <!-- 已結清/封存帳戶 (摺疊區) -->
+                        <div v-if="archivedLoans.length > 0" class="border-t border-gray-100 dark:border-gray-700 pt-3 mt-3">
+                            <button @click="showArchivedLoansList = !showArchivedLoansList" 
+                                class="w-full flex justify-between items-center text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 font-medium py-1">
+                                <span>已結清/封存帳戶 ({{ archivedLoans.length }})</span>
+                                <i class="fa-solid" :class="showArchivedLoansList ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                            </button>
+                            
+                            <div v-if="showArchivedLoansList" class="space-y-2 mt-2 max-h-32 overflow-y-auto custom-scrollbar">
+                                <div v-for="l in archivedLoans" :key="l.id"
+                                    class="flex justify-between items-center bg-gray-50 dark:bg-gray-700/60 p-2 rounded opacity-75">
+                                    <div>
+                                        <div class="flex items-center gap-1.5 flex-wrap">
+                                            <span class="text-sm dark:text-gray-300 font-medium line-through">{{ l.name }}</span>
+                                        </div>
+                                        <div v-if="l.note" class="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 italic">備註: {{ l.note }}</div>
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <button @click="toggleArchiveLoan(l)" title="重新啟用"
+                                            class="text-gray-400 hover:text-emerald-500"><i
+                                                class="fa-solid fa-rotate-left"></i></button>
+                                        <button @click="deleteLoanAccount(l)" title="永久刪除"
+                                            class="text-gray-400 hover:text-red-500"><i
+                                                class="fa-solid fa-trash"></i></button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2782,27 +2828,27 @@
                             <div>
                                 <div class="flex items-center justify-between mb-1">
                                     <label class="text-xs font-bold text-gray-500">借款帳戶</label>
-                                    <button v-if="loanList.length > 0 && !inlineNewLoan"
+                                    <button v-if="activeLoans.length > 0 && !inlineNewLoan"
                                         @click="inlineNewLoan = true"
                                         class="text-xs text-purple-500 hover:text-purple-700 flex items-center gap-1">
                                         <i class="fa-solid fa-plus"></i> 新增帳戶
                                     </button>
-                                    <button v-if="inlineNewLoan && loanList.length > 0"
+                                    <button v-if="inlineNewLoan && activeLoans.length > 0"
                                         @click="inlineNewLoan = false"
                                         class="text-xs text-gray-400 hover:text-gray-600">取消</button>
                                 </div>
 
                                 <!-- 現有帳戶下拉 -->
-                                <select v-if="!inlineNewLoan && loanList.length > 0"
+                                <select v-if="!inlineNewLoan && activeLoans.length > 0"
                                     v-model="transForm.loanId" class="zen-input">
                                     <option value="" disabled>請選擇帳戶</option>
-                                    <option v-for="l in loanList" :key="l.id" :value="l.id">
+                                    <option v-for="l in activeLoans" :key="l.id" :value="l.id">
                                         {{ l.name }} (餘額 {{ formatNumber(l.balance) }})
                                     </option>
                                 </select>
 
                                 <!-- Inline 新增帳戶（無帳戶時自動顯示） -->
-                                <div v-if="inlineNewLoan || loanList.length === 0"
+                                <div v-if="inlineNewLoan || activeLoans.length === 0"
                                     class="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-lg p-3 space-y-2">
                                     <p class="text-xs text-purple-600 dark:text-purple-300 font-medium">
                                         <i class="fa-solid fa-circle-plus mr-1"></i>建立新借款帳戶

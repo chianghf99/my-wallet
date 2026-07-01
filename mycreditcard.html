@@ -705,15 +705,22 @@
                                                         <div class="w-full h-10 bg-black/80 mt-6"></div>
                                                         <!-- Back Content -->
                                                         <div class="p-5 pt-3 flex-1 flex flex-col gap-2 text-xs">
-                                                            <div class="bg-white/20 p-2 rounded flex justify-between items-center shadow-inner">
-                                                                 <div @click.stop="copyCardNumber(card)" 
-                                                                      class="font-mono text-slate-100 tracking-widest cursor-pointer hover:text-white hover:bg-white/10 px-2 py-0.5 rounded transition-all flex items-center gap-1.5 group/num" 
-                                                                      title="點擊複製完整卡號">
-                                                                     <span>{{ card.enc_number ? decryptField(card.enc_number, getPinKey()) : (card.last4 ? '**** **** **** ' + card.last4 : '無記錄') }}</span>
-                                                                     <i v-if="card.enc_number && getPinKey()" class="far fa-copy text-[10px] opacity-60 group-hover/num:opacity-100 transition-opacity"></i>
-                                                                 </div>
-                                                                <span class="font-mono bg-white/30 px-2 py-0.5 rounded text-white italic tracking-widest">{{ card.enc_cvv ? decryptField(card.enc_cvv, getPinKey()) : '***' }}</span>
-                                                            </div>
+                                                             <div class="bg-white/20 p-2 rounded flex justify-between items-center shadow-inner">
+                                                                  <div @click.stop="copyCardNumber(card)" 
+                                                                       class="font-mono text-slate-100 tracking-widest cursor-pointer hover:text-white hover:bg-white/10 px-2 py-1 rounded transition-all flex items-center gap-1.5" 
+                                                                       title="點擊複製完整卡號">
+                                                                      <span>{{ card.enc_number ? decryptField(card.enc_number, getPinKey()) : (card.last4 ? '**** **** **** ' + card.last4 : '無記錄') }}</span>
+                                                                  </div>
+                                                                  <div class="flex items-center gap-2">
+                                                                      <button v-if="card.enc_number && getPinKey()" 
+                                                                              @click.stop="copyCardNumber(card)" 
+                                                                              class="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/40 text-white flex items-center justify-center transition-all active:scale-90" 
+                                                                              title="複製卡號">
+                                                                          <i class="far fa-copy text-xs"></i>
+                                                                      </button>
+                                                                      <span class="font-mono bg-white/30 px-2 py-0.5 rounded text-white italic tracking-widest">{{ card.enc_cvv ? decryptField(card.enc_cvv, getPinKey()) : '***' }}</span>
+                                                                  </div>
+                                                             </div>
                                                              <div class="flex justify-between text-slate-200">
                                                                  <div>EXP: <span class="font-mono text-white tracking-widest">{{ card.enc_expiry ? decryptField(card.enc_expiry, getPinKey()) : 'MM/YY' }}</span></div>
                                                              </div>

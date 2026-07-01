@@ -10,7 +10,10 @@ export const formatNumber = (n) =>
     !n && n !== 0 ? '-' : new Intl.NumberFormat('en-US', { maximumFractionDigits: 5 }).format(n);
 
 export const formatCurrency = (n, c) => { 
-    return (c === 'TWD' ? 'NT$ ' : '$ ') + new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n); 
+    if (n === null || n === undefined || n === '') return (c === 'TWD' ? 'NT$ -' : '$ -');
+    const val = Number(n);
+    if (isNaN(val)) return (c === 'TWD' ? 'NT$ -' : '$ -');
+    return (c === 'TWD' ? 'NT$ ' : '$ ') + new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val); 
 };
 
 export const getPnlClass = (v) => v >= 0 ? 'text-up' : 'text-down';

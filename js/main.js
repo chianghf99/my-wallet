@@ -194,8 +194,8 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 const usStockList = computed(() => sortedStocks.value.filter(s => s.currency === 'USD'));
                 const twStats = computed(() => calculateStats(twStockList.value));
                 const usStats = computed(() => calculateStats(usStockList.value));
-                const totalLoanBalance = computed(() => loanList.value.reduce((acc, cur) => acc + (cur.balance || 0), 0));
-                const totalMonthlyPayment = computed(() => loanList.value.reduce((acc, cur) => acc + (cur.monthlyPayment || 0), 0));
+                const totalLoanBalance = computed(() => loanList.value.filter(l => l.status !== 'archived').reduce((acc, cur) => acc + (cur.balance || 0), 0));
+                const totalMonthlyPayment = computed(() => loanList.value.filter(l => l.status !== 'archived').reduce((acc, cur) => acc + (cur.monthlyPayment || 0), 0));
                 // v4.0.0: 房地產 computed
                 const realEstateTotalMarket = computed(() => realEstateList.value.reduce((acc, re) => acc + (re.marketValue || 0), 0));
                 const realEstateTotalMortgage = computed(() => {
@@ -231,14 +231,35 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     const cashVal = (cashData.value.twd || 0) + ((cashData.value.usd || 0) * exchangeRate.value);
                     return stockVal + cashVal;
                 });
-                // 金融負債（排除非投資用途的房貸）
+                // 金融負債（排除非投資用途的房貸與已封存帳戶）
                 const financialLoans = computed(() => {
                     return loanList.value
+                        .filter(l => l.status !== 'archived')
                         .filter(l => l.isInvestmentUse === true || l.type !== 'realestate')
                         .reduce((acc, cur) => acc + (cur.balance || 0), 0);
                 });
                 // 金融淨資產
                 const financialNetWorth = computed(() => financialAssets.value - financialLoans.value);
+
+                const activeLoans = computed(() => loanList.value.filter(l => l.status !== 'archived'));
+                const archivedLoans = computed(() => loanList.value.filter(l => l.status === 'archived'));
+                const showArchivedLoansList = ref(false);
+                const toggleArchiveLoan = async (l) => {
+                    const isArchiving = l.status !== 'archived';
+                    if (isArchiving) {
+                        if (l.balance > 0 && !confirm(`此帳戶尚有餘額 ${formatNumber(l.balance)}，結清會將餘額設為 0，確定結清並封存嗎？`)) {
+                            return;
+                        }
+                        await db.collection('users').doc(user.value.uid).collection('loans').doc(l.id).update({ 
+                            status: 'archived',
+                            balance: 0
+                        });
+                    } else {
+                        await db.collection('users').doc(user.value.uid).collection('loans').doc(l.id).update({ 
+                            status: 'active'
+                        });
+                    }
+                };
 
                 // v4.4.0: 帳戶槓桿 = 金融資產 / 金融淨資產
                 const leverageRatio = computed(() => {
@@ -1525,7 +1546,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     realizedRange, setRealizedRange,
                     showDeleteModal, pendingDeleteTx, executeDelete,
                     showHistoryEditModalVisible, openHistoryEditModal, saveHistoryRecord, historyEditForm, calculateHistoryNetWorth,
-                    loanList, totalLoanBalance, totalMonthlyPayment, showLoanMgrModal, loanForm, openLoanMgrModal, editLoanAccount, saveLoanAccount, deleteLoanAccount, openLoanModal, isLoanMode, loanCashMode,
+                    loanList, totalLoanBalance, totalMonthlyPayment, activeLoans, archivedLoans, showArchivedLoansList, toggleArchiveLoan, showLoanMgrModal, loanForm, openLoanMgrModal, editLoanAccount, saveLoanAccount, deleteLoanAccount, openLoanModal, isLoanMode, loanCashMode,
                     inlineNewLoan, inlineLoanName, saveInlineLoanAccount,
                     exportToExcel,
                     showSettingsModal, saveSettings,

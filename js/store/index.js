@@ -91,3 +91,11 @@ export const transForm = ref({ id: null, type: 'buy', symbol: '', name: '', shar
 
 export const monthlyProfitData = ref([]);
 export const monthlyProfitRange = ref(6);
+
+// --- 期貨相關狀態 ---
+export const futuresMargin = ref({ twd: 0, usd: 0 });
+export const futuresPositions = ref([]);
+export const showFuturesModal = ref(false);
+export const futuresForm = ref({ id: null, symbol: '', expiry: '', direction: 'long', contracts: '', entryPrice: '', currentPrice: '', multiplier: '', marginUsed: '', currency: 'TWD', note: '' });
+export const showFuturesMarginModal = ref(false);
+export const futuresMarginForm = ref({ amount: '', currency: 'TWD', type: 'deposit', syncCash: true, loanId: '', note: '' });

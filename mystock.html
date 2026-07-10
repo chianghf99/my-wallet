@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v5.3.1</title>
+    <title>我的投資組合 | Portfolio v5.4.0</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -298,7 +298,7 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.3.1</h1>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.4.0</h1>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -318,7 +318,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.3.1</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.4.0</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -529,6 +529,11 @@
                         :class="activeSection==='realestate' ? 'btn-active' : 'btn-inactive'"
                         class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i
                             class="fa-solid fa-house mr-2"></i>房地產</button>
+                    <!-- 期貨部位 -->
+                    <button @click="toggleSection('futures')"
+                        :class="activeSection==='futures' ? 'btn-active' : 'btn-inactive'"
+                        class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i
+                            class="fa-solid fa-file-contract mr-2"></i>期貨部位</button>
                     <button @click="toggleSection('monthly')"
                         :class="activeSection==='monthly' ? 'btn-active' : 'btn-inactive'"
                         class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i
@@ -1338,6 +1343,156 @@
                 </transition>
 
 
+                <!-- 期貨部位 Section -->
+                <transition name="collapse">
+                    <div v-if="activeSection === 'futures'" class="zen-card p-4 md:p-6 mb-8">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold dark:text-white flex items-center gap-2">
+                                <i class="fa-solid fa-file-contract text-amber-600"></i> 期貨交易與部位管理
+                            </h3>
+                            <div class="flex gap-2">
+                                <button @click="openFuturesMarginModal()"
+                                    class="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-3 py-1 text-sm rounded border border-amber-300/40 hover:bg-amber-200 transition">
+                                    <i class="fa-solid fa-scale-balanced mr-1"></i>調整保證金
+                                </button>
+                                <button @click="openFuturesModal(null)"
+                                    class="bg-amber-600 text-white px-3 py-1 text-sm rounded hover:bg-amber-500 transition">
+                                    <i class="fa-solid fa-plus mr-1"></i>新增部位
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 保證金與風控概覽 -->
+                        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+                            <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-center">
+                                <div class="text-xs text-gray-400 mb-0.5">台幣保證金</div>
+                                <div class="font-bold text-gray-700 dark:text-gray-200 text-sm">
+                                    <span v-if="showPrivacy">{{ formatCurrency(futuresMargin.twd || 0, 'TWD') }}</span>
+                                    <span v-else>****</span>
+                                </div>
+                            </div>
+                            <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-center">
+                                <div class="text-xs text-gray-400 mb-0.5">美金保證金</div>
+                                <div class="font-bold text-gray-700 dark:text-gray-200 text-sm">
+                                    <span v-if="showPrivacy">{{ formatCurrency(futuresMargin.usd || 0, 'USD') }}</span>
+                                    <span v-else>****</span>
+                                </div>
+                            </div>
+                            <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-center">
+                                <div class="text-xs text-gray-400 mb-0.5">未實現損益 (換算台幣)</div>
+                                <div class="font-bold text-sm" :class="getPnlClass(futuresTotalUnrealizedPnL)">
+                                    <span v-if="showPrivacy">{{ formatChange(futuresTotalUnrealizedPnL) }}</span>
+                                    <span v-else>****</span>
+                                </div>
+                            </div>
+                            <div class="bg-amber-50/50 dark:bg-amber-900/10 p-3 rounded-lg text-center border border-amber-100/50 dark:border-amber-900/30">
+                                <div class="text-xs text-amber-600 dark:text-amber-400 mb-0.5">權益數 (換算台幣)</div>
+                                <div class="font-bold text-amber-700 dark:text-amber-300 text-sm">
+                                    <span v-if="showPrivacy">{{ formatCurrency(futuresEquity, 'TWD') }}</span>
+                                    <span v-else>****</span>
+                                </div>
+                            </div>
+                            <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-center col-span-2 md:col-span-1">
+                                <div class="text-xs text-gray-400 mb-0.5">維持率 (風控指標)</div>
+                                <div class="flex items-center justify-center gap-1.5 mt-0.5">
+                                    <span class="font-bold text-xs"
+                                        :class="futuresTotalMarginUsed <= 0 ? 'text-gray-400' : (futuresRiskRatio >= 150 ? 'text-emerald-500' : (futuresRiskRatio >= 120 ? 'text-orange-400' : 'text-red-500'))">
+                                        {{ futuresTotalMarginUsed <= 0 ? '-' : futuresRiskRatio.toFixed(1) + '%' }}
+                                    </span>
+                                    <span v-if="futuresTotalMarginUsed > 0"
+                                        class="text-[9px] px-1 rounded font-bold"
+                                        :class="futuresRiskRatio >= 150 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400' : (futuresRiskRatio >= 120 ? 'bg-orange-100 text-orange-800 dark:bg-orange-950/30 dark:text-orange-400' : 'bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400')">
+                                        {{ futuresRiskRatio >= 150 ? '安全' : (futuresRiskRatio >= 120 ? '警告' : '危險') }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 維持率進度條 -->
+                        <div class="mb-6 px-1" v-if="showPrivacy && futuresTotalMarginUsed > 0">
+                            <div class="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                <div class="h-full rounded-full transition-all duration-500"
+                                    :style="{ width: Math.min((futuresRiskRatio / 300) * 100, 100) + '%' }"
+                                    :class="futuresRiskRatio >= 150 ? 'bg-emerald-500' : futuresRiskRatio >= 120 ? 'bg-orange-400' : 'bg-red-500'">
+                                </div>
+                            </div>
+                            <div class="flex justify-between text-[9px] text-gray-400 mt-1">
+                                <span>0%</span>
+                                <span class="text-red-500">120% (危險)</span>
+                                <span class="text-orange-400">150% (警戒)</span>
+                                <span>300%+</span>
+                            </div>
+                        </div>
+
+                        <!-- 未平倉部位清單 -->
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs text-left">
+                                <thead class="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase font-medium">
+                                    <tr>
+                                        <th class="px-4 py-3">商品 / 結算</th>
+                                        <th class="px-4 py-3 text-center">方向</th>
+                                        <th class="px-4 py-3 text-right">口數</th>
+                                        <th class="px-4 py-3 text-right">建倉價格</th>
+                                        <th class="px-4 py-3 text-right">目前價格</th>
+                                        <th class="px-4 py-3 text-right">佔用保證金</th>
+                                        <th class="px-4 py-3 text-right">合約價值 (曝險額)</th>
+                                        <th class="px-4 py-3 text-right">未實現損益</th>
+                                        <th class="px-4 py-3 text-center">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                    <tr v-for="pos in futuresPositions" :key="pos.id" class="hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                                        <td class="px-4 py-3 font-bold dark:text-white">
+                                            {{ pos.symbol }} <span class="text-[10px] font-normal text-gray-400" v-if="pos.expiry">{{ pos.expiry }}</span>
+                                            <div class="text-[10px] text-gray-400 font-normal" v-if="pos.note">{{ pos.note }}</div>
+                                        </td>
+                                        <td class="px-4 py-3 text-center font-bold">
+                                            <span :class="pos.direction === 'long' ? 'text-red-500' : 'text-emerald-500'">
+                                                {{ pos.direction === 'long' ? '多 (Long)' : '空 (Short)' }}
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3 text-right">{{ pos.contracts }} 口</td>
+                                        <td class="px-4 py-3 text-right">{{ formatNumber(pos.entryPrice) }}</td>
+                                        <td class="px-4 py-3 text-right font-medium text-blue-600 dark:text-blue-400">{{ formatNumber(pos.currentPrice) }}</td>
+                                        <td class="px-4 py-3 text-right font-medium text-purple-600 dark:text-purple-300">
+                                            <span v-if="showPrivacy">{{ formatCurrency(pos.marginUsed, pos.currency) }}</span>
+                                            <span v-else>****</span>
+                                        </td>
+                                        <td class="px-4 py-3 text-right font-medium text-gray-700 dark:text-gray-300">
+                                            <span v-if="showPrivacy">{{ formatCurrency(pos.currentPrice * pos.contracts * pos.multiplier, pos.currency) }}</span>
+                                            <span v-else>****</span>
+                                        </td>
+                                        <td class="px-4 py-3 text-right font-bold" :class="getPnlClass((pos.direction === 'long' ? (pos.currentPrice - pos.entryPrice) : (pos.entryPrice - pos.currentPrice)) * pos.contracts * pos.multiplier)">
+                                            <span v-if="showPrivacy">{{ formatChange((pos.direction === 'long' ? (pos.currentPrice - pos.entryPrice) : (pos.entryPrice - pos.currentPrice)) * pos.contracts * pos.multiplier) }} ({{ pos.currency }})</span>
+                                            <span v-else>****</span>
+                                        </td>
+                                        <td class="px-4 py-3 text-center">
+                                            <div class="flex items-center justify-center gap-2">
+                                                <button @click="closeFuturesPosition(pos)"
+                                                    class="text-emerald-600 hover:text-emerald-500 text-xs px-2 py-0.5 border border-emerald-300/40 rounded transition">
+                                                    平倉
+                                                </button>
+                                                <button @click="openFuturesModal(pos)"
+                                                    class="text-blue-600 hover:text-blue-500 text-xs transition">
+                                                    編輯
+                                                </button>
+                                                <button @click="deleteFuturesPosition(pos)"
+                                                    class="text-red-500 hover:text-red-400 text-xs transition">
+                                                    刪除
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr v-if="futuresPositions.length === 0">
+                                        <td colspan="9" class="text-center py-6 text-gray-400">目前沒有未平倉期貨部位</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </transition>
+
+
                 <div class="flex justify-end mb-4">
                     <div class="flex bg-gray-200 dark:bg-gray-700 rounded p-0.5">
                         <button @click="viewMode = 'card'"
@@ -1728,9 +1883,23 @@
 
                     <div class="p-6 overflow-y-auto custom-scrollbar">
                         <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
-                            <!-- v5.3.1: 最新版本節點 -->
+                            <!-- v5.4.0: 最新版本節點 -->
                             <div class="relative pl-6">
                                 <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800"></div>
+                                <div class="text-xs text-gray-400 mb-1">2026-07-10</div>
+                                <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
+                                    <div class="font-bold text-gray-800 dark:text-white mb-2">v5.4.0</div>
+                                    <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                        <li>新增：期貨交易與部位管理模組。</li>
+                                        <li>功能：支援台幣/美金保證金入金與出金，可自動與活存現金連動並產生交易紀錄流水帳。</li>
+                                        <li>風控：支援部位開倉、平倉，即時洗價並計算保證金維持率與紅黃綠燈風控警示。</li>
+                                        <li>整合：期貨權益與合約曝險自動加入首頁資產總額與槓桿/曝險儀表板，防止隱形槓桿導致爆倉風險。</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <!-- v5.3.1: 舊版本節點 -->
+                            <div class="relative pl-6">
+                                <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-2 border-white dark:border-gray-800"></div>
                                 <div class="text-xs text-gray-400 mb-1">2026-07-01</div>
                                 <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
                                     <div class="font-bold text-gray-800 dark:text-white mb-2">v5.3.1</div>
@@ -2368,6 +2537,139 @@
                     <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex justify-end gap-3">
                         <button @click="showRealEstateModal=false" class="px-4 py-2 rounded text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button>
                         <button @click="saveRealEstate" class="px-6 py-2 rounded bg-emerald-700 text-white font-medium hover:bg-emerald-600 transition">儲存</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 期貨部位 新增/編輯 Modal -->
+            <div v-if="showFuturesModal"
+                class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+                    <div class="bg-amber-600 text-white px-6 py-4 flex justify-between items-center">
+                        <h3 class="font-bold">{{ futuresForm.id ? '編輯期貨部位' : '新增期貨部位' }}</h3>
+                        <button @click="showFuturesModal=false" class="text-white hover:text-gray-200">
+                            <i class="fa-solid fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 mb-1">商品代號 (如: TX, MTX)</label>
+                                <input type="text" v-model="futuresForm.symbol" class="zen-input uppercase" placeholder="例如: MTX">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 mb-1">結算月份 (選填)</label>
+                                <input type="text" v-model="futuresForm.expiry" class="zen-input" placeholder="例如: 202607">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 mb-1">多空方向</label>
+                                <select v-model="futuresForm.direction" class="zen-input">
+                                    <option value="long">多單 (Long)</option>
+                                    <option value="short">空單 (Short)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 mb-1">幣別</label>
+                                <select v-model="futuresForm.currency" class="zen-input">
+                                    <option value="TWD">台幣 (TWD)</option>
+                                    <option value="USD">美金 (USD)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 mb-1">口數</label>
+                                <input type="number" v-model="futuresForm.contracts" class="zen-input" placeholder="例如: 1">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 mb-1">合約乘數 (每點金額)</label>
+                                <input type="number" v-model="futuresForm.multiplier" class="zen-input" placeholder="小台填 50 / 大台填 200">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 mb-1">建倉價格 / 點數</label>
+                                <input type="number" v-model="futuresForm.entryPrice" class="zen-input" placeholder="例如: 20000">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 mb-1">目前價格 / 點數</label>
+                                <input type="number" v-model="futuresForm.currentPrice" class="zen-input" placeholder="例如: 20500">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-1">佔用保證金 (單口或總額)</label>
+                            <input type="number" v-model="futuresForm.marginUsed" class="zen-input" placeholder="例如大台 179000 / 小台 45000">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-1">備註 (選填)</label>
+                            <input type="text" v-model="futuresForm.note" class="zen-input" placeholder="其他備註事項">
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex justify-end gap-3">
+                        <button @click="showFuturesModal=false" class="px-4 py-2 rounded text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button>
+                        <button @click="saveFuturesPosition" class="px-6 py-2 rounded bg-amber-600 text-white font-medium hover:bg-amber-500 transition">儲存</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 期貨保證金 調整 Modal -->
+            <div v-if="showFuturesMarginModal"
+                class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
+                    <div class="bg-amber-700 text-white px-6 py-4 flex justify-between items-center">
+                        <h3 class="font-bold">調整期貨保證金</h3>
+                        <button @click="showFuturesMarginModal=false" class="text-white hover:text-gray-200">
+                            <i class="fa-solid fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="p-6 space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 mb-1">調整類型</label>
+                                <select v-model="futuresMarginForm.type" class="zen-input">
+                                    <option value="deposit">入金 (Deposit)</option>
+                                    <option value="withdraw">出金 (Withdraw)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 mb-1">幣別</label>
+                                <select v-model="futuresMarginForm.currency" class="zen-input">
+                                    <option value="TWD">台幣 (TWD)</option>
+                                    <option value="USD">美金 (USD)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-1">金額</label>
+                            <input type="number" v-model="futuresMarginForm.amount" class="zen-input" placeholder="請輸入金額">
+                        </div>
+
+                        <div class="flex items-center gap-2 py-1">
+                            <input type="checkbox" v-model="futuresMarginForm.syncCash" id="syncCashCheckbox" class="rounded text-amber-600 focus:ring-amber-500">
+                            <label for="syncCashCheckbox" class="text-xs font-bold text-gray-500 cursor-pointer">
+                                與銀行活存現金餘額連動增減
+                            </label>
+                        </div>
+                        <div v-if="futuresMarginForm.syncCash" class="text-[10px] text-gray-400 italic">
+                            勾選後，將自動從銀行活存扣除/存入對應金額，並在資金管理歷史中留下流水紀錄。
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-1">備註說明 (選填)</label>
+                            <input type="text" v-model="futuresMarginForm.note" class="zen-input" placeholder="如：轉入保證金、獲利出金">
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex justify-end gap-3">
+                        <button @click="showFuturesMarginModal=false" class="px-4 py-2 rounded text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button>
+                        <button @click="adjustFuturesMargin" class="px-6 py-2 rounded bg-amber-700 text-white font-medium hover:bg-amber-600 transition">確認送出</button>
                     </div>
                 </div>
             </div>

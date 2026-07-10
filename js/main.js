@@ -3,14 +3,15 @@ import { getLocalDate, formatNumber, formatCurrency, getPnlClass, getRoi, format
 
 import { 
     user, stocks, exchangeRate, lastUpdated, loadingTarget, isLoading, viewMode, isMobile, showPrivacy, defaultPrivacyHidden, hideZeroShares, showSettingsModal, isDarkMode, activeSection, showChangelog, stockStates, sectionLoading, showStockNoteModal, stockNoteForm, showHistoryModal, historyRecords, historyFilterYear, availableYears, showDeleteModal, pendingDeleteTx, showEditTxModal, editTxForm, showHistoryEditModalVisible, historyEditForm, notes, showNoteModalVisible, noteForm, loanList, showLoanMgrModal, inlineNewLoan, inlineLoanName, loanForm, cashData, prevDayData, realEstateList, showRealEstateModal, realEstateForm, chartStartDate, chartEndDate, chartPnl, currentRange, divRange, divSearchQuery, divStartDate, divEndDate, realizedStartDate, realizedEndDate, transStartDate, transEndDate, transFilterType, transSearchQuery, sortKeyTrans, sortOrderTrans, sortKeyDiv, sortOrderDiv, realizedGains, realizedSearchQuery, sortKeyRealized, sortOrderRealized, realizedRange, dividendRecords, transactionHistory, showModal, isEditing, form, showTransModal, isFundMode, isLoanMode, loanCashMode, transForm,
-    monthlyProfitData, monthlyProfitRange
+    monthlyProfitData, monthlyProfitRange,
+    futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm
 } from './store/index.js';
 const { createApp, ref, computed, onMounted, watch } = Vue;
 
         createApp({
             setup() {
                 // --- 1. 變數定義區 ---
-                let unsubscribeRealEstate = null;
+                let unsubscribeRealEstate = null, unsubscribeFuturesPositions = null, unsubscribeFuturesMargin = null;
                 const fileInput = ref(null);
                 let chartInstance = null, pieTwInstance = null, pieUsInstance = null, monthlyProfitChartInstance = null;
                 let unsubscribe = null, unsubscribeTrans = null, unsubscribeCash = null, unsubscribeNotes = null, unsubscribeLoans = null;
@@ -159,8 +160,28 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
                     auth.onAuthStateChanged((u) => {
                         user.value = u;
-                        if (u) { loadUserData(u.uid); fetchPreviousDayData(u.uid); fetchCash(u.uid); fetchNotes(u.uid); fetchLoans(u.uid); fetchRealEstate(u.uid); }
-                        else { stocks.value = []; realizedGains.value = []; dividendRecords.value = []; transactionHistory.value = []; cashData.value = { twd: 0, usd: 0, loan: 0 }; notes.value = []; loanList.value = []; realEstateList.value = []; }
+                        if (u) { 
+                            loadUserData(u.uid); 
+                            fetchPreviousDayData(u.uid); 
+                            fetchCash(u.uid); 
+                            fetchNotes(u.uid); 
+                            fetchLoans(u.uid); 
+                            fetchRealEstate(u.uid); 
+                            fetchFuturesData(u.uid); 
+                        } else { 
+                            stocks.value = []; 
+                            realizedGains.value = []; 
+                            dividendRecords.value = []; 
+                            transactionHistory.value = []; 
+                            cashData.value = { twd: 0, usd: 0, loan: 0 }; 
+                            notes.value = []; 
+                            loanList.value = []; 
+                            realEstateList.value = []; 
+                            futuresMargin.value = { twd: 0, usd: 0 }; 
+                            futuresPositions.value = []; 
+                            if (unsubscribeFuturesPositions) unsubscribeFuturesPositions(); 
+                            if (unsubscribeFuturesMargin) unsubscribeFuturesMargin(); 
+                        }
                     });
                     fetchExchangeRate();
 
@@ -209,27 +230,67 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 });
                 const realEstateNetValue = computed(() => realEstateTotalMarket.value - realEstateTotalMortgage.value);
                 const realEstateBookPnL = computed(() => realEstateList.value.reduce((acc, re) => acc + ((re.marketValue || 0) - (re.purchaseCost || 0)), 0));
+                // --- 期貨相關計算屬性 ---
+                const futuresTotalUnrealizedPnL = computed(() => {
+                    return futuresPositions.value.reduce((acc, pos) => {
+                        const diff = pos.direction === 'long' 
+                            ? (pos.currentPrice - pos.entryPrice) 
+                            : (pos.entryPrice - pos.currentPrice);
+                        const pnl = diff * pos.contracts * pos.multiplier;
+                        const rate = pos.currency === 'USD' ? exchangeRate.value : 1;
+                        return acc + (pnl * rate);
+                    }, 0);
+                });
+
+                const futuresEquity = computed(() => {
+                    const marginCash = (futuresMargin.value.twd || 0) + ((futuresMargin.value.usd || 0) * exchangeRate.value);
+                    return marginCash + futuresTotalUnrealizedPnL.value;
+                });
+
+                const futuresTotalMarginUsed = computed(() => {
+                    return futuresPositions.value.reduce((acc, pos) => {
+                        const rate = pos.currency === 'USD' ? exchangeRate.value : 1;
+                        return acc + ((pos.marginUsed || 0) * rate);
+                    }, 0);
+                });
+
+                const futuresTotalExposure = computed(() => {
+                    return futuresPositions.value.reduce((acc, pos) => {
+                        const val = pos.currentPrice * pos.contracts * pos.multiplier;
+                        const rate = pos.currency === 'USD' ? exchangeRate.value : 1;
+                        return acc + (val * rate);
+                    }, 0);
+                });
+
+                const futuresRiskRatio = computed(() => {
+                    if (futuresTotalMarginUsed.value <= 0) return 0;
+                    return (futuresEquity.value / futuresTotalMarginUsed.value) * 100;
+                });
+
                 const grandTotalAssets = computed(() => {
                     const stockVal = twStats.value.value + (usStats.value.value * exchangeRate.value);
                     const cashVal = (cashData.value.twd || 0) + ((cashData.value.usd || 0) * exchangeRate.value);
-                    return stockVal + cashVal + realEstateTotalMarket.value;
+                    const futuresVal = futuresEquity.value;
+                    return stockVal + cashVal + realEstateTotalMarket.value + futuresVal;
                 });
                 // v4.5.0: 曝險總額 (考慮正2等槓桿倍數)
                 const grandTotalExposure = computed(() => {
                     const twExposure = twStockList.value.reduce((acc, s) => acc + (s.currentPrice * s.shares * (s.multiplier || 1)), 0);
                     const usExposure = usStockList.value.reduce((acc, s) => acc + (s.currentPrice * s.shares * (s.multiplier || 1)), 0) * exchangeRate.value;
                     const cashVal = (cashData.value.twd || 0) + ((cashData.value.usd || 0) * exchangeRate.value);
-                    return twExposure + usExposure + cashVal + realEstateTotalMarket.value;
+                    const futuresExp = futuresTotalExposure.value;
+                    return twExposure + usExposure + cashVal + realEstateTotalMarket.value + futuresExp;
                 });
                 // v4.0.0: 淨資產 = 總資產 - 所有負債(貸款)
                 const grandTotalValue = computed(() => grandTotalAssets.value - totalLoanBalance.value);
-                const grandTotalPnL = computed(() => twStats.value.pnl + (usStats.value.pnl * exchangeRate.value));
+                const grandTotalPnL = computed(() => twStats.value.pnl + (usStats.value.pnl * exchangeRate.value) + futuresTotalUnrealizedPnL.value);
                 
                 // 金融資產（不含房地產）
                 const financialAssets = computed(() => {
                     const stockVal = twStats.value.value + (usStats.value.value * exchangeRate.value);
                     const cashVal = (cashData.value.twd || 0) + ((cashData.value.usd || 0) * exchangeRate.value);
-                    return stockVal + cashVal;
+                    const futuresVal = futuresEquity.value;
+                    return stockVal + cashVal + futuresVal;
                 });
                 // 金融負債（排除非投資用途的房貸與已封存帳戶）
                 const financialLoans = computed(() => {
@@ -271,7 +332,8 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     const twExposure = twStockList.value.reduce((acc, s) => acc + (s.currentPrice * s.shares * (s.multiplier || 1)), 0);
                     const usExposure = usStockList.value.reduce((acc, s) => acc + (s.currentPrice * s.shares * (s.multiplier || 1)), 0) * exchangeRate.value;
                     const cashVal = (cashData.value.twd || 0) + ((cashData.value.usd || 0) * exchangeRate.value);
-                    return twExposure + usExposure + cashVal;
+                    const futuresExp = futuresTotalExposure.value;
+                    return twExposure + usExposure + cashVal + futuresExp;
                 });
 
                 // v4.5.0: 曝險比例 = 金融總曝險 / 金融淨資產
@@ -428,6 +490,17 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 const fetchNotes = (uid) => { if (unsubscribeNotes) unsubscribeNotes(); unsubscribeNotes = db.collection('users').doc(uid).collection('notes').orderBy('date', 'desc').onSnapshot(snap => { notes.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); }); };
                 // v4.0.0: 房地產 CRUD
                 const fetchRealEstate = (uid) => { if (unsubscribeRealEstate) unsubscribeRealEstate(); unsubscribeRealEstate = db.collection('users').doc(uid).collection('real_estate').onSnapshot(snap => { realEstateList.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); }); };
+                const fetchFuturesData = (uid) => {
+                    if (unsubscribeFuturesMargin) unsubscribeFuturesMargin();
+                    unsubscribeFuturesMargin = db.collection('users').doc(uid).collection('portfolio').doc('futures_margin').onSnapshot(doc => {
+                        if (doc.exists) futuresMargin.value = doc.data();
+                        else futuresMargin.value = { twd: 0, usd: 0 };
+                    });
+                    if (unsubscribeFuturesPositions) unsubscribeFuturesPositions();
+                    unsubscribeFuturesPositions = db.collection('users').doc(uid).collection('futures_positions').onSnapshot(snap => {
+                        futuresPositions.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    });
+                };
                 const openRealEstateModal = (re) => {
                     if (re) {
                         // 相容舊資料（mortgageLoanId 單一 string）
@@ -460,6 +533,193 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 const deleteRealEstate = async (re) => {
                     if (!confirm(`確定刪除「${re.name}」？`)) return;
                     await db.collection('users').doc(user.value.uid).collection('real_estate').doc(re.id).delete();
+                    setTimeout(saveDailySnapshot, 500);
+                };
+
+                // --- 期貨相關 CRUD 與記帳邏輯 ---
+                const openFuturesModal = (pos) => {
+                    if (pos) {
+                        futuresForm.value = { ...pos };
+                    } else {
+                        futuresForm.value = {
+                            id: null,
+                            symbol: '',
+                            expiry: '',
+                            direction: 'long',
+                            contracts: '',
+                            entryPrice: '',
+                            currentPrice: '',
+                            multiplier: '',
+                            marginUsed: '',
+                            currency: 'TWD',
+                            note: ''
+                        };
+                    }
+                    showFuturesModal.value = true;
+                };
+
+                const saveFuturesPosition = async () => {
+                    if (!user.value) return;
+                    const f = futuresForm.value;
+                    if (!f.symbol) return alert('請輸入商品代號');
+                    if (!f.contracts || f.contracts <= 0) return alert('請輸入大於 0 的口數');
+                    if (!f.entryPrice || f.entryPrice <= 0) return alert('請輸入大於 0 的建倉價格');
+                    if (!f.currentPrice || f.currentPrice <= 0) return alert('請輸入大於 0 的目前價格');
+                    if (!f.multiplier || f.multiplier <= 0) return alert('請輸入大於 0 的合約乘數');
+                    if (!f.marginUsed || f.marginUsed < 0) return alert('請輸入正確的佔用保證金');
+
+                    const data = {
+                        symbol: f.symbol.toUpperCase(),
+                        expiry: f.expiry || '',
+                        direction: f.direction,
+                        contracts: Number(f.contracts),
+                        entryPrice: Number(f.entryPrice),
+                        currentPrice: Number(f.currentPrice),
+                        multiplier: Number(f.multiplier),
+                        marginUsed: Number(f.marginUsed),
+                        currency: f.currency,
+                        note: f.note || '',
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    };
+
+                    const col = db.collection('users').doc(user.value.uid).collection('futures_positions');
+                    if (f.id) {
+                        await col.doc(f.id).update(data);
+                    } else {
+                        await col.add(data);
+                    }
+                    showFuturesModal.value = false;
+                    setTimeout(saveDailySnapshot, 500);
+                };
+
+                const deleteFuturesPosition = async (pos) => {
+                    if (!confirm(`確定要刪除該筆期貨部位「${pos.symbol}」？(此操作僅刪除紀錄，不計算平倉盈虧)`)) return;
+                    await db.collection('users').doc(user.value.uid).collection('futures_positions').doc(pos.id).delete();
+                    setTimeout(saveDailySnapshot, 500);
+                };
+
+                const closeFuturesPosition = async (pos) => {
+                    const closePriceStr = prompt(`請輸入「${pos.symbol}」的平倉點數 / 價格：`, pos.currentPrice);
+                    if (closePriceStr === null) return;
+                    const closePrice = Number(closePriceStr);
+                    if (isNaN(closePrice) || closePrice <= 0) return alert('請輸入有效點數');
+
+                    const diff = pos.direction === 'long' 
+                        ? (closePrice - pos.entryPrice) 
+                        : (pos.entryPrice - closePrice);
+                    const pnl = diff * pos.contracts * pos.multiplier;
+
+                    if (!confirm(`平倉價格: ${closePrice}\n預估盈虧: ${pos.currency === 'USD' ? '$' : 'NT$'} ${formatNumber(pnl)}\n\n確定執行平倉嗎？`)) return;
+
+                    // 1. 寫入已實現損益
+                    await db.collection('users').doc(user.value.uid).collection('realized_gains').add({
+                        symbol: pos.symbol,
+                        name: `${pos.symbol}${pos.expiry ? ' ' + pos.expiry : ''} (${pos.direction === 'long' ? '多' : '空'}平)`,
+                        pnl: pnl,
+                        date: getLocalDate(),
+                        currency: pos.currency || 'TWD',
+                        shares: pos.contracts,
+                        buyPrice: pos.entryPrice,
+                        sellPrice: closePrice,
+                        memo: pos.note || '期貨平倉'
+                    });
+
+                    // 2. 將盈虧灌回期貨保證金帳戶
+                    const curMargin = { ...futuresMargin.value };
+                    if (pos.currency === 'USD') {
+                        curMargin.usd = (curMargin.usd || 0) + pnl;
+                    } else {
+                        curMargin.twd = (curMargin.twd || 0) + pnl;
+                    }
+                    await db.collection('users').doc(user.value.uid).collection('portfolio').doc('futures_margin').set(curMargin, { merge: true });
+
+                    // 3. 刪除該部位
+                    await db.collection('users').doc(user.value.uid).collection('futures_positions').doc(pos.id).delete();
+
+                    alert('平倉成功！平倉損益已歸檔，並調整保證金帳戶餘額。');
+                    setTimeout(saveDailySnapshot, 500);
+                };
+
+                const openFuturesMarginModal = () => {
+                    futuresMarginForm.value = {
+                        amount: '',
+                        currency: 'TWD',
+                        type: 'deposit',
+                        syncCash: true,
+                        note: ''
+                    };
+                    showFuturesMarginModal.value = true;
+                };
+
+                const adjustFuturesMargin = async () => {
+                    const formVal = futuresMarginForm.value;
+                    const amt = Number(formVal.amount);
+                    if (isNaN(amt) || amt <= 0) return alert('請輸入有效金額');
+
+                    const curMargin = { ...futuresMargin.value };
+                    const curCash = { ...cashData.value };
+
+                    if (formVal.type === 'deposit') {
+                        // 檢查銀行活存現金是否足夠連動
+                        if (formVal.syncCash) {
+                            if (formVal.currency === 'USD') {
+                                if ((curCash.usd || 0) < amt) return alert('銀行美金活存餘額不足！');
+                                curCash.usd = (curCash.usd || 0) - amt;
+                            } else {
+                                if ((curCash.twd || 0) < amt) return alert('銀行台幣活存餘額不足！');
+                                curCash.twd = (curCash.twd || 0) - amt;
+                            }
+                        }
+
+                        // 入金至期貨保證金
+                        if (formVal.currency === 'USD') {
+                            curMargin.usd = (curMargin.usd || 0) + amt;
+                        } else {
+                            curMargin.twd = (curMargin.twd || 0) + amt;
+                        }
+
+                    } else if (formVal.type === 'withdraw') {
+                        // 檢查期貨保證金是否足夠出金
+                        if (formVal.currency === 'USD') {
+                            if ((curMargin.usd || 0) < amt) return alert('期貨美金保證金餘額不足！');
+                            curMargin.usd = (curMargin.usd || 0) - amt;
+                        } else {
+                            if ((curMargin.twd || 0) < amt) return alert('期貨台幣保證金餘額不足！');
+                            curMargin.twd = (curMargin.twd || 0) - amt;
+                        }
+
+                        // 出金至銀行活存
+                        if (formVal.syncCash) {
+                            if (formVal.currency === 'USD') {
+                                curCash.usd = (curCash.usd || 0) + amt;
+                            } else {
+                                curCash.twd = (curCash.twd || 0) + amt;
+                            }
+                        }
+                    }
+
+                    // 1. 更新期貨保證金
+                    await db.collection('users').doc(user.value.uid).collection('portfolio').doc('futures_margin').set(curMargin, { merge: true });
+
+                    // 2. 若勾選同步，更新銀行活存
+                    if (formVal.syncCash) {
+                        await db.collection('users').doc(user.value.uid).collection('portfolio').doc('cash').set(curCash, { merge: true });
+
+                        // 3. 寫入銀行現金交易流水帳 (CASH 紀錄)
+                        await db.collection('users').doc(user.value.uid).collection('transactions').add({
+                            type: formVal.type === 'deposit' ? 'withdraw' : 'deposit',
+                            symbol: 'CASH',
+                            name: formVal.type === 'deposit' ? '轉出至期貨保證金' : '期貨保證金轉回',
+                            shares: 0,
+                            totalAmount: amt,
+                            currency: formVal.currency,
+                            date: getLocalDate(),
+                            memo: formVal.note || '期貨保證金劃轉'
+                        });
+                    }
+
+                    showFuturesMarginModal.value = false;
+                    alert('保證金調整成功！');
                     setTimeout(saveDailySnapshot, 500);
                 };
                 const getLoanName = (loanId) => { const l = loanList.value.find(x => x.id === loanId); return l ? l.name : '未知帳戶'; };
@@ -1563,7 +1823,11 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     showRealEstateModal, realEstateForm, openRealEstateModal, saveRealEstate, deleteRealEstate,
                     getLoanName, getReMortgageTotal, getReMortgageLoans, toggleReMortgageLoan,
 
-                    monthlyProfitData, monthlyProfitRange, drawMonthlyChart
+                    monthlyProfitData, monthlyProfitRange, drawMonthlyChart,
+
+                    futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm,
+                    futuresTotalUnrealizedPnL, futuresEquity, futuresTotalMarginUsed, futuresTotalExposure, futuresRiskRatio,
+                    openFuturesModal, saveFuturesPosition, deleteFuturesPosition, closeFuturesPosition, openFuturesMarginModal, adjustFuturesMargin
                 };
             }
         }).mount('#app');

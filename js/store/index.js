@@ -14,7 +14,7 @@ export const defaultPrivacyHidden = ref(false);
 export const hideZeroShares = ref(localStorage.getItem('hideZeroShares') === 'true');
 export const showSettingsModal = ref(false);
 export const isDarkMode = ref(localStorage.getItem('darkMode') === 'true');
-export const activeSection = ref('');
+export const activeSection = ref('overview');
 export const showChangelog = ref(false);
 export const stockStates = ref({});
 export const sectionLoading = ref(false);
@@ -99,3 +99,8 @@ export const showFuturesModal = ref(false);
 export const futuresForm = ref({ id: null, symbol: '', expiry: '', direction: 'long', contracts: '', entryPrice: '', currentPrice: '', multiplier: '', marginUsed: '', currency: 'TWD', note: '' });
 export const showFuturesMarginModal = ref(false);
 export const futuresMarginForm = ref({ amount: '', currency: 'TWD', type: 'deposit', syncCash: true, loanId: '', note: '' });
+
+// --- 子分頁切換狀態 ---
+export const investmentsTab = ref('stocks');
+export const performanceTab = ref('realized');
+export const overviewTab = ref('trend');

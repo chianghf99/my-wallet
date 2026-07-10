@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v5.4.0</title>
+    <title>我的投資組合 | Portfolio v5.5.0</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -298,7 +298,7 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.4.0</h1>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.5.0</h1>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -318,7 +318,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.4.0</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.5.0</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -496,54 +496,50 @@
                         </div>
                     </div>
                 </div>
-                <div class="flex flex-wrap gap-2 justify-center mb-6">
-                    <button @click="toggleSection('chart')"
-                        :class="activeSection==='chart' ? 'btn-active' : 'btn-inactive'"
-                        class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i
-                            class="fa-solid fa-chart-line mr-2"></i>資產走勢</button>
-                    <button @click="toggleSection('pie')" :class="activeSection==='pie' ? 'btn-active' : 'btn-inactive'"
-                        class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i
-                            class="fa-solid fa-chart-pie mr-2"></i>資產配置</button>
-                    <button @click="toggleSection('cash')"
-                        :class="activeSection==='cash' ? 'btn-active' : 'btn-inactive'"
-                        class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i
-                            class="fa-solid fa-wallet mr-2"></i>資金管理</button>
-                    <button @click="toggleSection('transactions')"
-                        :class="activeSection==='transactions' ? 'btn-active' : 'btn-inactive'"
-                        class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i
-                            class="fa-solid fa-list-ul mr-2"></i>交易紀錄</button>
-                    <button @click="toggleSection('notes')"
-                        :class="activeSection==='notes' ? 'btn-active' : 'btn-inactive'"
-                        class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i
-                            class="fa-solid fa-book mr-2"></i>投資筆記</button>
-                    <button @click="toggleSection('dividend')"
-                        :class="activeSection==='dividend' ? 'btn-active' : 'btn-inactive'"
-                        class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i
-                            class="fa-solid fa-coins mr-2"></i>股息統計</button>
-                    <button @click="toggleSection('realized')"
-                        :class="activeSection==='realized' ? 'btn-active' : 'btn-inactive'"
-                        class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i
-                            class="fa-solid fa-file-invoice-dollar mr-2"></i>已實現損益</button>
-                    <!-- v4.0.0: 房地產 -->
-                    <button @click="toggleSection('realestate')"
-                        :class="activeSection==='realestate' ? 'btn-active' : 'btn-inactive'"
-                        class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i
-                            class="fa-solid fa-house mr-2"></i>房地產</button>
-                    <!-- 期貨部位 -->
-                    <button @click="toggleSection('futures')"
-                        :class="activeSection==='futures' ? 'btn-active' : 'btn-inactive'"
-                        class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i
-                            class="fa-solid fa-file-contract mr-2"></i>期貨部位</button>
-                    <button @click="toggleSection('monthly')"
-                        :class="activeSection==='monthly' ? 'btn-active' : 'btn-inactive'"
-                        class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i
-                            class="fa-solid fa-chart-column mr-2"></i>獲利分析</button>
+                                <div class="flex flex-wrap gap-2 justify-center mb-6">
+                                    <button @click="toggleSection('overview')"
+                                        :class="activeSection==='overview' ? 'btn-active' : 'btn-inactive'"
+                                        class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i
+                                            class="fa-solid fa-chart-pie mr-2"></i>📊 資產大盤</button>
+                                    <button @click="toggleSection('cash')"
+                                        :class="activeSection==='cash' ? 'btn-active' : 'btn-inactive'"
+                                        class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i
+                                            class="fa-solid fa-wallet mr-2"></i>💵 資金管理</button>
+                                    <button @click="toggleSection('investments')"
+                                        :class="activeSection==='investments' ? 'btn-active' : 'btn-inactive'"
+                                        class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i
+                                            class="fa-solid fa-arrow-trend-up mr-2"></i>📈 投資部位</button>
+                                    <button @click="toggleSection('notes')"
+                                        :class="activeSection==='notes' ? 'btn-active' : 'btn-inactive'"
+                                        class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i
+                                            class="fa-solid fa-book mr-2"></i>📓 投資筆記</button>
+                                    <button @click="toggleSection('performance')"
+                                        :class="activeSection==='performance' ? 'btn-active' : 'btn-inactive'"
+                                        class="border px-4 py-2 rounded-full shadow-sm text-sm transition"><i
+                                            class="fa-solid fa-list-ul mr-2"></i>📜 歷史績效</button>
+                                </div>
 
-                </div>
-
+                
+                <!-- 📊 資產大盤 (走勢與占比) Section -->
                 <transition name="collapse">
-                    <div v-if="activeSection === 'chart'" class="zen-card p-4 md:p-6 mb-8 relative">
-                        <button @click="openHistoryModal"
+                    <div v-if="activeSection === 'overview'" class="space-y-6">
+                        <!-- 子分頁切換 -->
+                        <div class="flex border-b border-gray-200 dark:border-gray-700 mb-6 bg-white dark:bg-gray-800 p-1 rounded-xl shadow-sm">
+                            <button @click="overviewTab = 'trend'"
+                                :class="overviewTab === 'trend' ? 'bg-indigo-600 text-white shadow font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'"
+                                class="flex-1 py-2 text-sm rounded-lg transition duration-200">
+                                <i class="fa-solid fa-chart-line mr-1.5"></i>資產走勢
+                            </button>
+                            <button @click="overviewTab = 'pie'"
+                                :class="overviewTab === 'pie' ? 'bg-indigo-600 text-white shadow font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'"
+                                class="flex-1 py-2 text-sm rounded-lg transition duration-200">
+                                <i class="fa-solid fa-chart-pie mr-1.5"></i>持股占比
+                            </button>
+                        </div>
+
+                        <!-- 1.1 資產走勢子面板 -->
+                        <div v-if="overviewTab === 'trend'" class="zen-card p-4 md:p-6 mb-8 relative">
+                            <button @click="openHistoryModal"
                             class="absolute top-4 right-4 z-10 cursor-pointer text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-gray-800 dark:hover:text-white px-2 py-1 rounded transition"><i
                                 class="fa-solid fa-clock-rotate-left mr-1"></i>維護歷史資料</button>
 
@@ -599,12 +595,11 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </transition>
+                        </div>
 
-                <transition name="collapse">
-                    <div v-if="activeSection === 'pie'" class="zen-card p-4 md:p-6 mb-8">
-                        <h3 class="font-bold mb-4 dark:text-white text-center">持股占比分析</h3>
+                        <!-- 1.2 持股占比子面板 -->
+                        <div v-if="overviewTab === 'pie'" class="zen-card p-4 md:p-6 mb-8">
+                            <h3 class="font-bold mb-4 dark:text-white text-center">持股占比分析</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                             <div class="flex flex-col items-center">
                                 <h4 class="text-sm font-bold mb-2 flex items-center gap-2"><img
@@ -637,8 +632,10 @@
                             </div>
                             <div class="col-span-2 text-[10px] text-gray-400 mt-1">各片 = 個別持股，灰片 = 同幣別現金，分母 = 股票現值 + 同幣別現金</div>
                         </div>
+                        </div>
                     </div>
                 </transition>
+    
 
 
                 <transition name="collapse">
@@ -852,9 +849,276 @@
                     </div>
                 </transition>
 
+                
+
+
+                
+
                 <transition name="collapse">
-                    <div v-if="activeSection === 'monthly'" class="zen-card p-4 md:p-6 mb-8">
-                        <div class="flex justify-between items-center mb-6">
+                    <div v-if="activeSection === 'notes'" class="zen-card p-4 md:p-6 mb-8">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold dark:text-white">投資筆記</h3>
+                            <button @click="openNoteModal(null)"
+                                class="bg-gray-800 text-white px-3 py-1 text-sm rounded hover:bg-gray-700 transition"><i
+                                    class="fa-solid fa-pen-to-square mr-1"></i>新增筆記</button>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div v-for="note in notes" :key="note.id"
+                                class="zen-card p-4 note-card relative group hover:shadow-md transition">
+                                <div class="flex justify-between items-start mb-2">
+                                    <div class="font-bold text-lg dark:text-white">{{ note.title }}</div>
+                                    <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button @click="openNoteModal(note)"
+                                            class="text-gray-400 hover:text-blue-500"><i
+                                                class="fa-solid fa-pen"></i></button>
+                                        <button @click="deleteNote(note.id)" class="text-gray-400 hover:text-red-500"><i
+                                                class="fa-solid fa-trash"></i></button>
+                                    </div>
+                                </div>
+                                <div class="text-xs text-gray-400 mb-2">{{ note.date }}</div>
+                                <div class="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap">{{
+                                    note.content }}</div>
+                            </div>
+                        </div>
+                        <div v-if="notes.length === 0" class="text-center py-10 text-gray-400">目前沒有筆記，記錄一下投資心得吧！</div>
+                    </div>
+                </transition>
+
+                
+
+                
+                <!-- 📜 歷史績效 (已實現損益、股息統計、每月獲利、交易明細) Section -->
+                <transition name="collapse">
+                    <div v-if="activeSection === 'performance'" class="space-y-6">
+                        <!-- 子分頁切換 -->
+                        <div class="flex border-b border-gray-200 dark:border-gray-700 mb-6 bg-white dark:bg-gray-800 p-1 rounded-xl shadow-sm overflow-x-auto">
+                            <button @click="performanceTab = 'realized'"
+                                :class="performanceTab === 'realized' ? 'bg-emerald-600 text-white shadow font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'"
+                                class="flex-1 py-2 text-sm rounded-lg transition duration-200 min-w-[80px]">
+                                <i class="fa-solid fa-square-check mr-1.5"></i>已實現損益
+                            </button>
+                            <button @click="performanceTab = 'dividend'"
+                                :class="performanceTab === 'dividend' ? 'bg-emerald-600 text-white shadow font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'"
+                                class="flex-1 py-2 text-sm rounded-lg transition duration-200 min-w-[80px]">
+                                <i class="fa-solid fa-hand-holding-dollar mr-1.5"></i>股息統計
+                            </button>
+                            <button @click="performanceTab = 'monthly'"
+                                :class="performanceTab === 'monthly' ? 'bg-emerald-600 text-white shadow font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'"
+                                class="flex-1 py-2 text-sm rounded-lg transition duration-200 min-w-[80px]">
+                                <i class="fa-solid fa-calendar-days mr-1.5"></i>每月獲利總結
+                            </button>
+                            <button @click="performanceTab = 'transactions'"
+                                :class="performanceTab === 'transactions' ? 'bg-emerald-600 text-white shadow font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'"
+                                class="flex-1 py-2 text-sm rounded-lg transition duration-200 min-w-[80px]">
+                                <i class="fa-solid fa-list-ul mr-1.5"></i>交易明細
+                            </button>
+                        </div>
+
+                        <!-- 4.1 已實現損益子面板 -->
+                        <div v-if="performanceTab === 'realized'" class="zen-card p-4 md:p-6 mb-8">
+                            <h3 class="font-bold mb-4 dark:text-white text-center">歷史已實現損益</h3>
+                        <div v-if="sectionLoading"
+                            class="flex items-center justify-center gap-2 text-xs text-gray-400 mb-4"><i
+                                class="fa-solid fa-circle-notch fa-spin"></i>載入中...</div>
+
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-center">
+                                <div class="text-xs text-gray-500">台股總損益</div>
+                                <div class="text-lg font-bold" :class="getPnlClass(realizedTotalTw)">{{
+                                    formatCurrency(realizedTotalTw, 'TWD') }}</div>
+                            </div>
+                            <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-center">
+                                <div class="text-xs text-gray-500">美股總損益</div>
+                                <div class="text-lg font-bold" :class="getPnlClass(realizedTotalUs)">{{
+                                    formatCurrency(realizedTotalUs, 'USD') }}</div>
+                            </div>
+                        </div>
+                        <div class="flex gap-1.5 mb-3 overflow-x-auto pb-1">
+                            <button @click="setRealizedRange('TODAY')" class="range-btn"
+                                :class="{'active-range': realizedRange==='TODAY'}">當日</button>
+                            <button @click="setRealizedRange('THIS_MONTH')" class="range-btn"
+                                :class="{'active-range': realizedRange==='THIS_MONTH'}">本月</button>
+                            <button @click="setRealizedRange('YTD')" class="range-btn"
+                                :class="{'active-range': realizedRange==='YTD'}">今年</button>
+                            <button @click="setRealizedRange('LAST_YEAR')" class="range-btn"
+                                :class="{'active-range': realizedRange==='LAST_YEAR'}">去年</button>
+                            <button @click="setRealizedRange('3M')" class="range-btn"
+                                :class="{'active-range': realizedRange==='3M'}">近3月</button>
+                            <button @click="setRealizedRange('ALL')" class="range-btn"
+                                :class="{'active-range': realizedRange==='ALL'}">全部</button>
+                        </div>
+
+                        <div
+                            class="flex flex-wrap gap-3 items-end mb-4 pb-4 border-b border-gray-100 dark:border-gray-700">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 mb-1">搜尋代號/名稱</label>
+                                <input type="text" v-model="realizedSearchQuery" placeholder="如: 2330"
+                                    class="zen-input text-sm py-1.5 uppercase">
+                            </div>
+                            <div><label class="block text-xs font-bold text-gray-500 mb-1">開始</label><input type="date"
+                                    v-model="realizedStartDate" class="zen-input text-sm py-1.5"></div>
+                            <div><label class="block text-xs font-bold text-gray-500 mb-1">結束</label><input type="date"
+                                    v-model="realizedEndDate" class="zen-input text-sm py-1.5"></div>
+                            <button @click="fetchRealizedGains"
+                                class="bg-gray-800 text-white px-4 py-1.5 rounded text-sm hover:bg-gray-700 h-9 mb-[1px]">查詢</button>
+                        </div>
+
+                        <div class="overflow-x-auto max-h-[460px] overflow-y-auto">
+                            <table class="w-full text-sm text-left hidden md:table">
+                                <thead
+                                    class="bg-gray-100 dark:bg-gray-800 text-gray-500 uppercase font-medium sticky top-0">
+                                    <tr>
+                                        <th class="px-4 py-2 sort-header" @click="sortRealized('date')">日期 <i
+                                                class="fa-solid fa-sort ml-1 text-xs"></i></th>
+                                        <th class="px-4 py-2 sort-header" @click="sortRealized('symbol')">標的 <i
+                                                class="fa-solid fa-sort ml-1 text-xs"></i></th>
+                                        <th class="px-4 py-2 text-right sort-header" @click="sortRealized('pnl')">獲利/虧損
+                                            <i class="fa-solid fa-sort ml-1 text-xs"></i>
+                                        </th>
+                                        <th class="px-4 py-2 text-center">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                    <tr v-for="rec in sortedRealizedGains" :key="rec.id"
+                                        class="hover:bg-gray-50 dark:hover:bg-gray-800">
+                                        <td class="px-4 py-3">{{ rec.date }}</td>
+                                        <td class="px-4 py-3 font-bold">{{ rec.name || rec.symbol }}</td>
+                                        <td class="px-4 py-3 text-right font-bold" :class="getPnlClass(rec.pnl)">{{
+                                            formatCurrency(rec.pnl, rec.currency) }}</td>
+                                        <td class="px-4 py-3 text-center">
+                                            <button @click="deleteRealized(rec.id)"
+                                                class="text-gray-400 hover:text-red-500"><i
+                                                    class="fa-solid fa-trash-can"></i></button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <!-- 手機版卡片 -->
+                            <div class="block md:hidden space-y-2 mt-2">
+                                <div v-for="rec in sortedRealizedGains" :key="rec.id"
+                                    class="p-3 border rounded-lg border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 flex justify-between items-center">
+                                    <div>
+                                        <div class="font-bold dark:text-gray-200">{{ rec.name || rec.symbol }}</div>
+                                        <div class="text-xs text-gray-400">{{ rec.date }}</div>
+                                    </div>
+                                    <div class="flex items-center gap-3">
+                                        <div class="font-bold text-right" :class="getPnlClass(rec.pnl)">{{
+                                            formatCurrency(rec.pnl, rec.currency) }}</div>
+                                        <button @click="deleteRealized(rec.id)"
+                                            class="text-gray-300 hover:text-red-500 text-xs"><i
+                                                class="fa-solid fa-trash-can"></i></button>
+                                    </div>
+                                </div>
+                                <div v-if="sortedRealizedGains.length === 0" class="text-center py-6 text-gray-400">
+                                    無符合紀錄</div>
+                            </div>
+                            <div v-if="sortedRealizedGains.length === 0"
+                                class="hidden md:block text-center py-6 text-gray-400">無符合紀錄</div>
+                        </div>
+                        </div>
+
+                        <!-- 4.2 股息統計子面板 -->
+                        <div v-if="performanceTab === 'dividend'" class="zen-card p-4 md:p-6 mb-8">
+                            <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold dark:text-white">股息領取紀錄</h3>
+                            <div v-if="sectionLoading" class="flex items-center gap-2 text-xs text-gray-400"><i
+                                    class="fa-solid fa-circle-notch fa-spin"></i>載入中...</div>
+                            <button @click="openTransModal(null, 'dividend')"
+                                class="bg-gray-800 text-white px-3 py-1 text-sm rounded hover:bg-gray-700 transition"><i
+                                    class="fa-solid fa-plus mr-1"></i>新增紀錄</button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div
+                                class="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg text-center border border-yellow-100 dark:border-yellow-900/30">
+                                <div class="text-xs text-yellow-600 dark:text-yellow-400">台股</div>
+                                <div class="text-lg font-bold text-yellow-700 dark:text-yellow-300">{{
+                                    formatCurrency(dividendRangeTw, 'TWD') }}</div>
+                            </div>
+                            <div
+                                class="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg text-center border border-yellow-100 dark:border-yellow-900/30">
+                                <div class="text-xs text-yellow-600 dark:text-yellow-400">美股</div>
+                                <div class="text-lg font-bold text-yellow-700 dark:text-yellow-300">{{
+                                    formatCurrency(dividendRangeUs, 'USD') }}</div>
+                            </div>
+                        </div>
+                        <div class="flex gap-1.5 mb-3 overflow-x-auto pb-1">
+                            <button @click="setDivRange('YTD')" class="range-btn"
+                                :class="{'active-range': divRange==='YTD'}">今年</button>
+                            <button @click="setDivRange('LAST_YEAR')" class="range-btn"
+                                :class="{'active-range': divRange==='LAST_YEAR'}">去年</button>
+                            <button @click="setDivRange('3M')" class="range-btn"
+                                :class="{'active-range': divRange==='3M'}">近3月</button>
+                            <button @click="setDivRange('ALL')" class="range-btn"
+                                :class="{'active-range': divRange==='ALL'}">全部</button>
+                        </div>
+
+                        <div
+                            class="flex flex-wrap gap-3 items-end mb-4 pb-4 border-b border-gray-100 dark:border-gray-700">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 mb-1">搜尋代號/名稱</label>
+                                <input type="text" v-model="divSearchQuery" placeholder="如: 2330"
+                                    class="zen-input text-sm py-1.5 uppercase">
+                            </div>
+                            <div><label class="block text-xs font-bold text-gray-500 mb-1">開始</label><input type="date"
+                                    v-model="divStartDate" class="zen-input text-sm py-1.5"></div>
+                            <div><label class="block text-xs font-bold text-gray-500 mb-1">結束</label><input type="date"
+                                    v-model="divEndDate" class="zen-input text-sm py-1.5"></div>
+                            <button @click="fetchDividends"
+                                class="bg-gray-800 text-white px-4 py-1.5 rounded text-sm hover:bg-gray-700 h-9 mb-[1px]">查詢</button>
+                        </div>
+
+                        <div class="overflow-x-auto max-h-[460px] overflow-y-auto">
+                            <table class="w-full text-sm text-left hidden md:table">
+                                <thead class="bg-gray-100 dark:bg-gray-800 text-gray-500 uppercase font-medium">
+                                    <tr>
+                                        <th class="px-4 py-2 sort-header" @click="sortDividend('date')">入帳日 <i
+                                                class="fa-solid fa-sort ml-1 text-xs"></i></th>
+                                        <th class="px-4 py-2 sort-header" @click="sortDividend('symbol')">標的 <i
+                                                class="fa-solid fa-sort ml-1 text-xs"></i></th>
+                                        <th class="px-4 py-2 sort-header text-right" @click="sortDividend('amount')">金額
+                                            <i class="fa-solid fa-sort ml-1 text-xs"></i>
+                                        </th>
+                                        <th class="px-4 py-2 text-center">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                    <tr v-for="rec in sortedDividends" :key="rec.id"
+                                        class="hover:bg-gray-50 dark:hover:bg-gray-800">
+                                        <td class="px-4 py-3">{{ rec.date }}</td>
+                                        <td class="px-4 py-3 font-bold">{{ rec.name || rec.symbol }}</td>
+                                        <td class="px-4 py-3 text-right font-bold text-yellow-600 dark:text-yellow-400">
+                                            +{{ formatCurrency(rec.amount, rec.currency) }}</td>
+                                        <td class="px-4 py-3 text-center"><button @click="deleteDividend(rec)"
+                                                class="text-gray-400 hover:text-red-500"><i
+                                                    class="fa-solid fa-trash-can"></i></button></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div class="block md:hidden space-y-2">
+                                <div v-for="rec in sortedDividends" :key="rec.id"
+                                    class="p-3 border rounded-lg border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 flex justify-between items-center">
+                                    <div>
+                                        <div class="font-bold dark:text-gray-200">{{ rec.name || rec.symbol }}</div>
+                                        <div class="text-xs text-gray-400">{{ rec.date }}</div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="font-bold text-yellow-600 dark:text-yellow-400">+{{
+                                            formatCurrency(rec.amount, rec.currency) }}</div><button
+                                            @click="deleteDividend(rec)"
+                                            class="text-gray-300 hover:text-red-500 text-xs mt-1"><i
+                                                class="fa-solid fa-trash-can"></i></button>
+                                    </div>
+                                </div>
+                                <div v-if="sortedDividends.length === 0" class="text-center py-6 text-gray-400">無紀錄
+                                </div>
+                            </div>
+                        </div>
+                        </div>
+
+                        <!-- 4.3 每月獲利總結子面板 -->
+                        <div v-if="performanceTab === 'monthly'" class="zen-card p-4 md:p-6 mb-8">
+                            <div class="flex justify-between items-center mb-6">
                             <h3 class="font-bold dark:text-white flex items-center gap-2">
                                 <i class="fa-solid fa-chart-column text-blue-500"></i> 每月獲利總結
                             </h3>
@@ -904,13 +1168,11 @@
                             2. <strong>未實現變動</strong> = (月底未實現損益 - 月初未實現損益) + 本月已實現。<br>
                             3. 這三項加總即為該月份資產因市場波動與配息所產生的<strong>淨獲利</strong>，不包含您的本金投入。
                         </div>
-                    </div>
-                </transition>
+                        </div>
 
-
-                <transition name="collapse">
-                    <div v-if="activeSection === 'transactions'" class="zen-card p-4 md:p-6 mb-8">
-                        <div class="flex flex-wrap justify-between items-center mb-4 gap-3">
+                        <!-- 4.4 交易流水帳子面板 -->
+                        <div v-if="performanceTab === 'transactions'" class="zen-card p-4 md:p-6 mb-8">
+                            <div class="flex flex-wrap justify-between items-center mb-4 gap-3">
                             <h3 class="font-bold dark:text-white">歷史交易明細</h3>
                             <div v-if="sectionLoading" class="flex items-center gap-2 text-xs text-gray-400"><i
                                     class="fa-solid fa-circle-notch fa-spin"></i>載入中...</div>
@@ -1025,475 +1287,42 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </transition>
-
-                <transition name="collapse">
-                    <div v-if="activeSection === 'notes'" class="zen-card p-4 md:p-6 mb-8">
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="font-bold dark:text-white">投資筆記</h3>
-                            <button @click="openNoteModal(null)"
-                                class="bg-gray-800 text-white px-3 py-1 text-sm rounded hover:bg-gray-700 transition"><i
-                                    class="fa-solid fa-pen-to-square mr-1"></i>新增筆記</button>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            <div v-for="note in notes" :key="note.id"
-                                class="zen-card p-4 note-card relative group hover:shadow-md transition">
-                                <div class="flex justify-between items-start mb-2">
-                                    <div class="font-bold text-lg dark:text-white">{{ note.title }}</div>
-                                    <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button @click="openNoteModal(note)"
-                                            class="text-gray-400 hover:text-blue-500"><i
-                                                class="fa-solid fa-pen"></i></button>
-                                        <button @click="deleteNote(note.id)" class="text-gray-400 hover:text-red-500"><i
-                                                class="fa-solid fa-trash"></i></button>
-                                    </div>
-                                </div>
-                                <div class="text-xs text-gray-400 mb-2">{{ note.date }}</div>
-                                <div class="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap">{{
-                                    note.content }}</div>
-                            </div>
-                        </div>
-                        <div v-if="notes.length === 0" class="text-center py-10 text-gray-400">目前沒有筆記，記錄一下投資心得吧！</div>
-                    </div>
-                </transition>
-
-                <transition name="collapse">
-                    <div v-if="activeSection === 'dividend'" class="zen-card p-4 md:p-6 mb-8">
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="font-bold dark:text-white">股息領取紀錄</h3>
-                            <div v-if="sectionLoading" class="flex items-center gap-2 text-xs text-gray-400"><i
-                                    class="fa-solid fa-circle-notch fa-spin"></i>載入中...</div>
-                            <button @click="openTransModal(null, 'dividend')"
-                                class="bg-gray-800 text-white px-3 py-1 text-sm rounded hover:bg-gray-700 transition"><i
-                                    class="fa-solid fa-plus mr-1"></i>新增紀錄</button>
-                        </div>
-                        <div class="grid grid-cols-2 gap-4 mb-4">
-                            <div
-                                class="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg text-center border border-yellow-100 dark:border-yellow-900/30">
-                                <div class="text-xs text-yellow-600 dark:text-yellow-400">台股</div>
-                                <div class="text-lg font-bold text-yellow-700 dark:text-yellow-300">{{
-                                    formatCurrency(dividendRangeTw, 'TWD') }}</div>
-                            </div>
-                            <div
-                                class="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg text-center border border-yellow-100 dark:border-yellow-900/30">
-                                <div class="text-xs text-yellow-600 dark:text-yellow-400">美股</div>
-                                <div class="text-lg font-bold text-yellow-700 dark:text-yellow-300">{{
-                                    formatCurrency(dividendRangeUs, 'USD') }}</div>
-                            </div>
-                        </div>
-                        <div class="flex gap-1.5 mb-3 overflow-x-auto pb-1">
-                            <button @click="setDivRange('YTD')" class="range-btn"
-                                :class="{'active-range': divRange==='YTD'}">今年</button>
-                            <button @click="setDivRange('LAST_YEAR')" class="range-btn"
-                                :class="{'active-range': divRange==='LAST_YEAR'}">去年</button>
-                            <button @click="setDivRange('3M')" class="range-btn"
-                                :class="{'active-range': divRange==='3M'}">近3月</button>
-                            <button @click="setDivRange('ALL')" class="range-btn"
-                                :class="{'active-range': divRange==='ALL'}">全部</button>
-                        </div>
-
-                        <div
-                            class="flex flex-wrap gap-3 items-end mb-4 pb-4 border-b border-gray-100 dark:border-gray-700">
-                            <div>
-                                <label class="block text-xs font-bold text-gray-500 mb-1">搜尋代號/名稱</label>
-                                <input type="text" v-model="divSearchQuery" placeholder="如: 2330"
-                                    class="zen-input text-sm py-1.5 uppercase">
-                            </div>
-                            <div><label class="block text-xs font-bold text-gray-500 mb-1">開始</label><input type="date"
-                                    v-model="divStartDate" class="zen-input text-sm py-1.5"></div>
-                            <div><label class="block text-xs font-bold text-gray-500 mb-1">結束</label><input type="date"
-                                    v-model="divEndDate" class="zen-input text-sm py-1.5"></div>
-                            <button @click="fetchDividends"
-                                class="bg-gray-800 text-white px-4 py-1.5 rounded text-sm hover:bg-gray-700 h-9 mb-[1px]">查詢</button>
-                        </div>
-
-                        <div class="overflow-x-auto max-h-[460px] overflow-y-auto">
-                            <table class="w-full text-sm text-left hidden md:table">
-                                <thead class="bg-gray-100 dark:bg-gray-800 text-gray-500 uppercase font-medium">
-                                    <tr>
-                                        <th class="px-4 py-2 sort-header" @click="sortDividend('date')">入帳日 <i
-                                                class="fa-solid fa-sort ml-1 text-xs"></i></th>
-                                        <th class="px-4 py-2 sort-header" @click="sortDividend('symbol')">標的 <i
-                                                class="fa-solid fa-sort ml-1 text-xs"></i></th>
-                                        <th class="px-4 py-2 sort-header text-right" @click="sortDividend('amount')">金額
-                                            <i class="fa-solid fa-sort ml-1 text-xs"></i>
-                                        </th>
-                                        <th class="px-4 py-2 text-center">操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                                    <tr v-for="rec in sortedDividends" :key="rec.id"
-                                        class="hover:bg-gray-50 dark:hover:bg-gray-800">
-                                        <td class="px-4 py-3">{{ rec.date }}</td>
-                                        <td class="px-4 py-3 font-bold">{{ rec.name || rec.symbol }}</td>
-                                        <td class="px-4 py-3 text-right font-bold text-yellow-600 dark:text-yellow-400">
-                                            +{{ formatCurrency(rec.amount, rec.currency) }}</td>
-                                        <td class="px-4 py-3 text-center"><button @click="deleteDividend(rec)"
-                                                class="text-gray-400 hover:text-red-500"><i
-                                                    class="fa-solid fa-trash-can"></i></button></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                            <div class="block md:hidden space-y-2">
-                                <div v-for="rec in sortedDividends" :key="rec.id"
-                                    class="p-3 border rounded-lg border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 flex justify-between items-center">
-                                    <div>
-                                        <div class="font-bold dark:text-gray-200">{{ rec.name || rec.symbol }}</div>
-                                        <div class="text-xs text-gray-400">{{ rec.date }}</div>
-                                    </div>
-                                    <div class="text-right">
-                                        <div class="font-bold text-yellow-600 dark:text-yellow-400">+{{
-                                            formatCurrency(rec.amount, rec.currency) }}</div><button
-                                            @click="deleteDividend(rec)"
-                                            class="text-gray-300 hover:text-red-500 text-xs mt-1"><i
-                                                class="fa-solid fa-trash-can"></i></button>
-                                    </div>
-                                </div>
-                                <div v-if="sortedDividends.length === 0" class="text-center py-6 text-gray-400">無紀錄
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </transition>
-
-                <transition name="collapse">
-                    <div v-if="activeSection === 'realized'" class="zen-card p-4 md:p-6 mb-8">
-                        <h3 class="font-bold mb-4 dark:text-white text-center">歷史已實現損益</h3>
-                        <div v-if="sectionLoading"
-                            class="flex items-center justify-center gap-2 text-xs text-gray-400 mb-4"><i
-                                class="fa-solid fa-circle-notch fa-spin"></i>載入中...</div>
-
-                        <div class="grid grid-cols-2 gap-4 mb-4">
-                            <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-center">
-                                <div class="text-xs text-gray-500">台股總損益</div>
-                                <div class="text-lg font-bold" :class="getPnlClass(realizedTotalTw)">{{
-                                    formatCurrency(realizedTotalTw, 'TWD') }}</div>
-                            </div>
-                            <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-center">
-                                <div class="text-xs text-gray-500">美股總損益</div>
-                                <div class="text-lg font-bold" :class="getPnlClass(realizedTotalUs)">{{
-                                    formatCurrency(realizedTotalUs, 'USD') }}</div>
-                            </div>
-                        </div>
-                        <div class="flex gap-1.5 mb-3 overflow-x-auto pb-1">
-                            <button @click="setRealizedRange('TODAY')" class="range-btn"
-                                :class="{'active-range': realizedRange==='TODAY'}">當日</button>
-                            <button @click="setRealizedRange('THIS_MONTH')" class="range-btn"
-                                :class="{'active-range': realizedRange==='THIS_MONTH'}">本月</button>
-                            <button @click="setRealizedRange('YTD')" class="range-btn"
-                                :class="{'active-range': realizedRange==='YTD'}">今年</button>
-                            <button @click="setRealizedRange('LAST_YEAR')" class="range-btn"
-                                :class="{'active-range': realizedRange==='LAST_YEAR'}">去年</button>
-                            <button @click="setRealizedRange('3M')" class="range-btn"
-                                :class="{'active-range': realizedRange==='3M'}">近3月</button>
-                            <button @click="setRealizedRange('ALL')" class="range-btn"
-                                :class="{'active-range': realizedRange==='ALL'}">全部</button>
-                        </div>
-
-                        <div
-                            class="flex flex-wrap gap-3 items-end mb-4 pb-4 border-b border-gray-100 dark:border-gray-700">
-                            <div>
-                                <label class="block text-xs font-bold text-gray-500 mb-1">搜尋代號/名稱</label>
-                                <input type="text" v-model="realizedSearchQuery" placeholder="如: 2330"
-                                    class="zen-input text-sm py-1.5 uppercase">
-                            </div>
-                            <div><label class="block text-xs font-bold text-gray-500 mb-1">開始</label><input type="date"
-                                    v-model="realizedStartDate" class="zen-input text-sm py-1.5"></div>
-                            <div><label class="block text-xs font-bold text-gray-500 mb-1">結束</label><input type="date"
-                                    v-model="realizedEndDate" class="zen-input text-sm py-1.5"></div>
-                            <button @click="fetchRealizedGains"
-                                class="bg-gray-800 text-white px-4 py-1.5 rounded text-sm hover:bg-gray-700 h-9 mb-[1px]">查詢</button>
-                        </div>
-
-                        <div class="overflow-x-auto max-h-[460px] overflow-y-auto">
-                            <table class="w-full text-sm text-left hidden md:table">
-                                <thead
-                                    class="bg-gray-100 dark:bg-gray-800 text-gray-500 uppercase font-medium sticky top-0">
-                                    <tr>
-                                        <th class="px-4 py-2 sort-header" @click="sortRealized('date')">日期 <i
-                                                class="fa-solid fa-sort ml-1 text-xs"></i></th>
-                                        <th class="px-4 py-2 sort-header" @click="sortRealized('symbol')">標的 <i
-                                                class="fa-solid fa-sort ml-1 text-xs"></i></th>
-                                        <th class="px-4 py-2 text-right sort-header" @click="sortRealized('pnl')">獲利/虧損
-                                            <i class="fa-solid fa-sort ml-1 text-xs"></i>
-                                        </th>
-                                        <th class="px-4 py-2 text-center">操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                                    <tr v-for="rec in sortedRealizedGains" :key="rec.id"
-                                        class="hover:bg-gray-50 dark:hover:bg-gray-800">
-                                        <td class="px-4 py-3">{{ rec.date }}</td>
-                                        <td class="px-4 py-3 font-bold">{{ rec.name || rec.symbol }}</td>
-                                        <td class="px-4 py-3 text-right font-bold" :class="getPnlClass(rec.pnl)">{{
-                                            formatCurrency(rec.pnl, rec.currency) }}</td>
-                                        <td class="px-4 py-3 text-center">
-                                            <button @click="deleteRealized(rec.id)"
-                                                class="text-gray-400 hover:text-red-500"><i
-                                                    class="fa-solid fa-trash-can"></i></button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                            <!-- 手機版卡片 -->
-                            <div class="block md:hidden space-y-2 mt-2">
-                                <div v-for="rec in sortedRealizedGains" :key="rec.id"
-                                    class="p-3 border rounded-lg border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 flex justify-between items-center">
-                                    <div>
-                                        <div class="font-bold dark:text-gray-200">{{ rec.name || rec.symbol }}</div>
-                                        <div class="text-xs text-gray-400">{{ rec.date }}</div>
-                                    </div>
-                                    <div class="flex items-center gap-3">
-                                        <div class="font-bold text-right" :class="getPnlClass(rec.pnl)">{{
-                                            formatCurrency(rec.pnl, rec.currency) }}</div>
-                                        <button @click="deleteRealized(rec.id)"
-                                            class="text-gray-300 hover:text-red-500 text-xs"><i
-                                                class="fa-solid fa-trash-can"></i></button>
-                                    </div>
-                                </div>
-                                <div v-if="sortedRealizedGains.length === 0" class="text-center py-6 text-gray-400">
-                                    無符合紀錄</div>
-                            </div>
-                            <div v-if="sortedRealizedGains.length === 0"
-                                class="hidden md:block text-center py-6 text-gray-400">無符合紀錄</div>
-                        </div>
-                    </div>
-                </transition>
+    
 
                 <!-- v4.0.0: 房地產管理 Section -->
-                <transition name="collapse">
-                    <div v-if="activeSection === 'realestate'" class="zen-card p-4 md:p-6 mb-8">
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="font-bold dark:text-white flex items-center gap-2"><i class="fa-solid fa-house text-emerald-600"></i> 不動產管理</h3>
-                            <button @click="openRealEstateModal(null)"
-                                class="bg-emerald-700 text-white px-3 py-1 text-sm rounded hover:bg-emerald-600 transition"><i
-                                    class="fa-solid fa-plus mr-1"></i>新增房產</button>
-                        </div>
-
-                        <!-- 統計列 -->
-                        <div class="grid grid-cols-3 gap-3 mb-5">
-                            <div class="bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded-xl border border-emerald-100 dark:border-emerald-900/30 text-center">
-                                <div class="text-xs text-emerald-600 dark:text-emerald-400 mb-1">估計總市值</div>
-                                <div class="text-lg font-bold text-emerald-700 dark:text-emerald-300"><span v-if="showPrivacy">{{ formatCurrency(realEstateTotalMarket, 'TWD') }}</span><span v-else>****</span></div>
-                            </div>
-                            <div class="bg-red-50 dark:bg-red-900/20 p-3 rounded-xl border border-red-100 dark:border-red-900/30 text-center">
-                                <div class="text-xs text-red-600 dark:text-red-400 mb-1">對應房貸</div>
-                                <div class="text-lg font-bold text-red-700 dark:text-red-300"><span v-if="showPrivacy">{{ formatCurrency(realEstateTotalMortgage, 'TWD') }}</span><span v-else>****</span></div>
-                            </div>
-                            <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-700 text-center">
-                                <div class="text-xs text-gray-500 mb-1">不動產淨值</div>
-                                <div class="text-lg font-bold" :class="getPnlClass(realEstateNetValue)"><span v-if="showPrivacy">{{ formatCurrency(realEstateNetValue, 'TWD') }}</span><span v-else>****</span></div>
-                            </div>
-                        </div>
-
-                        <!-- 房產列表 -->
-                        <div class="space-y-3">
-                            <div v-for="re in realEstateList" :key="re.id"
-                                class="zen-card p-4 border border-gray-100 dark:border-gray-700">
-                                <div class="flex justify-between items-start">
-                                    <div>
-                                        <div class="font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                                            <i class="fa-solid fa-house-chimney text-emerald-500 text-sm"></i>
-                                            {{ re.name }}
-                                        </div>
-                                        <div class="text-xs text-gray-400 mt-0.5">{{ re.address || '（無地址）' }}</div>
-                                        <div class="text-xs text-gray-400 mt-0.5">購入日期：{{ re.purchaseDate || '-' }}</div>
-                                    </div>
-                                    <div class="flex gap-2">
-                                        <button @click="openRealEstateModal(re)" class="text-gray-400 hover:text-blue-500"><i class="fa-solid fa-pen text-xs"></i></button>
-                                        <button @click="deleteRealEstate(re)" class="text-gray-400 hover:text-red-500"><i class="fa-solid fa-trash text-xs"></i></button>
-                                    </div>
-                                </div>
-                                <div class="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
-                                    <div>
-                                        <div class="text-xs text-gray-400 mb-0.5">購入成本</div>
-                                        <div class="font-medium text-sm dark:text-gray-200"><span v-if="showPrivacy">{{ formatCurrency(re.purchaseCost, 'TWD') }}</span><span v-else>****</span></div>
-                                    </div>
-                                    <div>
-                                        <div class="text-xs text-gray-400 mb-0.5">估計市值</div>
-                                        <div class="font-bold text-sm dark:text-gray-100"><span v-if="showPrivacy">{{ formatCurrency(re.marketValue, 'TWD') }}</span><span v-else>****</span></div>
-                                    </div>
-                                    <div>
-                                        <div class="text-xs text-gray-400 mb-0.5">帳面損益</div>
-                                        <div class="font-bold text-sm" :class="getPnlClass(re.marketValue - re.purchaseCost)"><span v-if="showPrivacy">{{ formatCurrency(re.marketValue - re.purchaseCost, 'TWD') }}</span><span v-else>****</span></div>
-                                    </div>
-                                </div>
-                                <div class="space-y-1 mt-2" v-if="getReMortgageLoans(re).length > 0">
-                                    <div class="flex items-center gap-1 text-xs text-gray-400">
-                                        <i class="fa-solid fa-link text-purple-400"></i>
-                                        <span>連結房貸：</span>
-                                    </div>
-                                    <div v-for="loan in getReMortgageLoans(re)" :key="loan.id"
-                                        class="flex justify-between items-center text-xs pl-4">
-                                        <span class="text-purple-600 dark:text-purple-300">{{ loan.name }}</span>
-                                        <span class="text-red-500 dark:text-red-400 font-medium">{{ formatCurrency(loan.balance, 'TWD') }}</span>
-                                    </div>
-                                    <div class="flex justify-between items-center text-xs pl-4 pt-1 border-t border-gray-100 dark:border-gray-700 font-bold">
-                                        <span class="text-gray-500">房貸小計</span>
-                                        <span class="text-red-600 dark:text-red-400">{{ formatCurrency(getReMortgageTotal(re), 'TWD') }}</span>
-                                    </div>
-                                </div>
-                                <div v-if="re.note" class="mt-2 text-xs text-gray-400 italic">{{ re.note }}</div>
-                            </div>
-                            <div v-if="realEstateList.length === 0" class="text-center py-10 text-gray-400">尚未新增任何房產，點擊右上角「新增房產」開始記錄。</div>
-                        </div>
-                    </div>
-                </transition>
+                
 
 
                 <!-- 期貨部位 Section -->
+                
+                <!-- 投資部位 (股票、期貨、房地產) Section -->
                 <transition name="collapse">
-                    <div v-if="activeSection === 'futures'" class="zen-card p-4 md:p-6 mb-8">
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="font-bold dark:text-white flex items-center gap-2">
-                                <i class="fa-solid fa-file-contract text-amber-600"></i> 期貨交易與部位管理
-                            </h3>
-                            <div class="flex gap-2">
-                                <button @click="openFuturesMarginModal()"
-                                    class="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-3 py-1 text-sm rounded border border-amber-300/40 hover:bg-amber-200 transition">
-                                    <i class="fa-solid fa-scale-balanced mr-1"></i>調整保證金
-                                </button>
-                                <button @click="openFuturesModal(null)"
-                                    class="bg-amber-600 text-white px-3 py-1 text-sm rounded hover:bg-amber-500 transition">
-                                    <i class="fa-solid fa-plus mr-1"></i>新增部位
-                                </button>
-                            </div>
+                    <div v-if="activeSection === 'overview' || activeSection === 'investments'" class="space-y-6">
+                        <!-- 子頁籤切換 -->
+                        <div class="flex border-b border-gray-200 dark:border-gray-700 mb-6 bg-white dark:bg-gray-800 p-1 rounded-xl shadow-sm">
+                            <button @click="investmentsTab = 'stocks'"
+                                :class="investmentsTab === 'stocks' ? 'bg-amber-500 text-white shadow font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'"
+                                class="flex-1 py-2 text-sm rounded-lg transition duration-200">
+                                <i class="fa-solid fa-arrow-trend-up mr-1.5"></i>股票部位
+                            </button>
+                            <button @click="investmentsTab = 'futures'"
+                                :class="investmentsTab === 'futures' ? 'bg-amber-500 text-white shadow font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'"
+                                class="flex-1 py-2 text-sm rounded-lg transition duration-200">
+                                <i class="fa-solid fa-file-contract mr-1.5"></i>期貨部位
+                            </button>
+                            <button @click="investmentsTab = 'realestate'"
+                                :class="investmentsTab === 'realestate' ? 'bg-amber-500 text-white shadow font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'"
+                                class="flex-1 py-2 text-sm rounded-lg transition duration-200">
+                                <i class="fa-solid fa-house mr-1.5"></i>房地產
+                            </button>
                         </div>
 
-                        <!-- 保證金與風控概覽 -->
-                        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-                            <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-center">
-                                <div class="text-xs text-gray-400 mb-0.5">台幣保證金</div>
-                                <div class="font-bold text-gray-700 dark:text-gray-200 text-sm">
-                                    <span v-if="showPrivacy">{{ formatCurrency(futuresMargin.twd || 0, 'TWD') }}</span>
-                                    <span v-else>****</span>
-                                </div>
-                            </div>
-                            <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-center">
-                                <div class="text-xs text-gray-400 mb-0.5">美金保證金</div>
-                                <div class="font-bold text-gray-700 dark:text-gray-200 text-sm">
-                                    <span v-if="showPrivacy">{{ formatCurrency(futuresMargin.usd || 0, 'USD') }}</span>
-                                    <span v-else>****</span>
-                                </div>
-                            </div>
-                            <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-center">
-                                <div class="text-xs text-gray-400 mb-0.5">未實現損益 (換算台幣)</div>
-                                <div class="font-bold text-sm" :class="getPnlClass(futuresTotalUnrealizedPnL)">
-                                    <span v-if="showPrivacy">{{ formatChange(futuresTotalUnrealizedPnL) }}</span>
-                                    <span v-else>****</span>
-                                </div>
-                            </div>
-                            <div class="bg-amber-50/50 dark:bg-amber-900/10 p-3 rounded-lg text-center border border-amber-100/50 dark:border-amber-900/30">
-                                <div class="text-xs text-amber-600 dark:text-amber-400 mb-0.5">權益數 (換算台幣)</div>
-                                <div class="font-bold text-amber-700 dark:text-amber-300 text-sm">
-                                    <span v-if="showPrivacy">{{ formatCurrency(futuresEquity, 'TWD') }}</span>
-                                    <span v-else>****</span>
-                                </div>
-                            </div>
-                            <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-center col-span-2 md:col-span-1">
-                                <div class="text-xs text-gray-400 mb-0.5">維持率 (風控指標)</div>
-                                <div class="flex items-center justify-center gap-1.5 mt-0.5">
-                                    <span class="font-bold text-xs"
-                                        :class="futuresTotalMarginUsed <= 0 ? 'text-gray-400' : (futuresRiskRatio >= 150 ? 'text-emerald-500' : (futuresRiskRatio >= 120 ? 'text-orange-400' : 'text-red-500'))">
-                                        {{ futuresTotalMarginUsed <= 0 ? '-' : futuresRiskRatio.toFixed(1) + '%' }}
-                                    </span>
-                                    <span v-if="futuresTotalMarginUsed > 0"
-                                        class="text-[9px] px-1 rounded font-bold"
-                                        :class="futuresRiskRatio >= 150 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400' : (futuresRiskRatio >= 120 ? 'bg-orange-100 text-orange-800 dark:bg-orange-950/30 dark:text-orange-400' : 'bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400')">
-                                        {{ futuresRiskRatio >= 150 ? '安全' : (futuresRiskRatio >= 120 ? '警告' : '危險') }}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 維持率進度條 -->
-                        <div class="mb-6 px-1" v-if="showPrivacy && futuresTotalMarginUsed > 0">
-                            <div class="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                                <div class="h-full rounded-full transition-all duration-500"
-                                    :style="{ width: Math.min((futuresRiskRatio / 300) * 100, 100) + '%' }"
-                                    :class="futuresRiskRatio >= 150 ? 'bg-emerald-500' : futuresRiskRatio >= 120 ? 'bg-orange-400' : 'bg-red-500'">
-                                </div>
-                            </div>
-                            <div class="flex justify-between text-[9px] text-gray-400 mt-1">
-                                <span>0%</span>
-                                <span class="text-red-500">120% (危險)</span>
-                                <span class="text-orange-400">150% (警戒)</span>
-                                <span>300%+</span>
-                            </div>
-                        </div>
-
-                        <!-- 未平倉部位清單 -->
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-xs text-left">
-                                <thead class="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase font-medium">
-                                    <tr>
-                                        <th class="px-4 py-3">商品 / 結算</th>
-                                        <th class="px-4 py-3 text-center">方向</th>
-                                        <th class="px-4 py-3 text-right">口數</th>
-                                        <th class="px-4 py-3 text-right">建倉價格</th>
-                                        <th class="px-4 py-3 text-right">目前價格</th>
-                                        <th class="px-4 py-3 text-right">佔用保證金</th>
-                                        <th class="px-4 py-3 text-right">合約價值 (曝險額)</th>
-                                        <th class="px-4 py-3 text-right">未實現損益</th>
-                                        <th class="px-4 py-3 text-center">操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                                    <tr v-for="pos in futuresPositions" :key="pos.id" class="hover:bg-gray-50 dark:hover:bg-gray-800 transition">
-                                        <td class="px-4 py-3 font-bold dark:text-white">
-                                            {{ pos.symbol }} <span class="text-[10px] font-normal text-gray-400" v-if="pos.expiry">{{ pos.expiry }}</span>
-                                            <div class="text-[10px] text-gray-400 font-normal" v-if="pos.note">{{ pos.note }}</div>
-                                        </td>
-                                        <td class="px-4 py-3 text-center font-bold">
-                                            <span :class="pos.direction === 'long' ? 'text-red-500' : 'text-emerald-500'">
-                                                {{ pos.direction === 'long' ? '多 (Long)' : '空 (Short)' }}
-                                            </span>
-                                        </td>
-                                        <td class="px-4 py-3 text-right">{{ pos.contracts }} 口</td>
-                                        <td class="px-4 py-3 text-right">{{ formatNumber(pos.entryPrice) }}</td>
-                                        <td class="px-4 py-3 text-right font-medium text-blue-600 dark:text-blue-400">{{ formatNumber(pos.currentPrice) }}</td>
-                                        <td class="px-4 py-3 text-right font-medium text-purple-600 dark:text-purple-300">
-                                            <span v-if="showPrivacy">{{ formatCurrency(pos.marginUsed, pos.currency) }}</span>
-                                            <span v-else>****</span>
-                                        </td>
-                                        <td class="px-4 py-3 text-right font-medium text-gray-700 dark:text-gray-300">
-                                            <span v-if="showPrivacy">{{ formatCurrency(pos.currentPrice * pos.contracts * pos.multiplier, pos.currency) }}</span>
-                                            <span v-else>****</span>
-                                        </td>
-                                        <td class="px-4 py-3 text-right font-bold" :class="getPnlClass((pos.direction === 'long' ? (pos.currentPrice - pos.entryPrice) : (pos.entryPrice - pos.currentPrice)) * pos.contracts * pos.multiplier)">
-                                            <span v-if="showPrivacy">{{ formatChange((pos.direction === 'long' ? (pos.currentPrice - pos.entryPrice) : (pos.entryPrice - pos.currentPrice)) * pos.contracts * pos.multiplier) }} ({{ pos.currency }})</span>
-                                            <span v-else>****</span>
-                                        </td>
-                                        <td class="px-4 py-3 text-center">
-                                            <div class="flex items-center justify-center gap-2">
-                                                <button @click="closeFuturesPosition(pos)"
-                                                    class="text-emerald-600 hover:text-emerald-500 text-xs px-2 py-0.5 border border-emerald-300/40 rounded transition">
-                                                    平倉
-                                                </button>
-                                                <button @click="openFuturesModal(pos)"
-                                                    class="text-blue-600 hover:text-blue-500 text-xs transition">
-                                                    編輯
-                                                </button>
-                                                <button @click="deleteFuturesPosition(pos)"
-                                                    class="text-red-500 hover:text-red-400 text-xs transition">
-                                                    刪除
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    <tr v-if="futuresPositions.length === 0">
-                                        <td colspan="9" class="text-center py-6 text-gray-400">目前沒有未平倉期貨部位</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </transition>
-
-
-                <div class="flex justify-end mb-4">
+                        <!-- 2.1 股票部位子面板 -->
+                        <div v-if="investmentsTab === 'stocks'" class="space-y-6">
+                            <div class="flex justify-end mb-4">
                     <div class="flex bg-gray-200 dark:bg-gray-700 rounded p-0.5">
                         <button @click="viewMode = 'card'"
                             :class="{'bg-white shadow dark:bg-gray-600': viewMode === 'card'}"
@@ -1864,6 +1693,240 @@
 
                 <div v-if="stocks.length === 0 && !isLoading"
                     class="text-center py-10 text-gray-400 zen-card dark:text-gray-500">目前沒有任何持股資料，請點擊上方「新增」按鈕。</div>
+                        </div>
+
+                        <!-- 2.2 期貨部位子面板 -->
+                        <div v-if="investmentsTab === 'futures'">
+                            <div class="zen-card p-4 md:p-6 mb-8">
+                                <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold dark:text-white flex items-center gap-2">
+                                <i class="fa-solid fa-file-contract text-amber-600"></i> 期貨交易與部位管理
+                            </h3>
+                            <div class="flex gap-2">
+                                <button @click="openFuturesMarginModal()"
+                                    class="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-3 py-1 text-sm rounded border border-amber-300/40 hover:bg-amber-200 transition">
+                                    <i class="fa-solid fa-scale-balanced mr-1"></i>調整保證金
+                                </button>
+                                <button @click="openFuturesModal(null)"
+                                    class="bg-amber-600 text-white px-3 py-1 text-sm rounded hover:bg-amber-500 transition">
+                                    <i class="fa-solid fa-plus mr-1"></i>新增部位
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 保證金與風控概覽 -->
+                        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+                            <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-center">
+                                <div class="text-xs text-gray-400 mb-0.5">台幣保證金</div>
+                                <div class="font-bold text-gray-700 dark:text-gray-200 text-sm">
+                                    <span v-if="showPrivacy">{{ formatCurrency(futuresMargin.twd || 0, 'TWD') }}</span>
+                                    <span v-else>****</span>
+                                </div>
+                            </div>
+                            <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-center">
+                                <div class="text-xs text-gray-400 mb-0.5">美金保證金</div>
+                                <div class="font-bold text-gray-700 dark:text-gray-200 text-sm">
+                                    <span v-if="showPrivacy">{{ formatCurrency(futuresMargin.usd || 0, 'USD') }}</span>
+                                    <span v-else>****</span>
+                                </div>
+                            </div>
+                            <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-center">
+                                <div class="text-xs text-gray-400 mb-0.5">未實現損益 (換算台幣)</div>
+                                <div class="font-bold text-sm" :class="getPnlClass(futuresTotalUnrealizedPnL)">
+                                    <span v-if="showPrivacy">{{ formatChange(futuresTotalUnrealizedPnL) }}</span>
+                                    <span v-else>****</span>
+                                </div>
+                            </div>
+                            <div class="bg-amber-50/50 dark:bg-amber-900/10 p-3 rounded-lg text-center border border-amber-100/50 dark:border-amber-900/30">
+                                <div class="text-xs text-amber-600 dark:text-amber-400 mb-0.5">權益數 (換算台幣)</div>
+                                <div class="font-bold text-amber-700 dark:text-amber-300 text-sm">
+                                    <span v-if="showPrivacy">{{ formatCurrency(futuresEquity, 'TWD') }}</span>
+                                    <span v-else>****</span>
+                                </div>
+                            </div>
+                            <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-center col-span-2 md:col-span-1">
+                                <div class="text-xs text-gray-400 mb-0.5">維持率 (風控指標)</div>
+                                <div class="flex items-center justify-center gap-1.5 mt-0.5">
+                                    <span class="font-bold text-xs"
+                                        :class="futuresTotalMarginUsed <= 0 ? 'text-gray-400' : (futuresRiskRatio >= 150 ? 'text-emerald-500' : (futuresRiskRatio >= 120 ? 'text-orange-400' : 'text-red-500'))">
+                                        {{ futuresTotalMarginUsed <= 0 ? '-' : futuresRiskRatio.toFixed(1) + '%' }}
+                                    </span>
+                                    <span v-if="futuresTotalMarginUsed > 0"
+                                        class="text-[9px] px-1 rounded font-bold"
+                                        :class="futuresRiskRatio >= 150 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400' : (futuresRiskRatio >= 120 ? 'bg-orange-100 text-orange-800 dark:bg-orange-950/30 dark:text-orange-400' : 'bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400')">
+                                        {{ futuresRiskRatio >= 150 ? '安全' : (futuresRiskRatio >= 120 ? '警告' : '危險') }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 維持率進度條 -->
+                        <div class="mb-6 px-1" v-if="showPrivacy && futuresTotalMarginUsed > 0">
+                            <div class="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                <div class="h-full rounded-full transition-all duration-500"
+                                    :style="{ width: Math.min((futuresRiskRatio / 300) * 100, 100) + '%' }"
+                                    :class="futuresRiskRatio >= 150 ? 'bg-emerald-500' : futuresRiskRatio >= 120 ? 'bg-orange-400' : 'bg-red-500'">
+                                </div>
+                            </div>
+                            <div class="flex justify-between text-[9px] text-gray-400 mt-1">
+                                <span>0%</span>
+                                <span class="text-red-500">120% (危險)</span>
+                                <span class="text-orange-400">150% (警戒)</span>
+                                <span>300%+</span>
+                            </div>
+                        </div>
+
+                        <!-- 未平倉部位清單 -->
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs text-left">
+                                <thead class="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase font-medium">
+                                    <tr>
+                                        <th class="px-4 py-3">商品 / 結算</th>
+                                        <th class="px-4 py-3 text-center">方向</th>
+                                        <th class="px-4 py-3 text-right">口數</th>
+                                        <th class="px-4 py-3 text-right">建倉價格</th>
+                                        <th class="px-4 py-3 text-right">目前價格</th>
+                                        <th class="px-4 py-3 text-right">佔用保證金</th>
+                                        <th class="px-4 py-3 text-right">合約價值 (曝險額)</th>
+                                        <th class="px-4 py-3 text-right">未實現損益</th>
+                                        <th class="px-4 py-3 text-center">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                    <tr v-for="pos in futuresPositions" :key="pos.id" class="hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                                        <td class="px-4 py-3 font-bold dark:text-white">
+                                            {{ pos.symbol }} <span class="text-[10px] font-normal text-gray-400" v-if="pos.expiry">{{ pos.expiry }}</span>
+                                            <div class="text-[10px] text-gray-400 font-normal" v-if="pos.note">{{ pos.note }}</div>
+                                        </td>
+                                        <td class="px-4 py-3 text-center font-bold">
+                                            <span :class="pos.direction === 'long' ? 'text-red-500' : 'text-emerald-500'">
+                                                {{ pos.direction === 'long' ? '多 (Long)' : '空 (Short)' }}
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3 text-right">{{ pos.contracts }} 口</td>
+                                        <td class="px-4 py-3 text-right">{{ formatNumber(pos.entryPrice) }}</td>
+                                        <td class="px-4 py-3 text-right font-medium text-blue-600 dark:text-blue-400">{{ formatNumber(pos.currentPrice) }}</td>
+                                        <td class="px-4 py-3 text-right font-medium text-purple-600 dark:text-purple-300">
+                                            <span v-if="showPrivacy">{{ formatCurrency(pos.marginUsed, pos.currency) }}</span>
+                                            <span v-else>****</span>
+                                        </td>
+                                        <td class="px-4 py-3 text-right font-medium text-gray-700 dark:text-gray-300">
+                                            <span v-if="showPrivacy">{{ formatCurrency(pos.currentPrice * pos.contracts * pos.multiplier, pos.currency) }}</span>
+                                            <span v-else>****</span>
+                                        </td>
+                                        <td class="px-4 py-3 text-right font-bold" :class="getPnlClass((pos.direction === 'long' ? (pos.currentPrice - pos.entryPrice) : (pos.entryPrice - pos.currentPrice)) * pos.contracts * pos.multiplier)">
+                                            <span v-if="showPrivacy">{{ formatChange((pos.direction === 'long' ? (pos.currentPrice - pos.entryPrice) : (pos.entryPrice - pos.currentPrice)) * pos.contracts * pos.multiplier) }} ({{ pos.currency }})</span>
+                                            <span v-else>****</span>
+                                        </td>
+                                        <td class="px-4 py-3 text-center">
+                                            <div class="flex items-center justify-center gap-2">
+                                                <button @click="closeFuturesPosition(pos)"
+                                                    class="text-emerald-600 hover:text-emerald-500 text-xs px-2 py-0.5 border border-emerald-300/40 rounded transition">
+                                                    平倉
+                                                </button>
+                                                <button @click="openFuturesModal(pos)"
+                                                    class="text-blue-600 hover:text-blue-500 text-xs transition">
+                                                    編輯
+                                                </button>
+                                                <button @click="deleteFuturesPosition(pos)"
+                                                    class="text-red-500 hover:text-red-400 text-xs transition">
+                                                    刪除
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr v-if="futuresPositions.length === 0">
+                                        <td colspan="9" class="text-center py-6 text-gray-400">目前沒有未平倉期貨部位</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                            </div>
+                        </div>
+
+                        <!-- 2.3 房地產部位子面板 -->
+                        <div v-if="investmentsTab === 'realestate'">
+                            <div class="zen-card p-4 md:p-6 mb-8">
+                                <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold dark:text-white flex items-center gap-2"><i class="fa-solid fa-house text-emerald-600"></i> 不動產管理</h3>
+                            <button @click="openRealEstateModal(null)"
+                                class="bg-emerald-700 text-white px-3 py-1 text-sm rounded hover:bg-emerald-600 transition"><i
+                                    class="fa-solid fa-plus mr-1"></i>新增房產</button>
+                        </div>
+
+                        <!-- 統計列 -->
+                        <div class="grid grid-cols-3 gap-3 mb-5">
+                            <div class="bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded-xl border border-emerald-100 dark:border-emerald-900/30 text-center">
+                                <div class="text-xs text-emerald-600 dark:text-emerald-400 mb-1">估計總市值</div>
+                                <div class="text-lg font-bold text-emerald-700 dark:text-emerald-300"><span v-if="showPrivacy">{{ formatCurrency(realEstateTotalMarket, 'TWD') }}</span><span v-else>****</span></div>
+                            </div>
+                            <div class="bg-red-50 dark:bg-red-900/20 p-3 rounded-xl border border-red-100 dark:border-red-900/30 text-center">
+                                <div class="text-xs text-red-600 dark:text-red-400 mb-1">對應房貸</div>
+                                <div class="text-lg font-bold text-red-700 dark:text-red-300"><span v-if="showPrivacy">{{ formatCurrency(realEstateTotalMortgage, 'TWD') }}</span><span v-else>****</span></div>
+                            </div>
+                            <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-700 text-center">
+                                <div class="text-xs text-gray-500 mb-1">不動產淨值</div>
+                                <div class="text-lg font-bold" :class="getPnlClass(realEstateNetValue)"><span v-if="showPrivacy">{{ formatCurrency(realEstateNetValue, 'TWD') }}</span><span v-else>****</span></div>
+                            </div>
+                        </div>
+
+                        <!-- 房產列表 -->
+                        <div class="space-y-3">
+                            <div v-for="re in realEstateList" :key="re.id"
+                                class="zen-card p-4 border border-gray-100 dark:border-gray-700">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <div class="font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                            <i class="fa-solid fa-house-chimney text-emerald-500 text-sm"></i>
+                                            {{ re.name }}
+                                        </div>
+                                        <div class="text-xs text-gray-400 mt-0.5">{{ re.address || '（無地址）' }}</div>
+                                        <div class="text-xs text-gray-400 mt-0.5">購入日期：{{ re.purchaseDate || '-' }}</div>
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <button @click="openRealEstateModal(re)" class="text-gray-400 hover:text-blue-500"><i class="fa-solid fa-pen text-xs"></i></button>
+                                        <button @click="deleteRealEstate(re)" class="text-gray-400 hover:text-red-500"><i class="fa-solid fa-trash text-xs"></i></button>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                                    <div>
+                                        <div class="text-xs text-gray-400 mb-0.5">購入成本</div>
+                                        <div class="font-medium text-sm dark:text-gray-200"><span v-if="showPrivacy">{{ formatCurrency(re.purchaseCost, 'TWD') }}</span><span v-else>****</span></div>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs text-gray-400 mb-0.5">估計市值</div>
+                                        <div class="font-bold text-sm dark:text-gray-100"><span v-if="showPrivacy">{{ formatCurrency(re.marketValue, 'TWD') }}</span><span v-else>****</span></div>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs text-gray-400 mb-0.5">帳面損益</div>
+                                        <div class="font-bold text-sm" :class="getPnlClass(re.marketValue - re.purchaseCost)"><span v-if="showPrivacy">{{ formatCurrency(re.marketValue - re.purchaseCost, 'TWD') }}</span><span v-else>****</span></div>
+                                    </div>
+                                </div>
+                                <div class="space-y-1 mt-2" v-if="getReMortgageLoans(re).length > 0">
+                                    <div class="flex items-center gap-1 text-xs text-gray-400">
+                                        <i class="fa-solid fa-link text-purple-400"></i>
+                                        <span>連結房貸：</span>
+                                    </div>
+                                    <div v-for="loan in getReMortgageLoans(re)" :key="loan.id"
+                                        class="flex justify-between items-center text-xs pl-4">
+                                        <span class="text-purple-600 dark:text-purple-300">{{ loan.name }}</span>
+                                        <span class="text-red-500 dark:text-red-400 font-medium">{{ formatCurrency(loan.balance, 'TWD') }}</span>
+                                    </div>
+                                    <div class="flex justify-between items-center text-xs pl-4 pt-1 border-t border-gray-100 dark:border-gray-700 font-bold">
+                                        <span class="text-gray-500">房貸小計</span>
+                                        <span class="text-red-600 dark:text-red-400">{{ formatCurrency(getReMortgageTotal(re), 'TWD') }}</span>
+                                    </div>
+                                </div>
+                                <div v-if="re.note" class="mt-2 text-xs text-gray-400 italic">{{ re.note }}</div>
+                            </div>
+                            <div v-if="realEstateList.length === 0" class="text-center py-10 text-gray-400">尚未新增任何房產，點擊右上角「新增房產」開始記錄。</div>
+                        </div>
+                            </div>
+                        </div>
+                    </div>
+                </transition>
+    
+
             </div>
 
             <div v-if="showChangelog"
@@ -1883,9 +1946,21 @@
 
                     <div class="p-6 overflow-y-auto custom-scrollbar">
                         <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
-                            <!-- v5.4.0: 最新版本節點 -->
+                            <!-- v5.5.0: 最新版本節點 -->
                             <div class="relative pl-6">
                                 <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800"></div>
+                                <div class="text-xs text-gray-400 mb-1">2026-07-10</div>
+                                <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
+                                    <div class="font-bold text-gray-800 dark:text-white mb-2">v5.5.0</div>
+                                    <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                        <li>優化：簡化與重構分頁導覽列，整合相似分頁。</li>
+                                        <li>整合：將「走勢圖」與「占比圓餅圖」合併為「📊 資產大盤」；「股票部位」、「期貨部位」與「房地產」合併為「📈 投資部位」（以次分頁切換）；「已實現盈虧」、「股息統計」、「每月獲利總結」與「交易明細」合併為「📜 歷史績效」。</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <!-- v5.4.0: 舊版本節點 -->
+                            <div class="relative pl-6">
+                                <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-2 border-white dark:border-gray-800"></div>
                                 <div class="text-xs text-gray-400 mb-1">2026-07-10</div>
                                 <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
                                     <div class="font-bold text-gray-800 dark:text-white mb-2">v5.4.0</div>

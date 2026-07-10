@@ -4,7 +4,8 @@ import { getLocalDate, formatNumber, formatCurrency, getPnlClass, getRoi, format
 import { 
     user, stocks, exchangeRate, lastUpdated, loadingTarget, isLoading, viewMode, isMobile, showPrivacy, defaultPrivacyHidden, hideZeroShares, showSettingsModal, isDarkMode, activeSection, showChangelog, stockStates, sectionLoading, showStockNoteModal, stockNoteForm, showHistoryModal, historyRecords, historyFilterYear, availableYears, showDeleteModal, pendingDeleteTx, showEditTxModal, editTxForm, showHistoryEditModalVisible, historyEditForm, notes, showNoteModalVisible, noteForm, loanList, showLoanMgrModal, inlineNewLoan, inlineLoanName, loanForm, cashData, prevDayData, realEstateList, showRealEstateModal, realEstateForm, chartStartDate, chartEndDate, chartPnl, currentRange, divRange, divSearchQuery, divStartDate, divEndDate, realizedStartDate, realizedEndDate, transStartDate, transEndDate, transFilterType, transSearchQuery, sortKeyTrans, sortOrderTrans, sortKeyDiv, sortOrderDiv, realizedGains, realizedSearchQuery, sortKeyRealized, sortOrderRealized, realizedRange, dividendRecords, transactionHistory, showModal, isEditing, form, showTransModal, isFundMode, isLoanMode, loanCashMode, transForm,
     monthlyProfitData, monthlyProfitRange,
-    futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm
+    futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm,
+    investmentsTab, performanceTab, overviewTab
 } from './store/index.js';
 const { createApp, ref, computed, onMounted, watch } = Vue;
 
@@ -12,6 +13,21 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
             setup() {
                 // --- 1. 變數定義區 ---
                 let unsubscribeRealEstate = null, unsubscribeFuturesPositions = null, unsubscribeFuturesMargin = null;
+                let _initialChartTimer = null;
+                let _initialStocksReady = false, _initialCashReady = false;
+                const _scheduleInitialChart = () => {
+                    if (!_initialStocksReady || !_initialCashReady) return;
+                    clearTimeout(_initialChartTimer);
+                    _initialChartTimer = setTimeout(() => {
+                        saveDailySnapshot().then(() => {
+                            if (activeSection.value === 'overview') {
+                                if (overviewTab.value === 'trend') drawChart();
+                                else if (overviewTab.value === 'pie') drawPieCharts();
+                            }
+                        });
+                        _initialStocksReady = false; _initialCashReady = false;
+                    }, 600);
+                };
                 const fileInput = ref(null);
                 let chartInstance = null, pieTwInstance = null, pieUsInstance = null, monthlyProfitChartInstance = null;
                 let unsubscribe = null, unsubscribeTrans = null, unsubscribeCash = null, unsubscribeNotes = null, unsubscribeLoans = null;
@@ -160,7 +176,8 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
                     auth.onAuthStateChanged((u) => {
                         user.value = u;
-                        if (u) { 
+                        if (u) {
+                            _initialStocksReady = false; _initialCashReady = false;
                             loadUserData(u.uid); 
                             fetchPreviousDayData(u.uid); 
                             fetchCash(u.uid); 
@@ -458,24 +475,63 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 const toggleDarkMode = () => { isDarkMode.value = !isDarkMode.value; localStorage.setItem('darkMode', isDarkMode.value); document.documentElement.classList.toggle('dark'); };
                 const saveSettings = () => { localStorage.setItem('app_default_privacy_hidden', defaultPrivacyHidden.value); localStorage.setItem('hideZeroShares', hideZeroShares.value); };
 
-                watch(isDarkMode, () => { if (activeSection.value === 'chart') setTimeout(drawChart, 100); });
-                const toggleSection = (s) => {
-                    if (activeSection.value === s) activeSection.value = '';
-                    else {
-                        activeSection.value = s;
-                        if (s === 'chart') setTimeout(drawChart, 100);
-                        if (s === 'pie') setTimeout(drawPieCharts, 100);
-                        if (s === 'realized') fetchRealizedGains();
-                        if (s === 'dividend') fetchDividends();
-                        if (s === 'transactions') fetchTransactions();
-                        if (s === 'monthly') setTimeout(drawMonthlyChart, 100);
+                watch(isDarkMode, () => {
+                    if (activeSection.value === 'overview') {
+                        setTimeout(() => {
+                            if (overviewTab.value === 'trend') drawChart();
+                            else if (overviewTab.value === 'pie') drawPieCharts();
+                        }, 100);
                     }
+                    if (activeSection.value === 'performance' && performanceTab.value === 'monthly') {
+                        setTimeout(drawMonthlyChart, 100);
+                    }
+                });
+
+                watch(performanceTab, (newTab) => {
+                    if (newTab === 'monthly') {
+                        setTimeout(drawMonthlyChart, 100);
+                    } else if (newTab === 'transactions') {
+                        fetchTransactions();
+                    }
+                });
+
+                watch(overviewTab, (newTab) => {
+                    if (activeSection.value === 'overview') {
+                        setTimeout(() => {
+                            if (newTab === 'trend') drawChart();
+                            else if (newTab === 'pie') drawPieCharts();
+                        }, 100);
+                    }
+                });
+
+                watch(activeSection, (newSection) => {
+                    if (newSection === 'overview') {
+                        setTimeout(() => {
+                            if (overviewTab.value === 'trend') drawChart();
+                            else if (overviewTab.value === 'pie') drawPieCharts();
+                        }, 100);
+                    }
+                    if (newSection === 'performance') {
+                        fetchRealizedGains();
+                        fetchDividends();
+                        if (performanceTab.value === 'monthly') {
+                            setTimeout(drawMonthlyChart, 100);
+                        } else if (performanceTab.value === 'transactions') {
+                            fetchTransactions();
+                        }
+                    }
+                });
+
+                const toggleSection = (s) => {
+                    activeSection.value = s;
                 };
                 const jumpToFundHistory = () => { setTimeout(() => { const el = document.querySelector('[data-section="fund-history"]'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }, 100); };
                 const loadUserData = (uid) => {
                     if (unsubscribe) unsubscribe(); unsubscribe = db.collection('users').doc(uid).collection('stocks').onSnapshot(snap => {
                         stocks.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                        if (stocks.value.length > 0) saveDailySnapshot();
+                        // 只有在現金已載入後才儲存快照，避免寫入現金=0的錯誤數字
+                        if (stocks.value.length > 0 && _initialCashReady) saveDailySnapshot();
+                        if (!_initialStocksReady) { _initialStocksReady = true; _scheduleInitialChart(); }
                         // v3.6.0: 自動偵測未分類股票的市場類型（背景執行，不阻塞 UI）
                         const unclassified = stocks.value.filter(s => !s.marketType && s.currency !== 'USD');
                         // v4.8.0: 同時偵測已分類但市場可能有變動的股票（如興櫃轉上市）
@@ -484,7 +540,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         if (misclassified.length > 0) setTimeout(() => autoCorrectMarketTypes(misclassified), 12000);
                     });
                 };
-                const fetchCash = (uid) => { if (unsubscribeCash) unsubscribeCash(); unsubscribeCash = db.collection('users').doc(uid).collection('portfolio').doc('cash').onSnapshot(doc => { if (doc.exists) cashData.value = doc.data(); else cashData.value = { twd: 0, usd: 0, loan: 0 }; if (cashData.value.loan > 0 && loanList.value.length === 0) { setTimeout(() => migrateLegacyLoan(uid, cashData.value.loan), 1000); } setTimeout(saveDailySnapshot, 1000); }); };
+                const fetchCash = (uid) => { if (unsubscribeCash) unsubscribeCash(); unsubscribeCash = db.collection('users').doc(uid).collection('portfolio').doc('cash').onSnapshot(doc => { if (doc.exists) cashData.value = doc.data(); else cashData.value = { twd: 0, usd: 0, loan: 0 }; if (cashData.value.loan > 0 && loanList.value.length === 0) { setTimeout(() => migrateLegacyLoan(uid, cashData.value.loan), 1000); } if (!_initialCashReady) { _initialCashReady = true; _scheduleInitialChart(); } else { setTimeout(saveDailySnapshot, 500); } }); };
                 const fetchLoans = (uid) => { if (unsubscribeLoans) unsubscribeLoans(); unsubscribeLoans = db.collection('users').doc(uid).collection('loans').onSnapshot(snap => { loanList.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); }); };
                 const migrateLegacyLoan = async (uid, amount) => { if (loanList.value.length > 0) return; await db.collection('users').doc(uid).collection('loans').add({ name: '原有借款', balance: amount, currency: 'TWD' }); await db.collection('users').doc(uid).collection('portfolio').doc('cash').update({ loan: 0 }); };
                 const fetchNotes = (uid) => { if (unsubscribeNotes) unsubscribeNotes(); unsubscribeNotes = db.collection('users').doc(uid).collection('notes').orderBy('date', 'desc').onSnapshot(snap => { notes.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); }); };
@@ -1000,8 +1056,8 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 };
                 const deleteTransaction = (tx) => { pendingDeleteTx.value = tx; showDeleteModal.value = true; };
 
-                const executeDelete = async (revertCash) => { showDeleteModal.value = false; const tx = pendingDeleteTx.value; if (!tx) return; if (revertCash) { if (tx.type === 'deposit') await updateCash(tx.currency, -Math.abs(tx.totalAmount), 0); else if (tx.type === 'withdraw') await updateCash(tx.currency, Math.abs(tx.totalAmount), 0); else if (tx.type === 'borrow') { if (tx.loanId) await updateLoanBalance(tx.loanId, -Math.abs(tx.totalAmount)); else alert('此為舊版借款紀錄，請手動調整對應帳戶餘額。'); if (tx.cashSynced === true) await updateCash(tx.currency || 'TWD', -Math.abs(tx.totalAmount), 0); } else if (tx.type === 'repay') { if (tx.loanId) await updateLoanBalance(tx.loanId, Math.abs(tx.totalAmount)); if (tx.cashSynced === true) await updateCash(tx.currency || 'TWD', Math.abs(tx.totalAmount), 0); } else if (tx.type === 'dividend') { await updateCash(tx.currency, -Math.abs(tx.totalAmount), 0); const stock = stocks.value.find(s => s.symbol === tx.symbol); if (stock) { await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ dividends: Math.max(0, (stock.dividends || 0) - tx.totalAmount) }); } } else if (tx.type === 'buy') { await updateCash(tx.currency, Math.abs(tx.totalAmount), 0); const stock = stocks.value.find(s => s.symbol === tx.symbol); if (stock) { const ns = stock.shares - tx.shares; if (ns <= 0) { await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).delete(); } else { const remainingValue = (stock.shares * stock.avgCost) - tx.totalAmount; const na = remainingValue > 0 ? remainingValue / ns : 0; await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ shares: ns, avgCost: na }); } } } else if (tx.type === 'sell') { alert('系統提示：已將您的賣出金額從現金中扣除。但因系統無法追蹤原銷售股票之成本紀錄，請您手動至「已實現損益」與「庫存」調整對應股數與紀錄，以確保資料正確。'); await updateCash(tx.currency, -Math.abs(tx.totalAmount), 0); } } await db.collection('users').doc(user.value.uid).collection('transactions').doc(tx.id).delete(); fetchTransactions(); setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'transactions') fetchTransactions(); if (activeSection.value === 'realized') fetchRealizedGains(); if (activeSection.value === 'chart') drawChart(); }, 500); pendingDeleteTx.value = null; };
-                const deleteDividend = async (rec) => { if (!confirm('刪除股息？(現金將自動扣回)')) return; const stock = stocks.value.find(s => s.symbol === rec.symbol); if (stock) { await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ dividends: Math.max(0, (stock.dividends || 0) - rec.amount) }); } await updateCash(rec.currency, -rec.amount, 0); await db.collection('users').doc(user.value.uid).collection('dividends').doc(rec.id).delete(); fetchDividends(); setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'chart') drawChart(); }, 500); };
+                const executeDelete = async (revertCash) => { showDeleteModal.value = false; const tx = pendingDeleteTx.value; if (!tx) return; if (revertCash) { if (tx.type === 'deposit') await updateCash(tx.currency, -Math.abs(tx.totalAmount), 0); else if (tx.type === 'withdraw') await updateCash(tx.currency, Math.abs(tx.totalAmount), 0); else if (tx.type === 'borrow') { if (tx.loanId) await updateLoanBalance(tx.loanId, -Math.abs(tx.totalAmount)); else alert('此為舊版借款紀錄，請手動調整對應帳戶餘額。'); if (tx.cashSynced === true) await updateCash(tx.currency || 'TWD', -Math.abs(tx.totalAmount), 0); } else if (tx.type === 'repay') { if (tx.loanId) await updateLoanBalance(tx.loanId, Math.abs(tx.totalAmount)); if (tx.cashSynced === true) await updateCash(tx.currency || 'TWD', Math.abs(tx.totalAmount), 0); } else if (tx.type === 'dividend') { await updateCash(tx.currency, -Math.abs(tx.totalAmount), 0); const stock = stocks.value.find(s => s.symbol === tx.symbol); if (stock) { await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ dividends: Math.max(0, (stock.dividends || 0) - tx.totalAmount) }); } } else if (tx.type === 'buy') { await updateCash(tx.currency, Math.abs(tx.totalAmount), 0); const stock = stocks.value.find(s => s.symbol === tx.symbol); if (stock) { const ns = stock.shares - tx.shares; if (ns <= 0) { await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).delete(); } else { const remainingValue = (stock.shares * stock.avgCost) - tx.totalAmount; const na = remainingValue > 0 ? remainingValue / ns : 0; await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ shares: ns, avgCost: na }); } } } else if (tx.type === 'sell') { alert('系統提示：已將您的賣出金額從現金中扣除。但因系統無法追蹤原銷售股票之成本紀錄，請您手動至「已實現損益」與「庫存」調整對應股數與紀錄，以確保資料正確。'); await updateCash(tx.currency, -Math.abs(tx.totalAmount), 0); } } await db.collection('users').doc(user.value.uid).collection('transactions').doc(tx.id).delete(); fetchTransactions(); setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'transactions') fetchTransactions(); if (activeSection.value === 'realized') fetchRealizedGains(); if (activeSection.value === 'overview' || activeSection.value === '') drawChart(); }, 500); pendingDeleteTx.value = null; };
+                const deleteDividend = async (rec) => { if (!confirm('刪除股息？(現金將自動扣回)')) return; const stock = stocks.value.find(s => s.symbol === rec.symbol); if (stock) { await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ dividends: Math.max(0, (stock.dividends || 0) - rec.amount) }); } await updateCash(rec.currency, -rec.amount, 0); await db.collection('users').doc(user.value.uid).collection('dividends').doc(rec.id).delete(); fetchDividends(); setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'overview' || activeSection.value === '') drawChart(); }, 500); };
                 const deleteRealized = async (id) => { if (!confirm('刪除？')) return; await db.collection('users').doc(user.value.uid).collection('realized_gains').doc(id).delete(); fetchRealizedGains(); };
                 const saveDailySnapshot = async () => { if (!user.value) return; const todayStr = getLocalDate(); const historyRef = db.collection('users').doc(user.value.uid).collection('history').doc(todayStr); const currentHour = new Date().getHours(); const snapshot = { date: todayStr, timestamp: firebase.firestore.FieldValue.serverTimestamp(), savedHour: currentHour, totalVal: grandTotalValue.value, twVal: twStats.value.value, usVal: usStats.value.value, twCash: cashData.value.twd || 0, usCash: cashData.value.usd || 0, loan: totalLoanBalance.value, totalPnL: grandTotalPnL.value, twPnL: twStats.value.pnl, usPnL: usStats.value.pnl, realestate: realEstateTotalMarket.value, leverage: leverageRatio.value, exposure: exposureRatio.value }; if (currentHour >= 21) { const doc = await historyRef.get(); if (doc.exists) { const existingSavedHour = doc.data().savedHour; if (existingSavedHour !== undefined && existingSavedHour < 21 && doc.data().totalVal > 0) { return; } } } await historyRef.set(snapshot, { merge: true }); };
 
@@ -1206,10 +1262,10 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
                         await db.collection('users').doc(user.value.uid).collection('transactions').add(logData);
                         closeTransModal();
-                        setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'chart') drawChart(); }, 500);
+                        setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'overview' || activeSection.value === '') drawChart(); }, 500);
                         return;
                     }
-                    if (isFundMode.value) { if (!transForm.value.totalAmount) return alert('請輸入金額'); const amount = transForm.value.type === 'deposit' ? transForm.value.totalAmount : -transForm.value.totalAmount; await updateCash(form.value.currency, amount, 0); await db.collection('users').doc(user.value.uid).collection('transactions').add(logData); closeTransModal(); setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'chart') drawChart(); }, 500); return; } if (transForm.value.type === 'dividend') { if (!transForm.value.totalAmount) return alert('請輸入金額'); const dividendData = { ...logData, amount: transForm.value.totalAmount }; await db.collection('users').doc(user.value.uid).collection('dividends').add(dividendData); await db.collection('users').doc(user.value.uid).collection('transactions').add(logData); await updateCash(form.value.currency, transForm.value.totalAmount, 0); const existingStock = stocks.value.find(s => s.symbol === transForm.value.symbol); if (existingStock) { await db.collection('users').doc(user.value.uid).collection('stocks').doc(existingStock.id).update({ dividends: (existingStock.dividends || 0) + transForm.value.totalAmount }); } closeTransModal(); setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'chart') drawChart(); }, 500); return; } if (!transForm.value.shares || !transForm.value.totalAmount) return alert('請輸入完整資訊'); logData.price = transForm.value.totalAmount / transForm.value.shares; let stockId = transForm.value.id; let currentShares = transForm.value.currentShares; let currentAvg = transForm.value.currentAvg; if (!stockId) { const existing = stocks.value.find(s => s.symbol === transForm.value.symbol); if (existing) { stockId = existing.id; currentShares = existing.shares; currentAvg = existing.avgCost; } else if (transForm.value.type === 'buy') { const newDoc = await db.collection('users').doc(user.value.uid).collection('stocks').add({ symbol: transForm.value.symbol, name: transForm.value.name, currency: form.value.currency, marketType: form.value.currency === 'USD' ? 'us' : '', shares: 0, avgCost: 0, currentPrice: 0, dividends: 0 }); stockId = newDoc.id; } else { const pnl = transForm.value.totalAmount - 0; await db.collection('users').doc(user.value.uid).collection('realized_gains').add({ ...logData, pnl: pnl, price: logData.price }); await db.collection('users').doc(user.value.uid).collection('transactions').add(logData); await updateCash(form.value.currency, transForm.value.totalAmount, 0); closeTransModal(); return; } } let ns = 0, na = 0; if (transForm.value.type === 'buy') { ns = currentShares + transForm.value.shares; const oldTotal = currentShares * currentAvg; na = (oldTotal + transForm.value.totalAmount) / ns; await updateCash(form.value.currency, -transForm.value.totalAmount, 0); } else { if (transForm.value.shares > currentShares) return alert('股數不足'); ns = currentShares - transForm.value.shares; na = currentAvg; const pnl = transForm.value.totalAmount - (transForm.value.shares * currentAvg); await db.collection('users').doc(user.value.uid).collection('realized_gains').add({ ...logData, pnl: pnl, price: logData.price }); await updateCash(form.value.currency, transForm.value.totalAmount, 0); } await db.collection('users').doc(user.value.uid).collection('transactions').add(logData); if (stockId) { const ref = db.collection('users').doc(user.value.uid).collection('stocks').doc(stockId); await ref.update({ shares: ns, avgCost: na }); if (ns === 0 && confirm('股數歸零，是否刪除此庫存項目？')) await ref.delete(); } setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'transactions') fetchTransactions(); if (activeSection.value === 'chart') drawChart(); }, 500); closeTransModal();
+                    if (isFundMode.value) { if (!transForm.value.totalAmount) return alert('請輸入金額'); const amount = transForm.value.type === 'deposit' ? transForm.value.totalAmount : -transForm.value.totalAmount; await updateCash(form.value.currency, amount, 0); await db.collection('users').doc(user.value.uid).collection('transactions').add(logData); closeTransModal(); setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'overview' || activeSection.value === '') drawChart(); }, 500); return; } if (transForm.value.type === 'dividend') { if (!transForm.value.totalAmount) return alert('請輸入金額'); const dividendData = { ...logData, amount: transForm.value.totalAmount }; await db.collection('users').doc(user.value.uid).collection('dividends').add(dividendData); await db.collection('users').doc(user.value.uid).collection('transactions').add(logData); await updateCash(form.value.currency, transForm.value.totalAmount, 0); const existingStock = stocks.value.find(s => s.symbol === transForm.value.symbol); if (existingStock) { await db.collection('users').doc(user.value.uid).collection('stocks').doc(existingStock.id).update({ dividends: (existingStock.dividends || 0) + transForm.value.totalAmount }); } closeTransModal(); setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'overview' || activeSection.value === '') drawChart(); }, 500); return; } if (!transForm.value.shares || !transForm.value.totalAmount) return alert('請輸入完整資訊'); logData.price = transForm.value.totalAmount / transForm.value.shares; let stockId = transForm.value.id; let currentShares = transForm.value.currentShares; let currentAvg = transForm.value.currentAvg; if (!stockId) { const existing = stocks.value.find(s => s.symbol === transForm.value.symbol); if (existing) { stockId = existing.id; currentShares = existing.shares; currentAvg = existing.avgCost; } else if (transForm.value.type === 'buy') { const newDoc = await db.collection('users').doc(user.value.uid).collection('stocks').add({ symbol: transForm.value.symbol, name: transForm.value.name, currency: form.value.currency, marketType: form.value.currency === 'USD' ? 'us' : '', shares: 0, avgCost: 0, currentPrice: 0, dividends: 0 }); stockId = newDoc.id; } else { const pnl = transForm.value.totalAmount - 0; await db.collection('users').doc(user.value.uid).collection('realized_gains').add({ ...logData, pnl: pnl, price: logData.price }); await db.collection('users').doc(user.value.uid).collection('transactions').add(logData); await updateCash(form.value.currency, transForm.value.totalAmount, 0); closeTransModal(); return; } } let ns = 0, na = 0; if (transForm.value.type === 'buy') { ns = currentShares + transForm.value.shares; const oldTotal = currentShares * currentAvg; na = (oldTotal + transForm.value.totalAmount) / ns; await updateCash(form.value.currency, -transForm.value.totalAmount, 0); } else { if (transForm.value.shares > currentShares) return alert('股數不足'); ns = currentShares - transForm.value.shares; na = currentAvg; const pnl = transForm.value.totalAmount - (transForm.value.shares * currentAvg); await db.collection('users').doc(user.value.uid).collection('realized_gains').add({ ...logData, pnl: pnl, price: logData.price }); await updateCash(form.value.currency, transForm.value.totalAmount, 0); } await db.collection('users').doc(user.value.uid).collection('transactions').add(logData); if (stockId) { const ref = db.collection('users').doc(user.value.uid).collection('stocks').doc(stockId); await ref.update({ shares: ns, avgCost: na }); if (ns === 0 && confirm('股數歸零，是否刪除此庫存項目？')) await ref.delete(); } setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'transactions') fetchTransactions(); if (activeSection.value === 'overview' || activeSection.value === '') drawChart(); }, 500); closeTransModal();
                 };
 
                 const openModal = () => { isEditing.value = false; form.value = { id: Date.now().toString(), symbol: '', name: '', currency: 'TWD', marketType: '', shares: 0, avgCost: 0, totalCostInput: 0, currentPrice: 0, dividends: 0, previousClose: 0, multiplier: 1, isETF: false }; showModal.value = true; };
@@ -1827,7 +1883,8 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
                     futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm,
                     futuresTotalUnrealizedPnL, futuresEquity, futuresTotalMarginUsed, futuresTotalExposure, futuresRiskRatio,
-                    openFuturesModal, saveFuturesPosition, deleteFuturesPosition, closeFuturesPosition, openFuturesMarginModal, adjustFuturesMargin
+                    openFuturesModal, saveFuturesPosition, deleteFuturesPosition, closeFuturesPosition, openFuturesMarginModal, adjustFuturesMargin,
+                    investmentsTab, performanceTab, overviewTab
                 };
             }
         }).mount('#app');

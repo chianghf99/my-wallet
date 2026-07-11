@@ -106,6 +106,6 @@ export const performanceTab = ref('realized');
 export const overviewTab = ref('trend');
 
 // --- 基金相關狀態 ---
-export const fundList = ref([]);
-export const showFundModal = ref(false);
-export const fundForm = ref({ id: null, name: '', currency: 'TWD', costBasis: '', currentValue: '', purchaseDate: '', note: '' });
+export const mutualFundList = ref([]);
+export const showMutualFundModal = ref(false);
+export const mutualFundForm = ref({ id: null, name: '', currency: 'TWD', costBasis: '', currentValue: '', purchaseDate: '', note: '' });

@@ -1934,28 +1934,28 @@
                             <div class="zen-card p-4 md:p-6 mb-8">
                                 <div class="flex justify-between items-center mb-4">
                                     <h3 class="font-bold dark:text-white flex items-center gap-2"><i class="fa-solid fa-seedling text-green-600"></i> 基金管理</h3>
-                                    <button @click="openFundModal(null)" class="bg-green-600 text-white px-3 py-1 text-sm rounded hover:bg-green-500 transition"><i class="fa-solid fa-plus mr-1"></i>新增基金</button>
+                                    <button @click="openMutualFundModal(null)" class="bg-green-600 text-white px-3 py-1 text-sm rounded hover:bg-green-500 transition"><i class="fa-solid fa-plus mr-1"></i>新增基金</button>
                                 </div>
 
                                 <!-- 統計列 -->
                                 <div class="grid grid-cols-3 gap-3 mb-5">
                                     <div class="bg-green-50 dark:bg-green-900/20 p-3 rounded-xl border border-green-100 dark:border-green-900/30 text-center">
                                         <div class="text-xs text-green-600 dark:text-green-400 mb-1">投入成本</div>
-                                        <div class="text-lg font-bold text-green-700 dark:text-green-300"><span v-if="showPrivacy">{{ formatCurrency(fundTotalCost, 'TWD') }}</span><span v-else>****</span></div>
+                                        <div class="text-lg font-bold text-green-700 dark:text-green-300"><span v-if="showPrivacy">{{ formatCurrency(mutualFundTotalCost, 'TWD') }}</span><span v-else>****</span></div>
                                     </div>
                                     <div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-xl border border-blue-100 dark:border-blue-900/30 text-center">
                                         <div class="text-xs text-blue-600 dark:text-blue-400 mb-1">目前市值</div>
-                                        <div class="text-lg font-bold text-blue-700 dark:text-blue-300"><span v-if="showPrivacy">{{ formatCurrency(fundTotalValue, 'TWD') }}</span><span v-else>****</span></div>
+                                        <div class="text-lg font-bold text-blue-700 dark:text-blue-300"><span v-if="showPrivacy">{{ formatCurrency(mutualFundTotalValue, 'TWD') }}</span><span v-else>****</span></div>
                                     </div>
                                     <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-700 text-center">
                                         <div class="text-xs text-gray-500 mb-1">未實現損益</div>
-                                        <div class="text-lg font-bold" :class="getPnlClass(fundTotalPnL)"><span v-if="showPrivacy">{{ formatCurrency(fundTotalPnL, 'TWD') }}</span><span v-else>****</span></div>
+                                        <div class="text-lg font-bold" :class="getPnlClass(mutualFundTotalPnL)"><span v-if="showPrivacy">{{ formatCurrency(mutualFundTotalPnL, 'TWD') }}</span><span v-else>****</span></div>
                                     </div>
                                 </div>
 
                                 <!-- 基金清單 -->
                                 <div class="space-y-3">
-                                    <div v-for="fund in fundList" :key="fund.id"
+                                    <div v-for="fund in mutualFundList" :key="fund.id"
                                         class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 flex items-center justify-between gap-4">
                                         <div class="flex-1 min-w-0">
                                             <div class="font-bold text-gray-800 dark:text-white truncate">{{ fund.name }}</div>
@@ -1970,11 +1970,11 @@
                                             <div v-if="!showPrivacy" class="text-gray-300 dark:text-gray-600">****</div>
                                         </div>
                                         <div class="flex gap-2 shrink-0">
-                                            <button @click="openFundModal(fund)" class="text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 px-2 py-1 rounded hover:bg-blue-200 transition"><i class="fa-solid fa-pen"></i></button>
-                                            <button @click="deleteFund(fund.id)" class="text-xs bg-red-100 dark:bg-red-900/40 text-red-500 px-2 py-1 rounded hover:bg-red-200 transition"><i class="fa-solid fa-trash"></i></button>
+                                            <button @click="openMutualFundModal(fund)" class="text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 px-2 py-1 rounded hover:bg-blue-200 transition"><i class="fa-solid fa-pen"></i></button>
+                                            <button @click="deleteMutualFund(fund.id)" class="text-xs bg-red-100 dark:bg-red-900/40 text-red-500 px-2 py-1 rounded hover:bg-red-200 transition"><i class="fa-solid fa-trash"></i></button>
                                         </div>
                                     </div>
-                                    <div v-if="fundList.length === 0" class="text-center py-10 text-gray-400">尚未新增任何基金，點擊右上角「新增基金」開始記錄。</div>
+                                    <div v-if="mutualFundList.length === 0" class="text-center py-10 text-gray-400">尚未新增任何基金，點擊右上角「新增基金」開始記錄。</div>
                                 </div>
                             </div>
                         </div>
@@ -1983,58 +1983,58 @@
                 </transition>
 
                 <!-- 基金 Modal -->
-                <div v-if="showFundModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+                <div v-if="showMutualFundModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
                     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
                         <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
                             <h3 class="font-bold text-lg dark:text-white flex items-center gap-2">
                                 <i class="fa-solid fa-seedling text-green-500"></i>
-                                {{ fundForm.id ? '編輯基金' : '新增基金' }}
+                                {{ mutualFundForm.id ? '編輯基金' : '新增基金' }}
                             </h3>
-                            <button @click="showFundModal=false" class="w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 transition">
+                            <button @click="showMutualFundModal=false" class="w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 transition">
                                 <i class="fa-solid fa-times"></i>
                             </button>
                         </div>
                         <div class="p-6 space-y-4">
                             <div>
                                 <label class="block text-xs text-gray-500 mb-1">基金名稱 *</label>
-                                <input v-model="fundForm.name" type="text" placeholder="例：富蘭克林科技基金"
+                                <input v-model="mutualFundForm.name" type="text" placeholder="例：富蘭克林科技基金"
                                     class="w-full border rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-400">
                             </div>
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
                                     <label class="block text-xs text-gray-500 mb-1">幣別</label>
-                                    <select v-model="fundForm.currency" class="w-full border rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                    <select v-model="mutualFundForm.currency" class="w-full border rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                                         <option value="TWD">台幣 TWD</option>
                                         <option value="USD">美金 USD</option>
                                     </select>
                                 </div>
                                 <div>
                                     <label class="block text-xs text-gray-500 mb-1">申購日期</label>
-                                    <input v-model="fundForm.purchaseDate" type="date"
+                                    <input v-model="mutualFundForm.purchaseDate" type="date"
                                         class="w-full border rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-400">
                                 </div>
                             </div>
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
                                     <label class="block text-xs text-gray-500 mb-1">投入成本</label>
-                                    <input v-model="fundForm.costBasis" type="number" placeholder="0"
+                                    <input v-model="mutualFundForm.costBasis" type="number" placeholder="0"
                                         class="w-full border rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-400">
                                 </div>
                                 <div>
                                     <label class="block text-xs text-gray-500 mb-1">目前市值</label>
-                                    <input v-model="fundForm.currentValue" type="number" placeholder="0"
+                                    <input v-model="mutualFundForm.currentValue" type="number" placeholder="0"
                                         class="w-full border rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-400">
                                 </div>
                             </div>
                             <div>
                                 <label class="block text-xs text-gray-500 mb-1">備註</label>
-                                <input v-model="fundForm.note" type="text" placeholder="（選填）"
+                                <input v-model="mutualFundForm.note" type="text" placeholder="（選填）"
                                     class="w-full border rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-400">
                             </div>
                         </div>
                         <div class="px-6 pb-6 flex gap-3 justify-end">
-                            <button @click="showFundModal=false" class="px-4 py-2 rounded-lg text-sm border text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition">取消</button>
-                            <button @click="saveFund" class="px-5 py-2 rounded-lg text-sm bg-green-600 text-white hover:bg-green-500 transition font-bold">儲存</button>
+                            <button @click="showMutualFundModal=false" class="px-4 py-2 rounded-lg text-sm border text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition">取消</button>
+                            <button @click="saveMutualFund" class="px-5 py-2 rounded-lg text-sm bg-green-600 text-white hover:bg-green-500 transition font-bold">儲存</button>
                         </div>
                     </div>
                 </div>

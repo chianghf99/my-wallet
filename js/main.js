@@ -5,7 +5,8 @@ import {
     user, stocks, exchangeRate, lastUpdated, loadingTarget, isLoading, viewMode, isMobile, showPrivacy, defaultPrivacyHidden, hideZeroShares, showSettingsModal, isDarkMode, activeSection, showChangelog, stockStates, sectionLoading, showStockNoteModal, stockNoteForm, showHistoryModal, historyRecords, historyFilterYear, availableYears, showDeleteModal, pendingDeleteTx, showEditTxModal, editTxForm, showHistoryEditModalVisible, historyEditForm, notes, showNoteModalVisible, noteForm, loanList, showLoanMgrModal, inlineNewLoan, inlineLoanName, loanForm, cashData, prevDayData, realEstateList, showRealEstateModal, realEstateForm, chartStartDate, chartEndDate, chartPnl, currentRange, divRange, divSearchQuery, divStartDate, divEndDate, realizedStartDate, realizedEndDate, transStartDate, transEndDate, transFilterType, transSearchQuery, sortKeyTrans, sortOrderTrans, sortKeyDiv, sortOrderDiv, realizedGains, realizedSearchQuery, sortKeyRealized, sortOrderRealized, realizedRange, dividendRecords, transactionHistory, showModal, isEditing, form, showTransModal, isFundMode, isLoanMode, loanCashMode, transForm,
     monthlyProfitData, monthlyProfitRange,
     futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm,
-    investmentsTab, performanceTab, overviewTab
+    investmentsTab, performanceTab, overviewTab,
+    fundList, showFundModal, fundForm
 } from './store/index.js';
 const { createApp, ref, computed, onMounted, watch } = Vue;
 
@@ -184,7 +185,8 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                             fetchNotes(u.uid); 
                             fetchLoans(u.uid); 
                             fetchRealEstate(u.uid); 
-                            fetchFuturesData(u.uid); 
+                            fetchFuturesData(u.uid);
+                            fetchFunds(u.uid); 
                         } else { 
                             stocks.value = []; 
                             realizedGains.value = []; 
@@ -247,6 +249,10 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 });
                 const realEstateNetValue = computed(() => realEstateTotalMarket.value - realEstateTotalMortgage.value);
                 const realEstateBookPnL = computed(() => realEstateList.value.reduce((acc, re) => acc + ((re.marketValue || 0) - (re.purchaseCost || 0)), 0));
+                // --- 基金計算屬性 ---
+                const fundTotalCost = computed(() => fundList.value.reduce((acc, f) => acc + ((f.costBasis || 0) * (f.currency === 'USD' ? exchangeRate.value : 1)), 0));
+                const fundTotalValue = computed(() => fundList.value.reduce((acc, f) => acc + ((f.currentValue || 0) * (f.currency === 'USD' ? exchangeRate.value : 1)), 0));
+                const fundTotalPnL = computed(() => fundTotalValue.value - fundTotalCost.value);
                 // --- 期貨相關計算屬性 ---
                 const futuresTotalUnrealizedPnL = computed(() => {
                     return futuresPositions.value.reduce((acc, pos) => {
@@ -288,7 +294,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     const stockVal = twStats.value.value + (usStats.value.value * exchangeRate.value);
                     const cashVal = (cashData.value.twd || 0) + ((cashData.value.usd || 0) * exchangeRate.value);
                     const futuresVal = futuresEquity.value;
-                    return stockVal + cashVal + realEstateTotalMarket.value + futuresVal;
+                    return stockVal + cashVal + realEstateTotalMarket.value + futuresVal + fundTotalValue.value;
                 });
                 // v4.5.0: 曝險總額 (考慮正2等槓桿倍數)
                 const grandTotalExposure = computed(() => {
@@ -296,7 +302,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     const usExposure = usStockList.value.reduce((acc, s) => acc + (s.currentPrice * s.shares * (s.multiplier || 1)), 0) * exchangeRate.value;
                     const cashVal = (cashData.value.twd || 0) + ((cashData.value.usd || 0) * exchangeRate.value);
                     const futuresExp = futuresTotalExposure.value;
-                    return twExposure + usExposure + cashVal + realEstateTotalMarket.value + futuresExp;
+                    return twExposure + usExposure + cashVal + realEstateTotalMarket.value + futuresExp + fundTotalValue.value;
                 });
                 // v4.0.0: 淨資產 = 總資產 - 所有負債(貸款)
                 const grandTotalValue = computed(() => grandTotalAssets.value - totalLoanBalance.value);
@@ -546,6 +552,40 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 const fetchNotes = (uid) => { if (unsubscribeNotes) unsubscribeNotes(); unsubscribeNotes = db.collection('users').doc(uid).collection('notes').orderBy('date', 'desc').onSnapshot(snap => { notes.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); }); };
                 // v4.0.0: 房地產 CRUD
                 const fetchRealEstate = (uid) => { if (unsubscribeRealEstate) unsubscribeRealEstate(); unsubscribeRealEstate = db.collection('users').doc(uid).collection('real_estate').onSnapshot(snap => { realEstateList.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); }); };
+                let unsubscribeFunds = null;
+                const fetchFunds = (uid) => { if (unsubscribeFunds) unsubscribeFunds(); unsubscribeFunds = db.collection('users').doc(uid).collection('funds').onSnapshot(snap => { fundList.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); }); };
+                const openFundModal = (fund) => {
+                    if (fund) {
+                        fundForm.value = { ...fund };
+                    } else {
+                        fundForm.value = { id: null, name: '', currency: 'TWD', costBasis: '', currentValue: '', purchaseDate: '', note: '' };
+                    }
+                    showFundModal.value = true;
+                };
+                const saveFund = async () => {
+                    if (!user.value || !fundForm.value.name) return alert('請輸入基金名稱');
+                    const data = {
+                        name: fundForm.value.name,
+                        currency: fundForm.value.currency || 'TWD',
+                        costBasis: parseFloat(fundForm.value.costBasis) || 0,
+                        currentValue: parseFloat(fundForm.value.currentValue) || 0,
+                        purchaseDate: fundForm.value.purchaseDate || '',
+                        note: fundForm.value.note || '',
+                    };
+                    const col = db.collection('users').doc(user.value.uid).collection('funds');
+                    if (fundForm.value.id) {
+                        await col.doc(fundForm.value.id).update(data);
+                    } else {
+                        await col.add(data);
+                    }
+                    showFundModal.value = false;
+                    setTimeout(saveDailySnapshot, 500);
+                };
+                const deleteFund = async (id) => {
+                    if (!confirm('確定刪除此基金？')) return;
+                    await db.collection('users').doc(user.value.uid).collection('funds').doc(id).delete();
+                    setTimeout(saveDailySnapshot, 500);
+                };
                 const fetchFuturesData = (uid) => {
                     if (unsubscribeFuturesMargin) unsubscribeFuturesMargin();
                     unsubscribeFuturesMargin = db.collection('users').doc(uid).collection('portfolio').doc('futures_margin').onSnapshot(doc => {
@@ -1884,7 +1924,8 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm,
                     futuresTotalUnrealizedPnL, futuresEquity, futuresTotalMarginUsed, futuresTotalExposure, futuresRiskRatio,
                     openFuturesModal, saveFuturesPosition, deleteFuturesPosition, closeFuturesPosition, openFuturesMarginModal, adjustFuturesMargin,
-                    investmentsTab, performanceTab, overviewTab
+                    investmentsTab, performanceTab, overviewTab,
+                    fundList, showFundModal, fundForm, fundTotalCost, fundTotalValue, fundTotalPnL, openFundModal, saveFund, deleteFund
                 };
             }
         }).mount('#app');

@@ -648,7 +648,7 @@
                                         class="fa-solid fa-money-bill-transfer mr-1"></i>入金/出金</button>
                             </div>
                         </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                             <div
                                 class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-900/30 text-center">
                                 <div class="text-xs text-blue-600 dark:text-blue-400 mb-1">台幣餘額 (TWD)</div>
@@ -662,6 +662,14 @@
                                 <div class="text-2xl font-bold text-green-700 dark:text-green-300"><span
                                         v-if="showPrivacy">{{ formatCurrency(cashData.usd, 'USD') }}</span><span
                                         v-else>****</span></div>
+                            </div>
+                            <div
+                                class="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-xl border border-orange-100 dark:border-orange-900/30 text-center">
+                                <div class="text-xs text-orange-600 dark:text-orange-400 mb-1">期貨權益 (TWD)</div>
+                                <div class="text-2xl font-bold text-orange-700 dark:text-orange-300">
+                                    <span v-if="showPrivacy">{{ formatCurrency(futuresEquity, 'TWD') }}</span>
+                                    <span v-else>****</span>
+                                </div>
                             </div>
                             <div
                                 class="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-xl border border-purple-100 dark:border-purple-900/30 relative">
@@ -767,13 +775,13 @@
                                 <div class="flex items-start gap-1">
                                     <i class="fa-solid fa-circle-info mt-0.5 flex-shrink-0"></i>
                                     <div>
-                                        <strong>金融總資產</strong> = 股票總市值 + 活存現金餘額 (排除房地產)
+                                        <strong>金融總資產</strong> = 股票總市值 + 活存現金餘額 + 期貨權益 (排除房地產)
                                     </div>
                                 </div>
                                 <div class="flex items-start gap-1">
                                     <i class="fa-solid fa-circle-info mt-0.5 flex-shrink-0"></i>
                                     <div>
-                                        <strong>金融總曝險</strong> = 股票曝險 (市值 × 槓桿倍數) + 現金
+                                        <strong>金融總曝險</strong> = 股票曝險 (市值 × 槓桿倍數) + 現金 + 期貨曝險 (合約價值 + 期貨空閒資金)
                                     </div>
                                 </div>
                                 <div class="flex items-start gap-1">
@@ -2184,9 +2192,23 @@
 
                     <div class="p-6 overflow-y-auto custom-scrollbar">
                         <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
-                            <!-- v5.6.0: 最新版本節點 -->
+                            <!-- v5.7.0: 最新版本節點 -->
                             <div class="relative pl-6">
                                 <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800"></div>
+                                <div class="text-xs text-gray-400 mb-1">2026-07-14</div>
+                                <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
+                                    <div class="font-bold text-gray-800 dark:text-white mb-2">v5.7.0</div>
+                                    <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                        <li>新增：期貨「歷史明細與已實現損益」帳本卡片，支援按類型（建倉、平倉、出金、入金）篩選與分頁查看。</li>
+                                        <li>新增：一鍵安全回滾 (Rollback) 機制。刪除歷史紀錄時能自動還原或扣回保證金與連動的活存，刪除平倉紀錄時亦會安全重建原未平倉部位。</li>
+                                        <li>新增：期貨權益 (Futures Equity) 納入「總資產」與「金融資產」之合併計算；同時於資金管理新增「期貨權益」卡片。</li>
+                                        <li>優化：金融總曝險公式，將期貨曝險調整為「期貨合約價值 + 期貨空閒資金」，對齊總槓桿比與總曝險比的數值邏輯。</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <!-- v5.6.0: 舊版本節點 -->
+                            <div class="relative pl-6">
+                                <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-2 border-white dark:border-gray-800"></div>
                                 <div class="text-xs text-gray-400 mb-1">2026-07-14</div>
                                 <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
                                     <div class="font-bold text-gray-800 dark:text-white mb-2">v5.6.0</div>

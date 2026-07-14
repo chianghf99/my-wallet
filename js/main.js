@@ -310,7 +310,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     const twExposure = twStockList.value.reduce((acc, s) => acc + (s.currentPrice * s.shares * (s.multiplier || 1)), 0);
                     const usExposure = usStockList.value.reduce((acc, s) => acc + (s.currentPrice * s.shares * (s.multiplier || 1)), 0) * exchangeRate.value;
                     const cashVal = (cashData.value.twd || 0) + ((cashData.value.usd || 0) * exchangeRate.value);
-                    const futuresExp = futuresTotalExposure.value;
+                    const futuresExp = futuresTotalExposure.value + Math.max(0, futuresEquity.value - futuresTotalMarginUsed.value);
                     return twExposure + usExposure + cashVal + realEstateTotalMarket.value + futuresExp + mutualFundTotalValue.value;
                 });
                 // v4.0.0: 淨資產 = 總資產 - 所有負債(貸款)
@@ -364,7 +364,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     const twExposure = twStockList.value.reduce((acc, s) => acc + (s.currentPrice * s.shares * (s.multiplier || 1)), 0);
                     const usExposure = usStockList.value.reduce((acc, s) => acc + (s.currentPrice * s.shares * (s.multiplier || 1)), 0) * exchangeRate.value;
                     const cashVal = (cashData.value.twd || 0) + ((cashData.value.usd || 0) * exchangeRate.value);
-                    const futuresExp = futuresTotalExposure.value;
+                    const futuresExp = futuresTotalExposure.value + Math.max(0, futuresEquity.value - futuresTotalMarginUsed.value);
                     return twExposure + usExposure + cashVal + futuresExp;
                 });
 

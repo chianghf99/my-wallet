@@ -586,95 +586,111 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     await db.collection('users').doc(user.value.uid).collection('funds').doc(id).delete();
                     setTimeout(saveDailySnapshot, 500);
                 };
-                 const autoFetchTaiexIndexPrice = async () => {
-                     futuresForm.value.currentPrice = '查詢中...';
-                     try {
-                         const sym = (futuresForm.value.symbol || '').toUpperCase();
-                         let targetSymbol = 'TWF:TXF:FUTURES'; // 預設大台近全
-                         if (sym.startsWith('MTX') || sym.startsWith('MXF') || sym.startsWith('TMF')) {
-                             targetSymbol = 'TWF:MXF:FUTURES'; // 小台/微台近全
-                         }
-                         const url = CF_PROXY + encodeURIComponent(`https://ws.api.cnyes.com/ws/api/v1/quote/quotes/${targetSymbol}`);
-                         const resp = await fetch(url);
-                         const data = await resp.json();
-                         const price = data?.data?.[0]?.['6'];
-                         if (price) {
-                             futuresForm.value.currentPrice = Math.round(price);
-                         } else {
-                             // 備援：抓取加權指數現貨
-                             const fallbackUrl = CF_PROXY + encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/^TWII');
-                             const fbResp = await fetch(fallbackUrl);
-                             const fbData = await fbResp.json();
-                             const fbPrice = fbData.chart.result[0].meta.regularMarketPrice;
-                             if (fbPrice) {
-                                 futuresForm.value.currentPrice = Math.round(fbPrice);
-                             } else {
-                                 futuresForm.value.currentPrice = '';
-                                 alert('無法獲取期貨報價或指數現貨價格');
-                             }
-                         }
-                     } catch (e) {
-                         futuresForm.value.currentPrice = '';
-                         console.error(e);
-                         alert('獲取報價失敗：' + e.message);
-                     }
-                 };
-                 const fetchFuturesPricesDirect = async () => {
-                     if (!user.value) return;
-                     const targetPositions = futuresPositions.value.filter(pos => {
-                         const sym = pos.symbol.toUpperCase();
-                         return sym.startsWith('TX') || sym.startsWith('MTX') || sym.startsWith('MXF') || sym.startsWith('TMF');
-                     });
-                     if (targetPositions.length === 0) {
-                         alert('您目前沒有需要更新價格的台股期貨部位 (如台指期、小台、微台等)');
-                         return;
-                     }
-                     futuresLoading.value = true;
-                     try {
-                         // 同步抓取大台近全與小台近全
-                         const txUrl = CF_PROXY + encodeURIComponent('https://ws.api.cnyes.com/ws/api/v1/quote/quotes/TWF:TXF:FUTURES');
-                         const mxfUrl = CF_PROXY + encodeURIComponent('https://ws.api.cnyes.com/ws/api/v1/quote/quotes/TWF:MXF:FUTURES');
-                         const [txResp, mxfResp] = await Promise.all([
-                             fetch(txUrl).then(r => r.json()),
-                             fetch(mxfUrl).then(r => r.json())
-                         ]);
-                         const txPrice = txResp?.data?.[0]?.['6'];
-                         const mxfPrice = mxfResp?.data?.[0]?.['6'];
-                         if (!txPrice && !mxfPrice) {
-                             alert('無法取得期貨即時報價，請稍後再試。');
-                             return;
-                         }
-                         const batch = db.batch();
-                         let updatedCount = 0;
-                         targetPositions.forEach(pos => {
-                             const sym = pos.symbol.toUpperCase();
-                             let price = null;
-                             if (sym.startsWith('TX')) {
-                                 price = txPrice;
-                             } else if (sym.startsWith('MTX') || sym.startsWith('MXF') || sym.startsWith('TMF')) {
-                                 price = mxfPrice || txPrice; // 微台與小台價格相同，若小台價格遺失則用大台
-                             }
-                             if (price) {
-                                 pos.currentPrice = Math.round(price);
-                                 const ref = db.collection('users').doc(user.value.uid).collection('futures_positions').doc(pos.id);
-                                 batch.update(ref, { currentPrice: Math.round(price), updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
-                                 updatedCount++;
-                             }
-                         });
-                         if (updatedCount > 0) {
-                             await batch.commit();
-                             setTimeout(saveDailySnapshot, 500);
-                             alert(`期貨價格更新完成！\n已將 ${updatedCount} 筆部位之價格同步為即時主力期貨價格：\n台指期近全 (大台)：${Math.round(txPrice || 0)} 點\n小台/微台近全：${Math.round(mxfPrice || txPrice || 0)} 點`);
-                         } else {
-                             alert('沒有符合更新條件的期貨部位。');
-                         }
-                     } catch (e) {
-                         console.error(e);
-                         alert('更新期貨價格失敗：' + e.message);
-                     } finally {
-                         futuresLoading.value = false;
-                     }
-                 };
+                  const autoFetchTaiexIndexPrice = async () => {
+                      futuresForm.value.currentPrice = '查詢中...';
+                      try {
+                          const sym = (futuresForm.value.symbol || '').toUpperCase();
+                          let price = null;
+                          if (sym === 'CDF' || sym === 'QDF') {
+                              // 抓取台積電現貨價格作為個股期貨的洗價現價
+                              const tsmcData = await getYahooData('2330');
+                              price = tsmcData?.regularMarketPrice;
+                          } else {
+                              let targetSymbol = 'TWF:TXF:FUTURES'; // 預設大台近全
+                              if (sym.startsWith('MTX') || sym.startsWith('MXF') || sym.startsWith('TMF')) {
+                                  targetSymbol = 'TWF:MXF:FUTURES'; // 小台/微台近全
+                              }
+                              const url = CF_PROXY + encodeURIComponent(`https://ws.api.cnyes.com/ws/api/v1/quote/quotes/${targetSymbol}`);
+                              const resp = await fetch(url);
+                              const data = await resp.json();
+                              price = data?.data?.[0]?.['6'];
+                          }
+                          if (price) {
+                              futuresForm.value.currentPrice = Number(price);
+                          } else {
+                              // 備援：抓取加權指數現貨
+                              const fallbackUrl = CF_PROXY + encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/^TWII');
+                              const fbResp = await fetch(fallbackUrl);
+                              const fbData = await fbResp.json();
+                              const fbPrice = fbData.chart.result[0].meta.regularMarketPrice;
+                              if (fbPrice) {
+                                  futuresForm.value.currentPrice = Math.round(fbPrice);
+                              } else {
+                                  futuresForm.value.currentPrice = '';
+                                  alert('無法獲取期貨報價或指數現貨價格');
+                              }
+                          }
+                      } catch (e) {
+                          futuresForm.value.currentPrice = '';
+                          console.error(e);
+                          alert('獲取報價失敗：' + e.message);
+                      }
+                  };
+                  const fetchFuturesPricesDirect = async () => {
+                      if (!user.value) return;
+                      const targetPositions = futuresPositions.value.filter(pos => {
+                          const sym = pos.symbol.toUpperCase();
+                          return sym.startsWith('TX') || sym.startsWith('MTX') || sym.startsWith('MXF') || sym.startsWith('TMF') || sym.startsWith('CDF') || sym.startsWith('QDF');
+                      });
+                      if (targetPositions.length === 0) {
+                          alert('您目前沒有需要更新價格的台股期貨部位 (如台指期、小台、微台、台積期等)');
+                          return;
+                      }
+                      futuresLoading.value = true;
+                      try {
+                          // 同步抓取大台近全、小台近全、與台積電現貨
+                          const txUrl = CF_PROXY + encodeURIComponent('https://ws.api.cnyes.com/ws/api/v1/quote/quotes/TWF:TXF:FUTURES');
+                          const mxfUrl = CF_PROXY + encodeURIComponent('https://ws.api.cnyes.com/ws/api/v1/quote/quotes/TWF:MXF:FUTURES');
+                          const [txResp, mxfResp, tsmcData] = await Promise.all([
+                              fetch(txUrl).then(r => r.json()),
+                              fetch(mxfUrl).then(r => r.json()),
+                              getYahooData('2330')
+                          ]);
+                          const txPrice = txResp?.data?.[0]?.['6'];
+                          const mxfPrice = mxfResp?.data?.[0]?.['6'];
+                          const tsmcPrice = tsmcData?.regularMarketPrice;
+                          
+                          if (!txPrice && !mxfPrice && !tsmcPrice) {
+                              alert('無法取得期貨即時報價，請稍後再試。');
+                              return;
+                          }
+                          const batch = db.batch();
+                          let updatedCount = 0;
+                          targetPositions.forEach(pos => {
+                              const sym = pos.symbol.toUpperCase();
+                              let price = null;
+                              if (sym.startsWith('TX')) {
+                                  price = txPrice;
+                              } else if (sym.startsWith('MTX') || sym.startsWith('MXF') || sym.startsWith('TMF')) {
+                                  price = mxfPrice || txPrice;
+                              } else if (sym.startsWith('CDF') || sym.startsWith('QDF')) {
+                                  price = tsmcPrice;
+                              }
+                              if (price) {
+                                  pos.currentPrice = Number(price);
+                                  const ref = db.collection('users').doc(user.value.uid).collection('futures_positions').doc(pos.id);
+                                  batch.update(ref, { currentPrice: Number(price), updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+                                  updatedCount++;
+                              }
+                          });
+                          if (updatedCount > 0) {
+                              await batch.commit();
+                              setTimeout(saveDailySnapshot, 500);
+                              let alertMsg = `期貨價格更新完成！\n已將 ${updatedCount} 筆部位之價格同步為即時價格：`;
+                              if (txPrice) alertMsg += `\n台指期近全 (大台)：${Math.round(txPrice)} 點`;
+                              if (mxfPrice) alertMsg += `\n小台/微台近全：${Math.round(mxfPrice)} 點`;
+                              if (tsmcPrice) alertMsg += `\n台積電現貨 (台積期/小台積期)：${tsmcPrice} 元`;
+                              alert(alertMsg);
+                          } else {
+                              alert('沒有符合更新條件的期貨部位。');
+                          }
+                      } catch (e) {
+                          console.error(e);
+                          alert('更新期貨價格失敗：' + e.message);
+                      } finally {
+                          futuresLoading.value = false;
+                      }
+                  };
                  const fetchFuturesData = (uid) => {
                     if (unsubscribeFuturesMargin) unsubscribeFuturesMargin();
                     unsubscribeFuturesMargin = db.collection('users').doc(uid).collection('portfolio').doc('futures_margin').onSnapshot(doc => {
@@ -754,9 +770,14 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     } else if (sym === 'TMF') {
                         futuresForm.value.multiplier = 10;
                         futuresForm.value.marginUsed = 11100;
+                    } else if (sym === 'CDF') {
+                        futuresForm.value.multiplier = 2000;
+                        futuresForm.value.marginUsed = 300000; // 台積電期貨 2000股 (預估保證金)
+                    } else if (sym === 'QDF') {
+                        futuresForm.value.multiplier = 100;
+                        futuresForm.value.marginUsed = 15000; // 小台積電期貨 100股 (預估保證金)
                     }
                 };
-
                 const saveFuturesPosition = async () => {
                     if (!user.value) return;
                     const f = futuresForm.value;

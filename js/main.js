@@ -589,20 +589,34 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                  const autoFetchTaiexIndexPrice = async () => {
                      futuresForm.value.currentPrice = '查詢中...';
                      try {
-                         const url = CF_PROXY + encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/^TWII');
+                         const sym = (futuresForm.value.symbol || '').toUpperCase();
+                         let targetSymbol = 'TWF:TXF:FUTURES'; // 預設大台近全
+                         if (sym.startsWith('MTX') || sym.startsWith('MXF') || sym.startsWith('TMF')) {
+                             targetSymbol = 'TWF:MXF:FUTURES'; // 小台/微台近全
+                         }
+                         const url = CF_PROXY + encodeURIComponent(`https://ws.api.cnyes.com/ws/api/v1/quote/quotes/${targetSymbol}`);
                          const resp = await fetch(url);
                          const data = await resp.json();
-                         const price = data.chart.result[0].meta.regularMarketPrice;
+                         const price = data?.data?.[0]?.['6'];
                          if (price) {
                              futuresForm.value.currentPrice = Math.round(price);
                          } else {
-                             futuresForm.value.currentPrice = '';
-                             alert('無法獲取指數價格');
+                             // 備援：抓取加權指數現貨
+                             const fallbackUrl = CF_PROXY + encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/^TWII');
+                             const fbResp = await fetch(fallbackUrl);
+                             const fbData = await fbResp.json();
+                             const fbPrice = fbData.chart.result[0].meta.regularMarketPrice;
+                             if (fbPrice) {
+                                 futuresForm.value.currentPrice = Math.round(fbPrice);
+                             } else {
+                                 futuresForm.value.currentPrice = '';
+                                 alert('無法獲取期貨報價或指數現貨價格');
+                             }
                          }
                      } catch (e) {
                          futuresForm.value.currentPrice = '';
                          console.error(e);
-                         alert('獲取加權指數失敗：' + e.message);
+                         alert('獲取報價失敗：' + e.message);
                      }
                  };
                  const fetchFuturesPricesDirect = async () => {
@@ -612,27 +626,47 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                          return sym.startsWith('TX') || sym.startsWith('MTX') || sym.startsWith('MXF') || sym.startsWith('TMF');
                      });
                      if (targetPositions.length === 0) {
-                         alert('您目前沒有需要更新價格的台股期貨部位 (如台指期、小台等)');
+                         alert('您目前沒有需要更新價格的台股期貨部位 (如台指期、小台、微台等)');
                          return;
                      }
                      futuresLoading.value = true;
                      try {
-                         const url = CF_PROXY + encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/^TWII');
-                         const resp = await fetch(url);
-                         const data = await resp.json();
-                         const price = data.chart.result[0].meta.regularMarketPrice;
-                         if (price && price > 0) {
-                             const batch = db.batch();
-                             targetPositions.forEach(pos => {
+                         // 同步抓取大台近全與小台近全
+                         const txUrl = CF_PROXY + encodeURIComponent('https://ws.api.cnyes.com/ws/api/v1/quote/quotes/TWF:TXF:FUTURES');
+                         const mxfUrl = CF_PROXY + encodeURIComponent('https://ws.api.cnyes.com/ws/api/v1/quote/quotes/TWF:MXF:FUTURES');
+                         const [txResp, mxfResp] = await Promise.all([
+                             fetch(txUrl).then(r => r.json()),
+                             fetch(mxfUrl).then(r => r.json())
+                         ]);
+                         const txPrice = txResp?.data?.[0]?.['6'];
+                         const mxfPrice = mxfResp?.data?.[0]?.['6'];
+                         if (!txPrice && !mxfPrice) {
+                             alert('無法取得期貨即時報價，請稍後再試。');
+                             return;
+                         }
+                         const batch = db.batch();
+                         let updatedCount = 0;
+                         targetPositions.forEach(pos => {
+                             const sym = pos.symbol.toUpperCase();
+                             let price = null;
+                             if (sym.startsWith('TX')) {
+                                 price = txPrice;
+                             } else if (sym.startsWith('MTX') || sym.startsWith('MXF') || sym.startsWith('TMF')) {
+                                 price = mxfPrice || txPrice; // 微台與小台價格相同，若小台價格遺失則用大台
+                             }
+                             if (price) {
                                  pos.currentPrice = Math.round(price);
                                  const ref = db.collection('users').doc(user.value.uid).collection('futures_positions').doc(pos.id);
                                  batch.update(ref, { currentPrice: Math.round(price), updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
-                             });
+                                 updatedCount++;
+                             }
+                         });
+                         if (updatedCount > 0) {
                              await batch.commit();
                              setTimeout(saveDailySnapshot, 500);
-                             alert(`期貨價格更新完成！\n已將 ${targetPositions.length} 筆部位之目前價格同步為加權指數：${Math.round(price)} 點。`);
+                             alert(`期貨價格更新完成！\n已將 ${updatedCount} 筆部位之價格同步為即時主力期貨價格：\n台指期近全 (大台)：${Math.round(txPrice || 0)} 點\n小台/微台近全：${Math.round(mxfPrice || txPrice || 0)} 點`);
                          } else {
-                             alert('無法從 Yahoo Finance 取得加權指數價格，請稍後再試。');
+                             alert('沒有符合更新條件的期貨部位。');
                          }
                      } catch (e) {
                          console.error(e);

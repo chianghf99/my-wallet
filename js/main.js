@@ -609,7 +609,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                      if (!user.value) return;
                      const targetPositions = futuresPositions.value.filter(pos => {
                          const sym = pos.symbol.toUpperCase();
-                         return sym.startsWith('TX') || sym.startsWith('MTX') || sym.startsWith('MXF');
+                         return sym.startsWith('TX') || sym.startsWith('MTX') || sym.startsWith('MXF') || sym.startsWith('TMF');
                      });
                      if (targetPositions.length === 0) {
                          alert('您目前沒有需要更新價格的台股期貨部位 (如台指期、小台等)');

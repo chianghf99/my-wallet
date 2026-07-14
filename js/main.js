@@ -290,6 +290,12 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     return (futuresEquity.value / futuresTotalMarginUsed.value) * 100;
                 });
 
+                const futuresLeverageRatio = computed(() => {
+                    const eq = futuresEquity.value;
+                    if (eq <= 0) return 0;
+                    return futuresTotalExposure.value / eq;
+                });
+
                 const grandTotalAssets = computed(() => {
                     const stockVal = twStats.value.value + (usStats.value.value * exchangeRate.value);
                     const cashVal = (cashData.value.twd || 0) + ((cashData.value.usd || 0) * exchangeRate.value);
@@ -2071,7 +2077,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     monthlyProfitData, monthlyProfitRange, drawMonthlyChart,
 
                     futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm, futuresLoading,
-                    futuresTotalUnrealizedPnL, futuresEquity, futuresTotalMarginUsed, futuresTotalExposure, futuresRiskRatio,
+                    futuresTotalUnrealizedPnL, futuresEquity, futuresTotalMarginUsed, futuresTotalExposure, futuresRiskRatio, futuresLeverageRatio,
                     openFuturesModal, saveFuturesPosition, deleteFuturesPosition, closeFuturesPosition, openFuturesMarginModal, adjustFuturesMargin, autoFetchTaiexIndexPrice, fetchFuturesPricesDirect, onFuturesSymbolChange,
                     investmentsTab, performanceTab, overviewTab,
                     mutualFundList, showMutualFundModal, mutualFundForm, mutualFundTotalCost, mutualFundTotalValue, mutualFundTotalPnL, openMutualFundModal, saveMutualFund, deleteMutualFund

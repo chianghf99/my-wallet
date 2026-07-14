@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v5.5.0</title>
+    <title>我的投資組合 | Portfolio v5.6.0</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -298,7 +298,7 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.5.0</h1>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.6.0</h1>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -318,7 +318,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.5.0</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.6.0</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -1724,7 +1724,7 @@
                         </div>
 
                         <!-- 保證金與風控概覽 -->
-                        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+                        <div class="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
                             <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-center">
                                 <div class="text-xs text-gray-400 mb-0.5">台幣保證金</div>
                                 <div class="font-bold text-gray-700 dark:text-gray-200 text-sm">
@@ -1753,7 +1753,7 @@
                                     <span v-else>****</span>
                                 </div>
                             </div>
-                            <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-center col-span-2 md:col-span-1">
+                            <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-center">
                                 <div class="text-xs text-gray-400 mb-0.5">維持率 (風控指標)</div>
                                 <div class="flex items-center justify-center gap-1.5 mt-0.5">
                                     <span class="font-bold text-xs"
@@ -1765,6 +1765,13 @@
                                         :class="futuresRiskRatio >= 150 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400' : (futuresRiskRatio >= 120 ? 'bg-orange-100 text-orange-800 dark:bg-orange-950/30 dark:text-orange-400' : 'bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400')">
                                         {{ futuresRiskRatio >= 150 ? '安全' : (futuresRiskRatio >= 120 ? '警告' : '危險') }}
                                     </span>
+                                </div>
+                            </div>
+                            <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-center">
+                                <div class="text-xs text-gray-400 mb-0.5">期貨獨立槓桿</div>
+                                <div class="font-bold text-gray-700 dark:text-gray-200 text-sm">
+                                    <span v-if="showPrivacy">{{ futuresPositions.length === 0 ? '0.00' : futuresLeverageRatio.toFixed(2) }} 倍</span>
+                                    <span v-else>****</span>
                                 </div>
                             </div>
                         </div>
@@ -2063,9 +2070,24 @@
 
                     <div class="p-6 overflow-y-auto custom-scrollbar">
                         <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
-                            <!-- v5.5.0: 最新版本節點 -->
+                            <!-- v5.6.0: 最新版本節點 -->
                             <div class="relative pl-6">
                                 <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800"></div>
+                                <div class="text-xs text-gray-400 mb-1">2026-07-14</div>
+                                <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
+                                    <div class="font-bold text-gray-800 dark:text-white mb-2">v5.6.0</div>
+                                    <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                        <li>新增：期貨區塊獨立的「期貨獨立槓桿」卡片指標，計算公式為「總合約價值 / 期貨總權益數」，清楚監控期貨帳戶的純槓桿率。</li>
+                                        <li>新增：期貨新增商品代號「下拉式選單」支援：大台 (TX)、小台 (MTX)、微台 (TMF)、台積期 (CDF)、小台積期 (QDF)，並自動填入對應乘數與預估保證金。</li>
+                                        <li>新增：個股期貨支援，新增/編輯台積期或小台積期時，會自動串接並抓取台積電現貨價格（2330）作為洗價目前價格。</li>
+                                        <li>優化：期貨洗價機制，全面升級為鉅亨網即時期貨 API（大台近全、小台近全，支援夜盤報價），並修正因缺乏成本參數導致部位列表未實現損益顯示為 NaN% 的問題。</li>
+                                        <li>優化：將期貨「到期月份」欄位更名為「結算日」，並升級為日期選擇器 (Date Picker) 更加精確。</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <!-- v5.5.0: 舊版本節點 -->
+                            <div class="relative pl-6">
+                                <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-2 border-white dark:border-gray-800"></div>
                                 <div class="text-xs text-gray-400 mb-1">2026-07-10</div>
                                 <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
                                     <div class="font-bold text-gray-800 dark:text-white mb-2">v5.5.0</div>

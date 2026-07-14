@@ -743,6 +743,20 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     showFuturesModal.value = true;
                 };
 
+                const onFuturesSymbolChange = () => {
+                    const sym = futuresForm.value.symbol;
+                    if (sym === 'TX') {
+                        futuresForm.value.multiplier = 200;
+                        futuresForm.value.marginUsed = 179000;
+                    } else if (sym === 'MTX') {
+                        futuresForm.value.multiplier = 50;
+                        futuresForm.value.marginUsed = 45000;
+                    } else if (sym === 'TMF') {
+                        futuresForm.value.multiplier = 10;
+                        futuresForm.value.marginUsed = 11100;
+                    }
+                };
+
                 const saveFuturesPosition = async () => {
                     if (!user.value) return;
                     const f = futuresForm.value;
@@ -2037,7 +2051,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
                     futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm, futuresLoading,
                     futuresTotalUnrealizedPnL, futuresEquity, futuresTotalMarginUsed, futuresTotalExposure, futuresRiskRatio,
-                    openFuturesModal, saveFuturesPosition, deleteFuturesPosition, closeFuturesPosition, openFuturesMarginModal, adjustFuturesMargin, autoFetchTaiexIndexPrice, fetchFuturesPricesDirect,
+                    openFuturesModal, saveFuturesPosition, deleteFuturesPosition, closeFuturesPosition, openFuturesMarginModal, adjustFuturesMargin, autoFetchTaiexIndexPrice, fetchFuturesPricesDirect, onFuturesSymbolChange,
                     investmentsTab, performanceTab, overviewTab,
                     mutualFundList, showMutualFundModal, mutualFundForm, mutualFundTotalCost, mutualFundTotalValue, mutualFundTotalPnL, openMutualFundModal, saveMutualFund, deleteMutualFund
                 };

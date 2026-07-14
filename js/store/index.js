@@ -99,6 +99,7 @@ export const showFuturesModal = ref(false);
 export const futuresForm = ref({ id: null, symbol: '', expiry: '', direction: 'long', contracts: '', entryPrice: '', currentPrice: '', multiplier: '', marginUsed: '', currency: 'TWD', note: '' });
 export const showFuturesMarginModal = ref(false);
 export const futuresMarginForm = ref({ amount: '', currency: 'TWD', type: 'deposit', syncCash: true, loanId: '', note: '' });
+export const futuresLoading = ref(false);
 
 // --- 子分頁切換狀態 ---
 export const investmentsTab = ref('stocks');

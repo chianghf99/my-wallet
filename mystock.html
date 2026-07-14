@@ -1708,6 +1708,10 @@
                                 <i class="fa-solid fa-file-contract text-amber-600"></i> 期貨交易與部位管理
                             </h3>
                             <div class="flex gap-2">
+                                <button @click="fetchFuturesPricesDirect()"
+                                    class="bg-gray-800 text-white dark:bg-gray-700 dark:text-gray-200 px-3 py-1 text-sm rounded hover:bg-gray-700 dark:hover:bg-gray-600 transition flex items-center gap-1">
+                                    <i class="fa-solid fa-sync" :class="{'fa-spin': futuresLoading}"></i>更新期貨
+                                </button>
                                 <button @click="openFuturesMarginModal()"
                                     class="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-3 py-1 text-sm rounded border border-amber-300/40 hover:bg-amber-200 transition">
                                     <i class="fa-solid fa-scale-balanced mr-1"></i>調整保證金
@@ -2785,8 +2789,11 @@
                                 <input type="number" v-model="futuresForm.entryPrice" class="zen-input" placeholder="例如: 20000">
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 mb-1">目前價格 / 點數</label>
-                                <input type="number" v-model="futuresForm.currentPrice" class="zen-input" placeholder="例如: 20500">
+                                <label class="block text-xs font-bold text-gray-500 mb-1 flex justify-between items-center">
+                                    <span>目前價格 / 點數</span>
+                                    <button type="button" @click="autoFetchTaiexIndexPrice" class="text-amber-600 hover:text-amber-500 text-[10px] font-bold"><i class="fa-solid fa-sync mr-0.5"></i>代入加權指數</button>
+                                </label>
+                                <input v-model="futuresForm.currentPrice" class="zen-input" placeholder="例如: 20500">
                             </div>
                         </div>
 

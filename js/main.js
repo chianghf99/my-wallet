@@ -4,7 +4,7 @@ import { getLocalDate, formatNumber, formatCurrency, getPnlClass, getRoi, format
 import { 
     user, stocks, exchangeRate, lastUpdated, loadingTarget, isLoading, viewMode, isMobile, showPrivacy, defaultPrivacyHidden, hideZeroShares, showSettingsModal, isDarkMode, activeSection, showChangelog, stockStates, sectionLoading, showStockNoteModal, stockNoteForm, showHistoryModal, historyRecords, historyFilterYear, availableYears, showDeleteModal, pendingDeleteTx, showEditTxModal, editTxForm, showHistoryEditModalVisible, historyEditForm, notes, showNoteModalVisible, noteForm, loanList, showLoanMgrModal, inlineNewLoan, inlineLoanName, loanForm, cashData, prevDayData, realEstateList, showRealEstateModal, realEstateForm, chartStartDate, chartEndDate, chartPnl, currentRange, divRange, divSearchQuery, divStartDate, divEndDate, realizedStartDate, realizedEndDate, transStartDate, transEndDate, transFilterType, transSearchQuery, sortKeyTrans, sortOrderTrans, sortKeyDiv, sortOrderDiv, realizedGains, realizedSearchQuery, sortKeyRealized, sortOrderRealized, realizedRange, dividendRecords, transactionHistory, showModal, isEditing, form, showTransModal, isFundMode, isLoanMode, loanCashMode, transForm,
     monthlyProfitData, monthlyProfitRange,
-    futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm,
+    futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm, futuresLoading,
     investmentsTab, performanceTab, overviewTab,
     mutualFundList, showMutualFundModal, mutualFundForm
 } from './store/index.js';
@@ -586,7 +586,62 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     await db.collection('users').doc(user.value.uid).collection('funds').doc(id).delete();
                     setTimeout(saveDailySnapshot, 500);
                 };
-                const fetchFuturesData = (uid) => {
+                 const autoFetchTaiexIndexPrice = async () => {
+                     futuresForm.value.currentPrice = '查詢中...';
+                     try {
+                         const url = CF_PROXY + encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/^TWII');
+                         const resp = await fetch(url);
+                         const data = await resp.json();
+                         const price = data.chart.result[0].meta.regularMarketPrice;
+                         if (price) {
+                             futuresForm.value.currentPrice = Math.round(price);
+                         } else {
+                             futuresForm.value.currentPrice = '';
+                             alert('無法獲取指數價格');
+                         }
+                     } catch (e) {
+                         futuresForm.value.currentPrice = '';
+                         console.error(e);
+                         alert('獲取加權指數失敗：' + e.message);
+                     }
+                 };
+                 const fetchFuturesPricesDirect = async () => {
+                     if (!user.value) return;
+                     const targetPositions = futuresPositions.value.filter(pos => {
+                         const sym = pos.symbol.toUpperCase();
+                         return sym.startsWith('TX') || sym.startsWith('MTX') || sym.startsWith('MXF');
+                     });
+                     if (targetPositions.length === 0) {
+                         alert('您目前沒有需要更新價格的台股期貨部位 (如台指期、小台等)');
+                         return;
+                     }
+                     futuresLoading.value = true;
+                     try {
+                         const url = CF_PROXY + encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/^TWII');
+                         const resp = await fetch(url);
+                         const data = await resp.json();
+                         const price = data.chart.result[0].meta.regularMarketPrice;
+                         if (price && price > 0) {
+                             const batch = db.batch();
+                             targetPositions.forEach(pos => {
+                                 pos.currentPrice = Math.round(price);
+                                 const ref = db.collection('users').doc(user.value.uid).collection('futures_positions').doc(pos.id);
+                                 batch.update(ref, { currentPrice: Math.round(price), updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+                             });
+                             await batch.commit();
+                             setTimeout(saveDailySnapshot, 500);
+                             alert(`期貨價格更新完成！\n已將 ${targetPositions.length} 筆部位之目前價格同步為加權指數：${Math.round(price)} 點。`);
+                         } else {
+                             alert('無法從 Yahoo Finance 取得加權指數價格，請稍後再試。');
+                         }
+                     } catch (e) {
+                         console.error(e);
+                         alert('更新期貨價格失敗：' + e.message);
+                     } finally {
+                         futuresLoading.value = false;
+                     }
+                 };
+                 const fetchFuturesData = (uid) => {
                     if (unsubscribeFuturesMargin) unsubscribeFuturesMargin();
                     unsubscribeFuturesMargin = db.collection('users').doc(uid).collection('portfolio').doc('futures_margin').onSnapshot(doc => {
                         if (doc.exists) futuresMargin.value = doc.data();
@@ -1946,9 +2001,9 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
                     monthlyProfitData, monthlyProfitRange, drawMonthlyChart,
 
-                    futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm,
+                    futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm, futuresLoading,
                     futuresTotalUnrealizedPnL, futuresEquity, futuresTotalMarginUsed, futuresTotalExposure, futuresRiskRatio,
-                    openFuturesModal, saveFuturesPosition, deleteFuturesPosition, closeFuturesPosition, openFuturesMarginModal, adjustFuturesMargin,
+                    openFuturesModal, saveFuturesPosition, deleteFuturesPosition, closeFuturesPosition, openFuturesMarginModal, adjustFuturesMargin, autoFetchTaiexIndexPrice, fetchFuturesPricesDirect,
                     investmentsTab, performanceTab, overviewTab,
                     mutualFundList, showMutualFundModal, mutualFundForm, mutualFundTotalCost, mutualFundTotalValue, mutualFundTotalPnL, openMutualFundModal, saveMutualFund, deleteMutualFund
                 };

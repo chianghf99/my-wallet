@@ -4,7 +4,7 @@ import { getLocalDate, formatNumber, formatCurrency, getPnlClass, getRoi, format
 import { 
     user, stocks, exchangeRate, lastUpdated, loadingTarget, isLoading, viewMode, isMobile, showPrivacy, defaultPrivacyHidden, hideZeroShares, showSettingsModal, isDarkMode, activeSection, showChangelog, stockStates, sectionLoading, showStockNoteModal, stockNoteForm, showHistoryModal, historyRecords, historyFilterYear, availableYears, showDeleteModal, pendingDeleteTx, showEditTxModal, editTxForm, showHistoryEditModalVisible, historyEditForm, notes, showNoteModalVisible, noteForm, loanList, showLoanMgrModal, inlineNewLoan, inlineLoanName, loanForm, cashData, prevDayData, realEstateList, showRealEstateModal, realEstateForm, chartStartDate, chartEndDate, chartPnl, currentRange, divRange, divSearchQuery, divStartDate, divEndDate, realizedStartDate, realizedEndDate, transStartDate, transEndDate, transFilterType, transSearchQuery, sortKeyTrans, sortOrderTrans, sortKeyDiv, sortOrderDiv, realizedGains, realizedSearchQuery, sortKeyRealized, sortOrderRealized, realizedRange, dividendRecords, transactionHistory, showModal, isEditing, form, showTransModal, isFundMode, isLoanMode, loanCashMode, transForm,
     monthlyProfitData, monthlyProfitRange,
-    futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm, futuresLoading,
+    futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm, futuresLoading, futuresTransactions,
     investmentsTab, performanceTab, overviewTab,
     mutualFundList, showMutualFundModal, mutualFundForm
 } from './store/index.js';
@@ -13,7 +13,8 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
         createApp({
             setup() {
                 // --- 1. 變數定義區 ---
-                let unsubscribeRealEstate = null, unsubscribeFuturesPositions = null, unsubscribeFuturesMargin = null;
+                const futuresHistoryTab = ref('pnl');
+                let unsubscribeRealEstate = null, unsubscribeFuturesPositions = null, unsubscribeFuturesMargin = null, unsubscribeFuturesTransactions = null;
                 let _initialChartTimer = null;
                 let _initialStocksReady = false, _initialCashReady = false;
                 const _scheduleInitialChart = () => {
@@ -198,8 +199,10 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                             realEstateList.value = []; 
                             futuresMargin.value = { twd: 0, usd: 0 }; 
                             futuresPositions.value = []; 
+                            futuresTransactions.value = [];
                             if (unsubscribeFuturesPositions) unsubscribeFuturesPositions(); 
                             if (unsubscribeFuturesMargin) unsubscribeFuturesMargin(); 
+                            if (unsubscribeFuturesTransactions) unsubscribeFuturesTransactions();
                         }
                     });
                     fetchExchangeRate();
@@ -697,17 +700,30 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                           futuresLoading.value = false;
                       }
                   };
+                 const fetchFuturesTransactions = (uid) => {
+                     if (unsubscribeFuturesTransactions) unsubscribeFuturesTransactions();
+                     unsubscribeFuturesTransactions = db.collection('users').doc(uid)
+                         .collection('futures_transactions')
+                         .orderBy('date', 'desc')
+                         .onSnapshot(snap => {
+                             futuresTransactions.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                         }, err => {
+                             console.error('Error fetching futures transactions:', err);
+                         });
+                 };
+
                  const fetchFuturesData = (uid) => {
-                    if (unsubscribeFuturesMargin) unsubscribeFuturesMargin();
-                    unsubscribeFuturesMargin = db.collection('users').doc(uid).collection('portfolio').doc('futures_margin').onSnapshot(doc => {
-                        if (doc.exists) futuresMargin.value = doc.data();
-                        else futuresMargin.value = { twd: 0, usd: 0 };
-                    });
-                    if (unsubscribeFuturesPositions) unsubscribeFuturesPositions();
-                    unsubscribeFuturesPositions = db.collection('users').doc(uid).collection('futures_positions').onSnapshot(snap => {
-                        futuresPositions.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                    });
-                };
+                     if (unsubscribeFuturesMargin) unsubscribeFuturesMargin();
+                     unsubscribeFuturesMargin = db.collection('users').doc(uid).collection('portfolio').doc('futures_margin').onSnapshot(doc => {
+                         if (doc.exists) futuresMargin.value = doc.data();
+                         else futuresMargin.value = { twd: 0, usd: 0 };
+                     });
+                     if (unsubscribeFuturesPositions) unsubscribeFuturesPositions();
+                     unsubscribeFuturesPositions = db.collection('users').doc(uid).collection('futures_positions').onSnapshot(snap => {
+                         futuresPositions.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                     });
+                     fetchFuturesTransactions(uid);
+                 };
                 const openRealEstateModal = (re) => {
                     if (re) {
                         // 相容舊資料（mortgageLoanId 單一 string）
@@ -812,7 +828,23 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     if (f.id) {
                         await col.doc(f.id).update(data);
                     } else {
-                        await col.add(data);
+                        const newPosRef = col.doc();
+                        await db.collection('users').doc(user.value.uid).collection('futures_transactions').add({
+                            type: 'open',
+                            symbol: data.symbol,
+                            expiry: data.expiry,
+                            direction: data.direction,
+                            contracts: data.contracts,
+                            price: data.entryPrice,
+                            multiplier: data.multiplier,
+                            marginUsed: data.marginUsed,
+                            currency: data.currency,
+                            date: getLocalDate(),
+                            note: data.note || '期貨建倉',
+                            positionId: newPosRef.id,
+                            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        await newPosRef.set(data);
                     }
                     showFuturesModal.value = false;
                     setTimeout(saveDailySnapshot, 500);
@@ -837,8 +869,9 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
                     if (!confirm(`平倉價格: ${closePrice}\n預估盈虧: ${pos.currency === 'USD' ? '$' : 'NT$'} ${formatNumber(pnl)}\n\n確定執行平倉嗎？`)) return;
 
-                    // 1. 寫入已實現損益
-                    await db.collection('users').doc(user.value.uid).collection('realized_gains').add({
+                    // 1. 寫入已實現損益 (產生 doc ID 並設定)
+                    const realizedRef = db.collection('users').doc(user.value.uid).collection('realized_gains').doc();
+                    await realizedRef.set({
                         symbol: pos.symbol,
                         name: `${pos.symbol}${pos.expiry ? ' ' + pos.expiry : ''} (${pos.direction === 'long' ? '多' : '空'}平)`,
                         pnl: pnl,
@@ -848,6 +881,25 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         buyPrice: pos.entryPrice,
                         sellPrice: closePrice,
                         memo: pos.note || '期貨平倉'
+                    });
+
+                    // 1b. 寫入期貨交易歷史紀錄
+                    await db.collection('users').doc(user.value.uid).collection('futures_transactions').add({
+                        type: 'close',
+                        symbol: pos.symbol,
+                        expiry: pos.expiry || '',
+                        direction: pos.direction,
+                        contracts: pos.contracts,
+                        entryPrice: pos.entryPrice,
+                        closePrice: closePrice,
+                        multiplier: pos.multiplier,
+                        marginUsed: pos.marginUsed || 0,
+                        pnl: pnl,
+                        currency: pos.currency,
+                        date: getLocalDate(),
+                        note: pos.note || '期貨平倉',
+                        realizedGainsId: realizedRef.id,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
                     });
 
                     // 2. 將盈虧灌回期貨保證金帳戶
@@ -863,8 +915,123 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     await db.collection('users').doc(user.value.uid).collection('futures_positions').doc(pos.id).delete();
 
                     alert('平倉成功！平倉損益已歸檔，並調整保證金帳戶餘額。');
-                    setTimeout(saveDailySnapshot, 500);
                 };
+
+                const deleteFuturesTransaction = async (tx) => {
+                    if (!confirm(`確定要刪除此筆交易紀錄？\n(這將撤銷此動作對應的資金或部位狀態！)`)) return;
+                    
+                    const uid = user.value.uid;
+                    const batch = db.batch();
+                    const txRef = db.collection('users').doc(uid).collection('futures_transactions').doc(tx.id);
+                    batch.delete(txRef);
+                    
+                    try {
+                        const curMargin = { ...futuresMargin.value };
+                        
+                        if (tx.type === 'deposit') {
+                            if (tx.currency === 'USD') {
+                                curMargin.usd = Math.max((curMargin.usd || 0) - tx.amount, 0);
+                            } else {
+                                curMargin.twd = Math.max((curMargin.twd || 0) - tx.amount, 0);
+                            }
+                            const marginRef = db.collection('users').doc(uid).collection('portfolio').doc('futures_margin');
+                            batch.set(marginRef, curMargin, { merge: true });
+                            
+                            const cashSnap = await db.collection('users').doc(uid)
+                                .collection('transactions')
+                                .where('symbol', '==', 'CASH')
+                                .where('totalAmount', '==', tx.amount)
+                                .where('currency', '==', tx.currency)
+                                .where('date', '==', tx.date)
+                                .where('type', '==', 'withdraw')
+                                .get();
+                            
+                            if (!cashSnap.empty) {
+                                batch.delete(cashSnap.docs[0].ref);
+                                const curCash = { ...cashData.value };
+                                if (tx.currency === 'USD') {
+                                    curCash.usd = (curCash.usd || 0) + tx.amount;
+                                } else {
+                                    curCash.twd = (curCash.twd || 0) + tx.amount;
+                                }
+                                const cashRef = db.collection('users').doc(uid).collection('portfolio').doc('cash');
+                                batch.set(cashRef, curCash, { merge: true });
+                            }
+                        } 
+                        else if (tx.type === 'withdraw') {
+                            if (tx.currency === 'USD') {
+                                curMargin.usd = (curMargin.usd || 0) + tx.amount;
+                            } else {
+                                curMargin.twd = (curMargin.twd || 0) + tx.amount;
+                            }
+                            const marginRef = db.collection('users').doc(uid).collection('portfolio').doc('futures_margin');
+                            batch.set(marginRef, curMargin, { merge: true });
+                            
+                            const cashSnap = await db.collection('users').doc(uid)
+                                .collection('transactions')
+                                .where('symbol', '==', 'CASH')
+                                .where('totalAmount', '==', tx.amount)
+                                .where('currency', '==', tx.currency)
+                                .where('date', '==', tx.date)
+                                .where('type', '==', 'deposit')
+                                .get();
+                            
+                            if (!cashSnap.empty) {
+                                batch.delete(cashSnap.docs[0].ref);
+                                const curCash = { ...cashData.value };
+                                if (tx.currency === 'USD') {
+                                    curCash.usd = Math.max((curCash.usd || 0) - tx.amount, 0);
+                                } else {
+                                    curCash.twd = Math.max((curCash.twd || 0) - tx.amount, 0);
+                                }
+                                const cashRef = db.collection('users').doc(uid).collection('portfolio').doc('cash');
+                                batch.set(cashRef, curCash, { merge: true });
+                            }
+                        }
+                        else if (tx.type === 'open') {
+                            if (tx.positionId) {
+                                const posRef = db.collection('users').doc(uid).collection('futures_positions').doc(tx.positionId);
+                                batch.delete(posRef);
+                            }
+                        }
+                        else if (tx.type === 'close') {
+                            if (tx.currency === 'USD') {
+                                curMargin.usd = (curMargin.usd || 0) - (tx.pnl || 0);
+                            } else {
+                                curMargin.twd = (curMargin.twd || 0) - (tx.pnl || 0);
+                            }
+                            const marginRef = db.collection('users').doc(uid).collection('portfolio').doc('futures_margin');
+                            batch.set(marginRef, curMargin, { merge: true });
+                            
+                            if (tx.realizedGainsId) {
+                                const rgRef = db.collection('users').doc(uid).collection('realized_gains').doc(tx.realizedGainsId);
+                                batch.delete(rgRef);
+                            }
+                            
+                            const posRef = db.collection('users').doc(uid).collection('futures_positions').doc();
+                            batch.set(posRef, {
+                                symbol: tx.symbol,
+                                expiry: tx.expiry || '',
+                                direction: tx.direction,
+                                contracts: tx.contracts,
+                                entryPrice: tx.entryPrice,
+                                currentPrice: tx.closePrice || tx.entryPrice,
+                                multiplier: tx.multiplier,
+                                marginUsed: tx.marginUsed || 0,
+                                currency: tx.currency,
+                                note: tx.note || '',
+                                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                             });
+                         }
+                         
+                         await batch.commit();
+                         setTimeout(saveDailySnapshot, 500);
+                         alert('刪除交易紀錄成功，相關狀態已連動復原！');
+                     } catch (err) {
+                         console.error('Error deleting transaction:', err);
+                         alert('刪除失敗：' + err.message);
+                     }
+                 };
 
                 const openFuturesMarginModal = () => {
                     futuresMarginForm.value = {
@@ -926,6 +1093,17 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
                     // 1. 更新期貨保證金
                     await db.collection('users').doc(user.value.uid).collection('portfolio').doc('futures_margin').set(curMargin, { merge: true });
+
+                    // 1b. 寫入期貨保證金劃轉流水帳
+                    await db.collection('users').doc(user.value.uid).collection('futures_transactions').add({
+                        type: formVal.type,
+                        symbol: 'MARGIN',
+                        amount: amt,
+                        currency: formVal.currency,
+                        date: getLocalDate(),
+                        note: formVal.note || (formVal.type === 'deposit' ? '保證金存入' : '保證金提出'),
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
 
                     // 2. 若勾選同步，更新銀行活存
                     if (formVal.syncCash) {
@@ -2076,9 +2254,9 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
                     monthlyProfitData, monthlyProfitRange, drawMonthlyChart,
 
-                    futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm, futuresLoading,
+                    futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm, futuresLoading, futuresTransactions,
                     futuresTotalUnrealizedPnL, futuresEquity, futuresTotalMarginUsed, futuresTotalExposure, futuresRiskRatio, futuresLeverageRatio,
-                    openFuturesModal, saveFuturesPosition, deleteFuturesPosition, closeFuturesPosition, openFuturesMarginModal, adjustFuturesMargin, autoFetchTaiexIndexPrice, fetchFuturesPricesDirect, onFuturesSymbolChange,
+                    openFuturesModal, saveFuturesPosition, deleteFuturesPosition, closeFuturesPosition, openFuturesMarginModal, adjustFuturesMargin, autoFetchTaiexIndexPrice, fetchFuturesPricesDirect, onFuturesSymbolChange, deleteFuturesTransaction, futuresHistoryTab,
                     investmentsTab, performanceTab, overviewTab,
                     mutualFundList, showMutualFundModal, mutualFundForm, mutualFundTotalCost, mutualFundTotalValue, mutualFundTotalPnL, openMutualFundModal, saveMutualFund, deleteMutualFund
                 };

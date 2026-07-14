@@ -100,6 +100,7 @@ export const futuresForm = ref({ id: null, symbol: '', expiry: '', direction: 'l
 export const showFuturesMarginModal = ref(false);
 export const futuresMarginForm = ref({ amount: '', currency: 'TWD', type: 'deposit', syncCash: true, loanId: '', note: '' });
 export const futuresLoading = ref(false);
+export const futuresTransactions = ref([]);
 
 // --- 子分頁切換狀態 ---
 export const investmentsTab = ref('stocks');

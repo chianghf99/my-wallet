@@ -1790,7 +1790,7 @@
                             <table class="w-full text-xs text-left">
                                 <thead class="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase font-medium">
                                     <tr>
-                                        <th class="px-4 py-3">商品 / 結算</th>
+                                        <th class="px-4 py-3">商品 / 結算日</th>
                                         <th class="px-4 py-3 text-center">方向</th>
                                         <th class="px-4 py-3 text-right">口數</th>
                                         <th class="px-4 py-3 text-right">建倉價格</th>
@@ -1824,7 +1824,7 @@
                                             <span v-else>****</span>
                                         </td>
                                         <td class="px-4 py-3 text-right font-bold" :class="getPnlClass((pos.direction === 'long' ? (pos.currentPrice - pos.entryPrice) : (pos.entryPrice - pos.currentPrice)) * pos.contracts * pos.multiplier)">
-                                            <span v-if="showPrivacy">{{ formatChange((pos.direction === 'long' ? (pos.currentPrice - pos.entryPrice) : (pos.entryPrice - pos.currentPrice)) * pos.contracts * pos.multiplier) }} ({{ pos.currency }})</span>
+                                            <span v-if="showPrivacy">{{ formatChange((pos.direction === 'long' ? (pos.currentPrice - pos.entryPrice) : (pos.entryPrice - pos.currentPrice)) * pos.contracts * pos.multiplier, pos.entryPrice * pos.contracts * pos.multiplier) }} ({{ pos.currency }})</span>
                                             <span v-else>****</span>
                                         </td>
                                         <td class="px-4 py-3 text-center">
@@ -2746,12 +2746,17 @@
                     <div class="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 mb-1">商品代號 (如: TX, MTX)</label>
-                                <input type="text" v-model="futuresForm.symbol" class="zen-input uppercase" placeholder="例如: MTX">
+                                <label class="block text-xs font-bold text-gray-500 mb-1">商品代號</label>
+                                <select v-model="futuresForm.symbol" @change="onFuturesSymbolChange" class="zen-input">
+                                    <option value="">請選擇</option>
+                                    <option value="TX">大台 (TX)</option>
+                                    <option value="MTX">小台 (MTX)</option>
+                                    <option value="TMF">微台 (TMF)</option>
+                                </select>
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 mb-1">結算月份 (選填)</label>
-                                <input type="text" v-model="futuresForm.expiry" class="zen-input" placeholder="例如: 202607">
+                                <label class="block text-xs font-bold text-gray-500 mb-1">結算日</label>
+                                <input type="date" v-model="futuresForm.expiry" class="zen-input">
                             </div>
                         </div>
 

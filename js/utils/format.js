@@ -21,8 +21,13 @@ export const getPnlClass = (v) => v >= 0 ? 'text-up' : 'text-down';
 export const getRoi = (c, p) => c === 0 ? '0%' : (p > 0 ? '+' : '') + (p / c * 100).toFixed(2) + '%';
 
 export const formatChange = (diff, prev) => { 
+    if (diff === null || diff === undefined || isNaN(diff)) return '-';
+    const formattedDiff = formatNumber(Math.round(diff));
+    if (prev === undefined || prev === null || prev === 0 || isNaN(prev)) {
+        return (diff > 0 ? '+' : '') + formattedDiff;
+    }
     const pct = (diff / prev) * 100; 
-    return (diff > 0 ? '+' : '') + diff.toFixed(2) + ' (' + (pct > 0 ? '+' : '') + pct.toFixed(2) + '%)'; 
+    return (diff > 0 ? '+' : '') + formattedDiff + ' (' + (pct > 0 ? '+' : '') + pct.toFixed(2) + '%)'; 
 };
 
 export const getTypeName = (type) => { 

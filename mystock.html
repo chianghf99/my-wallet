@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v5.8.0</title>
+    <title>我的投資組合 | Portfolio v5.8.1</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -298,7 +298,7 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.8.0</h1>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.8.1</h1>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -318,7 +318,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.8.0</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.8.1</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -749,7 +749,7 @@
                                     <div class="flex-grow h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                                         <div class="h-full bg-orange-400 opacity-50" :style="{ width: Math.min(((exposureRatio - 1) / 2) * 100, 100) + '%' }"></div>
                                     </div>
-                                    <span class="text-[9px] text-orange-500 font-bold whitespace-nowrap">含 正2 曝險: {{ exposureRatio.toFixed(2) }}x</span>
+                                    <span class="text-[9px] text-orange-500 font-bold whitespace-nowrap">含 槓桿與期貨曝險: {{ exposureRatio.toFixed(2) }}x</span>
                                 </div>
                             </div>
                             <div class="grid grid-cols-3 gap-2 text-center text-xs" v-if="showPrivacy">
@@ -768,7 +768,7 @@
                             </div>
                             <div class="mt-2 text-[11px] text-red-600 dark:text-red-400 flex items-start gap-1" v-if="exposureRatio >= 2">
                                 <i class="fa-solid fa-triangle-exclamation mt-0.5 flex-shrink-0"></i>
-                                <span>{{ exposureRatio > leverageRatio + 0.01 ? '加計 正2 曝險後' : '槓桿比' }} {{ exposureRatio.toFixed(2) }}x 偏高，請評估風險承受能力。</span>
+                                <span>{{ exposureRatio > leverageRatio + 0.01 ? '加計 槓桿與期貨曝險後' : '槓桿比' }} {{ exposureRatio.toFixed(2) }}x 偏高，請評估風險承受能力。</span>
                             </div>
                             <!-- 槓桿比與曝險比的說明備註 -->
                             <div class="mt-3 pt-3 border-t border-amber-200/50 dark:border-amber-800/40 text-[10px] text-amber-700/80 dark:text-amber-400/80 space-y-1.5 leading-relaxed">
@@ -2192,9 +2192,20 @@
 
                     <div class="p-6 overflow-y-auto custom-scrollbar">
                         <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
-                            <!-- v5.8.0: 最新版本節點 -->
+                            <!-- v5.8.1: 最新版本節點 -->
                             <div class="relative pl-6">
                                 <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800"></div>
+                                <div class="text-xs text-gray-400 mb-1">2026-07-15</div>
+                                <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
+                                    <div class="font-bold text-gray-800 dark:text-white mb-2">v5.8.1</div>
+                                    <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                        <li>優化：將資金管理槓桿儀表板中的曝險比標記由「含 正2 曝險」改為「含 槓桿與期貨曝險」，以更通用的文字說明真實的衍生性工具與槓桿 ETF 曝險結構。</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <!-- v5.8.0: 舊版本節點 -->
+                            <div class="relative pl-6">
+                                <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-2 border-white dark:border-gray-800"></div>
                                 <div class="text-xs text-gray-400 mb-1">2026-07-15</div>
                                 <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
                                     <div class="font-bold text-gray-800 dark:text-white mb-2">v5.8.0</div>

@@ -1819,7 +1819,7 @@
                                 <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                                     <tr v-for="pos in futuresPositions" :key="pos.id" class="hover:bg-gray-50 dark:hover:bg-gray-800 transition">
                                         <td class="px-4 py-3 font-bold dark:text-white">
-                                            {{ pos.symbol }} <span class="text-[10px] font-normal text-gray-400" v-if="pos.expiry">{{ pos.expiry }}</span>
+                                            {{ getFuturesDisplayName(pos.symbol) }} <span class="text-[10px] font-normal text-gray-400" v-if="pos.expiry">{{ pos.expiry }}</span>
                                             <div class="text-[10px] text-gray-400 font-normal" v-if="pos.note">{{ pos.note }}</div>
                                         </td>
                                         <td class="px-4 py-3 text-center font-bold">
@@ -1839,7 +1839,7 @@
                                             <span v-else>****</span>
                                         </td>
                                         <td class="px-4 py-3 text-right font-bold" :class="getPnlClass((pos.direction === 'long' ? (pos.currentPrice - pos.entryPrice) : (pos.entryPrice - pos.currentPrice)) * pos.contracts * pos.multiplier)">
-                                            <span v-if="showPrivacy">{{ formatChange((pos.direction === 'long' ? (pos.currentPrice - pos.entryPrice) : (pos.entryPrice - pos.currentPrice)) * pos.contracts * pos.multiplier, pos.entryPrice * pos.contracts * pos.multiplier) }} ({{ pos.currency }})</span>
+                                            <span v-if="showPrivacy">{{ formatChange((pos.direction === 'long' ? (pos.currentPrice - pos.entryPrice) : (pos.entryPrice - pos.currentPrice)) * pos.contracts * pos.multiplier, pos.marginUsed) }} ({{ pos.currency }})</span>
                                             <span v-else>****</span>
                                         </td>
                                         <td class="px-4 py-3 text-center">
@@ -1908,7 +1908,7 @@
                                         <tr v-for="tx in futuresTransactions.filter(t => t.type === 'close')" :key="tx.id" class="hover:bg-gray-50 dark:hover:bg-gray-800 transition">
                                             <td class="px-4 py-3 text-gray-500">{{ tx.date }}</td>
                                             <td class="px-4 py-3 font-bold dark:text-white">
-                                                {{ tx.symbol }} <span class="text-[10px] font-normal text-gray-400" v-if="tx.expiry">{{ tx.expiry }}</span>
+                                                {{ getFuturesDisplayName(tx.symbol) }} <span class="text-[10px] font-normal text-gray-400" v-if="tx.expiry">{{ tx.expiry }}</span>
                                             </td>
                                             <td class="px-4 py-3 text-center font-semibold">
                                                 <span :class="tx.direction === 'long' ? 'text-red-500' : 'text-emerald-500'">
@@ -1919,7 +1919,7 @@
                                             <td class="px-4 py-3 text-right">{{ formatNumber(tx.entryPrice) }}</td>
                                             <td class="px-4 py-3 text-right">{{ formatNumber(tx.closePrice) }}</td>
                                             <td class="px-4 py-3 text-right font-bold" :class="getPnlClass(tx.pnl)">
-                                                <span v-if="showPrivacy">{{ formatChange(tx.pnl, tx.entryPrice * tx.contracts * tx.multiplier) }} ({{ tx.currency }})</span>
+                                                <span v-if="showPrivacy">{{ formatChange(tx.pnl, tx.marginUsed) }} ({{ tx.currency }})</span>
                                                 <span v-else>****</span>
                                             </td>
                                             <td class="px-4 py-3 text-gray-400 max-w-[150px] truncate" :title="tx.note">{{ tx.note || '-' }}</td>
@@ -1957,7 +1957,7 @@
                                                 <span v-else-if="tx.type === 'close'" class="text-purple-500"><i class="fa-solid fa-scale-balanced mr-1"></i>平倉結算</span>
                                             </td>
                                             <td class="px-4 py-3 font-bold dark:text-white">
-                                                {{ tx.symbol === 'MARGIN' ? '保證金帳戶' : tx.symbol }} 
+                                                {{ getFuturesDisplayName(tx.symbol) }} 
                                                 <span class="text-[10px] font-normal text-gray-400" v-if="tx.expiry">{{ tx.expiry }}</span>
                                             </td>
                                             <td class="px-4 py-3 text-right font-bold">
@@ -2192,9 +2192,22 @@
 
                     <div class="p-6 overflow-y-auto custom-scrollbar">
                         <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
-                            <!-- v5.7.0: 最新版本節點 -->
+                            <!-- v5.8.0: 最新版本節點 -->
                             <div class="relative pl-6">
                                 <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800"></div>
+                                <div class="text-xs text-gray-400 mb-1">2026-07-15</div>
+                                <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
+                                    <div class="font-bold text-gray-800 dark:text-white mb-2">v5.8.0</div>
+                                    <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                        <li>修正：保留並恢復個股漲跌幅的「小數點」數值顯示，提升市場報價精準度。</li>
+                                        <li>修正：期貨未實現與已實現損益的百分比（%）計算分母調整為「佔用保證金」，更符合期貨交易的投資報酬率（ROI）計算。</li>
+                                        <li>優化：將期貨商品代碼全面中文化顯示（例如：TMF 轉為「微台指」、TX 轉為「大台指」、MTX 轉為「小台指」、MARGIN 轉為「保證金帳戶」），套用於所有表格與彈窗選單。</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <!-- v5.7.0: 舊版本節點 -->
+                            <div class="relative pl-6">
+                                <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-2 border-white dark:border-gray-800"></div>
                                 <div class="text-xs text-gray-400 mb-1">2026-07-14</div>
                                 <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
                                     <div class="font-bold text-gray-800 dark:text-white mb-2">v5.7.0</div>
@@ -2907,9 +2920,9 @@
                                 <label class="block text-xs font-bold text-gray-500 mb-1">商品代號</label>
                                 <select v-model="futuresForm.symbol" @change="onFuturesSymbolChange" class="zen-input">
                                     <option value="">請選擇</option>
-                                    <option value="TX">大台 (TX)</option>
-                                    <option value="MTX">小台 (MTX)</option>
-                                    <option value="TMF">微台 (TMF)</option>
+                                    <option value="TX">大台指 (TX)</option>
+                                    <option value="MTX">小台指 (MTX)</option>
+                                    <option value="TMF">微台指 (TMF)</option>
                                     <option value="CDF">台積期 (CDF)</option>
                                     <option value="QDF">小台積期 (QDF)</option>
                                 </select>

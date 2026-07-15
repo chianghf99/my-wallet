@@ -268,9 +268,12 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     }, 0);
                 });
 
+                const futuresTotalMarginCashTwd = computed(() => {
+                    return (futuresMargin.value.twd || 0) + ((futuresMargin.value.usd || 0) * exchangeRate.value);
+                });
+
                 const futuresEquity = computed(() => {
-                    const marginCash = (futuresMargin.value.twd || 0) + ((futuresMargin.value.usd || 0) * exchangeRate.value);
-                    return marginCash + futuresTotalUnrealizedPnL.value;
+                    return futuresTotalMarginCashTwd.value + futuresTotalUnrealizedPnL.value;
                 });
 
                 const futuresTotalMarginUsed = computed(() => {
@@ -2282,7 +2285,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
                     futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm, futuresLoading, futuresTransactions,
                     futuresTotalUnrealizedPnL, futuresEquity, futuresTotalMarginUsed, futuresTotalExposure, futuresRiskRatio, futuresLeverageRatio,
-                    openFuturesModal, saveFuturesPosition, deleteFuturesPosition, closeFuturesPosition, openFuturesMarginModal, adjustFuturesMargin, autoFetchTaiexIndexPrice, fetchFuturesPricesDirect, onFuturesSymbolChange, deleteFuturesTransaction, futuresHistoryTab, getFuturesDisplayName,
+                    openFuturesModal, saveFuturesPosition, deleteFuturesPosition, closeFuturesPosition, openFuturesMarginModal, adjustFuturesMargin, autoFetchTaiexIndexPrice, fetchFuturesPricesDirect, onFuturesSymbolChange, deleteFuturesTransaction, futuresHistoryTab, getFuturesDisplayName, futuresTotalMarginCashTwd,
                     investmentsTab, performanceTab, overviewTab,
                     mutualFundList, showMutualFundModal, mutualFundForm, mutualFundTotalCost, mutualFundTotalValue, mutualFundTotalPnL, openMutualFundModal, saveMutualFund, deleteMutualFund
                 };

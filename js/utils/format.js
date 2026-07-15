@@ -22,7 +22,8 @@ export const getRoi = (c, p) => c === 0 ? '0%' : (p > 0 ? '+' : '') + (p / c * 1
 
 export const formatChange = (diff, prev) => { 
     if (diff === null || diff === undefined || isNaN(diff)) return '-';
-    const formattedDiff = formatNumber(Math.round(diff));
+    const rounded = Math.abs(diff) < 0.1 ? Number(diff.toFixed(4)) : Number(diff.toFixed(2));
+    const formattedDiff = formatNumber(rounded);
     if (prev === undefined || prev === null || prev === 0 || isNaN(prev)) {
         return (diff > 0 ? '+' : '') + formattedDiff;
     }
@@ -45,3 +46,16 @@ export const getAmountSign = (tx) => {
     if (tx.type === 'buy' || tx.type === 'withdraw' || tx.type === 'repay') return '-'; 
     return '+'; 
 };
+
+export const getFuturesDisplayName = (sym) => {
+    if (!sym) return '';
+    const upperSym = sym.toUpperCase();
+    if (upperSym === 'MARGIN') return '保證金帳戶';
+    if (upperSym.startsWith('MTX') || upperSym.startsWith('MXF')) return '小台指';
+    if (upperSym.startsWith('TX')) return '大台指';
+    if (upperSym.startsWith('TMF')) return '微台指';
+    if (upperSym.startsWith('CDF')) return '台積期';
+    if (upperSym.startsWith('QDF')) return '小台積期';
+    return sym;
+};
+

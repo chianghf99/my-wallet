@@ -372,6 +372,11 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 });
 
                 // v4.5.0: 曝險比例 = 金融總曝險 / 金融淨資產
+                const positionExposureMultiplier = computed(() => {
+                    if (financialAssets.value <= 0) return 1;
+                    return financialExposure.value / financialAssets.value;
+                });
+
                 const exposureRatio = computed(() => {
                     if (financialNetWorth.value <= 0) return 1;
                     return financialExposure.value / financialNetWorth.value;
@@ -2249,7 +2254,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     clearAllUserData, 
                     user, login, logout, stocks, exchangeRate, lastUpdated, isLoading, viewMode, isMobile, showPrivacy, isDarkMode, toggleDarkMode, activeSection, toggleSection, showChangelog, hideZeroShares, defaultPrivacyHidden,
                     twStats, usStats, grandTotalValue, grandTotalAssets, grandTotalExposure, grandTotalPnL, twPieRatios, usPieRatios, twStockList, usStockList, leverageRatio, exposureRatio,
-                    financialAssets, financialLoans, financialNetWorth, financialExposure,
+                    financialAssets, financialLoans, financialNetWorth, financialExposure, positionExposureMultiplier,
                     showModal, isEditing, form, openModal, editStock, closeModal, saveStock, deleteStock,
                     showTransModal, transForm, openTransModal, closeTransModal, submitTransaction, isFundMode, openFundModal,
                     autoFetchName, autoFetchTransName, fetchPrices, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountClass, getAmountSign,

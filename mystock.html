@@ -752,6 +752,12 @@
                                     <span class="text-[9px] text-orange-500 font-bold whitespace-nowrap">含 槓桿與期貨曝險: {{ exposureRatio.toFixed(2) }}x</span>
                                 </div>
                             </div>
+                            <div class="mt-2 flex items-center gap-2" v-if="showPrivacy && positionExposureMultiplier > 1.01">
+                                <div class="flex-grow h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                    <div class="h-full bg-purple-400 opacity-60" :style="{ width: Math.min(((positionExposureMultiplier - 1) / 2) * 100, 100) + '%' }"></div>
+                                </div>
+                                <span class="text-[9px] text-purple-500 dark:text-purple-400 font-bold whitespace-nowrap">持倉曝險倍率: {{ positionExposureMultiplier.toFixed(2) }}x</span>
+                            </div>
                             <div class="grid grid-cols-3 gap-2 text-center text-xs" v-if="showPrivacy">
                                 <div class="bg-white dark:bg-gray-800 rounded-lg p-2">
                                     <div class="text-gray-400 mb-0.5">{{ exposureRatio > leverageRatio + 0.01 ? '金融總曝險' : '金融總資產' }}</div>
@@ -794,6 +800,12 @@
                                     <i class="fa-solid fa-circle-info mt-0.5 flex-shrink-0"></i>
                                     <div>
                                         <strong>金融負債</strong> = 總借款 - 一般房貸 (包含已勾選投資用途之增貸)
+                                    </div>
+                                </div>
+                                <div class="flex items-start gap-1" v-if="positionExposureMultiplier > 1.01">
+                                    <i class="fa-solid fa-circle-info mt-0.5 flex-shrink-0"></i>
+                                    <div>
+                                        <strong>持倉曝險倍率</strong> = 金融總曝險 / 金融資產，反映持倉本身放大幾倍（槓桿ETF + 期貨）；純現貨無借款時 = 1x
                                     </div>
                                 </div>
                             </div>

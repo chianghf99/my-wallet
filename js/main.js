@@ -917,6 +917,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     // 3. 刪除該部位
                     await db.collection('users').doc(user.value.uid).collection('futures_positions').doc(pos.id).delete();
 
+                    setTimeout(saveDailySnapshot, 500);
                     alert('平倉成功！平倉損益已歸檔，並調整保證金帳戶餘額。');
                 };
 

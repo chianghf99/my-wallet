@@ -933,8 +933,118 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     setTimeout(saveDailySnapshot, 500);
                     alert('平倉成功！平倉損益已歸檔，並調整保證金帳戶餘額。');
                 };
+                const rollFuturesPosition = async (pos) => {
+                    // Step 1: 近月平倉價
+                    const closePriceStr = prompt(`【展期】請輸入「${getFuturesDisplayName(pos.symbol)} ${pos.expiry || ''}」的近月平倉價格：`, pos.currentPrice);
+                    if (closePriceStr === null) return;
+                    const closePrice = Number(closePriceStr);
+                    if (isNaN(closePrice) || closePrice <= 0) return alert('請輸入有效價格');
+
+                    // Step 2: 遠月到期月份
+                    const newExpiry = prompt('請輸入遠月到期代號（例如：202508）：', '');
+                    if (newExpiry === null) return;
+                    if (!newExpiry.trim()) return alert('請輸入到期月份');
+
+                    // Step 3: 遠月建倉價
+                    const openPriceStr = prompt(`請輸入「${getFuturesDisplayName(pos.symbol)} ${newExpiry.trim()}」的遠月建倉價格：`, closePrice);
+                    if (openPriceStr === null) return;
+                    const newOpenPrice = Number(openPriceStr);
+                    if (isNaN(newOpenPrice) || newOpenPrice <= 0) return alert('請輸入有效價格');
+
+                    // Step 4: 手續費（兩腿合計，選填）
+                    const feeStr = prompt('手續費 + 交易稅（兩腿合計，選填，留空或 0 跳過）：', '0');
+                    if (feeStr === null) return;
+                    const fee = Math.max(0, Number(feeStr) || 0);
+
+                    // 計算
+                    const nearPnL = (pos.direction === 'long' ? (closePrice - pos.entryPrice) : (pos.entryPrice - closePrice)) * pos.contracts * pos.multiplier;
+                    const rollSpread = (pos.direction === 'long' ? (newOpenPrice - closePrice) : (closePrice - newOpenPrice)) * pos.contracts * pos.multiplier;
+                    const marginAdjustment = nearPnL - fee;
+                    const currency = pos.currency || 'TWD';
+                    const sym = currency === 'USD' ? '$' : 'NT$';
+
+                    if (!confirm(
+                        `【展期確認】\n` +
+                        `${getFuturesDisplayName(pos.symbol)} ${pos.expiry || ''} → ${newExpiry.trim()}\n` +
+                        `近月平倉: ${closePrice}  ·  近月損益: ${sym}${formatNumber(nearPnL)}\n` +
+                        `遠月建倉: ${newOpenPrice}  ·  展期成本: ${sym}${formatNumber(rollSpread)}${rollSpread <= 0 ? ' (收到溢價 ✓)' : ' (付出成本)'}\n` +
+                        (fee > 0 ? `手續費/稅: ${sym}${formatNumber(fee)}\n` : ``) +
+                        `保證金調整: ${sym}${formatNumber(marginAdjustment)}\n\n` +
+                        `※ 不計入已實現損益，確定執行展期嗎？`
+                    )) return;
+
+                    const uid = user.value.uid;
+                    const newPosRef = db.collection('users').doc(uid).collection('futures_positions').doc();
+
+                    // 1. 寫入展期交易紀錄
+                    await db.collection('users').doc(uid).collection('futures_transactions').add({
+                        type: 'rollover',
+                        symbol: pos.symbol,
+                        fromExpiry: pos.expiry || '',
+                        toExpiry: newExpiry.trim(),
+                        direction: pos.direction,
+                        contracts: pos.contracts,
+                        multiplier: pos.multiplier,
+                        entryPrice: pos.entryPrice,
+                        closePrice: closePrice,
+                        openPrice: newOpenPrice,
+                        rollSpread: rollSpread,
+                        nearMonthPnL: nearPnL,
+                        fee: fee,
+                        marginAdjustment: marginAdjustment,
+                        currency: currency,
+                        date: getLocalDate(),
+                        note: `展期 ${pos.expiry || ''}→${newExpiry.trim()}`,
+                        oldPositionId: pos.id,
+                        newPositionId: newPosRef.id,
+                        oldPositionSnapshot: {
+                            symbol: pos.symbol,
+                            expiry: pos.expiry || '',
+                            direction: pos.direction,
+                            contracts: pos.contracts,
+                            entryPrice: pos.entryPrice,
+                            currentPrice: pos.currentPrice,
+                            multiplier: pos.multiplier,
+                            marginUsed: pos.marginUsed || 0,
+                            currency: pos.currency,
+                            note: pos.note || ''
+                        },
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
+                    // 2. 建立遠月部位
+                    await newPosRef.set({
+                        symbol: pos.symbol,
+                        expiry: newExpiry.trim(),
+                        direction: pos.direction,
+                        contracts: pos.contracts,
+                        entryPrice: newOpenPrice,
+                        currentPrice: newOpenPrice,
+                        multiplier: pos.multiplier,
+                        marginUsed: pos.marginUsed || 0,
+                        currency: pos.currency,
+                        note: pos.note || '',
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
+                    // 3. 保證金調整（近月損益 - 費用 流入保證金）
+                    const curMargin = { ...futuresMargin.value };
+                    if (currency === 'USD') {
+                        curMargin.usd = (curMargin.usd || 0) + marginAdjustment;
+                    } else {
+                        curMargin.twd = (curMargin.twd || 0) + marginAdjustment;
+                    }
+                    await db.collection('users').doc(uid).collection('portfolio').doc('futures_margin').set(curMargin, { merge: true });
+
+                    // 4. 刪除近月部位
+                    await db.collection('users').doc(uid).collection('futures_positions').doc(pos.id).delete();
+
+                    setTimeout(saveDailySnapshot, 500);
+                    alert('展期成功！遠月部位已建立，近月損益已入帳至保證金（不計入已實現損益）。');
+                };
 
                 const deleteFuturesTransaction = async (tx) => {
+
                     if (!confirm(`確定要刪除此筆交易紀錄？\n(這將撤銷此動作對應的資金或部位狀態！)`)) return;
                     
                     const uid = user.value.uid;
@@ -1040,6 +1150,29 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                                 note: tx.note || '',
                                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                              });
+                         }
+                         else if (tx.type === 'rollover') {
+                            // 反轉保證金調整
+                            const reversal = tx.marginAdjustment || 0;
+                            if (tx.currency === 'USD') {
+                                curMargin.usd = (curMargin.usd || 0) - reversal;
+                            } else {
+                                curMargin.twd = (curMargin.twd || 0) - reversal;
+                            }
+                            const marginRefRoll = db.collection('users').doc(uid).collection('portfolio').doc('futures_margin');
+                            batch.set(marginRefRoll, curMargin, { merge: true });
+                            // 刪除遠月部位
+                            if (tx.newPositionId) {
+                                batch.delete(db.collection('users').doc(uid).collection('futures_positions').doc(tx.newPositionId));
+                            }
+                            // 還原近月部位
+                            const snap = tx.oldPositionSnapshot;
+                            if (snap) {
+                                const restoreRef = tx.oldPositionId
+                                    ? db.collection('users').doc(uid).collection('futures_positions').doc(tx.oldPositionId)
+                                    : db.collection('users').doc(uid).collection('futures_positions').doc();
+                                batch.set(restoreRef, { ...snap, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+                            }
                          }
                          
                          await batch.commit();
@@ -2300,7 +2433,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
                     futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm, futuresLoading, futuresTransactions,
                     futuresTotalUnrealizedPnL, futuresEquity, futuresTotalMarginUsed, futuresTotalExposure, futuresRiskRatio, futuresLeverageRatio,
-                    openFuturesModal, saveFuturesPosition, deleteFuturesPosition, closeFuturesPosition, openFuturesMarginModal, adjustFuturesMargin, autoFetchTaiexIndexPrice, fetchFuturesPricesDirect, onFuturesSymbolChange, deleteFuturesTransaction, futuresHistoryTab, getFuturesDisplayName, futuresTotalMarginCashTwd,
+                    openFuturesModal, saveFuturesPosition, deleteFuturesPosition, closeFuturesPosition, rollFuturesPosition, openFuturesMarginModal, adjustFuturesMargin, autoFetchTaiexIndexPrice, fetchFuturesPricesDirect, onFuturesSymbolChange, deleteFuturesTransaction, futuresHistoryTab, getFuturesDisplayName, futuresTotalMarginCashTwd,
                     investmentsTab, performanceTab, overviewTab,
                     mutualFundList, showMutualFundModal, mutualFundForm, mutualFundTotalCost, mutualFundTotalValue, mutualFundTotalPnL, openMutualFundModal, saveMutualFund, deleteMutualFund
                 };

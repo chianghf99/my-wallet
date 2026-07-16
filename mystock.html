@@ -1911,7 +1911,8 @@
                                             <th class="px-4 py-3 text-right">口數</th>
                                             <th class="px-4 py-3 text-right">建倉價</th>
                                             <th class="px-4 py-3 text-right">平倉價</th>
-                                            <th class="px-4 py-3 text-right">已實現損益</th>
+                                            <th class="px-4 py-3 text-right">手續費</th>
+                                            <th class="px-4 py-3 text-right">已實現損益 (淨)</th>
                                             <th class="px-4 py-3 text-left">備註</th>
                                             <th class="px-4 py-3 text-center">操作</th>
                                         </tr>
@@ -1930,8 +1931,15 @@
                                             <td class="px-4 py-3 text-right">{{ tx.contracts }} 口</td>
                                             <td class="px-4 py-3 text-right">{{ formatNumber(tx.entryPrice) }}</td>
                                             <td class="px-4 py-3 text-right">{{ formatNumber(tx.closePrice) }}</td>
-                                            <td class="px-4 py-3 text-right font-bold" :class="getPnlClass(tx.pnl)">
-                                                <span v-if="showPrivacy">{{ formatChange(tx.pnl, futuresTotalMarginCashTwd / (tx.currency === 'USD' ? exchangeRate : 1)) }} ({{ tx.currency }})</span>
+                                            <td class="px-4 py-3 text-right">
+                                                <span v-if="showPrivacy && tx.fee > 0" class="text-orange-500 dark:text-orange-400">-{{ formatNumber(tx.fee) }}</span>
+                                                <span v-else class="text-gray-300 dark:text-gray-600">-</span>
+                                            </td>
+                                            <td class="px-4 py-3 text-right font-bold" :class="getPnlClass(tx.netPnl !== undefined ? tx.netPnl : tx.pnl)">
+                                                <span v-if="showPrivacy">
+                                                    {{ formatChange(tx.netPnl !== undefined ? tx.netPnl : tx.pnl, futuresTotalMarginCashTwd / (tx.currency === 'USD' ? exchangeRate : 1)) }} ({{ tx.currency }})
+                                                    <span v-if="tx.fee > 0" class="text-[10px] font-normal text-gray-400 ml-1" :title="`毛損益: ${formatNumber(tx.pnl)}`">毛:{{ formatNumber(tx.pnl) }}</span>
+                                                </span>
                                                 <span v-else>****</span>
                                             </td>
                                             <td class="px-4 py-3 text-gray-400 max-w-[150px] truncate" :title="tx.note">{{ tx.note || '-' }}</td>
@@ -1940,7 +1948,7 @@
                                             </td>
                                         </tr>
                                         <tr v-if="futuresTransactions.filter(t => t.type === 'close').length === 0">
-                                            <td colspan="9" class="text-center py-6 text-gray-400">目前沒有平倉損益明細</td>
+                                            <td colspan="10" class="text-center py-6 text-gray-400">目前沒有平倉損益明細</td>
                                         </tr>
                                     </tbody>
                                 </table>

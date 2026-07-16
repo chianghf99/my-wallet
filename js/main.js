@@ -875,14 +875,20 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         : (pos.entryPrice - closePrice);
                     const pnl = diff * pos.contracts * pos.multiplier;
 
-                    if (!confirm(`平倉價格: ${closePrice}\n預估盈虧: ${pos.currency === 'USD' ? '$' : 'NT$'} ${formatNumber(pnl)}\n\n確定執行平倉嗎？`)) return;
+                    // 選填：手續費 + 交易稅
+                    const feeStr = prompt(`手續費 + 交易稅（選填，留空或 0 跳過）\n預估毛損益：${pos.currency === 'USD' ? '$' : 'NT$'} ${formatNumber(pnl)}`, '0');
+                    if (feeStr === null) return;
+                    const fee = Math.max(0, Number(feeStr) || 0);
+                    const netPnl = pnl - fee;
+
+                    if (!confirm(`平倉價格: ${closePrice}\n毛損益: ${pos.currency === 'USD' ? '$' : 'NT$'} ${formatNumber(pnl)}${fee > 0 ? `\n手續費/稅: ${pos.currency === 'USD' ? '$' : 'NT$'} ${formatNumber(fee)}\n淨損益: ${pos.currency === 'USD' ? '$' : 'NT$'} ${formatNumber(netPnl)}` : ''}\n\n確定執行平倉嗎？`)) return;
 
                     // 1. 寫入已實現損益 (產生 doc ID 並設定)
                     const realizedRef = db.collection('users').doc(user.value.uid).collection('realized_gains').doc();
                     await realizedRef.set({
                         symbol: pos.symbol,
                         name: `${pos.symbol}${pos.expiry ? ' ' + pos.expiry : ''} (${pos.direction === 'long' ? '多' : '空'}平)`,
-                        pnl: pnl,
+                        pnl: netPnl,
                         date: getLocalDate(),
                         currency: pos.currency || 'TWD',
                         shares: pos.contracts,
@@ -903,6 +909,8 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         multiplier: pos.multiplier,
                         marginUsed: pos.marginUsed || 0,
                         pnl: pnl,
+                        fee: fee,
+                        netPnl: netPnl,
                         currency: pos.currency,
                         date: getLocalDate(),
                         note: pos.note || '期貨平倉',
@@ -910,12 +918,12 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         timestamp: firebase.firestore.FieldValue.serverTimestamp()
                     });
 
-                    // 2. 將盈虧灌回期貨保證金帳戶
+                    // 2. 將淨損益灌回期貨保證金帳戶
                     const curMargin = { ...futuresMargin.value };
                     if (pos.currency === 'USD') {
-                        curMargin.usd = (curMargin.usd || 0) + pnl;
+                        curMargin.usd = (curMargin.usd || 0) + netPnl;
                     } else {
-                        curMargin.twd = (curMargin.twd || 0) + pnl;
+                        curMargin.twd = (curMargin.twd || 0) + netPnl;
                     }
                     await db.collection('users').doc(user.value.uid).collection('portfolio').doc('futures_margin').set(curMargin, { merge: true });
 
@@ -1004,10 +1012,11 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                             }
                         }
                         else if (tx.type === 'close') {
+                            const reversalAmount = tx.netPnl !== undefined ? tx.netPnl : (tx.pnl || 0);
                             if (tx.currency === 'USD') {
-                                curMargin.usd = (curMargin.usd || 0) - (tx.pnl || 0);
+                                curMargin.usd = (curMargin.usd || 0) - reversalAmount;
                             } else {
-                                curMargin.twd = (curMargin.twd || 0) - (tx.pnl || 0);
+                                curMargin.twd = (curMargin.twd || 0) - reversalAmount;
                             }
                             const marginRef = db.collection('users').doc(uid).collection('portfolio').doc('futures_margin');
                             batch.set(marginRef, curMargin, { merge: true });

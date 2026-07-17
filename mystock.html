@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v5.8.3</title>
+    <title>我的投資組合 | Portfolio v5.8.4</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -298,7 +298,7 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.8.3</h1>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.8.4</h1>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -318,7 +318,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.8.3</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.8.4</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -2299,9 +2299,23 @@
 
                     <div class="p-6 overflow-y-auto custom-scrollbar">
                         <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
-                            <!-- v5.8.3: 最新版本節點 -->
+                            <!-- v5.8.4: 最新版本節點 -->
                             <div class="relative pl-6">
                                 <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800"></div>
+                                <div class="text-xs text-gray-400 mb-1">2026-07-18</div>
+                                <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
+                                    <div class="font-bold text-gray-800 dark:text-white mb-2">v5.8.4</div>
+                                    <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                        <li>修正：期貨平倉後未觸發每日 Snapshot 儲存的 Bug，確保「較前日」損益比較資料正確。</li>
+                                        <li>新增：資金管理區新增「持倉曝險倍率」指標（金融總曝險 / 金融資產），顯示持倉本身的槓桿放大程度，另可細分台股與美股各自的倍率。</li>
+                                        <li>新增：期貨平倉時新增選填「手續費 + 交易稅」欄位，淨損益（毛損益 - 費用）記入保證金與已實現損益；歷史表格新增手續費欄，顯示毛損益供比對。</li>
+                                        <li>新增：期貨部位新增「展期」功能，可一鍵完成近月平倉→遠月建倉，自動調整保證金現金、不計入已實現損益；歷史損益頁籤顯示完整展期紀錄（近月損益、展期成本、費用、保證金調整），支援刪除回滾。</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <!-- v5.8.3: 舊版本節點 -->
+                            <div class="relative pl-6">
+                                <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-2 border-white dark:border-gray-800"></div>
                                 <div class="text-xs text-gray-400 mb-1">2026-07-15</div>
                                 <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
                                     <div class="font-bold text-gray-800 dark:text-white mb-2">v5.8.3</div>

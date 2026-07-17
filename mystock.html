@@ -758,6 +758,23 @@
                                 </div>
                                 <span class="text-[9px] text-purple-500 dark:text-purple-400 font-bold whitespace-nowrap">持倉曝險倍率: {{ positionExposureMultiplier.toFixed(2) }}x</span>
                             </div>
+                            <!-- 台股 / 美股各自的持倉曝險倍率 -->
+                            <div class="mt-1.5 flex items-center gap-3 flex-wrap" v-if="showPrivacy && (twPositionExposureMultiplier > 1.01 || usPositionExposureMultiplier > 1.01)">
+                                <div v-if="twPositionExposureMultiplier > 1.01" class="flex items-center gap-1.5">
+                                    <img src="https://flagcdn.com/w20/tw.png" class="w-4 h-auto">
+                                    <div class="w-16 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                        <div class="h-full bg-purple-300 opacity-70" :style="{ width: Math.min(((twPositionExposureMultiplier - 1) / 2) * 100, 100) + '%' }"></div>
+                                    </div>
+                                    <span class="text-[9px] text-purple-500 dark:text-purple-400 font-bold whitespace-nowrap">{{ twPositionExposureMultiplier.toFixed(2) }}x</span>
+                                </div>
+                                <div v-if="usPositionExposureMultiplier > 1.01" class="flex items-center gap-1.5">
+                                    <img src="https://flagcdn.com/w20/us.png" class="w-4 h-auto">
+                                    <div class="w-16 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                        <div class="h-full bg-purple-300 opacity-70" :style="{ width: Math.min(((usPositionExposureMultiplier - 1) / 2) * 100, 100) + '%' }"></div>
+                                    </div>
+                                    <span class="text-[9px] text-purple-500 dark:text-purple-400 font-bold whitespace-nowrap">{{ usPositionExposureMultiplier.toFixed(2) }}x</span>
+                                </div>
+                            </div>
                             <div class="grid grid-cols-3 gap-2 text-center text-xs" v-if="showPrivacy">
                                 <div class="bg-white dark:bg-gray-800 rounded-lg p-2">
                                     <div class="text-gray-400 mb-0.5">{{ exposureRatio > leverageRatio + 0.01 ? '金融總曝險' : '金融總資產' }}</div>

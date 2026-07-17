@@ -377,6 +377,20 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     return financialExposure.value / financialAssets.value;
                 });
 
+                const twPositionExposureMultiplier = computed(() => {
+                    const val = twStats.value.value;
+                    if (val <= 0) return 1;
+                    const exp = twStockList.value.reduce((acc, s) => acc + (s.currentPrice * s.shares * (s.multiplier || 1)), 0);
+                    return exp / val;
+                });
+
+                const usPositionExposureMultiplier = computed(() => {
+                    const val = usStats.value.value;
+                    if (val <= 0) return 1;
+                    const exp = usStockList.value.reduce((acc, s) => acc + (s.currentPrice * s.shares * (s.multiplier || 1)), 0);
+                    return exp / val;
+                });
+
                 const exposureRatio = computed(() => {
                     if (financialNetWorth.value <= 0) return 1;
                     return financialExposure.value / financialNetWorth.value;
@@ -2396,7 +2410,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     clearAllUserData, 
                     user, login, logout, stocks, exchangeRate, lastUpdated, isLoading, viewMode, isMobile, showPrivacy, isDarkMode, toggleDarkMode, activeSection, toggleSection, showChangelog, hideZeroShares, defaultPrivacyHidden,
                     twStats, usStats, grandTotalValue, grandTotalAssets, grandTotalExposure, grandTotalPnL, twPieRatios, usPieRatios, twStockList, usStockList, leverageRatio, exposureRatio,
-                    financialAssets, financialLoans, financialNetWorth, financialExposure, positionExposureMultiplier,
+                    financialAssets, financialLoans, financialNetWorth, financialExposure, positionExposureMultiplier, twPositionExposureMultiplier, usPositionExposureMultiplier,
                     showModal, isEditing, form, openModal, editStock, closeModal, saveStock, deleteStock,
                     showTransModal, transForm, openTransModal, closeTransModal, submitTransaction, isFundMode, openFundModal,
                     autoFetchName, autoFetchTransName, fetchPrices, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountClass, getAmountSign,

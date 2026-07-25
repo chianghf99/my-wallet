@@ -124,6 +124,25 @@
         </div>
     </div>
 
+    <!-- Passphrase Unlock Overlay (新裝置第一次用「加密密碼」模式解鎖時顯示) -->
+    <div v-if="showUnlockPassphrase" class="fixed inset-0 z-[10000] bg-gray-50 dark:bg-slate-900 flex flex-col justify-center items-center px-6">
+        <div class="mb-8 text-center max-w-sm">
+            <div class="mb-4 inline-block p-4 rounded-3xl bg-indigo-50 dark:bg-indigo-900/30">
+                <i class="fas fa-key fa-3x text-indigo-500"></i>
+            </div>
+            <h2 class="text-2xl font-extrabold text-slate-800 dark:text-slate-100">這是新裝置</h2>
+            <p class="text-slate-500 dark:text-slate-400 mt-2">請輸入你的「加密密碼」以解鎖卡片資料。這組密碼不會存在雲端，只有你自己知道。</p>
+        </div>
+        <div class="w-full max-w-xs space-y-4">
+            <input type="password" v-model="unlockPassphraseInput" @keyup.enter="unlockWithPassphrase"
+                   placeholder="輸入加密密碼" autofocus
+                   class="w-full glass px-4 py-3 rounded-xl outline-none text-center dark:text-white">
+            <button @click="unlockWithPassphrase" class="w-full py-4 bg-indigo-500 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all">
+                解鎖
+            </button>
+        </div>
+    </div>
+
     <!-- Loading Overlay -->
     <div v-if="isLoading" class="fixed inset-0 z-[9999] bg-slate-900/40 backdrop-blur-md flex flex-col justify-center items-center text-white">
         <div class="animate-spin rounded-full h-12 w-12 border-4 border-white/20 border-t-white"></div>
@@ -320,7 +339,7 @@
                                             </div>
                                         </div>
                                         <div class="text-right flex-shrink-0">
-                                            <div class="font-black text-xl text-slate-800 dark:text-slate-100">${{ bill.amount.toLocaleString() }}</div>
+                                            <div class="font-black text-xl text-slate-800 dark:text-slate-100">${{ maskAmount(bill.amount) }}</div>
                                             <div :class="getBillStatusClass(bill).badge" class="px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider inline-block mt-1">
                                                 {{ getBillStatusClass(bill).text }}
                                             </div>
@@ -388,7 +407,7 @@
                                 </div>
                                 <div class="flex items-center gap-4">
                                     <div class="text-right">
-                                        <div class="font-bold text-slate-700 dark:text-slate-300">${{ item.amount.toLocaleString() }}</div>
+                                        <div class="font-bold text-slate-700 dark:text-slate-300">${{ maskAmount(item.amount) }}</div>
                                         <div class="text-[10px] font-black uppercase mt-0.5"
                                              :class="item.status === 'paid' ? 'text-emerald-500' : 'text-slate-400'">
                                             {{ item.status === 'paid' ? '✓ 已入帳' : '略過' }}
@@ -438,7 +457,7 @@
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div class="glass p-8 rounded-3xl flex flex-col items-center justify-center text-center">
                                 <span class="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">區間總花費</span>
-                                <h4 class="text-4xl font-black text-indigo-500">${{ analysisTotal.toLocaleString() }}</h4>
+                                <h4 class="text-4xl font-black text-indigo-500">${{ maskAmount(analysisTotal) }}</h4>
                                 <div class="mt-4 px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-500 rounded-full text-[10px] font-black">
                                     {{ analysisBills.length }} 筆消費紀錄
                                 </div>
@@ -526,7 +545,34 @@
                                     </div>
                                 </div>
                             </div>
-                            
+
+                            <!-- v5.4.0: 加密密碼（主密碼）設定 -->
+                            <div class="md:col-span-2 glass p-8 rounded-3xl">
+                                <div class="flex items-center gap-4 mb-6">
+                                    <div class="w-12 h-12 rounded-2xl bg-amber-500 flex items-center justify-center text-white">
+                                        <i class="fas fa-key"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-lg font-black text-slate-800 dark:text-white">加密密碼（進階）</h4>
+                                        <p class="text-xs text-slate-400">
+                                            狀態: <span :class="encryptionMode === 'passphrase' ? 'text-emerald-500 font-bold' : 'text-slate-400 font-bold'">{{ encryptionMode === 'passphrase' ? '已啟用' : '未啟用（沿用 PIN 加密）' }}</span>
+                                        </p>
+                                    </div>
+                                </div>
+                                <p class="text-xs text-slate-400 mb-4 leading-relaxed">
+                                    預設卡號等敏感資料是直接用 6 碼 PIN 算出加密金鑰，PIN 位數少，理論上如果雲端資料外洩是有機會被暴力破解的。設定「加密密碼」後，PIN 只負責這台裝置的快速解鎖，真正用來加密資料的金鑰改由這組更長的密碼產生——密碼本身完全不會被儲存或同步，只有你自己記得。<b class="text-rose-500">請務必牢記，忘記將無法救援卡片資料。</b>換新裝置時，PIN 通過後系統會再請你輸入一次這組密碼。
+                                </p>
+                                <div class="space-y-3">
+                                    <input type="password" v-model="masterPassphrase" placeholder="設定加密密碼（至少 10 個字元）"
+                                           class="w-full glass px-4 py-3 rounded-xl outline-none dark:text-white">
+                                    <input type="password" v-model="masterPassphraseConfirm" placeholder="再輸入一次確認"
+                                           class="w-full glass px-4 py-3 rounded-xl outline-none dark:text-white">
+                                    <button @click="setupPassphrase" class="w-full py-4 bg-amber-500 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all">
+                                        {{ encryptionMode === 'passphrase' ? '更新加密密碼' : '啟用加密密碼' }}
+                                    </button>
+                                </div>
+                            </div>
+
                             <!-- Appearance -->
                             <div class="md:col-span-2 glass p-8 rounded-3xl flex items-center justify-between">
                                 <div class="flex items-center gap-4">
@@ -609,7 +655,7 @@
                             <div class="glass p-5 rounded-3xl relative overflow-hidden group">
                                 <div class="absolute -right-6 -top-6 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all"></div>
                                 <div class="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">總信用額度</div>
-                                <div class="text-2xl font-black text-slate-800 dark:text-white"><span class="text-sm mr-1">NT$</span>{{ totalCardsLimit.toLocaleString() }}</div>
+                                <div class="text-2xl font-black text-slate-800 dark:text-white"><span class="text-sm mr-1">NT$</span>{{ maskAmount(totalCardsLimit) }}</div>
                             </div>
                         </div>
                         
@@ -631,8 +677,8 @@
                                              <span v-if="group.cards[0] && group.cards[0].day" class="text-[10px] bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded-lg border border-indigo-100/50 dark:border-indigo-900/30 font-bold">
                                                  結帳日: {{ group.cards[0].day }}號<span v-if="group.cards[0].dueDay"> / 繳費日: {{ group.cards[0].dueDay }}號</span>
                                              </span>
-                                             <span v-if="group.cards[0] && group.cards[0].address" class="text-[10px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-lg border border-emerald-100/50 dark:border-emerald-900/30 font-bold" :title="group.cards[0].address">
-                                                 <i class="fas fa-map-marker-alt mr-1"></i>{{ group.cards[0].address }}
+                                             <span v-if="group.cards[0] && getCardAddress(group.cards[0])" class="text-[10px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-lg border border-emerald-100/50 dark:border-emerald-900/30 font-bold" :title="getCardAddress(group.cards[0])">
+                                                 <i class="fas fa-map-marker-alt mr-1"></i>{{ getCardAddress(group.cards[0]) }}
                                              </span>
                                         </div>
                                     </div>
@@ -651,7 +697,7 @@
                                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                         <div v-for="card in group.cards" :key="card.originalIndex" class="group">
                                             <!-- 3D Card Container -->
-                                            <div class="relative w-full h-48 [perspective:1000px] cursor-pointer" @click="expandedCards[card.originalIndex] = !expandedCards[card.originalIndex]">
+                                            <div class="relative w-full h-48 [perspective:1000px] cursor-pointer" @click="toggleCardFlip(card.originalIndex)">
                                                 <!-- Inner Card Container -->
                                                 <div class="w-full h-full transition-transform duration-700 [transform-style:preserve-3d] shadow-lg rounded-2xl group-hover:shadow-xl"
                                                      :class="expandedCards[card.originalIndex] ? '[transform:rotateY(180deg)]' : ''">
@@ -692,7 +738,7 @@
                                                             <div class="text-right">
                                                                 <div v-if="card.limit" class="inline-block text-left">
                                                                     <div class="text-[9px] opacity-70 uppercase tracking-wider mb-0.5">Credit Limit</div>
-                                                                    <div class="font-black text-sm tracking-wide">NT$ {{ Number(card.limit).toLocaleString() }}</div>
+                                                                    <div class="font-black text-sm tracking-wide">NT$ {{ maskAmount(card.limit) }}</div>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -706,12 +752,13 @@
                                                         <!-- Back Content -->
                                                         <div class="p-5 pt-3 flex-1 flex flex-col gap-2 text-xs">
                                                              <div class="bg-white/20 p-2 rounded flex justify-between items-center shadow-inner">
-                                                                 <span class="font-mono text-slate-100 tracking-widest">{{ card.enc_number ? decryptField(card.enc_number, getPinKey()) : (card.last4 ? '**** **** **** ' + card.last4 : '無記錄') }}</span>
-                                                                 <span class="font-mono bg-white/30 px-2 py-0.5 rounded text-white italic tracking-widest">{{ card.enc_cvv ? decryptField(card.enc_cvv, getPinKey()) : '***' }}</span>
+                                                                 <span class="font-mono text-slate-100 tracking-widest">{{ expandedCards[card.originalIndex] && card.enc_number ? decryptField(card.enc_number, getPinKey()) : (card.last4 ? '**** **** **** ' + card.last4 : '無記錄') }}</span>
+                                                                 <span class="font-mono bg-white/30 px-2 py-0.5 rounded text-white italic tracking-widest">{{ expandedCards[card.originalIndex] && card.enc_cvv ? decryptField(card.enc_cvv, getPinKey()) : '***' }}</span>
                                                              </div>
                                                              <div class="flex justify-between text-slate-200">
-                                                                 <div>EXP: <span class="font-mono text-white tracking-widest">{{ card.enc_expiry ? decryptField(card.enc_expiry, getPinKey()) : 'MM/YY' }}</span></div>
+                                                                 <div>EXP: <span class="font-mono text-white tracking-widest">{{ expandedCards[card.originalIndex] && card.enc_expiry ? decryptField(card.enc_expiry, getPinKey()) : 'MM/YY' }}</span></div>
                                                              </div>
+                                                             <div class="text-[9px] text-slate-400 text-center mt-1">{{ expandedCards[card.originalIndex] ? '8 秒後自動翻回正面' : '' }}</div>
                                                             <div v-if="card.notes" class="truncate text-[10px] opacity-80 bg-black/20 p-1.5 rounded mt-auto" :title="card.notes">
                                                                 <i class="fas fa-sticky-note mr-1"></i> {{ card.notes }}
                                                             </div>
@@ -887,7 +934,12 @@
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-400 mb-1">信用卡卡號 (敏感資訊)</label>
-                        <input type="text" v-model="cardForm.number" placeholder="1234567812345678" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
+                        <div class="relative">
+                            <input :type="revealCardNumber ? 'text' : 'password'" v-model="cardForm.number" placeholder="1234567812345678" class="w-full glass px-4 py-2 pr-10 rounded-lg outline-none dark:text-white">
+                            <button type="button" @click="revealCardNumber = !revealCardNumber" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" tabindex="-1">
+                                <i :class="revealCardNumber ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+                            </button>
+                        </div>
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-400 mb-1">到期日 (MM/YY)</label>
@@ -976,6 +1028,7 @@ createApp({
         const billForm = reactive({ name: '', amount: '', date: '', cardId: '' });
         const editingBillId = ref(null);
         const cardForm = reactive({ name: '', nickname: '', day: '', dueDay: '', autopay: '', number: '', expiry: '', cvv: '', address: '', limit: '', org: '', ticket: '', notes: '' });
+        const revealCardNumber = ref(false);
         const editingCardIndex = ref(null);
         
         const pdfFile = ref(null);
@@ -1100,7 +1153,7 @@ createApp({
             }
             if (historySearch.value) {
                 const s = historySearch.value.toLowerCase();
-                list = list.filter(b => b.name.toLowerCase().includes(s) || b.date.includes(s));
+                list = list.filter(b => (b.name || '').toLowerCase().includes(s) || (b.date || '').includes(s));
             }
             return list;
         });
@@ -1146,6 +1199,19 @@ createApp({
 
         const expandedBanks = ref({});
         const expandedCards = ref({});
+        // 卡片翻到背面看到卡號/CVV 後，幾秒沒動作就自動翻回正面，避免螢幕被瞄到後一直露著
+        const _cardFlipTimers = {};
+        const toggleCardFlip = (idx) => {
+            const willExpand = !expandedCards.value[idx];
+            expandedCards.value[idx] = willExpand;
+            if (_cardFlipTimers[idx]) { clearTimeout(_cardFlipTimers[idx]); delete _cardFlipTimers[idx]; }
+            if (willExpand) {
+                _cardFlipTimers[idx] = setTimeout(() => {
+                    expandedCards.value[idx] = false;
+                    delete _cardFlipTimers[idx];
+                }, 8000);
+            }
+        };
         const groupedCards = computed(() => {
             const groups = {};
             cards.value.forEach((card, index) => {
@@ -1255,7 +1321,7 @@ createApp({
                     if (snap.exists) {
                         const d = snap.data();
                         // 確保資料結構正確才套用
-                        if (d.bills) bills.value = Array.isArray(d.bills) ? d.bills : [];
+                        if (d.bills) bills.value = (Array.isArray(d.bills) ? d.bills : []).map(b => ({ ...b, name: b.name || '未命名帳單', amount: Number(b.amount) || 0, date: b.date || '未知日期' }));
                         if (d.cards) {
                             const downloadedCards = Array.isArray(d.cards) ? d.cards : [];
                             let migrated = false;
@@ -1269,22 +1335,11 @@ createApp({
                                     c.name = officialName;
                                     migrated = true;
                                 }
-                                // Migrate _tmp_address to address
-                                if (c._tmp_address !== undefined) {
-                                    c.address = c._tmp_address;
-                                    delete c._tmp_address;
+                                // 舊資料若還留著明文 address（尚未加密過），且目前已解鎖，就順手加密掉
+                                if (c.address && !c.enc_address && _sessionKey.value) {
+                                    c.enc_address = encryptField(c.address, _sessionKey.value);
+                                    delete c.address;
                                     migrated = true;
-                                }
-                                // Migrate enc_address to address (if we have key)
-                                if (c.enc_address && _sessionKey.value) {
-                                    try {
-                                        const plain = CryptoJS.AES.decrypt(c.enc_address, _sessionKey.value).toString(CryptoJS.enc.Utf8);
-                                        if (plain) {
-                                            c.address = plain;
-                                            delete c.enc_address;
-                                            migrated = true;
-                                        }
-                                    } catch(e) {}
                                 }
                             });
                             cards.value = downloadedCards;
@@ -1303,6 +1358,12 @@ createApp({
                                 isLocked.value = true;
                             }
                         }
+                        // Sync 主密碼 salt / 模式，讓新裝置在輸入主密碼時能算出一樣的金鑰
+                        if (d.app_key_salt) localStorage.setItem('app_key_salt', d.app_key_salt);
+                        if (d.app_key_mode) {
+                            localStorage.setItem('app_key_mode', d.app_key_mode);
+                            encryptionMode.value = d.app_key_mode;
+                        }
                         saveLocal();
                     } else {
                         if (!silent) alert('雲端尚無備份資料');
@@ -1314,16 +1375,20 @@ createApp({
                         bills: JSON.parse(JSON.stringify(bills.value)),
                         cards: JSON.parse(JSON.stringify(cards.value)),
                         app_pin_hash: localStorage.getItem('app_pin_hash') || '',
+                        app_key_salt: localStorage.getItem('app_key_salt') || '',
+                        app_key_mode: localStorage.getItem('app_key_mode') || 'pin',
                         last_sync: Date.now(),
                         updated_at: firebase.firestore.FieldValue.serverTimestamp()
                     };
                     await docRef.set(dataToSave, { merge: true });
                     syncStatus.value = '已存檔至雲端 ' + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    if (!silent) alert('✅ 雲端存檔成功');
+                    if (!silent) showToast('✅ 雲端存檔成功');
                 }
             } catch (e) {
                 console.error('Firestore Sync Error:', e);
-                if (!silent) alert('同步失敗: ' + (e.code === 'permission-denied' ? '權限不足，請確認 Firebase Rules 設定' : e.message));
+                const msg = '同步失敗: ' + (e.code === 'permission-denied' ? '權限不足，請確認 Firebase Rules 設定' : e.message);
+                if (!silent) alert(msg);
+                else showToast('⚠️ 背景同步失敗，請稍後手動同步一次'); // 靜默同步失敗也要讓使用者看得到，不然會誤以為資料已經存上雲端
                 syncStatus.value = '同步失敗';
             } finally {
                 isLoading.value = false;
@@ -1335,14 +1400,41 @@ createApp({
         const _sessionKey = ref('');
         const getSessionKey = () => _sessionKey.value;
 
-        // Fixed salt: no need to store/transfer salt across devices.
-        // Any device with the same PIN derives the same key.
+        // Legacy fixed salt (pre-v5.4.0 scheme). Kept only so we can detect and migrate
+        // old data — no longer used to derive keys for new/updated cards.
         const _FIXED_SALT = 'mywallet-pbkdf2-v2';
 
-        // Derive AES key from PIN using PBKDF2 with fixed salt
+        // Derive AES key from PIN using PBKDF2 with the legacy fixed salt.
+        // Weak against anyone who has the ciphertext, since the salt is public (it's in
+        // this source file) and the PIN search space is only 10^6 combinations.
         const deriveKey = (pin) => {
             return CryptoJS.PBKDF2(pin, _FIXED_SALT, { keySize: 256 / 32, iterations: 10000 }).toString();
         };
+
+        // --- v5.4.0: 主密碼加密模式 ---
+        // 'pin'：舊制，AES 金鑰直接由 6 碼 PIN + 固定 salt 算出（安全性較弱，但保留給尚未升級的使用者）。
+        // 'passphrase'：新制，AES 金鑰由使用者自訂的長密碼 + 帳號專屬隨機 salt 算出。
+        //   PIN 這時只用來當「這台裝置的快速解鎖」，跟真正的加密金鑰脫鉤。
+        const encryptionMode = ref(localStorage.getItem('app_key_mode') || 'pin');
+        const showUnlockPassphrase = ref(false);
+        const unlockPassphraseInput = ref('');
+        const masterPassphrase = ref('');
+        const masterPassphraseConfirm = ref('');
+
+        const getKeySalt = () => localStorage.getItem('app_key_salt') || '';
+        const ensureKeySalt = () => {
+            let salt = getKeySalt();
+            if (!salt) {
+                salt = CryptoJS.lib.WordArray.random(128 / 8).toString();
+                localStorage.setItem('app_key_salt', salt);
+            }
+            return salt;
+        };
+        // 主密碼推導：高迭代次數 + 帳號專屬 salt，讓即使 salt 外洩，暴力破解成本也大幅提高
+        const deriveMasterKey = (passphrase, salt) => {
+            return CryptoJS.PBKDF2(passphrase, salt, { keySize: 256 / 32, iterations: 210000 }).toString();
+        };
+        const ENC_CARD_FIELDS = ['enc_number', 'enc_expiry', 'enc_cvv', 'enc_address'];
 
         const checkLock = () => {
             if (localStorage.getItem('app_pin_hash') || localStorage.getItem('app_pin')) {
@@ -1364,6 +1456,24 @@ createApp({
                     // New scheme: compare SHA-256 hash
                     const inputHash = CryptoJS.SHA256(pin).toString();
                     if (inputHash === storedHash) {
+                        pinBuffer.value = "";
+
+                        // --- passphrase \u6a21\u5f0f\uff1aPIN \u53ea\u8ca0\u8cac\u89e3\u9396\u756b\u9762\uff0c\u771f\u6b63\u7684\u52a0\u5bc6\u91d1\u9470\u8981\u53e6\u5916\u7528\u4e3b\u5bc6\u78bc\u7b97 ---
+                        if (encryptionMode.value === 'passphrase') {
+                            const cachedKey = localStorage.getItem('app_master_key_cache');
+                            if (cachedKey) {
+                                _sessionKey.value = cachedKey;
+                                isLocked.value = false;
+                                migrateAddressToEncrypted(cachedKey);
+                            } else {
+                                // \u9019\u53f0\u88dd\u7f6e\u9084\u6c92\u5feb\u53d6\u904e\u4e3b\u5bc6\u78bc\u7b97\u51fa\u7684\u91d1\u9470\uff08\u4f8b\u5982\u65b0\u88dd\u7f6e\uff09\uff0c\u9700\u8981\u518d\u8f38\u5165\u4e00\u6b21\u4e3b\u5bc6\u78bc
+                                isLocked.value = false;
+                                showUnlockPassphrase.value = true;
+                            }
+                            return;
+                        }
+
+                        // --- \u820a\u5236 pin \u6a21\u5f0f\uff1aAES \u91d1\u9470\u76f4\u63a5\u7531 PIN \u63a8\u5c0e\uff08\u7dad\u6301\u539f\u672c\u884c\u70ba\uff0c\u4f9b\u5c1a\u672a\u5347\u7d1a\u7684\u8cc7\u6599\u4f7f\u7528\uff09---
                         const newKey = deriveKey(pin); // fixed-salt PBKDF2
 
                         // Check if data needs migration (encrypted with old random-salt PBKDF2 or raw PIN)
@@ -1390,8 +1500,7 @@ createApp({
                             try {
                                 const parsed = JSON.parse(storedData);
                                 parsed.cards = (parsed.cards || []).map(card => {
-                                    const fields = ['enc_number', 'enc_expiry', 'enc_cvv', 'enc_address'];
-                                    fields.forEach(f => {
+                                    ENC_CARD_FIELDS.forEach(f => {
                                         if (card[f]) {
                                             for (const oldKey of oldKeys) {
                                                 try {
@@ -1416,8 +1525,7 @@ createApp({
 
                         _sessionKey.value = newKey;
                         isLocked.value = false;
-                        pinBuffer.value = "";
-                        migrateAddressToPlain(newKey);
+                        migrateAddressToEncrypted(newKey);
                     } else {
                         alert('\u5bc6\u78bc\u932f\u8aa4');
                         pinBuffer.value = "";
@@ -1432,8 +1540,7 @@ createApp({
                             try {
                                 const parsed = JSON.parse(storedData);
                                 parsed.cards = (parsed.cards || []).map(card => {
-                                    const fields = ['enc_number', 'enc_expiry', 'enc_cvv', 'enc_address'];
-                                    fields.forEach(f => {
+                                    ENC_CARD_FIELDS.forEach(f => {
                                         if (card[f]) {
                                             try {
                                                 const plain = CryptoJS.AES.decrypt(card[f], legacyPin).toString(CryptoJS.enc.Utf8);
@@ -1454,7 +1561,7 @@ createApp({
                         _sessionKey.value = newKey;
                         isLocked.value = false;
                         pinBuffer.value = "";
-                        migrateAddressToPlain(newKey);
+                        migrateAddressToEncrypted(newKey);
                         console.log('[Security] Migrated PIN to PBKDF2 scheme.');
                     } else {
                         alert('密碼錯誤');
@@ -1471,6 +1578,21 @@ createApp({
             if (newPin.value.length === 6 && !isNaN(newPin.value)) {
                 const pin = newPin.value;
                 const hash = CryptoJS.SHA256(pin).toString();
+
+                if (encryptionMode.value === 'passphrase') {
+                    // passphrase 模式下，PIN 只是本機快速解鎖用的密碼，跟 AES 金鑰無關，
+                    // 不需要重新加密任何卡片欄位。
+                    localStorage.setItem('app_pin_hash', hash);
+                    localStorage.removeItem('app_pin_salt');
+                    localStorage.removeItem('app_pin');
+                    isPinSet.value = true;
+                    showToast('密碼已設定');
+                    newPin.value = "";
+                    if (user.value) triggerSync('upload', true);
+                    return;
+                }
+
+                // --- 舊制 pin 模式：PIN 本身就是 AES 金鑰的來源，換 PIN 要重新加密 ---
                 const newKey = deriveKey(pin);
 
                 const storedData = localStorage.getItem('myCreditData');
@@ -1478,13 +1600,11 @@ createApp({
                     try {
                         const parsed = JSON.parse(storedData);
                         const oldKey = _sessionKey.value || localStorage.getItem('app_pin') || '';
+                        const TMP_FIELDS = ['_tmp_number', '_tmp_expiry', '_tmp_cvv', '_tmp_address'];
                         parsed.cards = (parsed.cards || []).map(card => {
-                            const ENC_FIELDS = ['enc_number', 'enc_expiry', 'enc_cvv'];
-                            const TMP_FIELDS = ['_tmp_number', '_tmp_expiry', '_tmp_cvv'];
-
                             // Case 1: re-encrypt from current session key
                             if (oldKey) {
-                                ENC_FIELDS.forEach(f => {
+                                ENC_CARD_FIELDS.forEach(f => {
                                     if (card[f]) {
                                         try {
                                             const plain = CryptoJS.AES.decrypt(card[f], oldKey).toString(CryptoJS.enc.Utf8);
@@ -1497,7 +1617,7 @@ createApp({
                             // Case 2: encrypt from _tmp_* fields (set by removePin)
                             TMP_FIELDS.forEach((tf, i) => {
                                 if (card[tf]) {
-                                    card[ENC_FIELDS[i]] = CryptoJS.AES.encrypt(card[tf], newKey).toString();
+                                    card[ENC_CARD_FIELDS[i]] = CryptoJS.AES.encrypt(card[tf], newKey).toString();
                                     delete card[tf];
                                 }
                             });
@@ -1515,7 +1635,7 @@ createApp({
                 localStorage.removeItem('app_pin');
                 _sessionKey.value = newKey;
                 isPinSet.value = true;
-                alert('密碼已設定');
+                showToast('密碼已設定');
                 newPin.value = "";
                 if (user.value) triggerSync('upload', true);
             } else { alert('請輸入 6 位數字'); }
@@ -1529,10 +1649,9 @@ createApp({
                     if (storedData) {
                         try {
                             const parsed = JSON.parse(storedData);
-                            const ENC_FIELDS = ['enc_number', 'enc_expiry', 'enc_cvv'];
-                            const TMP_FIELDS = ['_tmp_number', '_tmp_expiry', '_tmp_cvv'];
+                            const TMP_FIELDS = ['_tmp_number', '_tmp_expiry', '_tmp_cvv', '_tmp_address'];
                             parsed.cards = (parsed.cards || []).map(card => {
-                                ENC_FIELDS.forEach((f, i) => {
+                                ENC_CARD_FIELDS.forEach((f, i) => {
                                     if (card[f]) {
                                         try {
                                             const plain = CryptoJS.AES.decrypt(card[f], currentKey).toString(CryptoJS.enc.Utf8);
@@ -1551,22 +1670,116 @@ createApp({
                 localStorage.removeItem('app_pin_hash');
                 localStorage.removeItem('app_pin_salt');
                 localStorage.removeItem('app_pin');
+                localStorage.removeItem('app_key_salt');
+                localStorage.removeItem('app_key_mode');
+                localStorage.removeItem('app_master_key_cache');
+                encryptionMode.value = 'pin';
                 _sessionKey.value = '';
                 isPinSet.value = false;
-                alert('安全鎖已關閉');
+                showToast('安全鎖已關閉');
                 if (user.value) triggerSync('upload', true);
             }
         };
         const newPin = ref("");
 
+        // --- v5.4.0: 設定/更新主密碼（passphrase 模式）---
+        const setupPassphrase = () => {
+            if (!_sessionKey.value) {
+                alert('請先解鎖（輸入目前的 PIN）再設定加密密碼。');
+                return;
+            }
+            const p1 = masterPassphrase.value;
+            const p2 = masterPassphraseConfirm.value;
+            if (!p1 || p1.length < 10) {
+                alert('加密密碼長度至少需要 10 個字元，建議使用一句好記但別人猜不到的短語。');
+                return;
+            }
+            if (p1 !== p2) {
+                alert('兩次輸入的加密密碼不一致。');
+                return;
+            }
+            if (!confirm('請務必牢記這組加密密碼：它不會被儲存在任何地方（包含雲端），遺失將無法救援卡號等資料。確定要設定嗎？')) {
+                return;
+            }
+
+            const oldKey = _sessionKey.value;
+            const salt = ensureKeySalt();
+            const newKey = deriveMasterKey(p1, salt);
+
+            // 用現有的 session key（不管原本是 pin 模式還是舊 passphrase）解密後，改用新主密碼重新加密
+            const storedData = localStorage.getItem('myCreditData');
+            if (storedData) {
+                try {
+                    const parsed = JSON.parse(storedData);
+                    parsed.cards = (parsed.cards || []).map(card => {
+                        ENC_CARD_FIELDS.forEach(f => {
+                            if (card[f]) {
+                                try {
+                                    const plain = CryptoJS.AES.decrypt(card[f], oldKey).toString(CryptoJS.enc.Utf8);
+                                    if (plain) card[f] = CryptoJS.AES.encrypt(plain, newKey).toString();
+                                } catch(e) {}
+                            }
+                        });
+                        return card;
+                    });
+                    localStorage.setItem('myCreditData', JSON.stringify(parsed));
+                    cards.value = parsed.cards || [];
+                    bills.value = parsed.bills || [];
+                } catch(e) {}
+            }
+
+            localStorage.setItem('app_key_mode', 'passphrase');
+            localStorage.setItem('app_master_key_cache', newKey);
+            encryptionMode.value = 'passphrase';
+            _sessionKey.value = newKey;
+            masterPassphrase.value = '';
+            masterPassphraseConfirm.value = '';
+            showToast('加密密碼已設定完成');
+            if (user.value) triggerSync('upload', true);
+        };
+
+        // 新裝置第一次解鎖時，用主密碼 + 已同步下來的 salt 算出金鑰並快取在本機
+        const unlockWithPassphrase = () => {
+            const salt = getKeySalt();
+            if (!salt) {
+                alert('尚未同步到加密設定，請確認已連上網路並完成雲端同步。');
+                return;
+            }
+            if (!unlockPassphraseInput.value) {
+                alert('請輸入加密密碼');
+                return;
+            }
+            const key = deriveMasterKey(unlockPassphraseInput.value, salt);
+            const sample = cards.value.find(c => c.enc_number);
+            if (sample) {
+                const test = decryptField(sample.enc_number, key);
+                if (!test || test === '解密失敗') {
+                    alert('加密密碼錯誤');
+                    unlockPassphraseInput.value = '';
+                    return;
+                }
+            }
+            _sessionKey.value = key;
+            localStorage.setItem('app_master_key_cache', key);
+            showUnlockPassphrase.value = false;
+            unlockPassphraseInput.value = '';
+            migrateAddressToEncrypted(key);
+        };
+
+        // 忘記快取但想在「這台裝置」切回舊 PIN 模式而不重灌，用不到，先留給使用者手動走「關閉密碼鎖」流程即可。
+
         const exportBackup = () => {
             const myCreditDataStr = localStorage.getItem('myCreditData') || '{"bills":[],"cards":[]}';
             // Include hash & salt so encrypted card fields can be decrypted on other devices
-            // with the correct PIN. The raw PIN is never stored or exported.
+            // with the correct PIN/主密碼。原始 PIN 跟主密碼本身都不會被儲存或匯出——
+            // app_master_key_cache（本機快取的實際金鑰）故意不放進備份檔，
+            // 否則備份檔外洩就等於金鑰外洩，主密碼機制會形同虛設。
             const backupData = {
                 myCreditData: myCreditDataStr,
                 app_pin_hash: localStorage.getItem('app_pin_hash') || '',
                 app_pin_salt: localStorage.getItem('app_pin_salt') || '',
+                app_key_salt: localStorage.getItem('app_key_salt') || '',
+                app_key_mode: localStorage.getItem('app_key_mode') || '',
                 theme: localStorage.getItem('theme') || 'light',
                 privacy: localStorage.getItem('privacy') || 'false'
             };
@@ -1591,7 +1804,12 @@ createApp({
                     const data = JSON.parse(e.target.result);
                     if (data.myCreditData) {
                         const parsed = JSON.parse(data.myCreditData);
-                        if (parsed.cards && parsed.bills) {
+                        if (Array.isArray(parsed.cards) && Array.isArray(parsed.bills)) {
+                            // 防呆：手動編輯過或損壞的備份檔可能缺欄位，先補上安全預設值，
+                            // 避免之後排序/搜尋/顯示時對 undefined 呼叫字串方法而讓整頁掛掉
+                            parsed.bills = parsed.bills.map(b => ({ ...b, name: b.name || '未命名帳單', amount: Number(b.amount) || 0, date: b.date || '未知日期' }));
+                            parsed.cards = parsed.cards.map(c => ({ ...c, name: c.name || '未命名卡片' }));
+                            data.myCreditData = JSON.stringify(parsed);
                             localStorage.setItem('myCreditData', data.myCreditData);
                             // Restore PIN hash & salt so PBKDF2 key can be re-derived on this device
                             if (data.app_pin_hash) {
@@ -1603,10 +1821,19 @@ createApp({
                                 localStorage.removeItem('app_pin_salt');
                                 localStorage.removeItem('app_pin');
                             }
+                            if (data.app_key_salt) localStorage.setItem('app_key_salt', data.app_key_salt);
+                            if (data.app_key_mode) {
+                                localStorage.setItem('app_key_mode', data.app_key_mode);
+                                encryptionMode.value = data.app_key_mode;
+                            }
+                            // 這台裝置還沒有主密碼算出的金鑰快取，還原後需要重新輸入一次主密碼
+                            localStorage.removeItem('app_master_key_cache');
                             if (data.theme) localStorage.setItem('theme', data.theme);
                             if (data.privacy) localStorage.setItem('privacy', data.privacy);
 
-                            const pinMsg = data.app_pin_hash
+                            const pinMsg = data.app_key_mode === 'passphrase'
+                                ? '安全密碼鎖已一併還原，請先用原本的 PIN 解鎖，接著系統會再請你輸入一次「加密密碼」以還原卡片資料。'
+                                : data.app_pin_hash
                                 ? '安全密碼鎖已一併還原，請用原本的 PIN 解鎖即可。'
                                 : '注意：此備份不含安全密碼設定，請還原後至「設定」重新設定 PIN。';
                             alert(`還原成功！\n\n${pinMsg}\n\n網頁即將自動重新整理以載入資料。`);
@@ -1663,6 +1890,8 @@ createApp({
             isPrivacyOn.value = !isPrivacyOn.value;
             localStorage.setItem('privacy', isPrivacyOn.value);
         };
+        // 隱私模式遮蔽金額用的共用格式化函式，讓帳單金額/額度/統計數字都跟著首頁總額一起隱藏
+        const maskAmount = (val) => isPrivacyOn.value ? '****' : Number(val || 0).toLocaleString();
 
         const saveLocal = () => localStorage.setItem('myCreditData', JSON.stringify({ bills: bills.value, cards: cards.value }));
         const loadLocal = () => {
@@ -1906,25 +2135,20 @@ createApp({
             }
         };
 
-        const migrateAddressToPlain = (key) => {
+        // 把還留著明文 address 的卡片改成加密儲存（地址跟卡號/CVV 一樣敏感，不該是唯一沒加密的欄位）
+        const migrateAddressToEncrypted = (key) => {
             if (!key) return;
             let cardsMigrated = false;
             cards.value = cards.value.map(card => {
-                if (card.enc_address) {
-                    try {
-                        const plain = CryptoJS.AES.decrypt(card.enc_address, key).toString(CryptoJS.enc.Utf8);
-                        if (plain) {
-                            card.address = plain;
-                            delete card.enc_address;
-                            cardsMigrated = true;
-                        }
-                    } catch(e) {
-                        console.error('Failed to decrypt address during migration:', e);
-                    }
-                }
                 if (card._tmp_address !== undefined) {
-                    card.address = card._tmp_address;
+                    // removePin 留下的暫存明文，直接加密回去
+                    card.enc_address = encryptField(card._tmp_address, key);
                     delete card._tmp_address;
+                    delete card.address;
+                    cardsMigrated = true;
+                } else if (card.address && !card.enc_address) {
+                    card.enc_address = encryptField(card.address, key);
+                    delete card.address;
                     cardsMigrated = true;
                 }
                 return card;
@@ -1937,6 +2161,11 @@ createApp({
 
         // Key lives only in memory — never read from localStorage
         const getPinKey = () => _sessionKey.value;
+        const getCardAddress = (card) => {
+            if (!card) return '';
+            if (card.enc_address) return decryptField(card.enc_address, getPinKey());
+            return card.address || ''; // 尚未加密過的舊資料/未啟用鎖定的情況
+        };
         const copyCardNumber = (card) => {
             const pin = getPinKey();
             const rawNumber = card.enc_number ? decryptField(card.enc_number, pin) : '';
@@ -1964,6 +2193,7 @@ createApp({
             cardForm.cvv = '';
             cardForm.address = '';
             cardForm.limit = '';
+            revealCardNumber.value = false;
             cardForm.org = '';
             cardForm.ticket = '';
             cardForm.notes = '';
@@ -1986,8 +2216,9 @@ createApp({
             cardForm.number = c.enc_number ? decryptField(c.enc_number, pin) : '';
             cardForm.expiry = c.enc_expiry ? decryptField(c.enc_expiry, pin) : '';
             cardForm.cvv = c.enc_cvv ? decryptField(c.enc_cvv, pin) : '';
-            cardForm.address = c.address || (c.enc_address ? decryptField(c.enc_address, pin) : '');
+            cardForm.address = getCardAddress(c);
             cardForm.limit = c.limit || '';
+            revealCardNumber.value = false;
             cardForm.org = c.org || '';
             cardForm.ticket = c.ticket || '';
             cardForm.notes = c.notes || '';
@@ -2019,7 +2250,9 @@ createApp({
                 enc_number: encryptField(cardForm.number, pin),
                 enc_expiry: encryptField(cardForm.expiry, pin),
                 enc_cvv: encryptField(cardForm.cvv, pin),
-                address: cardForm.address,
+                // 地址跟卡號一樣敏感：有金鑰就加密存，只有完全沒設定 PIN 鎖時才退回明文（維持未啟用鎖定使用者原本的行為）
+                enc_address: pin ? encryptField(cardForm.address, pin) : '',
+                address: pin ? '' : cardForm.address,
                 notes: cardForm.notes,
                 last4: cardForm.number ? cardForm.number.slice(-4) : ''
             };
@@ -2039,6 +2272,7 @@ createApp({
                             otherCard.autopayFrom = c.autopayFrom;
                             otherCard.limit = c.limit;
                             otherCard.address = c.address;
+                            otherCard.enc_address = c.enc_address;
                         }
                     }
                 });
@@ -2111,6 +2345,7 @@ createApp({
         };
 
         const getBillIcon = (name) => {
+            if (!name) return 'fas fa-money-bill-wave';
             if (name.includes('富邦')) return 'fas fa-building-columns';
             if (name.includes('台新')) return 'fas fa-credit-card';
             return 'fas fa-money-bill-wave';
@@ -2126,7 +2361,8 @@ createApp({
         };
 
         const getCardAutopay = (name) => {
-            const c = cards.value.find(c => name.includes(c.name));
+            if (!name) return null;
+            const c = cards.value.find(c => c.name && name.includes(c.name));
             return c ? c.autopayFrom : null;
         };
 
@@ -2223,7 +2459,7 @@ createApp({
                             }
                             billForm.amount = result.amount;
                             billForm.date = result.dueDate === '未知日期' ? '' : result.dueDate;
-                            alert(`解析成功：${billForm.name} $${result.amount}`);
+                            showToast(`解析成功：${billForm.name} $${result.amount}`);
                         } else {
                             alert("解析失敗，請確認檔案格式。");
                         }
@@ -2553,14 +2789,7 @@ createApp({
                 cardForm.limit = cardForm.limit || matchedCard.limit || '';
                 
                 if (!cardForm.address) {
-                    if (matchedCard.address) {
-                        cardForm.address = matchedCard.address;
-                    } else if (matchedCard.enc_address) {
-                        const pin = getPinKey();
-                        if (pin) {
-                            cardForm.address = decryptField(matchedCard.enc_address, pin);
-                        }
-                    }
+                    cardForm.address = getCardAddress(matchedCard);
                 }
             }
         });
@@ -2576,7 +2805,9 @@ createApp({
             formatDate, getBillIcon, getBillStatusClass, getCardAutopay, getUrgencyBar, formatMonthLabel, setAnalysisPeriod, getBankGradientClass,
             onFileChange, parsePDF, exportToExcel, decryptField, getPinKey, groupedCards, expandedBanks, expandedCards, totalCardsCount, totalCardsLimit,
             commonBanksList, startAddBill, associatedCard, onBillNameInput, getCardOrgIcon, getBillCardInfo,
-            exportBackup, importBackup, getOfficialBankName, getTicketBadgeClass, getTicketIcon, quickAddCardForBank
+            exportBackup, importBackup, getOfficialBankName, getTicketBadgeClass, getTicketIcon, quickAddCardForBank,
+            encryptionMode, showUnlockPassphrase, unlockPassphraseInput, masterPassphrase, masterPassphraseConfirm,
+            setupPassphrase, unlockWithPassphrase, getCardAddress, revealCardNumber, toggleCardFlip, maskAmount
         };
     }
 }).mount('#app');

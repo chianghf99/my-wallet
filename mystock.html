@@ -3259,11 +3259,24 @@
                             <input type="number" v-model="futuresActionForm.closePrice"
                                 class="zen-input font-mono text-lg"
                                 placeholder="輸入點數"
-                                @input="() => { if(futuresActionForm.mode==='rollover' && !futuresActionForm.newOpenPrice) futuresActionForm.newOpenPrice = futuresActionForm.closePrice }">
+                                @input="() => { if(futuresActionForm.mode==='rollover') { if(futuresActionForm.rollSpreadInput !== '' && futuresActionForm.rollSpreadInput !== null && futuresActionForm.rollSpreadInput !== undefined) applyRollSpread(); else if(!futuresActionForm.newOpenPrice) futuresActionForm.newOpenPrice = futuresActionForm.closePrice } }">
                         </div>
 
                         <!-- 展期專屬欄位 -->
                         <template v-if="futuresActionForm.mode === 'rollover'">
+                            <!-- 價差單快速展期 -->
+                            <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg px-4 py-3">
+                                <label class="block text-xs font-bold text-blue-600 dark:text-blue-400 mb-1">
+                                    價差點數（選填，用價差單展期時填這裡）
+                                </label>
+                                <input type="number" v-model="futuresActionForm.rollSpreadInput"
+                                    class="zen-input font-mono"
+                                    placeholder="遠月−近月 價差"
+                                    @input="applyRollSpread">
+                                <p class="text-xs text-blue-500 dark:text-blue-400 mt-1">
+                                    自動算出遠月建倉價 = 近月平倉價 {{ futuresActionForm.pos.direction === 'long' ? '+' : '−' }} 價差點數
+                                </p>
+                            </div>
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500 mb-1">遠月到期代號 <span class="text-red-500">*</span></label>

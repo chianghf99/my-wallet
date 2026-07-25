@@ -941,8 +941,17 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 };
 
                 const rollFuturesPosition = (pos) => {
-                    futuresActionForm.value = { mode: 'rollover', pos, closePrice: pos.currentPrice || '', fee: '', newExpiry: '', newOpenPrice: '' };
+                    futuresActionForm.value = { mode: 'rollover', pos, closePrice: pos.currentPrice || '', fee: '', newExpiry: '', newOpenPrice: '', rollSpreadInput: '' };
                     showFuturesActionModal.value = true;
+                };
+
+                const applyRollSpread = () => {
+                    const f = futuresActionForm.value;
+                    if (!f.pos || f.rollSpreadInput === '' || f.rollSpreadInput === null || f.rollSpreadInput === undefined) return;
+                    const spread = Number(f.rollSpreadInput);
+                    const closePrice = Number(f.closePrice);
+                    if (isNaN(spread) || isNaN(closePrice)) return;
+                    f.newOpenPrice = f.pos.direction === 'long' ? closePrice + spread : closePrice - spread;
                 };
 
                 const _executeRollover = async (pos, closePrice, newExpiry, newOpenPrice, fee) => {
@@ -2460,7 +2469,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
                     futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm, futuresLoading, futuresTransactions,
                     futuresTotalUnrealizedPnL, futuresEquity, futuresTotalMarginUsed, futuresTotalExposure, futuresRiskRatio, futuresLeverageRatio,
-                    openFuturesModal, saveFuturesPosition, deleteFuturesPosition, closeFuturesPosition, rollFuturesPosition, showFuturesActionModal, futuresActionForm, submitFuturesAction, openFuturesMarginModal, adjustFuturesMargin, autoFetchTaiexIndexPrice, fetchFuturesPricesDirect, onFuturesSymbolChange, deleteFuturesTransaction, futuresHistoryTab, getFuturesDisplayName, futuresTotalMarginCashTwd,
+                    openFuturesModal, saveFuturesPosition, deleteFuturesPosition, closeFuturesPosition, rollFuturesPosition, applyRollSpread, showFuturesActionModal, futuresActionForm, submitFuturesAction, openFuturesMarginModal, adjustFuturesMargin, autoFetchTaiexIndexPrice, fetchFuturesPricesDirect, onFuturesSymbolChange, deleteFuturesTransaction, futuresHistoryTab, getFuturesDisplayName, futuresTotalMarginCashTwd,
                     investmentsTab, performanceTab, overviewTab,
                     mutualFundList, showMutualFundModal, mutualFundForm, mutualFundTotalCost, mutualFundTotalValue, mutualFundTotalPnL, openMutualFundModal, saveMutualFund, deleteMutualFund
                 };

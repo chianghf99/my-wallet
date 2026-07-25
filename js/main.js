@@ -884,7 +884,10 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 };
 
                 const _executeClose = async (pos, closePrice, fee) => {
-                    const netPnl = (pos.direction === 'long' ? (closePrice - pos.entryPrice) : (pos.entryPrice - closePrice)) * pos.contracts * pos.multiplier - fee;
+                    // 修正：原本只算了 netPnl，但下面 futures_transactions 紀錄還需要沒扣手續費的毛損益 pnl，
+                    // 少了這行會在按下「確認平倉」時直接噴 ReferenceError，平倉功能完全用不了。
+                    const pnl = (pos.direction === 'long' ? (closePrice - pos.entryPrice) : (pos.entryPrice - closePrice)) * pos.contracts * pos.multiplier;
+                    const netPnl = pnl - fee;
 
                     // 1. 寫入已實現損益 (產生 doc ID 並設定)
                     const realizedRef = db.collection('users').doc(user.value.uid).collection('realized_gains').doc();

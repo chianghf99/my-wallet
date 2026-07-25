@@ -3208,6 +3208,143 @@
                 </div>
             </div>
 
+            <!-- 期貨平倉 / 展期 Modal -->
+            <div v-if="showFuturesActionModal"
+                class="fixed inset-0 bg-black bg-opacity-60 flex items-start justify-center z-50 p-4 overflow-y-auto">
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md my-8 overflow-hidden">
+                    <!-- Header -->
+                    <div :class="futuresActionForm.mode === 'close' ? 'bg-red-600' : 'bg-amber-600'"
+                        class="text-white px-6 py-4 flex justify-between items-center">
+                        <div>
+                            <h3 class="font-bold text-lg">
+                                {{ futuresActionForm.mode === 'close' ? '⬛ 平倉確認' : '🔄 展期操作' }}
+                            </h3>
+                            <p v-if="futuresActionForm.pos" class="text-xs opacity-80 mt-0.5">
+                                {{ getFuturesDisplayName(futuresActionForm.pos.symbol) }}
+                                {{ futuresActionForm.pos.expiry || '' }}
+                                ·
+                                {{ futuresActionForm.pos.direction === 'long' ? '多' : '空' }}
+                                {{ futuresActionForm.pos.contracts }} 口
+                            </p>
+                        </div>
+                        <button @click="showFuturesActionModal=false" class="text-white hover:text-gray-200 text-xl">
+                            <i class="fa-solid fa-times"></i>
+                        </button>
+                    </div>
+
+                    <!-- Body -->
+                    <div class="p-6 space-y-4" v-if="futuresActionForm.pos">
+                        <!-- 建倉資訊提示 -->
+                        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg px-4 py-3 text-sm flex gap-6">
+                            <div>
+                                <span class="text-gray-400 text-xs block">建倉價</span>
+                                <span class="font-mono font-bold text-gray-700 dark:text-gray-200">{{ futuresActionForm.pos.entryPrice.toLocaleString() }}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-400 text-xs block">乘數</span>
+                                <span class="font-mono font-bold text-gray-700 dark:text-gray-200">{{ futuresActionForm.pos.multiplier }}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-400 text-xs block">幣別</span>
+                                <span class="font-mono font-bold text-gray-700 dark:text-gray-200">{{ futuresActionForm.pos.currency }}</span>
+                            </div>
+                        </div>
+
+                        <!-- 近月平倉價 (兩種模式都需要) -->
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-1">
+                                {{ futuresActionForm.mode === 'close' ? '平倉價格 / 點數' : '近月平倉價格' }}
+                                <span class="text-red-500">*</span>
+                            </label>
+                            <input type="number" v-model="futuresActionForm.closePrice"
+                                class="zen-input font-mono text-lg"
+                                placeholder="輸入點數"
+                                @input="() => { if(futuresActionForm.mode==='rollover' && !futuresActionForm.newOpenPrice) futuresActionForm.newOpenPrice = futuresActionForm.closePrice }">
+                        </div>
+
+                        <!-- 展期專屬欄位 -->
+                        <template v-if="futuresActionForm.mode === 'rollover'">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500 mb-1">遠月到期代號 <span class="text-red-500">*</span></label>
+                                    <input type="text" v-model="futuresActionForm.newExpiry"
+                                        class="zen-input font-mono"
+                                        placeholder="例如：202509">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500 mb-1">遠月建倉價格 <span class="text-red-500">*</span></label>
+                                    <input type="number" v-model="futuresActionForm.newOpenPrice"
+                                        class="zen-input font-mono"
+                                        placeholder="輸入點數">
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- 手續費 + 稅 -->
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-1">
+                                手續費 + 交易稅（選填）
+                                <span v-if="futuresActionForm.mode === 'rollover'" class="text-gray-400 font-normal">兩腿合計</span>
+                            </label>
+                            <input type="number" v-model="futuresActionForm.fee"
+                                class="zen-input"
+                                placeholder="0（留空視為 0）">
+                        </div>
+
+                        <!-- 即時損益預覽 -->
+                        <div v-if="futuresActionForm.closePrice && futuresActionForm.pos"
+                            class="rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden text-sm">
+                            <div class="bg-gray-50 dark:bg-gray-700/50 px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                                損益預覽
+                            </div>
+                            <div class="px-4 py-3 space-y-2">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-500">毛損益</span>
+                                    <span :class="((futuresActionForm.pos.direction==='long' ? Number(futuresActionForm.closePrice)-futuresActionForm.pos.entryPrice : futuresActionForm.pos.entryPrice-Number(futuresActionForm.closePrice)) * futuresActionForm.pos.contracts * futuresActionForm.pos.multiplier) >= 0 ? 'text-emerald-600 font-bold' : 'text-red-500 font-bold'">
+                                        {{ futuresActionForm.pos.currency === 'USD' ? '$' : 'NT$' }}
+                                        {{ formatNumber((futuresActionForm.pos.direction==='long' ? Number(futuresActionForm.closePrice)-futuresActionForm.pos.entryPrice : futuresActionForm.pos.entryPrice-Number(futuresActionForm.closePrice)) * futuresActionForm.pos.contracts * futuresActionForm.pos.multiplier) }}
+                                    </span>
+                                </div>
+                                <div v-if="Number(futuresActionForm.fee) > 0" class="flex justify-between text-gray-400">
+                                    <span>手續費/稅</span>
+                                    <span>− {{ futuresActionForm.pos.currency === 'USD' ? '$' : 'NT$' }} {{ formatNumber(Number(futuresActionForm.fee)) }}</span>
+                                </div>
+                                <div class="flex justify-between border-t border-gray-100 dark:border-gray-600 pt-2">
+                                    <span class="font-bold text-gray-600 dark:text-gray-300">{{ futuresActionForm.mode === 'close' ? '淨損益（入帳）' : '保證金調整' }}</span>
+                                    <span :class="((futuresActionForm.pos.direction==='long' ? Number(futuresActionForm.closePrice)-futuresActionForm.pos.entryPrice : futuresActionForm.pos.entryPrice-Number(futuresActionForm.closePrice)) * futuresActionForm.pos.contracts * futuresActionForm.pos.multiplier - (Number(futuresActionForm.fee)||0)) >= 0 ? 'text-emerald-600 font-bold' : 'text-red-500 font-bold'">
+                                        {{ futuresActionForm.pos.currency === 'USD' ? '$' : 'NT$' }}
+                                        {{ formatNumber((futuresActionForm.pos.direction==='long' ? Number(futuresActionForm.closePrice)-futuresActionForm.pos.entryPrice : futuresActionForm.pos.entryPrice-Number(futuresActionForm.closePrice)) * futuresActionForm.pos.contracts * futuresActionForm.pos.multiplier - (Number(futuresActionForm.fee)||0)) }}
+                                    </span>
+                                </div>
+                                <div v-if="futuresActionForm.mode === 'rollover' && futuresActionForm.newOpenPrice" class="flex justify-between text-gray-400 text-xs">
+                                    <span>展期價差成本</span>
+                                    <span>{{ formatNumber((futuresActionForm.pos.direction==='long' ? Number(futuresActionForm.newOpenPrice)-Number(futuresActionForm.closePrice) : Number(futuresActionForm.closePrice)-Number(futuresActionForm.newOpenPrice)) * futuresActionForm.pos.contracts * futuresActionForm.pos.multiplier) }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 展期說明 -->
+                        <p v-if="futuresActionForm.mode === 'rollover'"
+                            class="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2">
+                            ※ 展期不計入已實現損益。保證金調整 = 近月損益 − 費用，將自動入帳至保證金帳戶。
+                        </p>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex justify-end gap-3">
+                        <button @click="showFuturesActionModal=false"
+                            class="px-4 py-2 rounded text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+                            取消
+                        </button>
+                        <button @click="submitFuturesAction"
+                            :class="futuresActionForm.mode === 'close' ? 'bg-red-600 hover:bg-red-500' : 'bg-amber-600 hover:bg-amber-500'"
+                            class="px-6 py-2 rounded text-white font-semibold transition">
+                            {{ futuresActionForm.mode === 'close' ? '確認平倉' : '確認展期' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <div v-if="showLoanMgrModal"
                 class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                 <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm overflow-hidden">

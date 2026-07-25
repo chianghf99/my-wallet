@@ -99,6 +99,8 @@ export const showFuturesModal = ref(false);
 export const futuresForm = ref({ id: null, symbol: '', expiry: '', direction: 'long', contracts: '', entryPrice: '', currentPrice: '', multiplier: '', marginUsed: '', currency: 'TWD', note: '' });
 export const showFuturesMarginModal = ref(false);
 export const futuresMarginForm = ref({ amount: '', currency: 'TWD', type: 'deposit', syncCash: true, loanId: '', note: '' });
+export const showFuturesActionModal = ref(false);
+export const futuresActionForm = ref({ mode: 'close', pos: null, closePrice: '', fee: '', newExpiry: '', newOpenPrice: '' });
 export const futuresLoading = ref(false);
 export const futuresTransactions = ref([]);
 

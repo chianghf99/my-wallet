@@ -4,7 +4,7 @@ import { getLocalDate, formatNumber, formatCurrency, getPnlClass, getRoi, format
 import { 
     user, stocks, exchangeRate, lastUpdated, loadingTarget, isLoading, viewMode, isMobile, showPrivacy, defaultPrivacyHidden, hideZeroShares, showSettingsModal, isDarkMode, activeSection, showChangelog, stockStates, sectionLoading, showStockNoteModal, stockNoteForm, showHistoryModal, historyRecords, historyFilterYear, availableYears, showDeleteModal, pendingDeleteTx, showEditTxModal, editTxForm, showHistoryEditModalVisible, historyEditForm, notes, showNoteModalVisible, noteForm, loanList, showLoanMgrModal, inlineNewLoan, inlineLoanName, loanForm, cashData, prevDayData, realEstateList, showRealEstateModal, realEstateForm, chartStartDate, chartEndDate, chartPnl, currentRange, divRange, divSearchQuery, divStartDate, divEndDate, realizedStartDate, realizedEndDate, transStartDate, transEndDate, transFilterType, transSearchQuery, sortKeyTrans, sortOrderTrans, sortKeyDiv, sortOrderDiv, realizedGains, realizedSearchQuery, sortKeyRealized, sortOrderRealized, realizedRange, dividendRecords, transactionHistory, showModal, isEditing, form, showTransModal, isFundMode, isLoanMode, loanCashMode, transForm,
     monthlyProfitData, monthlyProfitRange,
-    futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm, futuresLoading, futuresTransactions,
+    futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm, futuresLoading, futuresTransactions, showFuturesActionModal, futuresActionForm,
     investmentsTab, performanceTab, overviewTab,
     mutualFundList, showMutualFundModal, mutualFundForm
 } from './store/index.js';
@@ -878,24 +878,13 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     setTimeout(saveDailySnapshot, 500);
                 };
 
-                const closeFuturesPosition = async (pos) => {
-                    const closePriceStr = prompt(`請輸入「${pos.symbol}」的平倉點數 / 價格：`, pos.currentPrice);
-                    if (closePriceStr === null) return;
-                    const closePrice = Number(closePriceStr);
-                    if (isNaN(closePrice) || closePrice <= 0) return alert('請輸入有效點數');
+                const closeFuturesPosition = (pos) => {
+                    futuresActionForm.value = { mode: 'close', pos, closePrice: pos.currentPrice || '', fee: '', newExpiry: '', newOpenPrice: '' };
+                    showFuturesActionModal.value = true;
+                };
 
-                    const diff = pos.direction === 'long' 
-                        ? (closePrice - pos.entryPrice) 
-                        : (pos.entryPrice - closePrice);
-                    const pnl = diff * pos.contracts * pos.multiplier;
-
-                    // 選填：手續費 + 交易稅
-                    const feeStr = prompt(`手續費 + 交易稅（選填，留空或 0 跳過）\n預估毛損益：${pos.currency === 'USD' ? '$' : 'NT$'} ${formatNumber(pnl)}`, '0');
-                    if (feeStr === null) return;
-                    const fee = Math.max(0, Number(feeStr) || 0);
-                    const netPnl = pnl - fee;
-
-                    if (!confirm(`平倉價格: ${closePrice}\n毛損益: ${pos.currency === 'USD' ? '$' : 'NT$'} ${formatNumber(pnl)}${fee > 0 ? `\n手續費/稅: ${pos.currency === 'USD' ? '$' : 'NT$'} ${formatNumber(fee)}\n淨損益: ${pos.currency === 'USD' ? '$' : 'NT$'} ${formatNumber(netPnl)}` : ''}\n\n確定執行平倉嗎？`)) return;
+                const _executeClose = async (pos, closePrice, fee) => {
+                    const netPnl = (pos.direction === 'long' ? (closePrice - pos.entryPrice) : (pos.entryPrice - closePrice)) * pos.contracts * pos.multiplier - fee;
 
                     // 1. 寫入已實現損益 (產生 doc ID 並設定)
                     const realizedRef = db.collection('users').doc(user.value.uid).collection('realized_gains').doc();
@@ -947,45 +936,17 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     setTimeout(saveDailySnapshot, 500);
                     alert('平倉成功！平倉損益已歸檔，並調整保證金帳戶餘額。');
                 };
-                const rollFuturesPosition = async (pos) => {
-                    // Step 1: 近月平倉價
-                    const closePriceStr = prompt(`【展期】請輸入「${getFuturesDisplayName(pos.symbol)} ${pos.expiry || ''}」的近月平倉價格：`, pos.currentPrice);
-                    if (closePriceStr === null) return;
-                    const closePrice = Number(closePriceStr);
-                    if (isNaN(closePrice) || closePrice <= 0) return alert('請輸入有效價格');
 
-                    // Step 2: 遠月到期月份
-                    const newExpiry = prompt('請輸入遠月到期代號（例如：202508）：', '');
-                    if (newExpiry === null) return;
-                    if (!newExpiry.trim()) return alert('請輸入到期月份');
+                const rollFuturesPosition = (pos) => {
+                    futuresActionForm.value = { mode: 'rollover', pos, closePrice: pos.currentPrice || '', fee: '', newExpiry: '', newOpenPrice: '' };
+                    showFuturesActionModal.value = true;
+                };
 
-                    // Step 3: 遠月建倉價
-                    const openPriceStr = prompt(`請輸入「${getFuturesDisplayName(pos.symbol)} ${newExpiry.trim()}」的遠月建倉價格：`, closePrice);
-                    if (openPriceStr === null) return;
-                    const newOpenPrice = Number(openPriceStr);
-                    if (isNaN(newOpenPrice) || newOpenPrice <= 0) return alert('請輸入有效價格');
-
-                    // Step 4: 手續費（兩腿合計，選填）
-                    const feeStr = prompt('手續費 + 交易稅（兩腿合計，選填，留空或 0 跳過）：', '0');
-                    if (feeStr === null) return;
-                    const fee = Math.max(0, Number(feeStr) || 0);
-
-                    // 計算
+                const _executeRollover = async (pos, closePrice, newExpiry, newOpenPrice, fee) => {
                     const nearPnL = (pos.direction === 'long' ? (closePrice - pos.entryPrice) : (pos.entryPrice - closePrice)) * pos.contracts * pos.multiplier;
                     const rollSpread = (pos.direction === 'long' ? (newOpenPrice - closePrice) : (closePrice - newOpenPrice)) * pos.contracts * pos.multiplier;
                     const marginAdjustment = nearPnL - fee;
                     const currency = pos.currency || 'TWD';
-                    const sym = currency === 'USD' ? '$' : 'NT$';
-
-                    if (!confirm(
-                        `【展期確認】\n` +
-                        `${getFuturesDisplayName(pos.symbol)} ${pos.expiry || ''} → ${newExpiry.trim()}\n` +
-                        `近月平倉: ${closePrice}  ·  近月損益: ${sym}${formatNumber(nearPnL)}\n` +
-                        `遠月建倉: ${newOpenPrice}  ·  展期成本: ${sym}${formatNumber(rollSpread)}${rollSpread <= 0 ? ' (收到溢價 ✓)' : ' (付出成本)'}\n` +
-                        (fee > 0 ? `手續費/稅: ${sym}${formatNumber(fee)}\n` : ``) +
-                        `保證金調整: ${sym}${formatNumber(marginAdjustment)}\n\n` +
-                        `※ 不計入已實現損益，確定執行展期嗎？`
-                    )) return;
 
                     const uid = user.value.uid;
                     const newPosRef = db.collection('users').doc(uid).collection('futures_positions').doc();
@@ -1216,6 +1177,26 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         note: ''
                     };
                     showFuturesMarginModal.value = true;
+                };
+
+                const submitFuturesAction = async () => {
+                    const f = futuresActionForm.value;
+                    const pos = f.pos;
+                    if (!pos) return;
+                    const closePrice = Number(f.closePrice);
+                    if (isNaN(closePrice) || closePrice <= 0) return alert('請輸入有效平倉價格');
+                    const fee = Math.max(0, Number(f.fee) || 0);
+                    if (f.mode === 'close') {
+                        showFuturesActionModal.value = false;
+                        await _executeClose(pos, closePrice, fee);
+                    } else {
+                        const newExpiry = (f.newExpiry || '').trim();
+                        if (!newExpiry) return alert('請輸入遠月到期代號');
+                        const newOpenPrice = Number(f.newOpenPrice);
+                        if (isNaN(newOpenPrice) || newOpenPrice <= 0) return alert('請輸入有效遠月建倉價格');
+                        showFuturesActionModal.value = false;
+                        await _executeRollover(pos, closePrice, newExpiry, newOpenPrice, fee);
+                    }
                 };
 
                 const adjustFuturesMargin = async () => {
@@ -2476,7 +2457,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
                     futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm, futuresLoading, futuresTransactions,
                     futuresTotalUnrealizedPnL, futuresEquity, futuresTotalMarginUsed, futuresTotalExposure, futuresRiskRatio, futuresLeverageRatio,
-                    openFuturesModal, saveFuturesPosition, deleteFuturesPosition, closeFuturesPosition, rollFuturesPosition, openFuturesMarginModal, adjustFuturesMargin, autoFetchTaiexIndexPrice, fetchFuturesPricesDirect, onFuturesSymbolChange, deleteFuturesTransaction, futuresHistoryTab, getFuturesDisplayName, futuresTotalMarginCashTwd,
+                    openFuturesModal, saveFuturesPosition, deleteFuturesPosition, closeFuturesPosition, rollFuturesPosition, showFuturesActionModal, futuresActionForm, submitFuturesAction, openFuturesMarginModal, adjustFuturesMargin, autoFetchTaiexIndexPrice, fetchFuturesPricesDirect, onFuturesSymbolChange, deleteFuturesTransaction, futuresHistoryTab, getFuturesDisplayName, futuresTotalMarginCashTwd,
                     investmentsTab, performanceTab, overviewTab,
                     mutualFundList, showMutualFundModal, mutualFundForm, mutualFundTotalCost, mutualFundTotalValue, mutualFundTotalPnL, openMutualFundModal, saveMutualFund, deleteMutualFund
                 };

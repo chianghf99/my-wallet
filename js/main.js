@@ -1057,6 +1057,25 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     alert('展期成功！遠月部位已建立，近月損益已入帳至保證金（不計入已實現損益）。');
                 };
 
+                // v5.x bug fix: 找出跟某筆期貨保證金劃轉紀錄配對的銀行現金紀錄。
+                // 優先用 linkedFuturesTxId（新資料才有）精準比對；找不到就退回用金額/幣別/日期/類型猜，
+                // 只是舊機制在同一天有兩筆金額相同紀錄時可能猜錯，所以只當作 fallback。
+                const findLinkedCashTx = async (uid, tx, legacyType) => {
+                    const txCol = db.collection('users').doc(uid).collection('transactions');
+                    if (tx.id) {
+                        const byLink = await txCol.where('linkedFuturesTxId', '==', tx.id).limit(1).get();
+                        if (!byLink.empty) return byLink;
+                    }
+                    return txCol
+                        .where('symbol', '==', 'CASH')
+                        .where('totalAmount', '==', tx.amount)
+                        .where('currency', '==', tx.currency)
+                        .where('date', '==', tx.date)
+                        .where('type', '==', legacyType)
+                        .limit(1)
+                        .get();
+                };
+
                 const deleteFuturesTransaction = async (tx) => {
 
                     if (!confirm(`確定要刪除此筆交易紀錄？\n(這將撤銷此動作對應的資金或部位狀態！)`)) return;
@@ -1077,16 +1096,11 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                             }
                             const marginRef = db.collection('users').doc(uid).collection('portfolio').doc('futures_margin');
                             batch.set(marginRef, curMargin, { merge: true });
-                            
-                            const cashSnap = await db.collection('users').doc(uid)
-                                .collection('transactions')
-                                .where('symbol', '==', 'CASH')
-                                .where('totalAmount', '==', tx.amount)
-                                .where('currency', '==', tx.currency)
-                                .where('date', '==', tx.date)
-                                .where('type', '==', 'withdraw')
-                                .get();
-                            
+
+                            // v5.x bug fix: 優先用 linkedFuturesTxId 精準對到這筆交易產生的現金紀錄，
+                            // 找不到（例如升級前的舊資料）才退回用金額/幣別/日期/類型去猜，避免同一天有兩筆金額相同的紀錄時刪錯。
+                            const cashSnap = await findLinkedCashTx(uid, tx, 'withdraw');
+
                             if (!cashSnap.empty) {
                                 batch.delete(cashSnap.docs[0].ref);
                                 const curCash = { ...cashData.value };
@@ -1098,7 +1112,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                                 const cashRef = db.collection('users').doc(uid).collection('portfolio').doc('cash');
                                 batch.set(cashRef, curCash, { merge: true });
                             }
-                        } 
+                        }
                         else if (tx.type === 'withdraw') {
                             if (tx.currency === 'USD') {
                                 curMargin.usd = (curMargin.usd || 0) + tx.amount;
@@ -1107,16 +1121,9 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                             }
                             const marginRef = db.collection('users').doc(uid).collection('portfolio').doc('futures_margin');
                             batch.set(marginRef, curMargin, { merge: true });
-                            
-                            const cashSnap = await db.collection('users').doc(uid)
-                                .collection('transactions')
-                                .where('symbol', '==', 'CASH')
-                                .where('totalAmount', '==', tx.amount)
-                                .where('currency', '==', tx.currency)
-                                .where('date', '==', tx.date)
-                                .where('type', '==', 'deposit')
-                                .get();
-                            
+
+                            const cashSnap = await findLinkedCashTx(uid, tx, 'deposit');
+
                             if (!cashSnap.empty) {
                                 batch.delete(cashSnap.docs[0].ref);
                                 const curCash = { ...cashData.value };
@@ -1262,7 +1269,10 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     await db.collection('users').doc(user.value.uid).collection('portfolio').doc('futures_margin').set(curMargin, { merge: true });
 
                     // 1b. 寫入期貨保證金劃轉流水帳
-                    await db.collection('users').doc(user.value.uid).collection('futures_transactions').add({
+                    // v5.x bug fix: 先取得 doc ref 再 set，這樣才能把 id 記在對應的銀行現金紀錄裡（linkedFuturesTxId），
+                    // 之後刪除時可以精準對到這一筆，不用再靠「金額+幣別+日期+類型」去猜，避免同一天兩筆金額相同的紀錄被猜錯。
+                    const marginTxRef = db.collection('users').doc(user.value.uid).collection('futures_transactions').doc();
+                    await marginTxRef.set({
                         type: formVal.type,
                         symbol: 'MARGIN',
                         amount: amt,
@@ -1285,6 +1295,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                             totalAmount: amt,
                             currency: formVal.currency,
                             date: getLocalDate(),
+                            linkedFuturesTxId: marginTxRef.id,
                             memo: formVal.note || '期貨保證金劃轉'
                         });
                     }
@@ -1351,6 +1362,11 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         const allLoans = await db.collection('users').doc(uid).collection('loans').get();
                         const allRealEstate = await db.collection('users').doc(uid).collection('real_estate').get();
                         const cashDoc = await db.collection('users').doc(uid).collection('portfolio').doc('cash').get();
+                        // v5.x bug fix: 備份原本漏掉期貨與基金，還原時會少這兩塊資料
+                        const allFuturesPositions = await db.collection('users').doc(uid).collection('futures_positions').get();
+                        const allFuturesTransactions = await db.collection('users').doc(uid).collection('futures_transactions').get();
+                        const allFunds = await db.collection('users').doc(uid).collection('funds').get();
+                        const futuresMarginDoc = await db.collection('users').doc(uid).collection('portfolio').doc('futures_margin').get();
                         const obj = {
                             stocks: allStocks.docs.map(d => ({ id: d.id, ...d.data() })),
                             transactions: allTrans.docs.map(d => ({ id: d.id, ...d.data() })),
@@ -1360,7 +1376,11 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                             cash: cashDoc.exists ? cashDoc.data() : { twd: 0, usd: 0, loan: 0 },
                             notes: allNotes.docs.map(d => ({ id: d.id, ...d.data() })),
                             loans: allLoans.docs.map(d => ({ id: d.id, ...d.data() })),
-                            real_estate: allRealEstate.docs.map(d => ({ id: d.id, ...d.data() }))
+                            real_estate: allRealEstate.docs.map(d => ({ id: d.id, ...d.data() })),
+                            futures_positions: allFuturesPositions.docs.map(d => ({ id: d.id, ...d.data() })),
+                            futures_transactions: allFuturesTransactions.docs.map(d => ({ id: d.id, ...d.data() })),
+                            funds: allFunds.docs.map(d => ({ id: d.id, ...d.data() })),
+                            futures_margin: futuresMarginDoc.exists ? futuresMarginDoc.data() : { twd: 0, usd: 0 }
                         };
                         const fileName = `portfolio_BACKUP_${getLocalDate()}.json`;
                         const jsonStr = JSON.stringify(obj, null, 2);
@@ -1443,6 +1463,9 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                                         await restoreCol('notes', json.notes);
                                         await restoreCol('loans', json.loans);
                                         await restoreCol('real_estate', json.real_estate);
+                                        await restoreCol('futures_positions', json.futures_positions);
+                                        await restoreCol('futures_transactions', json.futures_transactions);
+                                        await restoreCol('funds', json.funds);
                                         if (json.history && Array.isArray(json.history)) {
                                             const chunks = [];
                                             for (let i = 0; i < json.history.length; i += batchLimit) chunks.push(json.history.slice(i, i + batchLimit));
@@ -1453,6 +1476,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                                             }
                                         }
                                         if (json.cash) await db.collection('users').doc(uid).collection('portfolio').doc('cash').set(json.cash, { merge: true });
+                                        if (json.futures_margin) await db.collection('users').doc(uid).collection('portfolio').doc('futures_margin').set(json.futures_margin, { merge: true });
                                         alert('還原成功！頁面將重新整理。');
                                         location.reload();
                                     } catch (e) {
@@ -1473,7 +1497,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     }
                 };
 
-                const exportData = async () => { if (!user.value) return; const uid = user.value.uid; const allStocks = await db.collection('users').doc(uid).collection('stocks').get(); const allTrans = await db.collection('users').doc(uid).collection('transactions').get(); const allRealized = await db.collection('users').doc(uid).collection('realized_gains').get(); const allDividends = await db.collection('users').doc(uid).collection('dividends').get(); const allHistory = await db.collection('users').doc(uid).collection('history').orderBy('date').get(); const allNotes = await db.collection('users').doc(uid).collection('notes').get(); const allLoans = await db.collection('users').doc(uid).collection('loans').get(); const allRealEstate = await db.collection('users').doc(uid).collection('real_estate').get(); const cashDoc = await db.collection('users').doc(uid).collection('portfolio').doc('cash').get(); const obj = { stocks: allStocks.docs.map(d => ({ id: d.id, ...d.data() })), transactions: allTrans.docs.map(d => ({ id: d.id, ...d.data() })), realized: allRealized.docs.map(d => ({ id: d.id, ...d.data() })), dividends: allDividends.docs.map(d => ({ id: d.id, ...d.data() })), history: allHistory.docs.map(d => d.data()), cash: cashDoc.exists ? cashDoc.data() : { twd: 0, usd: 0, loan: 0 }, notes: allNotes.docs.map(d => ({ id: d.id, ...d.data() })), loans: allLoans.docs.map(d => ({ id: d.id, ...d.data() })), real_estate: allRealEstate.docs.map(d => ({ id: d.id, ...d.data() })) }; const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(obj, null, 2)); a.download = `portfolio_FULL_BACKUP_${getLocalDate()}.json`; document.body.appendChild(a); a.click(); a.remove(); };
+                const exportData = async () => { if (!user.value) return; const uid = user.value.uid; const allStocks = await db.collection('users').doc(uid).collection('stocks').get(); const allTrans = await db.collection('users').doc(uid).collection('transactions').get(); const allRealized = await db.collection('users').doc(uid).collection('realized_gains').get(); const allDividends = await db.collection('users').doc(uid).collection('dividends').get(); const allHistory = await db.collection('users').doc(uid).collection('history').orderBy('date').get(); const allNotes = await db.collection('users').doc(uid).collection('notes').get(); const allLoans = await db.collection('users').doc(uid).collection('loans').get(); const allRealEstate = await db.collection('users').doc(uid).collection('real_estate').get(); const cashDoc = await db.collection('users').doc(uid).collection('portfolio').doc('cash').get(); const allFuturesPositions = await db.collection('users').doc(uid).collection('futures_positions').get(); const allFuturesTransactions = await db.collection('users').doc(uid).collection('futures_transactions').get(); const allFunds = await db.collection('users').doc(uid).collection('funds').get(); const futuresMarginDoc = await db.collection('users').doc(uid).collection('portfolio').doc('futures_margin').get(); const obj = { stocks: allStocks.docs.map(d => ({ id: d.id, ...d.data() })), transactions: allTrans.docs.map(d => ({ id: d.id, ...d.data() })), realized: allRealized.docs.map(d => ({ id: d.id, ...d.data() })), dividends: allDividends.docs.map(d => ({ id: d.id, ...d.data() })), history: allHistory.docs.map(d => d.data()), cash: cashDoc.exists ? cashDoc.data() : { twd: 0, usd: 0, loan: 0 }, notes: allNotes.docs.map(d => ({ id: d.id, ...d.data() })), loans: allLoans.docs.map(d => ({ id: d.id, ...d.data() })), real_estate: allRealEstate.docs.map(d => ({ id: d.id, ...d.data() })), futures_positions: allFuturesPositions.docs.map(d => ({ id: d.id, ...d.data() })), futures_transactions: allFuturesTransactions.docs.map(d => ({ id: d.id, ...d.data() })), funds: allFunds.docs.map(d => ({ id: d.id, ...d.data() })), futures_margin: futuresMarginDoc.exists ? futuresMarginDoc.data() : { twd: 0, usd: 0 } }; const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(obj, null, 2)); a.download = `portfolio_FULL_BACKUP_${getLocalDate()}.json`; document.body.appendChild(a); a.click(); a.remove(); };
 
                 const exportSimplifiedPortfolio = () => {
                     if (!user.value) return;
@@ -1505,7 +1529,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
                 const triggerImport = () => { fileInput.value.click(); };
 
-                const handleImport = async (event) => { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = async (e) => { try { const json = JSON.parse(e.target.result); if (!confirm(`警告：這將使用備份檔案中的資料更新您的資產紀錄。\n\n若 ID 相同將覆蓋舊資料，ID 不同則新增。\n\n確定要執行還原嗎？`)) { event.target.value = ''; return; } loadingTarget.value = 'import'; const uid = user.value.uid; const batchLimit = 400; const restoreCollection = async (colName, dataArr) => { if (!dataArr || !Array.isArray(dataArr)) return; const chunks = []; for (let i = 0; i < dataArr.length; i += batchLimit) { chunks.push(dataArr.slice(i, i + batchLimit)); } for (const chunk of chunks) { const batch = db.batch(); chunk.forEach(item => { if (item.id) { const docRef = db.collection('users').doc(uid).collection(colName).doc(item.id); const { id, ...data } = item; batch.set(docRef, data, { merge: true }); } }); await batch.commit(); } }; await restoreCollection('stocks', json.stocks); await restoreCollection('transactions', json.transactions); await restoreCollection('realized_gains', json.realized); await restoreCollection('dividends', json.dividends); await restoreCollection('notes', json.notes); await restoreCollection('loans', json.loans); await restoreCollection('real_estate', json.real_estate); if (json.history && Array.isArray(json.history)) { const chunks = []; for (let i = 0; i < json.history.length; i += batchLimit) { chunks.push(json.history.slice(i, i + batchLimit)); } for (const chunk of chunks) { const batch = db.batch(); chunk.forEach(h => { if (h.date) { const docRef = db.collection('users').doc(uid).collection('history').doc(h.date); batch.set(docRef, h, { merge: true }); } }); await batch.commit(); } } if (json.cash) { await db.collection('users').doc(uid).collection('portfolio').doc('cash').set(json.cash, { merge: true }); } alert('還原成功！頁面將重新整理。'); location.reload(); } catch (err) { console.error(err); alert('還原失敗：檔案格式錯誤或網路問題。'); loadingTarget.value = null; } }; reader.readAsText(file); };
+                const handleImport = async (event) => { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = async (e) => { try { const json = JSON.parse(e.target.result); if (!confirm(`警告：這將使用備份檔案中的資料更新您的資產紀錄。\n\n若 ID 相同將覆蓋舊資料，ID 不同則新增。\n\n確定要執行還原嗎？`)) { event.target.value = ''; return; } loadingTarget.value = 'import'; const uid = user.value.uid; const batchLimit = 400; const restoreCollection = async (colName, dataArr) => { if (!dataArr || !Array.isArray(dataArr)) return; const chunks = []; for (let i = 0; i < dataArr.length; i += batchLimit) { chunks.push(dataArr.slice(i, i + batchLimit)); } for (const chunk of chunks) { const batch = db.batch(); chunk.forEach(item => { if (item.id) { const docRef = db.collection('users').doc(uid).collection(colName).doc(item.id); const { id, ...data } = item; batch.set(docRef, data, { merge: true }); } }); await batch.commit(); } }; await restoreCollection('stocks', json.stocks); await restoreCollection('transactions', json.transactions); await restoreCollection('realized_gains', json.realized); await restoreCollection('dividends', json.dividends); await restoreCollection('notes', json.notes); await restoreCollection('loans', json.loans); await restoreCollection('real_estate', json.real_estate); await restoreCollection('futures_positions', json.futures_positions); await restoreCollection('futures_transactions', json.futures_transactions); await restoreCollection('funds', json.funds); if (json.history && Array.isArray(json.history)) { const chunks = []; for (let i = 0; i < json.history.length; i += batchLimit) { chunks.push(json.history.slice(i, i + batchLimit)); } for (const chunk of chunks) { const batch = db.batch(); chunk.forEach(h => { if (h.date) { const docRef = db.collection('users').doc(uid).collection('history').doc(h.date); batch.set(docRef, h, { merge: true }); } }); await batch.commit(); } } if (json.cash) { await db.collection('users').doc(uid).collection('portfolio').doc('cash').set(json.cash, { merge: true }); } if (json.futures_margin) { await db.collection('users').doc(uid).collection('portfolio').doc('futures_margin').set(json.futures_margin, { merge: true }); } alert('還原成功！頁面將重新整理。'); location.reload(); } catch (err) { console.error(err); alert('還原失敗：檔案格式錯誤或網路問題。'); loadingTarget.value = null; } }; reader.readAsText(file); };
 
                 const clearAllUserData = async () => {
                     if (!user.value) return;
@@ -1514,7 +1538,9 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     if (input !== 'DELETE') return alert('驗證碼錯誤，已取消刪除。');
                     isLoading.value = true;
                     const uid = user.value.uid;
-                    const collections = ['stocks', 'transactions', 'realized_gains', 'dividends', 'history', 'notes', 'loans'];
+                    // v5.x bug fix: 原本漏了 real_estate/futures_positions/futures_transactions/funds，
+                    // 導致「清除所有資料」跳出成功訊息後，房地產、期貨、基金其實還留著
+                    const collections = ['stocks', 'transactions', 'realized_gains', 'dividends', 'history', 'notes', 'loans', 'real_estate', 'futures_positions', 'futures_transactions', 'funds'];
                     try {
                         for (const colName of collections) {
                             const snapshot = await db.collection('users').doc(uid).collection(colName).get();
@@ -1526,6 +1552,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                             for (const chunk of chunks) { const batch = db.batch(); chunk.forEach(doc => batch.delete(doc.ref)); await batch.commit(); }
                         }
                         await db.collection('users').doc(uid).collection('portfolio').doc('cash').delete();
+                        await db.collection('users').doc(uid).collection('portfolio').doc('futures_margin').delete();
                         alert('所有資料已成功清除，系統將自動登出。');
                         logout();
                     } catch (err) { console.error(err); alert('刪除失敗，請稍後再試：' + err.message); } finally { isLoading.value = false; }

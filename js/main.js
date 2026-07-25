@@ -1203,7 +1203,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         await _executeClose(pos, closePrice, fee);
                     } else {
                         const newExpiry = (f.newExpiry || '').trim();
-                        if (!newExpiry) return alert('請輸入遠月到期代號');
+                        if (!newExpiry) return alert('請選擇遠月結算日');
                         const newOpenPrice = Number(f.newOpenPrice);
                         if (isNaN(newOpenPrice) || newOpenPrice <= 0) return alert('請輸入有效遠月建倉價格');
                         showFuturesActionModal.value = false;

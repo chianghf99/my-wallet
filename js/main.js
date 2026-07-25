@@ -957,13 +957,28 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 const _executeRollover = async (pos, closePrice, newExpiry, newOpenPrice, fee) => {
                     const nearPnL = (pos.direction === 'long' ? (closePrice - pos.entryPrice) : (pos.entryPrice - closePrice)) * pos.contracts * pos.multiplier;
                     const rollSpread = (pos.direction === 'long' ? (newOpenPrice - closePrice) : (closePrice - newOpenPrice)) * pos.contracts * pos.multiplier;
-                    const marginAdjustment = nearPnL - fee;
+                    const netPnl = nearPnL - fee;
+                    const marginAdjustment = netPnl;
                     const currency = pos.currency || 'TWD';
 
                     const uid = user.value.uid;
                     const newPosRef = db.collection('users').doc(uid).collection('futures_positions').doc();
 
-                    // 1. 寫入展期交易紀錄
+                    // 1. 寫入已實現損益（展期＝近月真正平倉，損益即時認列）
+                    const realizedRef = db.collection('users').doc(uid).collection('realized_gains').doc();
+                    await realizedRef.set({
+                        symbol: pos.symbol,
+                        name: `${pos.symbol}${pos.expiry ? ' ' + pos.expiry : ''} (${pos.direction === 'long' ? '多' : '空'}展期)`,
+                        pnl: netPnl,
+                        date: getLocalDate(),
+                        currency: currency,
+                        shares: pos.contracts,
+                        buyPrice: pos.entryPrice,
+                        sellPrice: closePrice,
+                        memo: pos.note || `展期 ${pos.expiry || ''}→${newExpiry.trim()}`
+                    });
+
+                    // 2. 寫入展期交易紀錄
                     await db.collection('users').doc(uid).collection('futures_transactions').add({
                         type: 'rollover',
                         symbol: pos.symbol,
@@ -979,6 +994,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         nearMonthPnL: nearPnL,
                         fee: fee,
                         marginAdjustment: marginAdjustment,
+                        realizedGainsId: realizedRef.id,
                         currency: currency,
                         date: getLocalDate(),
                         note: `展期 ${pos.expiry || ''}→${newExpiry.trim()}`,
@@ -999,7 +1015,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         timestamp: firebase.firestore.FieldValue.serverTimestamp()
                     });
 
-                    // 2. 建立遠月部位
+                    // 3. 建立遠月部位
                     await newPosRef.set({
                         symbol: pos.symbol,
                         expiry: newExpiry.trim(),
@@ -1014,7 +1030,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
 
-                    // 3. 保證金調整（近月損益 - 費用 流入保證金）
+                    // 4. 保證金調整（近月損益 - 費用 流入保證金）
                     const curMargin = { ...futuresMargin.value };
                     if (currency === 'USD') {
                         curMargin.usd = (curMargin.usd || 0) + marginAdjustment;
@@ -1023,11 +1039,11 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     }
                     await db.collection('users').doc(uid).collection('portfolio').doc('futures_margin').set(curMargin, { merge: true });
 
-                    // 4. 刪除近月部位
+                    // 5. 刪除近月部位
                     await db.collection('users').doc(uid).collection('futures_positions').doc(pos.id).delete();
 
                     setTimeout(saveDailySnapshot, 500);
-                    alert('展期成功！遠月部位已建立，近月損益已入帳至保證金（不計入已實現損益）。');
+                    alert('展期成功！近月損益已計入已實現損益，遠月部位已建立。');
                 };
 
                 // v5.x bug fix: 找出跟某筆期貨保證金劃轉紀錄配對的銀行現金紀錄。
@@ -1157,6 +1173,11 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                             }
                             const marginRefRoll = db.collection('users').doc(uid).collection('portfolio').doc('futures_margin');
                             batch.set(marginRefRoll, curMargin, { merge: true });
+                            // 刪除連動的已實現損益紀錄
+                            if (tx.realizedGainsId) {
+                                const rgRefRoll = db.collection('users').doc(uid).collection('realized_gains').doc(tx.realizedGainsId);
+                                batch.delete(rgRefRoll);
+                            }
                             // 刪除遠月部位
                             if (tx.newPositionId) {
                                 batch.delete(db.collection('users').doc(uid).collection('futures_positions').doc(tx.newPositionId));

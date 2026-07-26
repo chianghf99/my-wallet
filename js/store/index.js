@@ -17,6 +17,11 @@ export const showPrivacy = ref(false);
 export const defaultPrivacyHidden = ref(false);
 export const hideZeroShares = ref(localStorage.getItem('hideZeroShares') === 'true');
 export const showSettingsModal = ref(false);
+// v5.15.0: 非阻斷式提示。原本一律用 alert()，在 PWA 全螢幕模式下特別突兀，
+// 而且更新股價後還要手動點掉。破壞性操作的 confirm() 維持不變，那本來就該擋住使用者。
+export const toasts = ref([]);
+// 表單的行內驗證訊息，格式為 { 欄位名稱: '錯誤訊息' }
+export const formErrors = ref({});
 // v5.10.0: 自動備份提醒。Drive 備份需要 OAuth 彈窗（瀏覽器要求使用者手勢），
 // 靜態網頁無法完全靜默地備份，所以做成「到期自動提醒 + 一鍵備份」。
 export const autoBackupEnabled = ref(localStorage.getItem('autoBackupEnabled') === 'true');

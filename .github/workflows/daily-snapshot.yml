@@ -28,8 +28,10 @@ jobs:
 
       # 估值邏輯是前端與排程共用的，先跑回歸測試確認公式沒被改壞，
       # 失敗就中止，不要把錯誤的數字寫進歷史紀錄。
-      - name: 驗證估值邏輯
-        run: node scripts/test-valuation.mjs
+      - name: 驗證估值與期貨取價邏輯
+        run: |
+          node scripts/test-valuation.mjs
+          node scripts/test-futures.mjs
 
       - name: 寫入每日快照
         working-directory: scripts

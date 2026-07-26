@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v5.16.0</title>
+    <title>我的投資組合 | Portfolio v5.17.0</title>
     <!-- v5.12.0: PWA。三個入口各有獨立的 manifest 與圖示，
          加到主畫面後會是三個可分辨的 App，而不是同一顆圖示。 -->
     <link rel="manifest" href="./manifest-stock.webmanifest">
@@ -348,7 +348,7 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.16.0</h1>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.17.0</h1>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -368,7 +368,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.16.0</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.17.0</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -2380,9 +2380,24 @@
 
                     <div class="p-6 overflow-y-auto custom-scrollbar">
                         <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
-                            <!-- v5.16.0: 最新版本節點 -->
+                            <!-- v5.17.0: 最新版本節點 -->
                             <div class="relative pl-6">
                                 <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800"></div>
+                                <div class="text-xs text-gray-400 mb-1">2026-07-27</div>
+                                <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
+                                    <div class="font-bold text-gray-800 dark:text-white mb-2">v5.17.0</div>
+                                    <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                        <li>修正：期貨報價全面改抓期交所，<strong>日盤與夜盤都涵蓋</strong>，自動採用較新的時段。</li>
+                                        <li>修正：台積電期貨 (CDF) 原本抓的是台積電<strong>現貨</strong>價（實測差 12 點，一口即差 24,000 元），夜盤更是整段停在現貨收盤價。</li>
+                                        <li>修正：原「小台積期 (QDF)」實為<strong>台勝科期貨</strong>，小型台積電期貨的正確代號是 <strong>QFF</strong>。</li>
+                                        <li>修正：微台 (TMF) 原本套用小台的價格，實際上是獨立契約（實測夜盤差 146 點），現已分開取價。</li>
+                                        <li>修正：大台與小台原本使用「近全」報價，不分契約月份；現依部位結算日對應到正確月份，且不會誤抓週契約。</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="relative pl-6">
+                                <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-2 border-white dark:border-gray-800"></div>
                                 <div class="text-xs text-gray-400 mb-1">2026-07-27</div>
                                 <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
                                     <div class="font-bold text-gray-800 dark:text-white mb-2">v5.16.0</div>

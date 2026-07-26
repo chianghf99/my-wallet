@@ -7,3 +7,13 @@ esun_text.txt
 *_backup.html
 *backup*.html
 test_pdfjs.js
+
+# 憑證類檔案一律不進版控（Firebase 服務帳戶金鑰等）
+*firebase-adminsdk*.json
+*service-account*.json
+*serviceAccount*.json
+*credentials*.json
+*.pem
+*.key
+.env
+.env.*

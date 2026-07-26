@@ -21,7 +21,20 @@
 |---|---|---|
 | `FIREBASE_SERVICE_ACCOUNT` | Firebase 服務帳戶金鑰 JSON（整份貼上） | ✅ |
 | `FINNHUB_API_KEY` | 美股報價 API 金鑰 | 美股持倉才需要 |
-| `APP_UID` | Firebase 使用者 uid | 選填，留空會自動掃 `users` 底下所有帳號 |
+| `APP_UID` | 要快照的帳號 uid，多組以逗號分隔 | ✅ |
+| `SNAPSHOT_ALL_USERS` | 設為 `true` 才會處理專案下所有帳號 | 選填 |
+
+### ⚠️ 日誌是公開的
+
+`my-wallet` 是 public repo，GitHub Actions 的執行日誌**任何人都能查看，不需登入**。
+因此 `snapshot.mjs` 只會輸出筆數與狀態，**不得印出 uid、金額或持股代號**。
+日後修改日誌時請務必維持這個原則。
+
+### ⚠️ 不要在未明示的情況下處理他人帳號
+
+這個 Firebase 專案可能有其他人的帳號（別人也用這個網頁登入過）。排程跑的是專案擁有者的
+管理金鑰與 API 額度，因此預設只處理 `APP_UID` 指定的帳號；要處理全部必須明確設定
+`SNAPSHOT_ALL_USERS=true`。
 
 ### 注意事項
 

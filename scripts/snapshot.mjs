@@ -10,7 +10,11 @@
 // 需要的環境變數：
 //   FIREBASE_SERVICE_ACCOUNT  Firebase 服務帳戶金鑰 JSON（整份貼上）
 //   FINNHUB_API_KEY           美股報價用
-//   APP_UID                   選填。沒給就自動掃 users 底下所有帳號（單人使用時最方便）
+//   APP_UID                   要快照的帳號 uid，多組以逗號分隔（必填）
+//   SNAPSHOT_ALL_USERS        設為 'true' 才會處理專案下所有帳號（沒有 APP_UID 時的明確開關）
+//
+// ⚠️ 這個 repo 是公開的，GitHub Actions 的執行日誌任何人都看得到（不需登入）。
+// 因此日誌只能印筆數與狀態，絕對不要印出 uid、金額、持股代號等可識別或敏感的內容。
 
 import admin from 'firebase-admin';
 
@@ -195,7 +199,7 @@ const readDoc = async (userRef, col, id, fallback) => {
     return doc.exists ? doc.data() : fallback;
 };
 
-const processUser = async (db, uid, rate) => {
+const processUser = async (db, uid, rate, label) => {
     const userRef = db.collection('users').doc(uid);
 
     const [stocks, loans, realEstate, funds, futuresPositions] = await Promise.all([
@@ -209,7 +213,7 @@ const processUser = async (db, uid, rate) => {
     const futuresMargin = await readDoc(userRef, 'portfolio', 'futures_margin', { twd: 0, usd: 0 });
 
     if (!stocks.length && !futuresPositions.length) {
-        console.log(`[${uid}] 沒有任何持倉，略過`);
+        console.log(`${label} 沒有任何持倉，略過`);
         return;
     }
 
@@ -248,7 +252,7 @@ const processUser = async (db, uid, rate) => {
         }
     }
     await batch.commit();
-    console.log(`[${uid}] 報價更新：成功 ${ok} 筆、失敗 ${fail} 筆`);
+    console.log(`${label} 報價更新：成功 ${ok} 筆、失敗 ${fail} 筆`);
 
     // 3. 計算並寫入快照
     const snapshot = buildSnapshot({ stocks, cash, loans, realEstate, funds, futuresPositions, futuresMargin, rate });
@@ -261,7 +265,8 @@ const processUser = async (db, uid, rate) => {
         timestamp: admin.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
 
-    console.log(`[${uid}] ${date} 快照完成：淨資產 ${Math.round(snapshot.totalVal).toLocaleString()}、期貨權益 ${Math.round(snapshot.futures).toLocaleString()}`);
+    // 注意：這個 repo 是公開的，Actions 日誌任何人都看得到，因此絕對不要印出金額或 uid。
+    console.log(`${label} ${date} 快照完成`);
 };
 
 const main = async () => {
@@ -273,17 +278,26 @@ const main = async () => {
     const rate = await fetchExchangeRate();
     console.log(`匯率 USD/TWD = ${rate}`);
 
+    // 預設只處理 APP_UID 指定的帳號。
+    // 這個專案的 Firebase 可能有其他人的帳號（別人也用這個網頁登入過），
+    // 排程跑的是專案擁有者的管理金鑰與 API 額度，不應該在未明示的情況下
+    // 去動別人的資料，所以「處理全部帳號」必須用 SNAPSHOT_ALL_USERS 明確開啟。
     let uids;
     if (process.env.APP_UID) {
-        uids = [process.env.APP_UID];
-    } else {
-        // 單人使用時不必特地設定 uid，直接掃出底下有資料的帳號
+        uids = process.env.APP_UID.split(',').map(s => s.trim()).filter(Boolean);
+    } else if (process.env.SNAPSHOT_ALL_USERS === 'true') {
         const refs = await db.collection('users').listDocuments();
         uids = refs.map(r => r.id);
+        console.log(`SNAPSHOT_ALL_USERS 已開啟，將處理 ${uids.length} 個帳號`);
+    } else {
+        throw new Error('缺少 APP_UID：請設定要快照的帳號 uid（多組以逗號分隔）。若確定要處理專案下所有帳號，請改設 SNAPSHOT_ALL_USERS=true');
     }
     if (!uids.length) throw new Error('找不到任何使用者');
 
-    for (const uid of uids) await processUser(db, uid, rate);
+    for (let i = 0; i < uids.length; i++) {
+        // 用序號當標籤，不把 uid 印進公開日誌
+        await processUser(db, uids[i], rate, `[帳號 ${i + 1}/${uids.length}]`);
+    }
 };
 
 main().catch(err => {

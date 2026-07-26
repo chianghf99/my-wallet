@@ -1,0 +1,10 @@
+{
+  "name": "mywallet-scripts",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "排程任務：每日資產快照",
+  "dependencies": {
+    "firebase-admin": "^12.7.0"
+  }
+}

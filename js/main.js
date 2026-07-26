@@ -2,7 +2,7 @@ import { db, auth } from './firebase-config.js';
 import { getLocalDate, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountSign, getFuturesDisplayName } from './utils/format.js';
 
 import { 
-    user, stocks, exchangeRate, exchangeRateConfirmed, lastUpdated, loadingTarget, isLoading, viewMode, isMobile, showPrivacy, defaultPrivacyHidden, hideZeroShares, showSettingsModal, isDarkMode, activeSection, showChangelog, stockStates, sectionLoading, showStockNoteModal, stockNoteForm, showHistoryModal, historyRecords, historyFilterYear, availableYears, showDeleteModal, pendingDeleteTx, showEditTxModal, editTxForm, showHistoryEditModalVisible, historyEditForm, notes, showNoteModalVisible, noteForm, loanList, showLoanMgrModal, inlineNewLoan, inlineLoanName, loanForm, cashData, prevDayData, realEstateList, showRealEstateModal, realEstateForm, chartStartDate, chartEndDate, chartPnl, currentRange, divRange, divSearchQuery, divStartDate, divEndDate, realizedStartDate, realizedEndDate, transStartDate, transEndDate, transFilterType, transSearchQuery, sortKeyTrans, sortOrderTrans, sortKeyDiv, sortOrderDiv, realizedGains, realizedSearchQuery, sortKeyRealized, sortOrderRealized, realizedRange, dividendRecords, transactionHistory, showModal, isEditing, form, showTransModal, isFundMode, isLoanMode, loanCashMode, transForm,
+    user, stocks, exchangeRate, exchangeRateConfirmed, lastUpdated, loadingTarget, isLoading, viewMode, isMobile, showPrivacy, defaultPrivacyHidden, hideZeroShares, showSettingsModal, isDarkMode, activeSection, showChangelog, autoBackupEnabled, autoBackupIntervalDays, lastBackupAt, showBackupReminder, stockStates, sectionLoading, showStockNoteModal, stockNoteForm, showHistoryModal, historyRecords, historyFilterYear, availableYears, showDeleteModal, pendingDeleteTx, showEditTxModal, editTxForm, showHistoryEditModalVisible, historyEditForm, notes, showNoteModalVisible, noteForm, loanList, showLoanMgrModal, inlineNewLoan, inlineLoanName, loanForm, cashData, prevDayData, realEstateList, showRealEstateModal, realEstateForm, chartStartDate, chartEndDate, chartPnl, currentRange, divRange, divSearchQuery, divStartDate, divEndDate, realizedStartDate, realizedEndDate, transStartDate, transEndDate, transFilterType, transSearchQuery, sortKeyTrans, sortOrderTrans, sortKeyDiv, sortOrderDiv, realizedGains, realizedSearchQuery, sortKeyRealized, sortOrderRealized, realizedRange, dividendRecords, transactionHistory, showModal, isEditing, form, showTransModal, isFundMode, isLoanMode, loanCashMode, transForm,
     monthlyProfitData, monthlyProfitRange,
     futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm, futuresLoading, futuresTransactions, showFuturesActionModal, futuresActionForm,
     investmentsTab, performanceTab, overviewTab,
@@ -186,6 +186,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         if (u) {
                             _initialStocksReady = false; _initialCashReady = false;
                             loadSavedExchangeRate(u.uid);
+                            loadBackupState(u.uid);
                             loadUserData(u.uid);
                             fetchPreviousDayData(u.uid); 
                             fetchCash(u.uid); 
@@ -516,7 +517,58 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 };
 
                 const toggleDarkMode = () => { isDarkMode.value = !isDarkMode.value; localStorage.setItem('darkMode', isDarkMode.value); document.documentElement.classList.toggle('dark'); };
-                const saveSettings = () => { localStorage.setItem('app_default_privacy_hidden', defaultPrivacyHidden.value); localStorage.setItem('hideZeroShares', hideZeroShares.value); };
+                const saveSettings = () => {
+                    localStorage.setItem('app_default_privacy_hidden', defaultPrivacyHidden.value);
+                    localStorage.setItem('hideZeroShares', hideZeroShares.value);
+                    localStorage.setItem('autoBackupEnabled', autoBackupEnabled.value);
+                    localStorage.setItem('autoBackupIntervalDays', autoBackupIntervalDays.value);
+                    checkBackupReminder();
+                };
+
+                // --- v5.10.0: 自動備份提醒 ---
+                // 註：Google Drive 備份要走 OAuth 彈窗，瀏覽器規定必須由使用者手勢觸發，
+                // 靜態網頁沒辦法在背景靜默備份，所以這裡做的是「到期跳提醒、一鍵完成」。
+                const daysSinceBackup = computed(() => {
+                    if (!lastBackupAt.value) return null;
+                    const diff = Date.now() - new Date(lastBackupAt.value).getTime();
+                    return Math.floor(diff / 86400000);
+                });
+
+                const checkBackupReminder = () => {
+                    if (!autoBackupEnabled.value || !user.value) { showBackupReminder.value = false; return; }
+                    const days = daysSinceBackup.value;
+                    showBackupReminder.value = (days === null) || (days >= autoBackupIntervalDays.value);
+                };
+
+                const markBackupDone = async () => {
+                    const now = new Date().toISOString();
+                    lastBackupAt.value = now;
+                    try { localStorage.setItem('lastBackupAt', now); } catch (e) { /* 忽略 */ }
+                    showBackupReminder.value = false;
+                    if (user.value) {
+                        // 存雲端，換裝置時才知道上次備份是什麼時候
+                        db.collection('users').doc(user.value.uid).collection('settings').doc('config')
+                            .set({ lastBackupAt: now }, { merge: true })
+                            .catch(e => console.warn('[備份] 寫入備份時間失敗', e));
+                    }
+                };
+
+                const loadBackupState = async (uid) => {
+                    try {
+                        const doc = await db.collection('users').doc(uid).collection('settings').doc('config').get();
+                        const remote = doc.exists ? doc.data().lastBackupAt : null;
+                        // 本機與雲端取比較新的那個（可能在別台電腦備份過）
+                        if (remote && (!lastBackupAt.value || new Date(remote) > new Date(lastBackupAt.value))) {
+                            lastBackupAt.value = remote;
+                            try { localStorage.setItem('lastBackupAt', remote); } catch (e) { /* 忽略 */ }
+                        }
+                    } catch (e) {
+                        console.warn('[備份] 讀取上次備份時間失敗', e);
+                    }
+                    checkBackupReminder();
+                };
+
+                const dismissBackupReminder = () => { showBackupReminder.value = false; };
 
                 watch(isDarkMode, () => {
                     if (activeSection.value === 'overview') {
@@ -1362,6 +1414,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                             body: form
                         });
                         if (!res.ok) throw new Error(`Drive 上傳失敗：${res.status}`);
+                        await markBackupDone();
                         alert(`✅ 備份成功！\n檔案「${fileName}」已儲存至您的 Google 雲端硬碟。`);
                     } catch (err) {
                         console.error('[Drive Backup]', err);
@@ -1465,7 +1518,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     }
                 };
 
-                const exportData = async () => { if (!user.value) return; const uid = user.value.uid; const allStocks = await db.collection('users').doc(uid).collection('stocks').get(); const allTrans = await db.collection('users').doc(uid).collection('transactions').get(); const allRealized = await db.collection('users').doc(uid).collection('realized_gains').get(); const allDividends = await db.collection('users').doc(uid).collection('dividends').get(); const allHistory = await db.collection('users').doc(uid).collection('history').orderBy('date').get(); const allNotes = await db.collection('users').doc(uid).collection('notes').get(); const allLoans = await db.collection('users').doc(uid).collection('loans').get(); const allRealEstate = await db.collection('users').doc(uid).collection('real_estate').get(); const cashDoc = await db.collection('users').doc(uid).collection('portfolio').doc('cash').get(); const allFuturesPositions = await db.collection('users').doc(uid).collection('futures_positions').get(); const allFuturesTransactions = await db.collection('users').doc(uid).collection('futures_transactions').get(); const allFunds = await db.collection('users').doc(uid).collection('funds').get(); const futuresMarginDoc = await db.collection('users').doc(uid).collection('portfolio').doc('futures_margin').get(); const obj = { stocks: allStocks.docs.map(d => ({ id: d.id, ...d.data() })), transactions: allTrans.docs.map(d => ({ id: d.id, ...d.data() })), realized: allRealized.docs.map(d => ({ id: d.id, ...d.data() })), dividends: allDividends.docs.map(d => ({ id: d.id, ...d.data() })), history: allHistory.docs.map(d => d.data()), cash: cashDoc.exists ? cashDoc.data() : { twd: 0, usd: 0, loan: 0 }, notes: allNotes.docs.map(d => ({ id: d.id, ...d.data() })), loans: allLoans.docs.map(d => ({ id: d.id, ...d.data() })), real_estate: allRealEstate.docs.map(d => ({ id: d.id, ...d.data() })), futures_positions: allFuturesPositions.docs.map(d => ({ id: d.id, ...d.data() })), futures_transactions: allFuturesTransactions.docs.map(d => ({ id: d.id, ...d.data() })), funds: allFunds.docs.map(d => ({ id: d.id, ...d.data() })), futures_margin: futuresMarginDoc.exists ? futuresMarginDoc.data() : { twd: 0, usd: 0 } }; const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(obj, null, 2)); a.download = `portfolio_FULL_BACKUP_${getLocalDate()}.json`; document.body.appendChild(a); a.click(); a.remove(); };
+                const exportData = async () => { if (!user.value) return; const uid = user.value.uid; const allStocks = await db.collection('users').doc(uid).collection('stocks').get(); const allTrans = await db.collection('users').doc(uid).collection('transactions').get(); const allRealized = await db.collection('users').doc(uid).collection('realized_gains').get(); const allDividends = await db.collection('users').doc(uid).collection('dividends').get(); const allHistory = await db.collection('users').doc(uid).collection('history').orderBy('date').get(); const allNotes = await db.collection('users').doc(uid).collection('notes').get(); const allLoans = await db.collection('users').doc(uid).collection('loans').get(); const allRealEstate = await db.collection('users').doc(uid).collection('real_estate').get(); const cashDoc = await db.collection('users').doc(uid).collection('portfolio').doc('cash').get(); const allFuturesPositions = await db.collection('users').doc(uid).collection('futures_positions').get(); const allFuturesTransactions = await db.collection('users').doc(uid).collection('futures_transactions').get(); const allFunds = await db.collection('users').doc(uid).collection('funds').get(); const futuresMarginDoc = await db.collection('users').doc(uid).collection('portfolio').doc('futures_margin').get(); const obj = { stocks: allStocks.docs.map(d => ({ id: d.id, ...d.data() })), transactions: allTrans.docs.map(d => ({ id: d.id, ...d.data() })), realized: allRealized.docs.map(d => ({ id: d.id, ...d.data() })), dividends: allDividends.docs.map(d => ({ id: d.id, ...d.data() })), history: allHistory.docs.map(d => d.data()), cash: cashDoc.exists ? cashDoc.data() : { twd: 0, usd: 0, loan: 0 }, notes: allNotes.docs.map(d => ({ id: d.id, ...d.data() })), loans: allLoans.docs.map(d => ({ id: d.id, ...d.data() })), real_estate: allRealEstate.docs.map(d => ({ id: d.id, ...d.data() })), futures_positions: allFuturesPositions.docs.map(d => ({ id: d.id, ...d.data() })), futures_transactions: allFuturesTransactions.docs.map(d => ({ id: d.id, ...d.data() })), funds: allFunds.docs.map(d => ({ id: d.id, ...d.data() })), futures_margin: futuresMarginDoc.exists ? futuresMarginDoc.data() : { twd: 0, usd: 0 } }; const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(obj, null, 2)); a.download = `portfolio_FULL_BACKUP_${getLocalDate()}.json`; document.body.appendChild(a); a.click(); a.remove(); await markBackupDone(); };
 
                 const exportSimplifiedPortfolio = () => {
                     if (!user.value) return;
@@ -2693,6 +2746,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     inlineNewLoan, inlineLoanName, saveInlineLoanAccount,
                     exportToExcel, exportSimplifiedPortfolio,
                     showSettingsModal, saveSettings,
+                    autoBackupEnabled, autoBackupIntervalDays, lastBackupAt, showBackupReminder, daysSinceBackup, dismissBackupReminder,
                     triggerImport, fileInput, handleImport,
                     driveLoading, exportDataToDrive, importFromDrive,
                     setChartRange, currentRange, historyFilterYear, availableYears,

@@ -1,0 +1,35 @@
+name: 每日資產快照
+
+on:
+  schedule:
+    # 06:30 UTC = 14:30 台北時間（台股 13:30 收盤、期貨一般時段 13:45 收盤之後）
+    # 注意：GitHub Actions 的 cron 不保證準時，實際觸發可能延後數分鐘到半小時，
+    # 對「當日收盤快照」而言不影響結果。
+    - cron: '30 6 * * 1-5'
+  workflow_dispatch: {}   # 允許在 Actions 頁面手動觸發，方便測試
+
+# 預設沒有任何權限，這個工作只需要對外抓報價與寫 Firestore
+permissions: {}
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 安裝相依套件
+        working-directory: scripts
+        run: npm install --no-audit --no-fund
+
+      - name: 寫入每日快照
+        working-directory: scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+          APP_UID: ${{ secrets.APP_UID }}
+        run: node snapshot.mjs

@@ -1,0 +1,6 @@
+{
+  "name": "mywallet",
+  "private": true,
+  "type": "module",
+  "description": "個人資產與信用卡紀錄（靜態網頁 + Firebase）。此檔案僅用於讓 Node 以 ES 模組解析 js/ 底下的共用程式碼，網頁本身不需要建置。"
+}

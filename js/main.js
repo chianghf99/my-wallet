@@ -2170,11 +2170,10 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
 
 
-                // ★★★ v3.8.0: 直連 API ★★★
-                // 台股（盤中）：Cloudflare Worker → MIS TWSE 批次即時報價
+                // ★★★ 報價來源（v5.13.0 起全部經由 Cloudflare Worker 代理，不再需要任何 API 金鑰）★★★
+                // 台股（盤中）：MIS TWSE 批次即時報價
                 // 台股（盤後）：TWSE Open API + TPEx Open API
-                // 美股：Finnhub REST API
-                const FINNHUB_API_KEY = 'd6klt59r01qg51f4ff00d6klt59r01qg51f4ff0g';
+                // 台股／美股主要來源：Yahoo Finance v8 chart
                 const CF_PROXY = 'https://stock-proxy.chicken7999.workers.dev/?url=';
 
                 // 台股快照 cache (Open API, 5分鐘更新一次)
@@ -2386,23 +2385,32 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     return day >= 1 && day <= 5 && totalMin >= 570 && totalMin < 960;
                 };
 
-                const fetchUsStockPrice = async (symbol) => {
+                // v5.13.0: 美股改用 Yahoo v8，與台股同一條路徑。
+                // 原本走 Finnhub，有三個問題：金鑰得寫在前端（這個 repo 是公開的）、
+                // 免費版限每分鐘 60 次（所以更新美股要每檔等 3 秒）、而且會封鎖資料中心 IP。
+                // Yahoo 不需金鑰、無次數限制，實測報價與 Finnhub 完全一致。
+                const fetchYahooQuote = async (yahooSymbol) => {
                     try {
-                        const r = await fetchWithRetry(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_API_KEY}`, 1, 8000);
-                        const j = await r.json();
-                        // Finnhub: c = 最新成交價(盤中即時/盤後即為當日收盤), pc = 前一個交易日收盤
-                        // 注意：盤後 j.c 就是當日收盤，不應再 fallback 到 j.pc（那才是更前一天）
-                        if (j.c && j.c > 0) {
+                        const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=1d`;
+                        const resp = await fetchWithRetry(CF_PROXY + encodeURIComponent(url), 1, 8000);
+                        const json = await resp.json();
+                        const meta = json?.chart?.result?.[0]?.meta;
+                        if (meta && meta.regularMarketPrice > 0) {
                             return {
-                                regularMarketPrice: j.c,
-                                previousClose: j.pc || j.c
+                                regularMarketPrice: meta.regularMarketPrice,
+                                // previousClose 實測可能是 null，少了 chartPreviousClose 退路
+                                // 昨收會等於現價，整排漲跌幅都變成 0%
+                                previousClose: meta.previousClose || meta.chartPreviousClose || meta.regularMarketPrice,
+                                name: meta.shortName || meta.longName || ''
                             };
                         }
                     } catch (e) {
-                        console.warn(`[Finnhub] ${symbol} 失敗`, e);
+                        console.warn(`[Yahoo v8] ${yahooSymbol} 失敗`, e);
                     }
                     return null;
                 };
+
+                const fetchUsStockPrice = async (symbol) => fetchYahooQuote(symbol);
 
                 // 一次性偵測上市/上櫃/興櫃 (v4.4.0: 加入 esb 支援；找不到回傳 null 而非預設 tse)
                 const detectMarketType = async (stock) => {
@@ -2515,25 +2523,17 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         return null;
                     }
 
-                    // 美股 / 匯率：直連 Finnhub
-                    try {
-                        const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${s}&token=${FINNHUB_API_KEY}`);
-                        const j = await r.json();
-                        if (j.c && j.c > 0) {
-                            let cpName = undefined;
-                            try {
-                                const profileRes = await fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${s}&token=${FINNHUB_API_KEY}`);
-                                const profileJson = await profileRes.json();
-                                if (profileJson && profileJson.name) cpName = profileJson.name;
-                            } catch (e) { /* silent */ }
-                            return {
-                                symbol: s,
-                                name: cpName,
-                                regularMarketPrice: j.c,
-                                previousClose: j.pc || j.c
-                            };
-                        }
-                    } catch (e) { /* silent */ }
+                    // 美股：Yahoo v8。公司名稱直接取自同一份回應的 shortName／longName，
+                    // 不必再像 Finnhub 那樣為了名稱多打一次 profile2。
+                    const q = await fetchYahooQuote(s);
+                    if (q) {
+                        return {
+                            symbol: s,
+                            name: q.name || undefined,
+                            regularMarketPrice: q.regularMarketPrice,
+                            previousClose: q.previousClose
+                        };
+                    }
                     return null;
                 };
                 const autoFetchName = async () => { const s = form.value.symbol; if (!s) return; if (/^\d/.test(s)) { form.value.currency = 'TWD'; } else if (/^[A-Za-z\.-]+$/.test(s)) { form.value.currency = 'USD'; form.value.marketType = 'us'; } if (!form.value.name) form.value.name = '查詢中...'; const d = await getYahooData(s); if (d) { if (form.value.name === '查詢中...') form.value.name = d.name || d.symbol; form.value.currentPrice = d.regularMarketPrice; form.value.previousClose = d.previousClose; } else { if (form.value.name === '查詢中...') form.value.name = ''; alert('查無代號'); } };
@@ -2586,9 +2586,11 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     let successCount = 0;
                     let failCount = 0;
 
-                    // 台股與美股分流限速：台股每秒 concurrent 4, delay 400ms；美股 Finnhub 每秒 concurrent 3, delay 3050ms
-                    const CONCURRENT_LIMIT = marketType === 'US' ? 3 : 4;
-                    const BATCH_DELAY = marketType === 'US' ? 3050 : 400;
+                    // v5.13.0: 台美股都走 Yahoo，沒有每分鐘次數限制，改用同一組節流參數。
+                    // 舊版美股每批要等 3050ms 是為了遷就 Finnhub 免費版的 60 次/分鐘，
+                    // 30 檔美股得等將近 30 秒；現在同樣 30 檔約 4 秒。
+                    const CONCURRENT_LIMIT = 4;
+                    const BATCH_DELAY = 400;
 
                     for (let i = 0; i < targetStocks.length; i += CONCURRENT_LIMIT) {
                         const batchStocks = targetStocks.slice(i, i + CONCURRENT_LIMIT);

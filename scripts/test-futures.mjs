@@ -7,7 +7,7 @@
 
 import {
     parseSymbolId, pickContract, pickFreshest, contractMonthOf,
-    pickFromOpenData, TAIFEX_PRODUCTS
+    pickFromOpenData, TAIFEX_PRODUCTS, effectiveStamp
 } from '../js/utils/futures.js';
 
 let fail = 0;
@@ -44,18 +44,37 @@ const mxfSep = pickContract(mxfDay, '202609');
 check('指定 202609 挑到 MXFI6-F', mxfSep && mxfSep.symbolId, 'MXFI6-F');
 check('查無該月份回傳 null', pickContract(mxfDay, '209912'), null);
 
-// --- 日盤 vs 夜盤取較新者 ---
-const cdfDay = [{ SymbolID: 'CDFH6-F', CLastPrice: '2362.00', CRefPrice: '2413.00', CDate: '20260724', CTime: '134459' }];
-const cdfNight = [{ SymbolID: 'CDFH6-M', CLastPrice: '2335.00', CRefPrice: '2360.00', CDate: '20260724', CTime: '045953' }];
-const freshest = pickFreshest([pickContract(cdfDay, '202608'), pickContract(cdfNight, '202608')]);
-check('同日：日盤 13:44 比夜盤 04:59 新', freshest && freshest.session, 'day');
-check('取到日盤價格 2362', freshest && freshest.price, 2362);
+// --- 時間戳校正：夜盤標記的是「開始日期」 ---
+// 週五 15:00 開始的夜盤收在週六清晨 05:00，期交所回傳 CDate=週五、CTime=045959。
+check('夜盤清晨收盤 → 日期進一天',
+    effectiveStamp({ CDate: '20260724', CTime: '045959' }, 'night'), '20260725045959');
+check('夜盤傍晚時段 → 不進位',
+    effectiveStamp({ CDate: '20260727', CTime: '203015' }, 'night'), '20260727203015');
+check('日盤不受影響',
+    effectiveStamp({ CDate: '20260724', CTime: '134459' }, 'day'), '20260724134459');
+check('月底跨月進位',
+    effectiveStamp({ CDate: '20260731', CTime: '050000' }, 'night'), '20260801050000');
 
-// 夜盤跨日的情境：夜盤時間戳為隔日凌晨，應勝出
-const cdfNightNewer = [{ SymbolID: 'CDFH6-M', CLastPrice: '2390.00', CRefPrice: '2362.00', CDate: '20260725', CTime: '045959' }];
-const freshest2 = pickFreshest([pickContract(cdfDay, '202608'), pickContract(cdfNightNewer, '202608')]);
-check('跨日夜盤勝出', freshest2 && freshest2.session, 'night');
-check('取到夜盤價格 2390', freshest2 && freshest2.price, 2390);
+// --- 日盤 vs 夜盤取較新者（用 TMF 20260724 的實際回應）---
+// 實際時序：週五日盤 13:44 收 43891 → 週五夜盤（週六 05:00 收）43378，夜盤才是最新。
+const tmfDay = [{ SymbolID: 'TMFH6-F', CLastPrice: '43891.00', CRefPrice: '44912.00', CDate: '20260724', CTime: '134459' }];
+const tmfNight = [{ SymbolID: 'TMFH6-M', CLastPrice: '43378.00', CRefPrice: '43891.00', CDate: '20260724', CTime: '045959' }];
+const freshest = pickFreshest([pickContract(tmfDay, '202608'), pickContract(tmfNight, '202608')]);
+check('收盤後：夜盤（週六05:00）勝過日盤（週五13:44）', freshest && freshest.session, 'night');
+check('取到夜盤價格 43378', freshest && freshest.price, 43378);
+
+// 盤中情境：週一日盤進行中，應勝過上週五的夜盤
+const monDay = [{ SymbolID: 'TMFH6-F', CLastPrice: '44000.00', CRefPrice: '43378.00', CDate: '20260727', CTime: '103000' }];
+const friNight = [{ SymbolID: 'TMFH6-M', CLastPrice: '43378.00', CRefPrice: '43891.00', CDate: '20260724', CTime: '045959' }];
+const freshest2 = pickFreshest([pickContract(monDay, '202608'), pickContract(friNight, '202608')]);
+check('盤中：當日日盤勝過上一個夜盤', freshest2 && freshest2.session, 'day');
+check('取到盤中價格 44000', freshest2 && freshest2.price, 44000);
+
+// 夜盤進行中：當晚 20:30 的夜盤應勝過當日日盤
+const sameDayNight = [{ SymbolID: 'TMFH6-M', CLastPrice: '44200.00', CRefPrice: '44000.00', CDate: '20260727', CTime: '203015' }];
+const freshest3 = pickFreshest([pickContract(monDay, '202608'), pickContract(sameDayNight, '202608')]);
+check('夜盤進行中：夜盤勝出', freshest3 && freshest3.session, 'night');
+check('取到夜盤價格 44200', freshest3 && freshest3.price, 44200);
 
 // --- 開放資料退路 ---
 const openRows = [

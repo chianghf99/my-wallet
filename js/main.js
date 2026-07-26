@@ -659,10 +659,10 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                       try {
                           const sym = (futuresForm.value.symbol || '').toUpperCase();
                           let price = null;
-                          if (sym === 'CDF' || sym === 'QDF') {
-                              // 抓取台積電現貨價格作為個股期貨的洗價現價
-                              const tsmcData = await getYahooData('2330');
-                              price = tsmcData?.regularMarketPrice;
+                          if (TAIFEX_STOCK_FUTURES[sym]) {
+                              // v5.16.0: 個股期貨抓真正的期貨報價，不再用現貨代替
+                              const q = await fetchStockFuturesPrice(sym, futuresForm.value.expiry);
+                              price = q?.price;
                           } else {
                               let targetSymbol = 'TWF:TXF:FUTURES'; // 預設大台近全
                               if (sym.startsWith('MTX') || sym.startsWith('MXF') || sym.startsWith('TMF')) {
@@ -698,7 +698,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                       if (!user.value) return;
                       const targetPositions = futuresPositions.value.filter(pos => {
                           const sym = pos.symbol.toUpperCase();
-                          return sym.startsWith('TX') || sym.startsWith('MTX') || sym.startsWith('MXF') || sym.startsWith('TMF') || sym.startsWith('CDF') || sym.startsWith('QDF');
+                          return sym.startsWith('TX') || sym.startsWith('MTX') || sym.startsWith('MXF') || sym.startsWith('TMF') || !!TAIFEX_STOCK_FUTURES[sym];
                       });
                       if (targetPositions.length === 0) {
                           showToast('目前沒有需要更新價格的台股期貨部位', 'info');
@@ -706,19 +706,28 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                       }
                       futuresLoading.value = true;
                       try {
-                          // 同步抓取大台近全、小台近全、與台積電現貨
+                          // 指數期貨走鉅亨近全；個股期貨(CDF/QFF)走期交所，各契約月份分別取價
                           const txUrl = CF_PROXY + encodeURIComponent('https://ws.api.cnyes.com/ws/api/v1/quote/quotes/TWF:TXF:FUTURES');
                           const mxfUrl = CF_PROXY + encodeURIComponent('https://ws.api.cnyes.com/ws/api/v1/quote/quotes/TWF:MXF:FUTURES');
-                          const [txResp, mxfResp, tsmcData] = await Promise.all([
-                              fetch(txUrl).then(r => r.json()),
-                              fetch(mxfUrl).then(r => r.json()),
-                              getYahooData('2330')
+                          const [txResp, mxfResp] = await Promise.all([
+                              fetch(txUrl).then(r => r.json()).catch(() => null),
+                              fetch(mxfUrl).then(r => r.json()).catch(() => null)
                           ]);
                           const txPrice = txResp?.data?.[0]?.['6'];
                           const mxfPrice = mxfResp?.data?.[0]?.['6'];
-                          const tsmcPrice = tsmcData?.regularMarketPrice;
-                          
-                          if (!txPrice && !mxfPrice && !tsmcPrice) {
+
+                          // 個股期貨依「商品代號 + 結算日」逐一取價（不同月份價格不同，不能共用）
+                          const stockFuturesPrices = new Map();
+                          for (const pos of targetPositions) {
+                              const sym = pos.symbol.toUpperCase();
+                              if (!TAIFEX_STOCK_FUTURES[sym]) continue;
+                              const key = `${sym}|${pos.expiry || ''}`;
+                              if (stockFuturesPrices.has(key)) continue;
+                              const q = await fetchStockFuturesPrice(sym, pos.expiry);
+                              if (q) stockFuturesPrices.set(key, q.price);
+                          }
+
+                          if (!txPrice && !mxfPrice && stockFuturesPrices.size === 0) {
                               toastErr('無法取得期貨即時報價，請稍後再試');
                               return;
                           }
@@ -727,12 +736,12 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                           targetPositions.forEach(pos => {
                               const sym = pos.symbol.toUpperCase();
                               let price = null;
-                              if (sym.startsWith('TX')) {
+                              if (TAIFEX_STOCK_FUTURES[sym]) {
+                                  price = stockFuturesPrices.get(`${sym}|${pos.expiry || ''}`);
+                              } else if (sym.startsWith('TX')) {
                                   price = txPrice;
                               } else if (sym.startsWith('MTX') || sym.startsWith('MXF') || sym.startsWith('TMF')) {
                                   price = mxfPrice || txPrice;
-                              } else if (sym.startsWith('CDF') || sym.startsWith('QDF')) {
-                                  price = tsmcPrice;
                               }
                               if (price) {
                                   pos.currentPrice = Number(price);
@@ -747,7 +756,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                               const parts = [];
                               if (txPrice) parts.push(`大台 ${Math.round(txPrice)}`);
                               if (mxfPrice) parts.push(`小台/微台 ${Math.round(mxfPrice)}`);
-                              if (tsmcPrice) parts.push(`台積電 ${tsmcPrice}`);
+                              for (const [k, v] of stockFuturesPrices) parts.push(`${k.split('|')[0]} ${v}`);
                               toastOk(`已更新 ${updatedCount} 筆期貨部位　${parts.join('　')}`);
                           } else {
                               showToast('沒有符合更新條件的期貨部位', 'info');
@@ -857,9 +866,9 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     } else if (sym === 'CDF') {
                         futuresForm.value.multiplier = 2000;
                         futuresForm.value.marginUsed = 300000; // 台積電期貨 2000股 (預估保證金)
-                    } else if (sym === 'QDF') {
+                    } else if (sym === 'QFF') {
                         futuresForm.value.multiplier = 100;
-                        futuresForm.value.marginUsed = 15000; // 小台積電期貨 100股 (預估保證金)
+                        futuresForm.value.marginUsed = 15000; // 小型台積電期貨 100股 (預估保證金)
                     }
                 };
                 const saveFuturesPosition = async () => {
@@ -2168,6 +2177,98 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 // 台股（盤後）：TWSE Open API + TPEx Open API
                 // 台股／美股主要來源：Yahoo Finance v8 chart
                 const CF_PROXY = 'https://stock-proxy.chicken7999.workers.dev/?url=';
+
+                // ★★★ v5.16.0: 個股期貨改抓真正的期貨報價 ★★★
+                // 舊版 CDF/QDF 是拿台積電現貨(2330)洗價，期現價差完全沒反映，
+                // 夜盤時段更是整段停在現貨收盤價。
+                // 另外 QDF 其實是「台勝科期貨」，小型台積電期貨的正確代號是 QFF。
+                const TAIFEX_STOCK_FUTURES = { CDF: '台積電期貨', QFF: '小型台積電期貨' };
+
+                /** 由部位的結算日推出契約月份 YYYYMM；沒填結算日就回傳 null（改取最近月） */
+                const contractMonthOf = (expiry) => {
+                    const m = String(expiry || '').match(/^(\d{4})-(\d{2})/);
+                    return m ? m[1] + m[2] : null;
+                };
+
+                /**
+                 * 期交所即時行情（日盤與夜盤都涵蓋）。
+                 * 這支 API 只吃 POST，所以 Cloudflare Worker 需為此主機放行 POST。
+                 */
+                const fetchTaifexMisFutures = async (cid, contractMonth) => {
+                    try {
+                        const url = 'https://mis.taifex.com.tw/futures/api/getQuoteList';
+                        const resp = await fetch(CF_PROXY + encodeURIComponent(url), {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                MarketType: '0', SymbolType: 'F', KindID: '4', CID: cid,
+                                ExpireMonth: '', RowSize: '全部', PageNo: '', SortColumn: '', AscDesc: 'A'
+                            })
+                        });
+                        const json = await resp.json();
+                        const list = (json?.RtData?.QuoteList || [])
+                            // -S 結尾是現貨，-F 才是期貨契約
+                            .filter(x => String(x.SymbolID || '').endsWith('-F') && Number(x.CLastPrice) > 0);
+                        if (!list.length) return null;
+                        // 有結算日就對該月份，否則取第一筆（期交所預設近月在前）
+                        const wanted = contractMonth
+                            ? list.find(x => monthOfSymbolId(x.SymbolID) === contractMonth)
+                            : null;
+                        const hit = wanted || list[0];
+                        return {
+                            price: Number(hit.CLastPrice),
+                            prevClose: Number(hit.CRefPrice) > 0 ? Number(hit.CRefPrice) : Number(hit.CLastPrice)
+                        };
+                    } catch (e) {
+                        console.warn('[期交所 MIS] 取價失敗', e);
+                        return null;
+                    }
+                };
+
+                // SymbolID 形如 CDFH6-F：第 4 碼為月份（A=1…L=12，非標準期貨月碼），第 5 碼為年份末碼。
+                // 實測對照：CDFH6-F=台積電期貨086→202608、CDFL6-F=126→202612、CDFC7-F=037→202703。
+                const monthOfSymbolId = (symbolId) => {
+                    const m = String(symbolId || '').match(/^[A-Z]{3}([A-L])(\d)-F$/);
+                    if (!m) return null;                       // 週選等非月契約(如 MX5G6-F)不處理
+                    const mm = m[1].charCodeAt(0) - 64;
+                    const base = Math.floor(new Date().getFullYear() / 10) * 10;
+                    let year = base + Number(m[2]);
+                    if (year < new Date().getFullYear() - 1) year += 10;
+                    return `${year}${String(mm).padStart(2, '0')}`;
+                };
+
+                /** 期交所開放資料（每日行情，含「一般」與「盤後」兩個時段）—— MIS 失敗時的退路 */
+                const fetchTaifexOpenDataFutures = async (cid, contractMonth) => {
+                    try {
+                        const url = 'https://openapi.taifex.com.tw/v1/DailyMarketReportFut';
+                        const resp = await fetchWithRetry(CF_PROXY + encodeURIComponent(url), 1, 15000);
+                        const rows = (await resp.json()).filter(r => (r.Contract || '').trim() === cid);
+                        if (!rows.length) return null;
+                        const latestDate = rows.reduce((a, r) => (r.Date > a ? r.Date : a), '');
+                        let sameDay = rows.filter(r => r.Date === latestDate);
+                        if (contractMonth) {
+                            const byMonth = sameDay.filter(r => r['ContractMonth(Week)'] === contractMonth);
+                            if (byMonth.length) sameDay = byMonth;
+                        }
+                        const valid = sameDay.filter(r => Number(r.Last) > 0);
+                        if (!valid.length) return null;
+                        // 盤後（夜盤）發生在一般時段之後，有資料就優先採用
+                        const pick = valid.find(r => r.TradingSession === '盤後') || valid[0];
+                        const last = Number(pick.Last);
+                        const chg = Number(pick.Change);
+                        return { price: last, prevClose: isFinite(chg) ? last - chg : last };
+                    } catch (e) {
+                        console.warn('[期交所開放資料] 取價失敗', e);
+                        return null;
+                    }
+                };
+
+                /** 個股期貨統一取價：即時行情優先，失敗退回每日行情 */
+                const fetchStockFuturesPrice = async (cid, expiry) => {
+                    const month = contractMonthOf(expiry);
+                    return (await fetchTaifexMisFutures(cid, month))
+                        || (await fetchTaifexOpenDataFutures(cid, month));
+                };
 
                 // 台股快照 cache (Open API, 5分鐘更新一次)
                 let _twMarketCache = null;

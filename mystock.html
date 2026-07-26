@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v5.9.0</title>
+    <title>我的投資組合 | Portfolio v5.10.0</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -298,7 +298,7 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.9.0</h1>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.10.0</h1>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -318,7 +318,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.9.0</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.10.0</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -500,6 +500,25 @@
                         </div>
                     </div>
                 </div>
+                                <!-- v5.10.0: 備份到期提醒 -->
+                                <div v-if="showBackupReminder"
+                                    class="mb-6 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 flex flex-wrap items-center gap-3">
+                                    <i class="fa-solid fa-cloud-arrow-up text-amber-500"></i>
+                                    <div class="text-sm text-amber-800 dark:text-amber-300 flex-1 min-w-[12rem]">
+                                        <span v-if="daysSinceBackup === null">尚未備份過資產資料</span>
+                                        <span v-else>已 {{ daysSinceBackup }} 天未備份</span>
+                                        <span class="text-xs opacity-75 ml-1">— 建議定期備份，避免資料遺失</span>
+                                    </div>
+                                    <button @click="exportDataToDrive" :disabled="driveLoading"
+                                        class="px-3 py-1.5 rounded-md text-sm font-medium bg-amber-500 text-white hover:bg-amber-400 transition disabled:opacity-50">
+                                        <i v-if="!driveLoading" class="fa-brands fa-google-drive mr-1"></i>
+                                        <i v-else class="fa-solid fa-spinner fa-spin mr-1"></i>
+                                        立即備份
+                                    </button>
+                                    <button @click="dismissBackupReminder"
+                                        class="text-xs text-amber-600 dark:text-amber-400 hover:underline">稍後再說</button>
+                                </div>
+
                                 <div class="flex flex-wrap gap-2 justify-center mb-6">
                                     <button @click="toggleSection('overview')"
                                         :class="activeSection==='overview' ? 'btn-active' : 'btn-inactive'"
@@ -2310,9 +2329,23 @@
 
                     <div class="p-6 overflow-y-auto custom-scrollbar">
                         <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
-                            <!-- v5.9.0: 最新版本節點 -->
+                            <!-- v5.10.0: 最新版本節點 -->
                             <div class="relative pl-6">
                                 <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800"></div>
+                                <div class="text-xs text-gray-400 mb-1">2026-07-26</div>
+                                <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
+                                    <div class="font-bold text-gray-800 dark:text-white mb-2">v5.10.0</div>
+                                    <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                        <li>新增：每日資產快照排程（GitHub Actions），每個交易日 14:30 自動抓收盤價並寫入歷史紀錄，沒開網頁的日子走勢圖不再有空洞。快照涵蓋股票、期貨、基金與房地產。</li>
+                                        <li>新增：排程同時會把最新報價寫回資料庫，下次開啟網頁即為最新價格。</li>
+                                        <li>新增：偏好設定加入「自動備份提醒」開關與間隔（7/14/30 天），超過期限未備份時首頁會顯示提醒橫幅並可一鍵備份至 Google 雲端硬碟。</li>
+                                        <li>新增：備份時間會同步至雲端，換裝置也看得到上次備份是什麼時候。</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="relative pl-6">
+                                <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-2 border-white dark:border-gray-800"></div>
                                 <div class="text-xs text-gray-400 mb-1">2026-07-26</div>
                                 <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
                                     <div class="font-bold text-gray-800 dark:text-white mb-2">v5.9.0</div>
@@ -2961,6 +2994,42 @@
                                     </div>
                                 </label>
                             </div>
+                            <!-- v5.10.0: 自動備份提醒 -->
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="font-bold dark:text-white text-sm">自動備份提醒</div>
+                                    <div class="text-xs text-gray-500">超過設定天數未備份時，首頁會跳出提醒</div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox"
+                                        v-model="autoBackupEnabled" class="sr-only peer" @change="saveSettings">
+                                    <div
+                                        class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-amber-300 dark:peer-focus:ring-amber-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-amber-500">
+                                    </div>
+                                </label>
+                            </div>
+                            <div v-if="autoBackupEnabled" class="pl-3 border-l-2 border-amber-200 dark:border-amber-800 space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <div class="text-xs text-gray-500">提醒間隔</div>
+                                    <select v-model.number="autoBackupIntervalDays" @change="saveSettings"
+                                        class="zen-input text-xs py-1 w-28">
+                                        <option :value="7">每 7 天</option>
+                                        <option :value="14">每 14 天</option>
+                                        <option :value="30">每 30 天</option>
+                                    </select>
+                                </div>
+                                <div class="text-xs text-gray-400">
+                                    上次備份：
+                                    <span v-if="lastBackupAt">{{ new Date(lastBackupAt).toLocaleDateString('zh-TW') }}
+                                        <span v-if="daysSinceBackup !== null">（{{ daysSinceBackup }} 天前）</span>
+                                    </span>
+                                    <span v-else>尚無紀錄</span>
+                                </div>
+                                <div class="text-[11px] text-gray-400 leading-relaxed">
+                                    <i class="fa-solid fa-circle-info mr-1"></i>
+                                    Google Drive 備份需要授權彈窗，瀏覽器規定必須由你點擊觸發，因此無法在背景完全自動執行；此功能為「到期提醒 + 一鍵備份」。
+                                </div>
+                            </div>
+
                             <div class="flex items-center justify-between">
                                 <div>
                                     <div class="font-bold dark:text-white text-sm">深色模式</div>

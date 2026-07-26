@@ -17,6 +17,12 @@ export const showPrivacy = ref(false);
 export const defaultPrivacyHidden = ref(false);
 export const hideZeroShares = ref(localStorage.getItem('hideZeroShares') === 'true');
 export const showSettingsModal = ref(false);
+// v5.10.0: 自動備份提醒。Drive 備份需要 OAuth 彈窗（瀏覽器要求使用者手勢），
+// 靜態網頁無法完全靜默地備份，所以做成「到期自動提醒 + 一鍵備份」。
+export const autoBackupEnabled = ref(localStorage.getItem('autoBackupEnabled') === 'true');
+export const autoBackupIntervalDays = ref(Number(localStorage.getItem('autoBackupIntervalDays')) || 7);
+export const lastBackupAt = ref(localStorage.getItem('lastBackupAt') || '');
+export const showBackupReminder = ref(false);
 export const isDarkMode = ref(localStorage.getItem('darkMode') === 'true');
 export const activeSection = ref('overview');
 export const showChangelog = ref(false);

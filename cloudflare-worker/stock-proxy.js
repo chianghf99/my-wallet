@@ -18,8 +18,13 @@ const ALLOWED_HOSTS = new Set([
   'mis.twse.com.tw',
   'openapi.twse.com.tw',
   'www.tpex.org.tw',
-  'ws.api.cnyes.com'
+  'ws.api.cnyes.com',
+  'mis.taifex.com.tw',      // 期交所即時行情（個股期貨與指數期貨，含日盤／夜盤）
+  'openapi.taifex.com.tw'   // 期交所開放資料（每日行情，含一般／盤後時段）
 ]);
+
+// 期交所即時行情只吃 POST，其餘來源一律只放行 GET
+const POST_ALLOWED_HOSTS = new Set(['mis.taifex.com.tw']);
 
 // 只允許自己的網站呼叫。留空陣列則不限制來源（除錯時才這樣做）。
 const ALLOWED_ORIGINS = [
@@ -31,7 +36,7 @@ const corsHeaders = (origin) => {
   const allow = !ALLOWED_ORIGINS.length || ALLOWED_ORIGINS.includes(origin);
   return {
     'Access-Control-Allow-Origin': allow ? (origin || '*') : ALLOWED_ORIGINS[0],
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Max-Age': '86400'
   };
@@ -50,7 +55,7 @@ export default {
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: corsHeaders(origin) });
     }
-    if (request.method !== 'GET') {
+    if (request.method !== 'GET' && request.method !== 'POST') {
       return deny(405, 'Method not allowed', origin);
     }
 
@@ -73,16 +78,28 @@ export default {
     if (!ALLOWED_HOSTS.has(targetUrl.hostname)) {
       return deny(403, `Host not allowed: ${targetUrl.hostname}`, origin);
     }
+    // POST 只開放給真的需要的來源，其他維持唯讀，避免被拿去對外送資料
+    if (request.method === 'POST' && !POST_ALLOWED_HOSTS.has(targetUrl.hostname)) {
+      return deny(405, `POST not allowed for ${targetUrl.hostname}`, origin);
+    }
 
     try {
+      const isTaifexMis = targetUrl.hostname === 'mis.taifex.com.tw';
       const upstream = await fetch(targetUrl.toString(), {
+        method: request.method,
+        // 期交所即時行情的查詢條件放在 POST body
+        body: request.method === 'POST' ? await request.text() : undefined,
         headers: {
           // 部分來源會擋沒有 User-Agent 的請求
           'User-Agent': 'Mozilla/5.0 (compatible; stock-proxy)',
           'Accept': 'application/json, text/plain, */*',
-          // MIS 需要 Referer 才會正常回應
+          ...(request.method === 'POST' ? { 'Content-Type': 'application/json' } : {}),
+          // 證交所與期交所的 MIS 都需要 Referer 才會正常回應
           ...(targetUrl.hostname === 'mis.twse.com.tw'
             ? { Referer: 'https://mis.twse.com.tw/stock/index.jsp' }
+            : {}),
+          ...(isTaifexMis
+            ? { Referer: 'https://mis.taifex.com.tw/futures/', Origin: 'https://mis.taifex.com.tw' }
             : {})
         },
         // 報價要即時，不要讓 Cloudflare 邊緣快取

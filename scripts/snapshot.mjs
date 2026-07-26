@@ -19,6 +19,9 @@
 import admin from 'firebase-admin';
 // 與前端共用同一份估值邏輯，避免兩邊公式走鐘（見 js/utils/valuation.js）
 import { buildSnapshotFields } from '../js/utils/valuation.js';
+// 期貨取價的挑選邏輯也與前端共用（日夜盤、週契約、月份對應都在這裡）
+import { TAIFEX_PRODUCTS, TAIFEX_MIS_URL, taifexRequestBody, contractMonthOf,
+         pickContract, pickFreshest, pickFromOpenData, OPEN_DATA_CONTRACT } from '../js/utils/futures.js';
 
 const TZ = 'Asia/Taipei';
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
@@ -183,44 +186,12 @@ const fetchUsPrice = async (symbol) => {
     return null;
 };
 
-// 指數期貨：鉅亨近全
-const fetchIndexFuturesQuotes = async () => {
-    const cnyes = async (sym) => {
-        try {
-            const j = await fetchJson(`https://ws.api.cnyes.com/ws/api/v1/quote/quotes/${sym}`);
-            const p = j?.data?.[0]?.['6'];
-            return p > 0 ? Number(p) : null;
-        } catch (e) { return null; }
-    };
-    return { tx: await cnyes('TWF:TXF:FUTURES'), mxf: await cnyes('TWF:MXF:FUTURES') };
-};
-
-// v5.16.0: 個股期貨改抓真正的期貨報價。
-// 舊版 CDF/QDF 是拿台積電現貨(2330)洗價，期現價差完全沒反映，夜盤更是整段停在現貨收盤價。
-// 另外 QDF 其實是「台勝科期貨」，小型台積電期貨的正確代號是 QFF。
-const TAIFEX_STOCK_FUTURES = { CDF: '台積電期貨', QFF: '小型台積電期貨' };
-
-const contractMonthOf = (expiry) => {
-    const m = String(expiry || '').match(/^(\d{4})-(\d{2})/);
-    return m ? m[1] + m[2] : null;
-};
-
-// SymbolID 形如 CDFH6-F：第 4 碼為月份（A=1…L=12，非標準期貨月碼），第 5 碼為年份末碼。
-// 實測對照：CDFH6-F=台積電期貨086→202608、CDFL6-F=126→202612、CDFC7-F=037→202703。
-const monthOfSymbolId = (symbolId) => {
-    const m = String(symbolId || '').match(/^[A-Z]{3}([A-L])(\d)-F$/);
-    if (!m) return null;                       // 週選等非月契約(如 MX5G6-F)不處理
-    const mm = m[1].charCodeAt(0) - 64;
-    const base = Math.floor(new Date().getFullYear() / 10) * 10;
-    let year = base + Number(m[2]);
-    if (year < new Date().getFullYear() - 1) year += 10;
-    return `${year}${String(mm).padStart(2, '0')}`;
-};
-
-// 期交所即時行情（日盤與夜盤皆涵蓋），只吃 POST
-const fetchTaifexMisFutures = async (cid, contractMonth) => {
+// v5.17.0: 期貨報價統一走期交所，日盤與夜盤分別查詢後取較新者。
+// 舊版：指數期貨用鉅亨「近全」（不分契約月份）、個股期貨用台積電現貨洗價、
+// 微台直接套用小台價格 —— 三者都會讓未實現損益失真。
+const fetchTaifexSession = async (product, marketType) => {
     try {
-        const resp = await fetch('https://mis.taifex.com.tw/futures/api/getQuoteList', {
+        const resp = await fetch(TAIFEX_MIS_URL, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -228,43 +199,43 @@ const fetchTaifexMisFutures = async (cid, contractMonth) => {
                 Referer: 'https://mis.taifex.com.tw/futures/',
                 Origin: 'https://mis.taifex.com.tw'
             },
-            body: JSON.stringify({ MarketType: '0', SymbolType: 'F', KindID: '4', CID: cid,
-                ExpireMonth: '', RowSize: '全部', PageNo: '', SortColumn: '', AscDesc: 'A' })
+            body: JSON.stringify(taifexRequestBody(product, marketType))
         });
         if (!resp.ok) return null;
-        const json = await resp.json();
-        const list = (json?.RtData?.QuoteList || [])
-            .filter(x => String(x.SymbolID || '').endsWith('-F') && Number(x.CLastPrice) > 0);
-        if (!list.length) return null;
-        const hit = (contractMonth && list.find(x => monthOfSymbolId(x.SymbolID) === contractMonth)) || list[0];
-        return { price: Number(hit.CLastPrice) };
+        return (await resp.json())?.RtData?.QuoteList || null;
     } catch (e) { return null; }
 };
 
-// 期交所開放資料（每日行情，含「一般」與「盤後」時段）—— MIS 失敗時的退路
 let _taifexDaily = null;
-const fetchTaifexOpenDataFutures = async (cid, contractMonth) => {
-    try {
-        if (!_taifexDaily) _taifexDaily = await fetchJson('https://openapi.taifex.com.tw/v1/DailyMarketReportFut', { timeoutMs: 25000 });
-        const rows = _taifexDaily.filter(r => (r.Contract || '').trim() === cid);
-        if (!rows.length) return null;
-        const latest = rows.reduce((a, r) => (r.Date > a ? r.Date : a), '');
-        let same = rows.filter(r => r.Date === latest);
-        if (contractMonth) {
-            const byMonth = same.filter(r => r['ContractMonth(Week)'] === contractMonth);
-            if (byMonth.length) same = byMonth;
+const fetchTaifexOpenData = async () => {
+    if (_taifexDaily === null) {
+        try {
+            _taifexDaily = await fetchJson('https://openapi.taifex.com.tw/v1/DailyMarketReportFut', { timeoutMs: 25000 });
+        } catch (e) {
+            console.warn('[快照] 期交所每日行情取得失敗');
+            _taifexDaily = false;
         }
-        const valid = same.filter(r => Number(r.Last) > 0);
-        if (!valid.length) return null;
-        // 盤後發生在一般時段之後，有資料就優先採用
-        const pick = valid.find(r => r.TradingSession === '盤後') || valid[0];
-        return { price: Number(pick.Last) };
-    } catch (e) { return null; }
+    }
+    return _taifexDaily || null;
 };
 
-const fetchStockFuturesPrice = async (cid, expiry) => {
+const fetchFuturesQuote = async (code, expiry) => {
+    const product = TAIFEX_PRODUCTS[String(code || '').toUpperCase()];
+    if (!product) return null;
     const month = contractMonthOf(expiry);
-    return (await fetchTaifexMisFutures(cid, month)) || (await fetchTaifexOpenDataFutures(cid, month));
+
+    const [day, night] = await Promise.all([
+        fetchTaifexSession(product, '0'),
+        fetchTaifexSession(product, '1')
+    ]);
+    const hit = pickFreshest([
+        day ? pickContract(day, month) : null,
+        night ? pickContract(night, month) : null
+    ]);
+    if (hit) return hit;
+
+    const rows = await fetchTaifexOpenData();
+    return rows ? pickFromOpenData(rows, OPEN_DATA_CONTRACT[String(code).toUpperCase()], month) : null;
 };
 
 // --- 主流程 ---
@@ -321,23 +292,14 @@ const processUser = async (db, uid, rate, label) => {
     }
     const fail = failTw + failUs;
 
-    // 2. 更新期貨現價
+    // 2. 更新期貨現價（依商品與結算日逐一取價，不同契約月份不共用）
     if (futuresPositions.length) {
-        const idx = await fetchIndexFuturesQuotes();
-        // 個股期貨依「商品代號 + 結算日」逐一取價（不同契約月份價格不同，不能共用）
-        const stockCache = new Map();
+        const cache = new Map();
         for (const pos of futuresPositions) {
             const sym = (pos.symbol || '').toUpperCase();
-            let price = null;
-            if (TAIFEX_STOCK_FUTURES[sym]) {
-                const key = `${sym}|${pos.expiry || ''}`;
-                if (!stockCache.has(key)) stockCache.set(key, await fetchStockFuturesPrice(sym, pos.expiry));
-                price = stockCache.get(key)?.price ?? null;
-            } else if (sym.startsWith('TX')) {
-                price = idx.tx;
-            } else if (sym.startsWith('MTX') || sym.startsWith('MXF') || sym.startsWith('TMF')) {
-                price = idx.mxf || idx.tx;
-            }
+            const key = `${sym}|${pos.expiry || ''}`;
+            if (!cache.has(key)) cache.set(key, await fetchFuturesQuote(sym, pos.expiry));
+            const price = cache.get(key)?.price;
             if (price > 0) {
                 pos.currentPrice = price;
                 batch.update(userRef.collection('futures_positions').doc(pos.id), { currentPrice: price });

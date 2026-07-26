@@ -2,7 +2,7 @@ import { db, auth } from './firebase-config.js';
 import { getLocalDate, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountSign, getFuturesDisplayName } from './utils/format.js';
 
 import { 
-    user, stocks, exchangeRate, lastUpdated, loadingTarget, isLoading, viewMode, isMobile, showPrivacy, defaultPrivacyHidden, hideZeroShares, showSettingsModal, isDarkMode, activeSection, showChangelog, stockStates, sectionLoading, showStockNoteModal, stockNoteForm, showHistoryModal, historyRecords, historyFilterYear, availableYears, showDeleteModal, pendingDeleteTx, showEditTxModal, editTxForm, showHistoryEditModalVisible, historyEditForm, notes, showNoteModalVisible, noteForm, loanList, showLoanMgrModal, inlineNewLoan, inlineLoanName, loanForm, cashData, prevDayData, realEstateList, showRealEstateModal, realEstateForm, chartStartDate, chartEndDate, chartPnl, currentRange, divRange, divSearchQuery, divStartDate, divEndDate, realizedStartDate, realizedEndDate, transStartDate, transEndDate, transFilterType, transSearchQuery, sortKeyTrans, sortOrderTrans, sortKeyDiv, sortOrderDiv, realizedGains, realizedSearchQuery, sortKeyRealized, sortOrderRealized, realizedRange, dividendRecords, transactionHistory, showModal, isEditing, form, showTransModal, isFundMode, isLoanMode, loanCashMode, transForm,
+    user, stocks, exchangeRate, exchangeRateConfirmed, lastUpdated, loadingTarget, isLoading, viewMode, isMobile, showPrivacy, defaultPrivacyHidden, hideZeroShares, showSettingsModal, isDarkMode, activeSection, showChangelog, stockStates, sectionLoading, showStockNoteModal, stockNoteForm, showHistoryModal, historyRecords, historyFilterYear, availableYears, showDeleteModal, pendingDeleteTx, showEditTxModal, editTxForm, showHistoryEditModalVisible, historyEditForm, notes, showNoteModalVisible, noteForm, loanList, showLoanMgrModal, inlineNewLoan, inlineLoanName, loanForm, cashData, prevDayData, realEstateList, showRealEstateModal, realEstateForm, chartStartDate, chartEndDate, chartPnl, currentRange, divRange, divSearchQuery, divStartDate, divEndDate, realizedStartDate, realizedEndDate, transStartDate, transEndDate, transFilterType, transSearchQuery, sortKeyTrans, sortOrderTrans, sortKeyDiv, sortOrderDiv, realizedGains, realizedSearchQuery, sortKeyRealized, sortOrderRealized, realizedRange, dividendRecords, transactionHistory, showModal, isEditing, form, showTransModal, isFundMode, isLoanMode, loanCashMode, transForm,
     monthlyProfitData, monthlyProfitRange,
     futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm, futuresLoading, futuresTransactions, showFuturesActionModal, futuresActionForm,
     investmentsTab, performanceTab, overviewTab,
@@ -87,9 +87,14 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                             const dividend = dividendList.filter(d => d.date > startOfMonth && d.date <= endOfMonth)
                                 .reduce((acc, d) => acc + (d.currency === 'USD' ? d.amount * exchangeRate.value : d.amount), 0);
 
+                            // v5.9.0 bug fix: 原本是 (月底未實現 - 月初未實現) + 本月已實現，
+                            // 但「賣出時未實現損益本來就會等額下降」，加回 realized 之後這個欄位已經
+                            // 代表整個月的市值變動（含當月賣掉的部位），總計再加一次 realized 就重複計算。
+                            // 例：月初成本 100 現價 100，月中 120 賣出 → 舊版顯示已實現 20 + 未實現變動 20 = 40，實際只賺 20。
+                            // 正確拆法：未實現變動就是純粹的 ΔtotalPnL，總計 = 股息 + 已實現 + ΔtotalPnL。
                             let unrealized = 0;
                             if (endHist && startHist) {
-                                unrealized = (endHist.totalPnL || 0) - (startHist.totalPnL || 0) + realized;
+                                unrealized = (endHist.totalPnL || 0) - (startHist.totalPnL || 0);
                             }
 
                             labels.unshift(monthLabel);
@@ -180,7 +185,8 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         user.value = u;
                         if (u) {
                             _initialStocksReady = false; _initialCashReady = false;
-                            loadUserData(u.uid); 
+                            loadSavedExchangeRate(u.uid);
+                            loadUserData(u.uid);
                             fetchPreviousDayData(u.uid); 
                             fetchCash(u.uid); 
                             fetchNotes(u.uid); 
@@ -925,13 +931,9 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     });
 
                     // 2. 將淨損益灌回期貨保證金帳戶
-                    const curMargin = { ...futuresMargin.value };
-                    if (pos.currency === 'USD') {
-                        curMargin.usd = (curMargin.usd || 0) + netPnl;
-                    } else {
-                        curMargin.twd = (curMargin.twd || 0) + netPnl;
-                    }
-                    await db.collection('users').doc(user.value.uid).collection('portfolio').doc('futures_margin').set(curMargin, { merge: true });
+                    // v5.9.0: 改用原子加減，不再以本地快照整包覆寫（多裝置同時操作會蓋掉對方的餘額）。
+                    await db.collection('users').doc(user.value.uid).collection('portfolio').doc('futures_margin')
+                        .set({ [pos.currency === 'USD' ? 'usd' : 'twd']: firebase.firestore.FieldValue.increment(netPnl) }, { merge: true });
 
                     // 3. 刪除該部位
                     await db.collection('users').doc(user.value.uid).collection('futures_positions').doc(pos.id).delete();
@@ -1031,13 +1033,8 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     });
 
                     // 4. 保證金調整（近月損益 - 費用 流入保證金）
-                    const curMargin = { ...futuresMargin.value };
-                    if (currency === 'USD') {
-                        curMargin.usd = (curMargin.usd || 0) + marginAdjustment;
-                    } else {
-                        curMargin.twd = (curMargin.twd || 0) + marginAdjustment;
-                    }
-                    await db.collection('users').doc(uid).collection('portfolio').doc('futures_margin').set(curMargin, { merge: true });
+                    await db.collection('users').doc(uid).collection('portfolio').doc('futures_margin')
+                        .set({ [currency === 'USD' ? 'usd' : 'twd']: firebase.firestore.FieldValue.increment(marginAdjustment) }, { merge: true });
 
                     // 5. 刪除近月部位
                     await db.collection('users').doc(uid).collection('futures_positions').doc(pos.id).delete();
@@ -1075,16 +1072,15 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     batch.delete(txRef);
                     
                     try {
-                        const curMargin = { ...futuresMargin.value };
-                        
+                        // v5.9.0: 全部改用 FieldValue.increment 做原子加減，不再拿本地快照整包覆寫餘額。
+                        // 附帶影響：舊版對保證金/現金有 Math.max(..., 0) 夾住不讓變負數，原子加減無法保留這個夾擠，
+                        // 但真的算成負數時代表帳本本來就對不起來，讓它顯示出來比默默歸零更好查。
+                        const inc = firebase.firestore.FieldValue.increment;
+                        const key = tx.currency === 'USD' ? 'usd' : 'twd';
+
                         if (tx.type === 'deposit') {
-                            if (tx.currency === 'USD') {
-                                curMargin.usd = Math.max((curMargin.usd || 0) - tx.amount, 0);
-                            } else {
-                                curMargin.twd = Math.max((curMargin.twd || 0) - tx.amount, 0);
-                            }
                             const marginRef = db.collection('users').doc(uid).collection('portfolio').doc('futures_margin');
-                            batch.set(marginRef, curMargin, { merge: true });
+                            batch.set(marginRef, { [key]: inc(-tx.amount) }, { merge: true });
 
                             // v5.x bug fix: 優先用 linkedFuturesTxId 精準對到這筆交易產生的現金紀錄，
                             // 找不到（例如升級前的舊資料）才退回用金額/幣別/日期/類型去猜，避免同一天有兩筆金額相同的紀錄時刪錯。
@@ -1092,37 +1088,20 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
                             if (!cashSnap.empty) {
                                 batch.delete(cashSnap.docs[0].ref);
-                                const curCash = { ...cashData.value };
-                                if (tx.currency === 'USD') {
-                                    curCash.usd = (curCash.usd || 0) + tx.amount;
-                                } else {
-                                    curCash.twd = (curCash.twd || 0) + tx.amount;
-                                }
                                 const cashRef = db.collection('users').doc(uid).collection('portfolio').doc('cash');
-                                batch.set(cashRef, curCash, { merge: true });
+                                batch.set(cashRef, { [key]: inc(tx.amount) }, { merge: true });
                             }
                         }
                         else if (tx.type === 'withdraw') {
-                            if (tx.currency === 'USD') {
-                                curMargin.usd = (curMargin.usd || 0) + tx.amount;
-                            } else {
-                                curMargin.twd = (curMargin.twd || 0) + tx.amount;
-                            }
                             const marginRef = db.collection('users').doc(uid).collection('portfolio').doc('futures_margin');
-                            batch.set(marginRef, curMargin, { merge: true });
+                            batch.set(marginRef, { [key]: inc(tx.amount) }, { merge: true });
 
                             const cashSnap = await findLinkedCashTx(uid, tx, 'deposit');
 
                             if (!cashSnap.empty) {
                                 batch.delete(cashSnap.docs[0].ref);
-                                const curCash = { ...cashData.value };
-                                if (tx.currency === 'USD') {
-                                    curCash.usd = Math.max((curCash.usd || 0) - tx.amount, 0);
-                                } else {
-                                    curCash.twd = Math.max((curCash.twd || 0) - tx.amount, 0);
-                                }
                                 const cashRef = db.collection('users').doc(uid).collection('portfolio').doc('cash');
-                                batch.set(cashRef, curCash, { merge: true });
+                                batch.set(cashRef, { [key]: inc(-tx.amount) }, { merge: true });
                             }
                         }
                         else if (tx.type === 'open') {
@@ -1133,13 +1112,8 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         }
                         else if (tx.type === 'close') {
                             const reversalAmount = tx.netPnl !== undefined ? tx.netPnl : (tx.pnl || 0);
-                            if (tx.currency === 'USD') {
-                                curMargin.usd = (curMargin.usd || 0) - reversalAmount;
-                            } else {
-                                curMargin.twd = (curMargin.twd || 0) - reversalAmount;
-                            }
                             const marginRef = db.collection('users').doc(uid).collection('portfolio').doc('futures_margin');
-                            batch.set(marginRef, curMargin, { merge: true });
+                            batch.set(marginRef, { [key]: inc(-reversalAmount) }, { merge: true });
                             
                             if (tx.realizedGainsId) {
                                 const rgRef = db.collection('users').doc(uid).collection('realized_gains').doc(tx.realizedGainsId);
@@ -1166,13 +1140,8 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                          else if (tx.type === 'rollover') {
                             // 反轉保證金調整
                             const reversal = tx.marginAdjustment || 0;
-                            if (tx.currency === 'USD') {
-                                curMargin.usd = (curMargin.usd || 0) - reversal;
-                            } else {
-                                curMargin.twd = (curMargin.twd || 0) - reversal;
-                            }
                             const marginRefRoll = db.collection('users').doc(uid).collection('portfolio').doc('futures_margin');
-                            batch.set(marginRefRoll, curMargin, { merge: true });
+                            batch.set(marginRefRoll, { [key]: inc(-reversal) }, { merge: true });
                             // 刪除連動的已實現損益紀錄
                             if (tx.realizedGainsId) {
                                 const rgRefRoll = db.collection('users').doc(uid).collection('realized_gains').doc(tx.realizedGainsId);
@@ -1237,81 +1206,66 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     const amt = Number(formVal.amount);
                     if (isNaN(amt) || amt <= 0) return alert('請輸入有效金額');
 
-                    const curMargin = { ...futuresMargin.value };
-                    const curCash = { ...cashData.value };
+                    // v5.9.0: 整段改成一個 Firestore transaction。舊版是「用畫面上的餘額檢查 → 算好新餘額 → 整包覆寫」，
+                    // 檢查跟寫入之間隔了好幾個 await，而且覆寫用的是本地快照，兩個裝置同時劃轉會蓋掉對方；
+                    // 現在餘額檢查與加減在同一筆交易內完成，並且用 increment 而非覆寫。
+                    const uid = user.value.uid;
+                    const key = formVal.currency === 'USD' ? 'usd' : 'twd';
+                    const isDeposit = formVal.type === 'deposit';
+                    const syncCash = !!formVal.syncCash;
+                    const inc = firebase.firestore.FieldValue.increment;
 
-                    if (formVal.type === 'deposit') {
-                        // 檢查銀行活存現金是否足夠連動
-                        if (formVal.syncCash) {
-                            if (formVal.currency === 'USD') {
-                                if ((curCash.usd || 0) < amt) return alert('銀行美金活存餘額不足！');
-                                curCash.usd = (curCash.usd || 0) - amt;
-                            } else {
-                                if ((curCash.twd || 0) < amt) return alert('銀行台幣活存餘額不足！');
-                                curCash.twd = (curCash.twd || 0) - amt;
+                    const marginRef = db.collection('users').doc(uid).collection('portfolio').doc('futures_margin');
+                    const cashRef = db.collection('users').doc(uid).collection('portfolio').doc('cash');
+                    // 先取 doc ref 再寫入，才能把 id 記在對應的銀行現金紀錄裡（linkedFuturesTxId），
+                    // 之後刪除時可以精準對到這一筆，不用再靠「金額+幣別+日期+類型」去猜。
+                    const marginTxRef = db.collection('users').doc(uid).collection('futures_transactions').doc();
+                    const cashTxRef = db.collection('users').doc(uid).collection('transactions').doc();
+                    const today = getLocalDate();
+
+                    try {
+                        await db.runTransaction(async (t) => {
+                            const marginDoc = await t.get(marginRef);
+                            const cashDoc = syncCash ? await t.get(cashRef) : null;
+                            const margin = marginDoc.exists ? marginDoc.data() : {};
+                            const cash = cashDoc && cashDoc.exists ? cashDoc.data() : {};
+
+                            if (isDeposit) {
+                                if (syncCash && (cash[key] || 0) < amt) {
+                                    throw new Error(formVal.currency === 'USD' ? '銀行美金活存餘額不足！' : '銀行台幣活存餘額不足！');
+                                }
+                            } else if ((margin[key] || 0) < amt) {
+                                throw new Error(formVal.currency === 'USD' ? '期貨美金保證金餘額不足！' : '期貨台幣保證金餘額不足！');
                             }
-                        }
 
-                        // 入金至期貨保證金
-                        if (formVal.currency === 'USD') {
-                            curMargin.usd = (curMargin.usd || 0) + amt;
-                        } else {
-                            curMargin.twd = (curMargin.twd || 0) + amt;
-                        }
+                            t.set(marginRef, { [key]: inc(isDeposit ? amt : -amt) }, { merge: true });
+                            t.set(marginTxRef, {
+                                type: formVal.type,
+                                symbol: 'MARGIN',
+                                amount: amt,
+                                currency: formVal.currency,
+                                date: today,
+                                note: formVal.note || (isDeposit ? '保證金存入' : '保證金提出'),
+                                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                            });
 
-                    } else if (formVal.type === 'withdraw') {
-                        // 檢查期貨保證金是否足夠出金
-                        if (formVal.currency === 'USD') {
-                            if ((curMargin.usd || 0) < amt) return alert('期貨美金保證金餘額不足！');
-                            curMargin.usd = (curMargin.usd || 0) - amt;
-                        } else {
-                            if ((curMargin.twd || 0) < amt) return alert('期貨台幣保證金餘額不足！');
-                            curMargin.twd = (curMargin.twd || 0) - amt;
-                        }
-
-                        // 出金至銀行活存
-                        if (formVal.syncCash) {
-                            if (formVal.currency === 'USD') {
-                                curCash.usd = (curCash.usd || 0) + amt;
-                            } else {
-                                curCash.twd = (curCash.twd || 0) + amt;
+                            if (syncCash) {
+                                t.set(cashRef, { [key]: inc(isDeposit ? -amt : amt) }, { merge: true });
+                                t.set(cashTxRef, {
+                                    type: isDeposit ? 'withdraw' : 'deposit',
+                                    symbol: 'CASH',
+                                    name: isDeposit ? '轉出至期貨保證金' : '期貨保證金轉回',
+                                    shares: 0,
+                                    totalAmount: amt,
+                                    currency: formVal.currency,
+                                    date: today,
+                                    linkedFuturesTxId: marginTxRef.id,
+                                    memo: formVal.note || '期貨保證金劃轉'
+                                });
                             }
-                        }
-                    }
-
-                    // 1. 更新期貨保證金
-                    await db.collection('users').doc(user.value.uid).collection('portfolio').doc('futures_margin').set(curMargin, { merge: true });
-
-                    // 1b. 寫入期貨保證金劃轉流水帳
-                    // v5.x bug fix: 先取得 doc ref 再 set，這樣才能把 id 記在對應的銀行現金紀錄裡（linkedFuturesTxId），
-                    // 之後刪除時可以精準對到這一筆，不用再靠「金額+幣別+日期+類型」去猜，避免同一天兩筆金額相同的紀錄被猜錯。
-                    const marginTxRef = db.collection('users').doc(user.value.uid).collection('futures_transactions').doc();
-                    await marginTxRef.set({
-                        type: formVal.type,
-                        symbol: 'MARGIN',
-                        amount: amt,
-                        currency: formVal.currency,
-                        date: getLocalDate(),
-                        note: formVal.note || (formVal.type === 'deposit' ? '保證金存入' : '保證金提出'),
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-
-                    // 2. 若勾選同步，更新銀行活存
-                    if (formVal.syncCash) {
-                        await db.collection('users').doc(user.value.uid).collection('portfolio').doc('cash').set(curCash, { merge: true });
-
-                        // 3. 寫入銀行現金交易流水帳 (CASH 紀錄)
-                        await db.collection('users').doc(user.value.uid).collection('transactions').add({
-                            type: formVal.type === 'deposit' ? 'withdraw' : 'deposit',
-                            symbol: 'CASH',
-                            name: formVal.type === 'deposit' ? '轉出至期貨保證金' : '期貨保證金轉回',
-                            shares: 0,
-                            totalAmount: amt,
-                            currency: formVal.currency,
-                            date: getLocalDate(),
-                            linkedFuturesTxId: marginTxRef.id,
-                            memo: formVal.note || '期貨保證金劃轉'
                         });
+                    } catch (e) {
+                        return alert(e.message || '保證金調整失敗，請稍後再試');
                     }
 
                     showFuturesMarginModal.value = false;
@@ -1638,34 +1592,129 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 };
                 const deleteTransaction = (tx) => { pendingDeleteTx.value = tx; showDeleteModal.value = true; };
 
-                const executeDelete = async (revertCash) => { showDeleteModal.value = false; const tx = pendingDeleteTx.value; if (!tx) return; if (revertCash) { if (tx.type === 'deposit') {
-                        await updateCash(tx.currency, -Math.abs(tx.totalAmount), 0);
-                        if (tx.symbol === 'CASH' && (tx.name.includes('期貨保證金') || (tx.memo && tx.memo.includes('期貨保證金')))) {
-                            const marginRef = db.collection('users').doc(user.value.uid).collection('portfolio').doc('futures_margin');
-                            const marginDoc = await marginRef.get();
-                            if (marginDoc.exists) {
-                                const marginData = marginDoc.data();
-                                const key = tx.currency === 'USD' ? 'usd' : 'twd';
-                                marginData[key] = (marginData[key] || 0) + Math.abs(tx.totalAmount);
-                                await marginRef.set(marginData, { merge: true });
-                            }
+                // v5.9.0: 用交易當下記錄的 sharesBefore / avgCostBefore 精準還原庫存。
+                // 舊版買入是拿現有庫存反推平均成本，賣出則根本還原不了（只能跳訊息請使用者自己改）；
+                // 期貨那邊早就有 oldPositionSnapshot 這套做法，股票這邊比照辦理。
+                const restoreStockState = async (tx) => {
+                    const col = db.collection('users').doc(user.value.uid).collection('stocks');
+                    let docId = tx.stockDocId || null;
+                    if (docId) {
+                        const snap = await col.doc(docId).get();
+                        if (!snap.exists) docId = null;
+                    }
+                    if (!docId) {
+                        const local = stocks.value.find(s => s.symbol === tx.symbol);
+                        docId = local ? local.id : null;
+                    }
+                    // 這檔庫存本來就是這筆買進才建立的，還原等於整筆撤銷，直接刪掉
+                    if (tx.createdStock && !(tx.sharesBefore > 0)) {
+                        if (docId) await col.doc(docId).delete();
+                        return;
+                    }
+                    const payload = { shares: tx.sharesBefore || 0, avgCost: tx.avgCostBefore || 0 };
+                    if (docId) await col.doc(docId).update(payload);
+                    else await col.add({ symbol: tx.symbol, name: tx.name || tx.symbol, currency: tx.currency || 'TWD', marketType: tx.currency === 'USD' ? 'us' : '', currentPrice: 0, previousClose: 0, dividends: 0, ...payload });
+                };
+
+                const executeDelete = async (revertCash) => {
+                    showDeleteModal.value = false;
+                    const tx = pendingDeleteTx.value;
+                    if (!tx) return;
+                    const uid = user.value.uid;
+                    const inc = firebase.firestore.FieldValue.increment;
+                    const marginRef = db.collection('users').doc(uid).collection('portfolio').doc('futures_margin');
+                    const isFuturesTransfer = tx.symbol === 'CASH' && `${tx.name || ''}${tx.memo || ''}`.includes('期貨保證金');
+                    const key = tx.currency === 'USD' ? 'usd' : 'twd';
+                    const amount = Math.abs(tx.totalAmount || 0);
+                    // 有 sharesBefore 才是 v5.9.0 之後寫入的交易，舊資料只能走原本的推算邏輯
+                    const hasSnapshot = tx.sharesBefore !== undefined && tx.sharesBefore !== null;
+
+                    // v5.9.0: 「寫回交易前狀態」只有在這筆是該檔最後一次異動時才正確。
+                    // 若之後還有買賣，直接還原會把後面那些交易的效果一起抹掉，先問過使用者。
+                    if (revertCash && hasSnapshot && (tx.type === 'buy' || tx.type === 'sell')) {
+                        const live = stocks.value.find(s => s.id === tx.stockDocId) || stocks.value.find(s => s.symbol === tx.symbol);
+                        const expectedAfter = tx.type === 'buy' ? (tx.sharesBefore + (tx.shares || 0)) : (tx.sharesBefore - (tx.shares || 0));
+                        if (Math.abs((live ? (live.shares || 0) : 0) - expectedAfter) > 1e-6) {
+                            const ok = confirm(`「${tx.symbol}」在這筆交易之後還有其他買賣紀錄。\n\n還原會把庫存直接寫回這筆交易前的狀態（${tx.sharesBefore} 股），之後那些交易的效果會被一起抹掉。\n\n建議先從最新的紀錄開始刪除。確定仍要繼續嗎？`);
+                            if (!ok) { pendingDeleteTx.value = null; return; }
                         }
-                    } else if (tx.type === 'withdraw') {
-                        await updateCash(tx.currency, Math.abs(tx.totalAmount), 0);
-                        if (tx.symbol === 'CASH' && (tx.name.includes('期貨保證金') || (tx.memo && tx.memo.includes('期貨保證金')))) {
-                            const marginRef = db.collection('users').doc(user.value.uid).collection('portfolio').doc('futures_margin');
-                            const marginDoc = await marginRef.get();
-                            if (marginDoc.exists) {
-                                const marginData = marginDoc.data();
-                                const key = tx.currency === 'USD' ? 'usd' : 'twd';
-                                marginData[key] = Math.max(0, (marginData[key] || 0) - Math.abs(tx.totalAmount));
-                                await marginRef.set(marginData, { merge: true });
+                    }
+
+                    if (revertCash) {
+                        if (tx.type === 'deposit') {
+                            await updateCash(tx.currency, -amount, 0);
+                            if (isFuturesTransfer) await marginRef.set({ [key]: inc(amount) }, { merge: true });
+                        } else if (tx.type === 'withdraw') {
+                            await updateCash(tx.currency, amount, 0);
+                            if (isFuturesTransfer) await marginRef.set({ [key]: inc(-amount) }, { merge: true });
+                        } else if (tx.type === 'borrow') {
+                            if (tx.loanId) await updateLoanBalance(tx.loanId, -amount);
+                            else alert('此為舊版借款紀錄，請手動調整對應帳戶餘額。');
+                            if (tx.cashSynced === true) await updateCash(tx.currency || 'TWD', -amount, 0);
+                        } else if (tx.type === 'repay') {
+                            if (tx.loanId) await updateLoanBalance(tx.loanId, amount);
+                            if (tx.cashSynced === true) await updateCash(tx.currency || 'TWD', amount, 0);
+                        } else if (tx.type === 'dividend') {
+                            await updateCash(tx.currency, -amount, 0);
+                            const stock = stocks.value.find(s => s.symbol === tx.symbol);
+                            if (stock) await db.collection('users').doc(uid).collection('stocks').doc(stock.id).update({ dividends: Math.max(0, (stock.dividends || 0) - amount) });
+                            // v5.9.0: 新資料直接用 dividendId 對應；舊資料才退回用「代號+日期+金額」去猜（同天同金額會刪錯）
+                            const divCol = db.collection('users').doc(uid).collection('dividends');
+                            if (tx.dividendId) {
+                                await divCol.doc(tx.dividendId).delete();
+                            } else {
+                                const divQuery = await divCol.where('symbol', '==', tx.symbol).where('date', '==', tx.date).where('amount', '==', tx.totalAmount).get();
+                                if (!divQuery.empty) await divCol.doc(divQuery.docs[0].id).delete();
                             }
+                        } else if (tx.type === 'buy') {
+                            await updateCash(tx.currency, amount, 0);
+                            if (hasSnapshot) {
+                                await restoreStockState(tx);
+                            } else {
+                                // 舊資料：沒有交易前快照，只能從現有庫存反推
+                                const stock = stocks.value.find(s => s.symbol === tx.symbol);
+                                if (stock) {
+                                    const ns = stock.shares - tx.shares;
+                                    if (ns <= 0) {
+                                        await db.collection('users').doc(uid).collection('stocks').doc(stock.id).delete();
+                                    } else {
+                                        const remainingValue = (stock.shares * stock.avgCost) - tx.totalAmount;
+                                        const na = remainingValue > 0 ? remainingValue / ns : 0;
+                                        await db.collection('users').doc(uid).collection('stocks').doc(stock.id).update({ shares: ns, avgCost: na });
+                                    }
+                                }
+                            }
+                        } else if (tx.type === 'sell') {
+                            await updateCash(tx.currency, -amount, 0);
+                            if (tx.realizedGainsId) {
+                                await db.collection('users').doc(uid).collection('realized_gains').doc(tx.realizedGainsId).delete()
+                                    .catch(e => console.warn('[刪除賣出] 對應的已實現損益紀錄可能已被刪除', e));
+                            }
+                            if (hasSnapshot) await restoreStockState(tx);
+                            else alert('系統提示：已將您的賣出金額從現金中扣除。但這是舊版紀錄，系統無法追蹤原本的股數與成本，請手動至「已實現損益」與「庫存」調整對應數字，以確保資料正確。');
                         }
-                    } else if (tx.type === 'borrow') { if (tx.loanId) await updateLoanBalance(tx.loanId, -Math.abs(tx.totalAmount)); else alert('此為舊版借款紀錄，請手動調整對應帳戶餘額。'); if (tx.cashSynced === true) await updateCash(tx.currency || 'TWD', -Math.abs(tx.totalAmount), 0); } else if (tx.type === 'repay') { if (tx.loanId) await updateLoanBalance(tx.loanId, Math.abs(tx.totalAmount)); if (tx.cashSynced === true) await updateCash(tx.currency || 'TWD', Math.abs(tx.totalAmount), 0); } else if (tx.type === 'dividend') { await updateCash(tx.currency, -Math.abs(tx.totalAmount), 0); const stock = stocks.value.find(s => s.symbol === tx.symbol); if (stock) { await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ dividends: Math.max(0, (stock.dividends || 0) - tx.totalAmount) }); } const divQuery = await db.collection('users').doc(user.value.uid).collection('dividends').where('symbol', '==', tx.symbol).where('date', '==', tx.date).where('amount', '==', tx.totalAmount).get(); if (!divQuery.empty) { await db.collection('users').doc(user.value.uid).collection('dividends').doc(divQuery.docs[0].id).delete(); } } else if (tx.type === 'buy') { await updateCash(tx.currency, Math.abs(tx.totalAmount), 0); const stock = stocks.value.find(s => s.symbol === tx.symbol); if (stock) { const ns = stock.shares - tx.shares; if (ns <= 0) { await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).delete(); } else { const remainingValue = (stock.shares * stock.avgCost) - tx.totalAmount; const na = remainingValue > 0 ? remainingValue / ns : 0; await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ shares: ns, avgCost: na }); } } } else if (tx.type === 'sell') { alert('系統提示：已將您的賣出金額從現金中扣除。但因系統無法追蹤原銷售股票之成本紀錄，請您手動至「已實現損益」與「庫存」調整對應股數與紀錄，以確保資料正確。'); await updateCash(tx.currency, -Math.abs(tx.totalAmount), 0); } } await db.collection('users').doc(user.value.uid).collection('transactions').doc(tx.id).delete(); fetchTransactions(); setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'transactions') fetchTransactions(); if (activeSection.value === 'realized') fetchRealizedGains(); if (activeSection.value === 'overview' || activeSection.value === '') drawChart(); }, 500); pendingDeleteTx.value = null; };
+                    }
+
+                    await db.collection('users').doc(uid).collection('transactions').doc(tx.id).delete();
+                    fetchTransactions();
+                    setTimeout(async () => {
+                        await saveDailySnapshot();
+                        if (activeSection.value === 'transactions') fetchTransactions();
+                        if (activeSection.value === 'realized') fetchRealizedGains();
+                        if (activeSection.value === 'overview' || activeSection.value === '') drawChart();
+                    }, 500);
+                    pendingDeleteTx.value = null;
+                };
+
                 const deleteDividend = async (rec) => { if (!confirm('刪除股息？(現金將自動扣回)')) return; const stock = stocks.value.find(s => s.symbol === rec.symbol); if (stock) { await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ dividends: Math.max(0, (stock.dividends || 0) - rec.amount) }); } await updateCash(rec.currency, -rec.amount, 0); await db.collection('users').doc(user.value.uid).collection('dividends').doc(rec.id).delete(); fetchDividends(); setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'overview' || activeSection.value === '') drawChart(); }, 500); };
                 const deleteRealized = async (id) => { if (!confirm('刪除？')) return; await db.collection('users').doc(user.value.uid).collection('realized_gains').doc(id).delete(); fetchRealizedGains(); };
-                const saveDailySnapshot = async () => { if (!user.value) return; const todayStr = getLocalDate(); const historyRef = db.collection('users').doc(user.value.uid).collection('history').doc(todayStr); const currentHour = new Date().getHours(); const snapshot = { date: todayStr, timestamp: firebase.firestore.FieldValue.serverTimestamp(), savedHour: currentHour, totalVal: grandTotalValue.value, twVal: twStats.value.value, usVal: usStats.value.value, twCash: cashData.value.twd || 0, usCash: cashData.value.usd || 0, loan: totalLoanBalance.value, totalPnL: grandTotalPnL.value, twPnL: twStats.value.pnl, usPnL: usStats.value.pnl, realestate: realEstateTotalMarket.value, leverage: leverageRatio.value, exposure: exposureRatio.value, funds: mutualFundTotalValue.value, futures: futuresEquity.value }; if (currentHour >= 21) { const doc = await historyRef.get(); if (doc.exists) { const existingSavedHour = doc.data().savedHour; if (existingSavedHour !== undefined && existingSavedHour < 21 && doc.data().totalVal > 0) { return; } } } await historyRef.set(snapshot, { merge: true }); };
+                const saveDailySnapshot = async () => { if (!user.value) return;
+                    // v5.9.0: 匯率還沒確認過（線上 API 失敗，本機與雲端也都沒有上次的值）時，美股與美金會用寫死的
+                    // 保底匯率計價。這種數字一旦寫進 history 就會永久留在走勢圖上，寧可這天不記錄。
+                    if (!exchangeRateConfirmed.value) { console.warn('[快照] 匯率尚未確認，略過今日快照以免污染歷史資料'); return; }
+                    const todayStr = getLocalDate(); const historyRef = db.collection('users').doc(user.value.uid).collection('history').doc(todayStr); const currentHour = new Date().getHours(); const snapshot = { date: todayStr, timestamp: firebase.firestore.FieldValue.serverTimestamp(), savedHour: currentHour, totalVal: grandTotalValue.value, twVal: twStats.value.value, usVal: usStats.value.value, twCash: cashData.value.twd || 0, usCash: cashData.value.usd || 0, loan: totalLoanBalance.value, totalPnL: grandTotalPnL.value, twPnL: twStats.value.pnl, usPnL: usStats.value.pnl, realestate: realEstateTotalMarket.value, leverage: leverageRatio.value, exposure: exposureRatio.value, funds: mutualFundTotalValue.value, futures: futuresEquity.value,
+                        // v5.9.0: 存下當日匯率，歷史圖表才能用「當時的匯率」換算美股，而不是拿今天的匯率去改寫過去。
+                        rate: exchangeRate.value }; if (currentHour >= 21) { const doc = await historyRef.get(); if (doc.exists) { const existingSavedHour = doc.data().savedHour; if (existingSavedHour !== undefined && existingSavedHour < 21 && doc.data().totalVal > 0) { return; } } } await historyRef.set(snapshot, { merge: true }); };
 
                 const updateCash = async (currency, amount, loanAmount = 0) => {
                     if (!user.value) return;
@@ -1687,8 +1736,38 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         cashData.value.usd = newUsd;
                     });
                 };
-                const updateLoanBalance = async (loanId, amount) => { if (!user.value || !loanId) return; const ref = db.collection('users').doc(user.value.uid).collection('loans').doc(loanId); const doc = await ref.get(); if (doc.exists) { const newBal = (doc.data().balance || 0) + amount; await ref.update({ balance: newBal }); } };
+                // v5.9.0: 原本是 get 完再 update，兩個裝置（或兩個分頁）同時操作會蓋掉彼此的結果，改用原子加減。
+                const updateLoanBalance = async (loanId, amount) => {
+                    if (!user.value || !loanId) return;
+                    await db.collection('users').doc(user.value.uid).collection('loans').doc(loanId)
+                        .update({ balance: firebase.firestore.FieldValue.increment(amount) });
+                };
                 const fetchPreviousDayData = async (uid) => { const todayStr = getLocalDate(); const snap = await db.collection('users').doc(uid).collection('history').orderBy('date', 'desc').limit(2).get(); if (snap.empty) return; const docs = snap.docs.map(d => d.data()); if (docs[0].date !== todayStr) prevDayData.value = docs[0]; else if (docs.length > 1) prevDayData.value = docs[1]; };
+
+                // v5.9.0: 期間損益要扣掉本金進出，否則「這個月匯 50 萬進來」會被算成賺了 50 萬。
+                // 只認銀行活存的存入/提出；期貨保證金劃轉是內部搬錢（現金↔保證金），淨資產沒變不能算。
+                // 借款/還款若有連動現金則資產與負債同增同減，淨資產不變，本來就不必調整。
+                const fetchNetExternalFlow = async (fromDate, toDate) => {
+                    if (!user.value) return 0;
+                    try {
+                        const snap = await db.collection('users').doc(user.value.uid).collection('transactions')
+                            .where('date', '>', fromDate)
+                            .where('date', '<=', toDate).get();
+                        return snap.docs.reduce((acc, doc) => {
+                            const t = doc.data();
+                            if (t.symbol !== 'CASH') return acc;
+                            if (t.type !== 'deposit' && t.type !== 'withdraw') return acc;
+                            if (t.linkedFuturesTxId) return acc;
+                            if (`${t.name || ''}${t.memo || ''}`.includes('期貨保證金')) return acc; // 舊資料沒有 linkedFuturesTxId
+                            const rate = t.currency === 'USD' ? exchangeRate.value : 1;
+                            const amt = Math.abs(t.totalAmount || 0) * rate;
+                            return acc + (t.type === 'deposit' ? amt : -amt);
+                        }, 0);
+                    } catch (e) {
+                        console.warn('[期間損益] 取得資金進出失敗，本次不扣除本金', e);
+                        return 0;
+                    }
+                };
 
                 const drawChart = async () => {
                     if (!user.value || !document.getElementById('assetChart')) return;
@@ -1698,22 +1777,30 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         .orderBy('date', 'asc').get();
                     const d = snap.docs.map(x => x.data());
 
+                    // v5.9.0: 快照有存當日匯率就用當日的；舊資料沒有才退回今天的匯率。
+                    const rateOf = x => (x.rate > 0 ? x.rate : exchangeRate.value);
+
                     // 計算期間損益
                     const calcNetWorth = x => {
                         if (x.totalVal !== undefined && x.totalVal > 0) return x.totalVal;
-                        const asset = (x.twVal || 0) + (x.twCash || 0) + ((x.usVal || 0) + (x.usCash || 0)) * exchangeRate.value + (x.realestate || 0) + (x.futures || 0) + (x.funds || 0);
+                        const r = rateOf(x);
+                        const asset = (x.twVal || 0) + (x.twCash || 0) + ((x.usVal || 0) + (x.usCash || 0)) * r + (x.realestate || 0) + (x.futures || 0) + (x.funds || 0);
                         return asset - (x.loan || 0);
                     };
                     if (d.length >= 2) {
                         const startVal = calcNetWorth(d[0]);
                         const endVal = calcNetWorth(d[d.length - 1]);
-                        const amount = endVal - startVal;
-                        const pct = startVal !== 0 ? (amount / Math.abs(startVal)) * 100 : 0;
-                        chartPnl.value = { amount, pct, startVal, endVal };
+                        const netFlow = await fetchNetExternalFlow(d[0].date, d[d.length - 1].date);
+                        const amount = endVal - startVal - netFlow;
+                        // 分母用「期初淨資產 + 期間淨投入」概略代表這段期間投入的本金，
+                        // 否則從 0 開始的新帳戶匯錢進來會算出 0%。
+                        const base = Math.abs(startVal) + Math.max(0, netFlow);
+                        const pct = base !== 0 ? (amount / base) * 100 : 0;
+                        chartPnl.value = { amount, pct, startVal, endVal, netFlow };
                     } else if (d.length === 1) {
-                        chartPnl.value = { amount: 0, pct: 0, startVal: calcNetWorth(d[0]), endVal: calcNetWorth(d[0]) };
+                        chartPnl.value = { amount: 0, pct: 0, startVal: calcNetWorth(d[0]), endVal: calcNetWorth(d[0]), netFlow: 0 };
                     } else {
-                        chartPnl.value = { amount: null, pct: null, startVal: null, endVal: null };
+                        chartPnl.value = { amount: null, pct: null, startVal: null, endVal: null, netFlow: 0 };
                     }
 
                     if (chartInstance) chartInstance.destroy();
@@ -1737,9 +1824,9 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                             datasets: [
                                 { label: '淨資產 (Net Worth)', data: d.map(calcNetWorth), borderColor: totalColor, fill: true, backgroundColor: isDark ? 'rgba(167, 139, 250, 0.1)' : 'rgba(31,41,55,0.1)', tension: 0.3, yAxisID: 'y' },
                                 { label: '台股 (Stock)', data: d.map(x => x.twVal), borderColor: '#3b82f6', hidden: true, tension: 0.3, yAxisID: 'y' },
-                                { label: '美股 (Stock TWD)', data: d.map(x => x.usVal * exchangeRate.value), borderColor: '#ef4444', hidden: true, tension: 0.3, yAxisID: 'y' },
+                                { label: '美股 (Stock TWD)', data: d.map(x => (x.usVal || 0) * rateOf(x)), borderColor: '#ef4444', hidden: true, tension: 0.3, yAxisID: 'y' },
                                 { label: '台股帳戶 (Stock+Cash)', data: d.map(x => (x.twVal || 0) + (x.twCash || 0)), borderColor: '#93c5fd', borderDash: [5, 5], hidden: true, tension: 0.3, yAxisID: 'y' },
-                                { label: '美股帳戶 (Stock+Cash)', data: d.map(x => ((x.usVal || 0) + (x.usCash || 0)) * exchangeRate.value), borderColor: '#fca5a5', borderDash: [5, 5], hidden: true, tension: 0.3, yAxisID: 'y' },
+                                { label: '美股帳戶 (Stock+Cash)', data: d.map(x => ((x.usVal || 0) + (x.usCash || 0)) * rateOf(x)), borderColor: '#fca5a5', borderDash: [5, 5], hidden: true, tension: 0.3, yAxisID: 'y' },
                                 // v4.4.0: 槓桿比（副 Y 軸，右側）
                                 { label: '槓桿比 (Leverage)', data: hasLoan ? d.map(calcLeverage) : [], borderColor: '#f59e0b', borderDash: [3, 3], borderWidth: 1.5, pointRadius: 2, tension: 0.3, yAxisID: 'yLeverage', hidden: !hasLoan }
                             ]
@@ -1872,7 +1959,109 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'overview' || activeSection.value === '') drawChart(); }, 500);
                         return;
                     }
-                    if (isFundMode.value) { if (!transForm.value.totalAmount) return alert('請輸入金額'); const amount = transForm.value.type === 'deposit' ? transForm.value.totalAmount : -transForm.value.totalAmount; await updateCash(form.value.currency, amount, 0); await db.collection('users').doc(user.value.uid).collection('transactions').add(logData); closeTransModal(); setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'overview' || activeSection.value === '') drawChart(); }, 500); return; } if (transForm.value.type === 'dividend') { if (!transForm.value.totalAmount) return alert('請輸入金額'); const dividendData = { ...logData, amount: transForm.value.totalAmount }; await db.collection('users').doc(user.value.uid).collection('dividends').add(dividendData); await db.collection('users').doc(user.value.uid).collection('transactions').add(logData); await updateCash(form.value.currency, transForm.value.totalAmount, 0); const existingStock = stocks.value.find(s => s.symbol === transForm.value.symbol); if (existingStock) { await db.collection('users').doc(user.value.uid).collection('stocks').doc(existingStock.id).update({ dividends: (existingStock.dividends || 0) + transForm.value.totalAmount }); } closeTransModal(); setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'overview' || activeSection.value === '') drawChart(); }, 500); return; } if (!transForm.value.shares || !transForm.value.totalAmount) return alert('請輸入完整資訊'); logData.price = transForm.value.totalAmount / transForm.value.shares; let stockId = transForm.value.id; let currentShares = transForm.value.currentShares; let currentAvg = transForm.value.currentAvg; if (!stockId) { const existing = stocks.value.find(s => s.symbol === transForm.value.symbol); if (existing) { stockId = existing.id; currentShares = existing.shares; currentAvg = existing.avgCost; } else if (transForm.value.type === 'buy') { const newDoc = await db.collection('users').doc(user.value.uid).collection('stocks').add({ symbol: transForm.value.symbol, name: transForm.value.name, currency: form.value.currency, marketType: form.value.currency === 'USD' ? 'us' : '', shares: 0, avgCost: 0, currentPrice: 0, dividends: 0 }); stockId = newDoc.id; } else { const pnl = transForm.value.totalAmount - 0; await db.collection('users').doc(user.value.uid).collection('realized_gains').add({ ...logData, pnl: pnl, price: logData.price }); await db.collection('users').doc(user.value.uid).collection('transactions').add(logData); await updateCash(form.value.currency, transForm.value.totalAmount, 0); closeTransModal(); return; } } let ns = 0, na = 0; if (transForm.value.type === 'buy') { ns = currentShares + transForm.value.shares; const oldTotal = currentShares * currentAvg; na = (oldTotal + transForm.value.totalAmount) / ns; await updateCash(form.value.currency, -transForm.value.totalAmount, 0); } else { if (transForm.value.shares > currentShares) return alert('股數不足'); ns = currentShares - transForm.value.shares; na = currentAvg; const pnl = transForm.value.totalAmount - (transForm.value.shares * currentAvg); await db.collection('users').doc(user.value.uid).collection('realized_gains').add({ ...logData, pnl: pnl, price: logData.price }); await updateCash(form.value.currency, transForm.value.totalAmount, 0); } await db.collection('users').doc(user.value.uid).collection('transactions').add(logData); if (stockId) { const ref = db.collection('users').doc(user.value.uid).collection('stocks').doc(stockId); await ref.update({ shares: ns, avgCost: na, hiddenFromList: false }); if (ns === 0 && confirm('股數歸零，是否從清單隱藏此庫存項目？\n（之後重新買入仍會延續此紀錄）')) await ref.update({ hiddenFromList: true }); } setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'transactions') fetchTransactions(); if (activeSection.value === 'overview' || activeSection.value === '') drawChart(); }, 500); closeTransModal();
+                    if (isFundMode.value) {
+                        if (!transForm.value.totalAmount) return alert('請輸入金額');
+                        const amount = transForm.value.type === 'deposit' ? transForm.value.totalAmount : -transForm.value.totalAmount;
+                        await updateCash(form.value.currency, amount, 0);
+                        await db.collection('users').doc(user.value.uid).collection('transactions').add(logData);
+                        closeTransModal();
+                        setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'overview' || activeSection.value === '') drawChart(); }, 500);
+                        return;
+                    }
+
+                    if (transForm.value.type === 'dividend') {
+                        if (!transForm.value.totalAmount) return alert('請輸入金額');
+                        // v5.9.0: 先取 doc ref 再寫入，把 id 記在交易紀錄上（dividendId），
+                        // 之後刪除這筆交易時可以精準對到股息紀錄，不用再靠「代號+日期+金額」去猜。
+                        const divRef = db.collection('users').doc(user.value.uid).collection('dividends').doc();
+                        logData.dividendId = divRef.id;
+                        await divRef.set({ ...logData, amount: transForm.value.totalAmount });
+                        await db.collection('users').doc(user.value.uid).collection('transactions').add(logData);
+                        await updateCash(form.value.currency, transForm.value.totalAmount, 0);
+                        const existingStock = stocks.value.find(s => s.symbol === transForm.value.symbol);
+                        if (existingStock) {
+                            await db.collection('users').doc(user.value.uid).collection('stocks').doc(existingStock.id)
+                                .update({ dividends: (existingStock.dividends || 0) + transForm.value.totalAmount });
+                        }
+                        closeTransModal();
+                        setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'overview' || activeSection.value === '') drawChart(); }, 500);
+                        return;
+                    }
+
+                    // --- 以下為股票買進/賣出 ---
+                    if (!transForm.value.shares || !transForm.value.totalAmount) return alert('請輸入完整資訊');
+                    logData.price = transForm.value.totalAmount / transForm.value.shares;
+
+                    const stockCol = db.collection('users').doc(user.value.uid).collection('stocks');
+                    const realizedCol = db.collection('users').doc(user.value.uid).collection('realized_gains');
+                    const transCol = db.collection('users').doc(user.value.uid).collection('transactions');
+
+                    let stockId = transForm.value.id;
+                    let currentShares = transForm.value.currentShares;
+                    let currentAvg = transForm.value.currentAvg;
+                    let createdStock = false;
+
+                    if (!stockId) {
+                        const existing = stocks.value.find(s => s.symbol === transForm.value.symbol);
+                        if (existing) {
+                            stockId = existing.id;
+                            currentShares = existing.shares;
+                            currentAvg = existing.avgCost;
+                        } else if (transForm.value.type === 'buy') {
+                            const newDoc = await stockCol.add({ symbol: transForm.value.symbol, name: transForm.value.name, currency: form.value.currency, marketType: form.value.currency === 'USD' ? 'us' : '', shares: 0, avgCost: 0, currentPrice: 0, dividends: 0 });
+                            stockId = newDoc.id;
+                            currentShares = 0;
+                            currentAvg = 0;
+                            createdStock = true;
+                        } else {
+                            // 賣出但庫存查無此檔：整筆當已實現損益處理
+                            const pnl = transForm.value.totalAmount - 0;
+                            const realizedRef = realizedCol.doc();
+                            logData.sharesBefore = 0;
+                            logData.avgCostBefore = 0;
+                            logData.stockDocId = null;
+                            logData.realizedGainsId = realizedRef.id;
+                            await realizedRef.set({ ...logData, pnl: pnl, price: logData.price });
+                            await transCol.add(logData);
+                            await updateCash(form.value.currency, transForm.value.totalAmount, 0);
+                            closeTransModal();
+                            return;
+                        }
+                    }
+
+                    // v5.9.0: 把「交易前的股數與平均成本」記進交易紀錄，日後刪除這筆交易才能精準還原庫存。
+                    logData.sharesBefore = currentShares || 0;
+                    logData.avgCostBefore = currentAvg || 0;
+                    logData.stockDocId = stockId || null;
+                    logData.createdStock = createdStock;
+
+                    let ns = 0, na = 0;
+                    if (transForm.value.type === 'buy') {
+                        ns = currentShares + transForm.value.shares;
+                        const oldTotal = currentShares * currentAvg;
+                        na = (oldTotal + transForm.value.totalAmount) / ns;
+                        await updateCash(form.value.currency, -transForm.value.totalAmount, 0);
+                    } else {
+                        if (transForm.value.shares > currentShares) return alert('股數不足');
+                        ns = currentShares - transForm.value.shares;
+                        na = currentAvg;
+                        const pnl = transForm.value.totalAmount - (transForm.value.shares * currentAvg);
+                        const realizedRef = realizedCol.doc();
+                        logData.realizedGainsId = realizedRef.id;
+                        await realizedRef.set({ ...logData, pnl: pnl, price: logData.price });
+                        await updateCash(form.value.currency, transForm.value.totalAmount, 0);
+                    }
+
+                    await transCol.add(logData);
+
+                    if (stockId) {
+                        const ref = stockCol.doc(stockId);
+                        await ref.update({ shares: ns, avgCost: na, hiddenFromList: false });
+                        if (ns === 0 && confirm('股數歸零，是否從清單隱藏此庫存項目？\n（之後重新買入仍會延續此紀錄）')) await ref.update({ hiddenFromList: true });
+                    }
+
+                    setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'transactions') fetchTransactions(); if (activeSection.value === 'overview' || activeSection.value === '') drawChart(); }, 500);
+                    closeTransModal();
                 };
 
                 const openModal = () => { isEditing.value = false; form.value = { id: Date.now().toString(), symbol: '', name: '', currency: 'TWD', marketType: '', shares: 0, avgCost: 0, totalCostInput: 0, currentPrice: 0, dividends: 0, previousClose: 0, multiplier: 1, isETF: false }; showModal.value = true; };
@@ -2327,12 +2516,9 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     try {
                         const rateResp = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
                         const rateJson = await rateResp.json();
-                        const newRate = rateJson.rates.TWD;
-                        if (newRate && newRate > 0) {
-                            exchangeRate.value = newRate;
-                            await db.collection('users').doc(user.value.uid).collection('settings').doc('config').set({
-                                exchangeRate: newRate
-                            }, { merge: true });
+                        const newRate = rateJson?.rates?.TWD;
+                        if (newRate > 0) {
+                            applyExchangeRate(newRate);
                             console.log(`匯率已更新: ${newRate}`);
                         }
                     } catch (e) {
@@ -2438,7 +2624,41 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 };
 
 
-                const fetchExchangeRate = async () => { try { const r = await fetch('https://api.exchangerate-api.com/v4/latest/USD'); const d = await r.json(); exchangeRate.value = d.rates.TWD; } catch (e) { } };
+                // v5.9.0: 匯率取得成功時，同時存本機與雲端，讓下次 API 掛掉時有東西可用。
+                const applyExchangeRate = (rate, persistRemote = true) => {
+                    if (!(rate > 0)) return;
+                    exchangeRate.value = rate;
+                    exchangeRateConfirmed.value = true;
+                    try { localStorage.setItem('lastExchangeRate', String(rate)); } catch (e) { /* 私密瀏覽等情境可能寫不進去 */ }
+                    if (persistRemote && user.value) {
+                        db.collection('users').doc(user.value.uid).collection('settings').doc('config')
+                            .set({ exchangeRate: rate, exchangeRateUpdatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true })
+                            .catch(e => console.warn('[匯率] 寫入 settings 失敗', e));
+                    }
+                };
+
+                // v5.9.0: 換裝置時本機沒有紀錄，改從雲端 settings/config 撈上次成功的匯率當保底。
+                // （這份資料以前只寫不讀，等於白存。）
+                const loadSavedExchangeRate = async (uid) => {
+                    if (exchangeRateConfirmed.value) return;
+                    try {
+                        const doc = await db.collection('users').doc(uid).collection('settings').doc('config').get();
+                        const saved = doc.exists ? doc.data().exchangeRate : null;
+                        if (saved > 0) applyExchangeRate(saved, false);
+                    } catch (e) {
+                        console.warn('[匯率] 讀取雲端備援匯率失敗', e);
+                    }
+                };
+
+                const fetchExchangeRate = async () => {
+                    try {
+                        const r = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+                        const d = await r.json();
+                        applyExchangeRate(d?.rates?.TWD);
+                    } catch (e) {
+                        console.warn('[匯率] 線上更新失敗，沿用上次成功的匯率', e);
+                    }
+                };
 
                 const sortTransaction = (key) => { if (sortKeyTrans.value === key) sortOrderTrans.value = sortOrderTrans.value === 'asc' ? 'desc' : 'asc'; else { sortKeyTrans.value = key; sortOrderTrans.value = 'desc'; } };
                 const sortDividend = (key) => { if (sortKeyDiv.value === key) sortOrderDiv.value = sortOrderDiv.value === 'asc' ? 'desc' : 'asc'; else { sortKeyDiv.value = key; sortOrderDiv.value = 'desc'; } };
@@ -2451,7 +2671,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
                 return {
                     clearAllUserData, 
-                    user, login, logout, stocks, exchangeRate, lastUpdated, isLoading, viewMode, isMobile, showPrivacy, isDarkMode, toggleDarkMode, activeSection, toggleSection, showChangelog, hideZeroShares, defaultPrivacyHidden,
+                    user, login, logout, stocks, exchangeRate, exchangeRateConfirmed, lastUpdated, isLoading, viewMode, isMobile, showPrivacy, isDarkMode, toggleDarkMode, activeSection, toggleSection, showChangelog, hideZeroShares, defaultPrivacyHidden,
                     twStats, usStats, grandTotalValue, grandTotalAssets, grandTotalExposure, grandTotalPnL, twPieRatios, usPieRatios, twStockList, usStockList, leverageRatio, exposureRatio,
                     financialAssets, financialLoans, financialNetWorth, financialExposure, positionExposureMultiplier, twPositionExposureMultiplier, usPositionExposureMultiplier,
                     showModal, isEditing, form, openModal, editStock, closeModal, saveStock, deleteStock,

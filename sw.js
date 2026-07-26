@@ -20,14 +20,20 @@ const SHELL_ASSETS = [
     './',
     './index.html',
     './mystock.html',
+    './mycreditcard.html',
     './js/main.js',
     './js/store/index.js',
     './js/utils/format.js',
     './js/firebase-config.js',
     './manifest.webmanifest',
-    './icons/icon-192.png',
-    './icons/icon-512.png',
-    './icons/apple-touch-icon.png'
+    './manifest-stock.webmanifest',
+    './manifest-card.webmanifest',
+    './icons/hub/icon-192.png',
+    './icons/hub/apple-touch-icon.png',
+    './icons/stock/icon-192.png',
+    './icons/stock/apple-touch-icon.png',
+    './icons/card/icon-192.png',
+    './icons/card/apple-touch-icon.png'
 ];
 
 // 這些主機的資源版本固定，可以放心長期快取

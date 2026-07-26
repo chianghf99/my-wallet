@@ -6,6 +6,15 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#6366f1">
     <title>卡片管家 Pro | Card Manager</title>
+    <!-- v5.12.0: PWA。三個入口各有獨立的 manifest 與圖示，
+         加到主畫面後會是三個可分辨的 App，而不是同一顆圖示。 -->
+    <link rel="manifest" href="./manifest-card.webmanifest">
+    <meta name="theme-color" content="#1f2937">
+    <link rel="icon" type="image/png" sizes="32x32" href="./icons/card/favicon-32.png">
+    <link rel="apple-touch-icon" href="./icons/card/apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="卡片管家">
     
     <!-- Dependencies -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
@@ -2813,5 +2822,14 @@ createApp({
 }).mount('#app');
 </script>
 
+    <!-- v5.11.0: 註冊 Service Worker（僅在 https 或 localhost 生效） -->
+    <script>
+        if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .catch(err => console.warn('[PWA] Service Worker 註冊失敗', err));
+            });
+        }
+    </script>
 </body>
 </html>

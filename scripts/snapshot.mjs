@@ -4,8 +4,8 @@
 // 每月統計也會拿更早的一筆頂上導致數字偏掉。這支腳本由 GitHub Actions 每個交易日
 // 14:30（台北）觸發，抓完當日收盤價後直接寫入 history/{date}。
 //
-// 計算邏輯刻意對齊 js/main.js 的 computed 們（grandTotalValue / financialAssets /
-// leverageRatio / exposureRatio…）。前端那邊改公式時，這裡要一起改。
+// 估值邏輯與前端共用 js/utils/valuation.js，不再各寫一份 —— 只改一邊會讓排程
+// 默默寫入用舊公式算出的歷史紀錄，而且不會有任何錯誤訊息。
 //
 // 需要的環境變數：
 //   FIREBASE_SERVICE_ACCOUNT  Firebase 服務帳戶金鑰 JSON（整份貼上）
@@ -17,6 +17,8 @@
 // 因此日誌只能印筆數與狀態，絕對不要印出 uid、金額、持股代號等可識別或敏感的內容。
 
 import admin from 'firebase-admin';
+// 與前端共用同一份估值邏輯，避免兩邊公式走鐘（見 js/utils/valuation.js）
+import { buildSnapshotFields } from '../js/utils/valuation.js';
 
 const TZ = 'Asia/Taipei';
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
@@ -206,78 +208,6 @@ const futuresPriceFor = (symbol, q) => {
     return null;
 };
 
-// --- 估值：對齊 js/main.js 的 computed ---
-
-const buildSnapshot = ({ stocks, cash, loans, realEstate, funds, futuresPositions, futuresMargin, rate }) => {
-    const twList = stocks.filter(s => s.currency !== 'USD');
-    const usList = stocks.filter(s => s.currency === 'USD');
-
-    const statsOf = list => list.reduce((acc, s) => {
-        const v = (s.currentPrice || 0) * (s.shares || 0);
-        const c = (s.avgCost || 0) * (s.shares || 0);
-        return { value: acc.value + v, cost: acc.cost + c, pnl: acc.pnl + (v - c) };
-    }, { value: 0, cost: 0, pnl: 0 });
-
-    const twStats = statsOf(twList);
-    const usStats = statsOf(usList);
-
-    const exposureOf = list => list.reduce((acc, s) => acc + (s.currentPrice || 0) * (s.shares || 0) * (s.multiplier || 1), 0);
-
-    const cashTwd = cash.twd || 0;
-    const cashUsd = cash.usd || 0;
-    const cashVal = cashTwd + cashUsd * rate;
-
-    const futuresUnrealized = futuresPositions.reduce((acc, p) => {
-        const diff = p.direction === 'long' ? (p.currentPrice - p.entryPrice) : (p.entryPrice - p.currentPrice);
-        const pnl = diff * (p.contracts || 0) * (p.multiplier || 0);
-        return acc + pnl * (p.currency === 'USD' ? rate : 1);
-    }, 0);
-    const futuresMarginCash = (futuresMargin.twd || 0) + (futuresMargin.usd || 0) * rate;
-    const futuresEquity = futuresMarginCash + futuresUnrealized;
-    const futuresMarginUsed = futuresPositions.reduce((acc, p) => acc + (p.marginUsed || 0) * (p.currency === 'USD' ? rate : 1), 0);
-    const futuresExposure = futuresPositions.reduce((acc, p) => {
-        const val = (p.currentPrice || 0) * (p.contracts || 0) * (p.multiplier || 0);
-        return acc + val * (p.currency === 'USD' ? rate : 1);
-    }, 0);
-
-    const fundsValue = funds.reduce((acc, f) => acc + (f.currentValue || 0) * (f.currency === 'USD' ? rate : 1), 0);
-    const realEstateValue = realEstate.reduce((acc, r) => acc + (r.marketValue || 0), 0);
-
-    const activeLoans = loans.filter(l => l.status !== 'archived');
-    const totalLoan = activeLoans.reduce((acc, l) => acc + (l.balance || 0), 0);
-    const financialLoans = activeLoans
-        .filter(l => l.isInvestmentUse === true || l.type !== 'realestate')
-        .reduce((acc, l) => acc + (l.balance || 0), 0);
-
-    const stockVal = twStats.value + usStats.value * rate;
-    const grandTotalAssets = stockVal + cashVal + realEstateValue + futuresEquity + fundsValue;
-    const grandTotalValue = grandTotalAssets - totalLoan;
-    const grandTotalPnL = twStats.pnl + usStats.pnl * rate + futuresUnrealized;
-
-    const financialAssets = stockVal + cashVal + futuresEquity;
-    const financialNetWorth = financialAssets - financialLoans;
-    const futuresExp = futuresExposure + Math.max(0, futuresEquity - futuresMarginUsed);
-    const financialExposure = exposureOf(twList) + exposureOf(usList) * rate + cashVal + futuresExp;
-
-    return {
-        totalVal: grandTotalValue,
-        twVal: twStats.value,
-        usVal: usStats.value,
-        twCash: cashTwd,
-        usCash: cashUsd,
-        loan: totalLoan,
-        totalPnL: grandTotalPnL,
-        twPnL: twStats.pnl,
-        usPnL: usStats.pnl,
-        realestate: realEstateValue,
-        funds: fundsValue,
-        futures: futuresEquity,
-        leverage: financialNetWorth > 0 ? financialAssets / financialNetWorth : 1,
-        exposure: financialNetWorth > 0 ? financialExposure / financialNetWorth : 1,
-        rate
-    };
-};
-
 // --- 主流程 ---
 
 const readCollection = async (userRef, name) => {
@@ -348,7 +278,12 @@ const processUser = async (db, uid, rate, label) => {
     console.log(`${label} 報價更新：成功 ${ok} 筆、失敗 ${fail} 筆` + (fail ? `（台股 ${failTw}、美股 ${failUs}，已沿用資料庫既有價格）` : ''));
 
     // 3. 計算並寫入快照
-    const snapshot = buildSnapshot({ stocks, cash, loans, realEstate, funds, futuresPositions, futuresMargin, rate });
+    const snapshot = buildSnapshotFields({
+        // hiddenFromList 是「股數歸零後從清單隱藏」的旗標，前端估值時會排除，這裡比照
+        twStocks: stocks.filter(s => !s.hiddenFromList && s.currency !== 'USD'),
+        usStocks: stocks.filter(s => !s.hiddenFromList && s.currency === 'USD'),
+        cash, loans, realEstate, funds, futuresPositions, futuresMargin, rate
+    });
     const date = getTaipeiDate();
     await userRef.collection('history').doc(date).set({
         ...snapshot,

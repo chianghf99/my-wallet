@@ -1,5 +1,6 @@
 import { db, auth } from './firebase-config.js';
 import { getLocalDate, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountSign, getFuturesDisplayName } from './utils/format.js';
+import { computePortfolio, calcStats, calcStockExposure, calcFundsValueTwd, calcFundsCostTwd, calcFuturesMarginCash, calcFuturesMarginUsed, calcFuturesExposure } from './utils/valuation.js';
 
 import { 
     user, stocks, exchangeRate, exchangeRateConfirmed, lastUpdated, loadingTarget, isLoading, viewMode, isMobile, showPrivacy, defaultPrivacyHidden, hideZeroShares, showSettingsModal, isDarkMode, activeSection, showChangelog, autoBackupEnabled, autoBackupIntervalDays, lastBackupAt, showBackupReminder, stockStates, sectionLoading, showStockNoteModal, stockNoteForm, showHistoryModal, historyRecords, historyFilterYear, availableYears, showDeleteModal, pendingDeleteTx, showEditTxModal, editTxForm, showHistoryEditModalVisible, historyEditForm, notes, showNoteModalVisible, noteForm, loanList, showLoanMgrModal, inlineNewLoan, inlineLoanName, loanForm, cashData, prevDayData, realEstateList, showRealEstateModal, realEstateForm, chartStartDate, chartEndDate, chartPnl, currentRange, divRange, divSearchQuery, divStartDate, divEndDate, realizedStartDate, realizedEndDate, transStartDate, transEndDate, transFilterType, transSearchQuery, sortKeyTrans, sortOrderTrans, sortKeyDiv, sortOrderDiv, realizedGains, realizedSearchQuery, sortKeyRealized, sortOrderRealized, realizedRange, dividendRecords, transactionHistory, showModal, isEditing, form, showTransModal, isFundMode, isLoanMode, loanCashMode, transForm,
@@ -242,12 +243,25 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 });
                 const twStockList = computed(() => sortedStocks.value.filter(s => s.currency === 'TWD'));
                 const usStockList = computed(() => sortedStocks.value.filter(s => s.currency === 'USD'));
-                const twStats = computed(() => calculateStats(twStockList.value));
-                const usStats = computed(() => calculateStats(usStockList.value));
-                const totalLoanBalance = computed(() => loanList.value.filter(l => l.status !== 'archived').reduce((acc, cur) => acc + (cur.balance || 0), 0));
+                // v5.14.0: 估值邏輯集中在 js/utils/valuation.js，前端與排程快照共用同一份，
+                // 避免只改一邊導致排程寫入用舊公式算出的歷史紀錄。
+                const portfolio = computed(() => computePortfolio({
+                    twStocks: twStockList.value,
+                    usStocks: usStockList.value,
+                    cash: cashData.value,
+                    loans: loanList.value,
+                    realEstate: realEstateList.value,
+                    funds: mutualFundList.value,
+                    futuresPositions: futuresPositions.value,
+                    futuresMargin: futuresMargin.value,
+                    rate: exchangeRate.value
+                }));
+                const twStats = computed(() => portfolio.value.twStats);
+                const usStats = computed(() => portfolio.value.usStats);
+                const totalLoanBalance = computed(() => portfolio.value.totalLoan);
                 const totalMonthlyPayment = computed(() => loanList.value.filter(l => l.status !== 'archived').reduce((acc, cur) => acc + (cur.monthlyPayment || 0), 0));
                 // v4.0.0: 房地產 computed
-                const realEstateTotalMarket = computed(() => realEstateList.value.reduce((acc, re) => acc + (re.marketValue || 0), 0));
+                const realEstateTotalMarket = computed(() => portfolio.value.realEstateValue);
                 const realEstateTotalMortgage = computed(() => {
                     const loanMap = {};
                     loanList.value.forEach(l => { loanMap[l.id] = l.balance || 0; });
@@ -260,43 +274,15 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 const realEstateNetValue = computed(() => realEstateTotalMarket.value - realEstateTotalMortgage.value);
                 const realEstateBookPnL = computed(() => realEstateList.value.reduce((acc, re) => acc + ((re.marketValue || 0) - (re.purchaseCost || 0)), 0));
                 // --- 基金計算屬性 ---
-                const mutualFundTotalCost = computed(() => mutualFundList.value.reduce((acc, f) => acc + ((f.costBasis || 0) * (f.currency === 'USD' ? exchangeRate.value : 1)), 0));
-                const mutualFundTotalValue = computed(() => mutualFundList.value.reduce((acc, f) => acc + ((f.currentValue || 0) * (f.currency === 'USD' ? exchangeRate.value : 1)), 0));
+                const mutualFundTotalCost = computed(() => calcFundsCostTwd(mutualFundList.value, exchangeRate.value));
+                const mutualFundTotalValue = computed(() => portfolio.value.fundsValue);
                 const mutualFundTotalPnL = computed(() => mutualFundTotalValue.value - mutualFundTotalCost.value);
                 // --- 期貨相關計算屬性 ---
-                const futuresTotalUnrealizedPnL = computed(() => {
-                    return futuresPositions.value.reduce((acc, pos) => {
-                        const diff = pos.direction === 'long' 
-                            ? (pos.currentPrice - pos.entryPrice) 
-                            : (pos.entryPrice - pos.currentPrice);
-                        const pnl = diff * pos.contracts * pos.multiplier;
-                        const rate = pos.currency === 'USD' ? exchangeRate.value : 1;
-                        return acc + (pnl * rate);
-                    }, 0);
-                });
-
-                const futuresTotalMarginCashTwd = computed(() => {
-                    return (futuresMargin.value.twd || 0) + ((futuresMargin.value.usd || 0) * exchangeRate.value);
-                });
-
-                const futuresEquity = computed(() => {
-                    return futuresTotalMarginCashTwd.value + futuresTotalUnrealizedPnL.value;
-                });
-
-                const futuresTotalMarginUsed = computed(() => {
-                    return futuresPositions.value.reduce((acc, pos) => {
-                        const rate = pos.currency === 'USD' ? exchangeRate.value : 1;
-                        return acc + ((pos.marginUsed || 0) * rate);
-                    }, 0);
-                });
-
-                const futuresTotalExposure = computed(() => {
-                    return futuresPositions.value.reduce((acc, pos) => {
-                        const val = pos.currentPrice * pos.contracts * pos.multiplier;
-                        const rate = pos.currency === 'USD' ? exchangeRate.value : 1;
-                        return acc + (val * rate);
-                    }, 0);
-                });
+                const futuresTotalUnrealizedPnL = computed(() => portfolio.value.futuresUnrealizedPnl);
+                const futuresTotalMarginCashTwd = computed(() => calcFuturesMarginCash(futuresMargin.value, exchangeRate.value));
+                const futuresEquity = computed(() => portfolio.value.futuresEquity);
+                const futuresTotalMarginUsed = computed(() => calcFuturesMarginUsed(futuresPositions.value, exchangeRate.value));
+                const futuresTotalExposure = computed(() => calcFuturesExposure(futuresPositions.value, exchangeRate.value));
 
                 const futuresRiskRatio = computed(() => {
                     if (futuresTotalMarginUsed.value <= 0) return 0;
@@ -309,40 +295,18 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     return futuresTotalExposure.value / eq;
                 });
 
-                const grandTotalAssets = computed(() => {
-                    const stockVal = twStats.value.value + (usStats.value.value * exchangeRate.value);
-                    const cashVal = (cashData.value.twd || 0) + ((cashData.value.usd || 0) * exchangeRate.value);
-                    const futuresVal = futuresEquity.value;
-                    return stockVal + cashVal + realEstateTotalMarket.value + futuresVal + mutualFundTotalValue.value;
-                });
-                // v4.5.0: 曝險總額 (考慮正2等槓桿倍數)
-                const grandTotalExposure = computed(() => {
-                    const twExposure = twStockList.value.reduce((acc, s) => acc + (s.currentPrice * s.shares * (s.multiplier || 1)), 0);
-                    const usExposure = usStockList.value.reduce((acc, s) => acc + (s.currentPrice * s.shares * (s.multiplier || 1)), 0) * exchangeRate.value;
-                    const cashVal = (cashData.value.twd || 0) + ((cashData.value.usd || 0) * exchangeRate.value);
-                    const futuresExp = futuresTotalExposure.value + Math.max(0, futuresEquity.value - futuresTotalMarginUsed.value);
-                    return twExposure + usExposure + cashVal + realEstateTotalMarket.value + futuresExp + mutualFundTotalValue.value;
-                });
-                // v4.0.0: 淨資產 = 總資產 - 所有負債(貸款)
-                const grandTotalValue = computed(() => grandTotalAssets.value - totalLoanBalance.value);
-                const grandTotalPnL = computed(() => twStats.value.pnl + (usStats.value.pnl * exchangeRate.value) + futuresTotalUnrealizedPnL.value);
-                
+                const grandTotalAssets = computed(() => portfolio.value.grandTotalAssets);
+                // 曝險總額：正2 等槓桿 ETF 以 multiplier 放大
+                const grandTotalExposure = computed(() => portfolio.value.grandTotalExposure);
+                // 淨資產 = 總資產 - 所有負債(貸款)
+                const grandTotalValue = computed(() => portfolio.value.grandTotalValue);
+                const grandTotalPnL = computed(() => portfolio.value.grandTotalPnL);
                 // 金融資產（不含房地產）
-                const financialAssets = computed(() => {
-                    const stockVal = twStats.value.value + (usStats.value.value * exchangeRate.value);
-                    const cashVal = (cashData.value.twd || 0) + ((cashData.value.usd || 0) * exchangeRate.value);
-                    const futuresVal = futuresEquity.value;
-                    return stockVal + cashVal + futuresVal;
-                });
+                const financialAssets = computed(() => portfolio.value.financialAssets);
                 // 金融負債（排除非投資用途的房貸與已封存帳戶）
-                const financialLoans = computed(() => {
-                    return loanList.value
-                        .filter(l => l.status !== 'archived')
-                        .filter(l => l.isInvestmentUse === true || l.type !== 'realestate')
-                        .reduce((acc, cur) => acc + (cur.balance || 0), 0);
-                });
+                const financialLoans = computed(() => portfolio.value.financialLoans);
                 // 金融淨資產
-                const financialNetWorth = computed(() => financialAssets.value - financialLoans.value);
+                const financialNetWorth = computed(() => portfolio.value.financialNetWorth);
 
                 const activeLoans = computed(() => loanList.value.filter(l => l.status !== 'archived'));
                 const archivedLoans = computed(() => loanList.value.filter(l => l.status === 'archived'));
@@ -364,44 +328,27 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     }
                 };
 
-                // v4.4.0: 帳戶槓桿 = 金融資產 / 金融淨資產
-                const leverageRatio = computed(() => {
-                    if (financialNetWorth.value <= 0) return 1;
-                    return financialAssets.value / financialNetWorth.value;
-                });
+                // 帳戶槓桿 = 金融資產 / 金融淨資產
+                const leverageRatio = computed(() => portfolio.value.leverageRatio);
                 // 金融總曝險
-                const financialExposure = computed(() => {
-                    const twExposure = twStockList.value.reduce((acc, s) => acc + (s.currentPrice * s.shares * (s.multiplier || 1)), 0);
-                    const usExposure = usStockList.value.reduce((acc, s) => acc + (s.currentPrice * s.shares * (s.multiplier || 1)), 0) * exchangeRate.value;
-                    const cashVal = (cashData.value.twd || 0) + ((cashData.value.usd || 0) * exchangeRate.value);
-                    const futuresExp = futuresTotalExposure.value + Math.max(0, futuresEquity.value - futuresTotalMarginUsed.value);
-                    return twExposure + usExposure + cashVal + futuresExp;
-                });
-
-                // v4.5.0: 曝險比例 = 金融總曝險 / 金融淨資產
-                const positionExposureMultiplier = computed(() => {
-                    if (financialAssets.value <= 0) return 1;
-                    return financialExposure.value / financialAssets.value;
-                });
+                const financialExposure = computed(() => portfolio.value.financialExposure);
+                // 持倉曝險倍率 = 金融總曝險 / 金融資產
+                const positionExposureMultiplier = computed(() => portfolio.value.positionExposureMultiplier);
 
                 const twPositionExposureMultiplier = computed(() => {
                     const val = twStats.value.value;
                     if (val <= 0) return 1;
-                    const exp = twStockList.value.reduce((acc, s) => acc + (s.currentPrice * s.shares * (s.multiplier || 1)), 0);
-                    return exp / val;
+                    return calcStockExposure(twStockList.value) / val;
                 });
 
                 const usPositionExposureMultiplier = computed(() => {
                     const val = usStats.value.value;
                     if (val <= 0) return 1;
-                    const exp = usStockList.value.reduce((acc, s) => acc + (s.currentPrice * s.shares * (s.multiplier || 1)), 0);
-                    return exp / val;
+                    return calcStockExposure(usStockList.value) / val;
                 });
 
-                const exposureRatio = computed(() => {
-                    if (financialNetWorth.value <= 0) return 1;
-                    return financialExposure.value / financialNetWorth.value;
-                });
+                // 曝險比例 = 金融總曝險 / 金融淨資產
+                const exposureRatio = computed(() => portfolio.value.exposureRatio);
                 const realizedTotalTw = computed(() => sortedRealizedGains.value.filter(r => r.currency === 'TWD').reduce((acc, cur) => acc + cur.pnl, 0));
                 const realizedTotalUs = computed(() => sortedRealizedGains.value.filter(r => r.currency === 'USD').reduce((acc, cur) => acc + cur.pnl, 0));
 
@@ -2718,7 +2665,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 const sortTransaction = (key) => { if (sortKeyTrans.value === key) sortOrderTrans.value = sortOrderTrans.value === 'asc' ? 'desc' : 'asc'; else { sortKeyTrans.value = key; sortOrderTrans.value = 'desc'; } };
                 const sortDividend = (key) => { if (sortKeyDiv.value === key) sortOrderDiv.value = sortOrderDiv.value === 'asc' ? 'desc' : 'asc'; else { sortKeyDiv.value = key; sortOrderDiv.value = 'desc'; } };
 
-                function calculateStats(subset) { let v = 0, c = 0, d = 0; subset.forEach(s => { v += s.currentPrice * s.shares; c += s.avgCost * s.shares; d += (s.dividends || 0); }); return { value: v, cost: c, dividend: d, pnl: v - c }; }
+                // calculateStats 已移至 js/utils/valuation.js 的 calcStats（與排程快照共用）
                 // Formatting functions imported from utils
                 const getAmountClass = (tx) => { if (tx.type === 'buy' || tx.type === 'withdraw' || tx.type === 'repay' || tx.type === 'borrow') return ''; if (tx.type === 'sell' || tx.type === 'dividend' || tx.type === 'deposit') return isDarkMode.value ? 'text-yellow-400' : 'text-yellow-600'; return ''; };
                 // getAmountSign imported from utils

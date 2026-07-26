@@ -33,21 +33,32 @@ const getTaipeiHour = () => Number(new Intl.DateTimeFormat('en-GB', {
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-const fetchJson = async (url, { retry = 1, timeoutMs = 10000 } = {}) => {
+const fetchJson = async (url, { retry = 1, timeoutMs = 10000, headers = {} } = {}) => {
+    let lastErr;
     for (let i = 0; i <= retry; i++) {
         try {
             const ctrl = new AbortController();
             const tid = setTimeout(() => ctrl.abort(), timeoutMs);
             // Yahoo 等服務會擋沒有 User-Agent 的請求
-            const resp = await fetch(url, { signal: ctrl.signal, headers: { 'User-Agent': 'Mozilla/5.0 (mywallet-snapshot)' } });
+            const resp = await fetch(url, {
+                signal: ctrl.signal,
+                headers: { 'User-Agent': 'Mozilla/5.0 (mywallet-snapshot)', ...headers }
+            });
             clearTimeout(tid);
-            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            if (!resp.ok) {
+                const err = new Error(`HTTP ${resp.status}`);
+                err.status = resp.status;
+                throw err;
+            }
             return await resp.json();
         } catch (e) {
+            lastErr = e;
             if (i >= retry) throw e;
-            await sleep((i + 1) * 800);
+            // 429 是額度用完，等久一點才有意義；一般錯誤退避即可
+            await sleep(e.status === 429 ? 15000 : (i + 1) * 800);
         }
     }
+    throw lastErr;
 };
 
 const isTwSymbol = sym => /^\d{4,6}[A-Z]?$/.test(sym) || /\.(TW|TWO)$/i.test(sym);
@@ -62,8 +73,8 @@ const fetchExchangeRate = async () => {
     return rate;
 };
 
-// 台股：Yahoo v8 chart。marketType 決定先試 .TW 還是 .TWO，失敗再換另一個。
-const fetchTwPrice = async (stock) => {
+// 台股第一層：Yahoo v8 chart。marketType 決定先試 .TW 還是 .TWO，失敗再換另一個。
+const fetchTwPriceYahoo = async (stock) => {
     const clean = stock.symbol.replace(/\.(TW|TWO)$/i, '');
     const first = (stock.marketType === 'otc' || stock.marketType === 'esb') ? '.TWO' : '.TW';
     for (const suffix of [first, first === '.TWO' ? '.TW' : '.TWO']) {
@@ -81,10 +92,75 @@ const fetchTwPrice = async (stock) => {
     return null;
 };
 
+// 台股第二層：證交所 MIS 即時報價。Yahoo 查不到的（興櫃、新上市）這裡通常有。
+const fetchTwPriceMis = async (stock) => {
+    const clean = stock.symbol.replace(/\.(TW|TWO)$/i, '');
+    const markets = stock.marketType === 'otc' ? ['otc', 'tse'] : ['tse', 'otc'];
+    const exCh = markets.map(m => `${m}_${clean}.tw`).join('|');
+    try {
+        const j = await fetchJson(
+            `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=${exCh}&json=1&delay=0&t=${Date.now()}`,
+            { headers: { Referer: 'https://mis.twse.com.tw/stock/index.jsp' } }
+        );
+        for (const s of (j?.msgArray || [])) {
+            // z=盤中成交價（盤後為 '-'）；oz=今日收盤確定值；pz=前一筆；y=昨收
+            let raw = s.z;
+            if (raw === '-' || raw === '' || raw == null) {
+                raw = (s.oz && s.oz !== '-') ? s.oz : (s.pz && s.pz !== '-') ? s.pz : s.y;
+            }
+            const price = parseFloat(raw);
+            const prev = parseFloat(s.y);
+            if (price > 0) return { price, prevClose: prev > 0 ? prev : price };
+        }
+    } catch (e) { /* 交給第三層 */ }
+    return null;
+};
+
+// 台股第三層：TWSE / TPEx 官方收盤快照。整份抓一次快取起來，之後查表即可。
+let _twSnapshot = null;
+const fetchTwSnapshot = async () => {
+    if (_twSnapshot) return _twSnapshot;
+    const map = new Map();
+    try {
+        const j = await fetchJson('https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL', { timeoutMs: 20000 });
+        for (const s of j) {
+            const price = parseFloat((s.ClosingPrice || '').replace(/,/g, ''));
+            const change = parseFloat((s.Change || '0').replace(/[^-\d.]/g, '')) || 0;
+            if (price > 0) map.set(s.Code, { price, prevClose: price - change });
+        }
+    } catch (e) { console.warn('[快照] TWSE 收盤資料抓取失敗'); }
+    try {
+        const j = await fetchJson('https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes', { timeoutMs: 20000 });
+        for (const s of j) {
+            const price = parseFloat((s.Close || '').replace(/,/g, ''));
+            const change = parseFloat((s.Change || '0').replace(/[^-\d.]/g, '')) || 0;
+            if (price > 0) map.set(s.SecuritiesCompanyCode, { price, prevClose: price - change });
+        }
+    } catch (e) { console.warn('[快照] TPEx 收盤資料抓取失敗'); }
+    _twSnapshot = map;
+    return map;
+};
+
+// 台股統一取價：三層退路，與前端 fetchTwStockPriceUnified 對齊。
+// 只做 Yahoo 一層的話，興櫃與部分新上市個股會抓不到（這是 v1 版 10 筆失敗的主因）。
+const fetchTwPrice = async (stock) => {
+    let q = await fetchTwPriceYahoo(stock);
+    if (q) return q;
+    q = await fetchTwPriceMis(stock);
+    if (q) return q;
+    const snap = await fetchTwSnapshot();
+    return snap.get(stock.symbol.replace(/\.(TW|TWO)$/i, '')) || null;
+};
+
 const fetchUsPrice = async (symbol) => {
     if (!FINNHUB_API_KEY) return null;
     try {
-        const j = await fetchJson(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${FINNHUB_API_KEY}`);
+        // retry=2：Finnhub 免費版 60 次/分鐘，多帳號共用同一把 key 時容易撞到 429，
+        // fetchJson 遇到 429 會等 15 秒再試，而不是直接當成失敗。
+        const j = await fetchJson(
+            `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${FINNHUB_API_KEY}`,
+            { retry: 2 }
+        );
         if (j?.c > 0) return { price: j.c, prevClose: j.pc || j.c };
     } catch (e) { /* 保留原價 */ }
     return null;
@@ -218,12 +294,12 @@ const processUser = async (db, uid, rate, label) => {
     }
 
     // 1. 更新股價（順便寫回 Firestore，這樣下次開網頁看到的就是最新價）
-    let ok = 0, fail = 0;
+    // 失敗只統計台股／美股筆數，不記錄代號 —— 日誌是公開的。
+    let ok = 0, failTw = 0, failUs = 0;
     const batch = db.batch();
     for (const stock of stocks) {
-        const quote = isTwSymbol((stock.symbol || '').toUpperCase())
-            ? await fetchTwPrice(stock)
-            : await fetchUsPrice(stock.symbol);
+        const isTw = isTwSymbol((stock.symbol || '').toUpperCase());
+        const quote = isTw ? await fetchTwPrice(stock) : await fetchUsPrice(stock.symbol);
         if (quote) {
             stock.currentPrice = quote.price;
             stock.previousClose = quote.prevClose;
@@ -234,10 +310,11 @@ const processUser = async (db, uid, rate, label) => {
             ok++;
         } else {
             // 抓不到就沿用資料庫裡的舊價，總比算成 0 好
-            fail++;
+            if (isTw) failTw++; else failUs++;
         }
-        await sleep(isTwSymbol((stock.symbol || '').toUpperCase()) ? 250 : 1100); // Finnhub 免費版每分鐘 60 次
+        await sleep(isTw ? 250 : 1100); // Finnhub 免費版每分鐘 60 次
     }
+    const fail = failTw + failUs;
 
     // 2. 更新期貨現價
     const hasTwFutures = futuresPositions.some(p => futuresPriceFor(p.symbol, { tx: 1, mxf: 1, tsmc: 1 }));
@@ -252,7 +329,7 @@ const processUser = async (db, uid, rate, label) => {
         }
     }
     await batch.commit();
-    console.log(`${label} 報價更新：成功 ${ok} 筆、失敗 ${fail} 筆`);
+    console.log(`${label} 報價更新：成功 ${ok} 筆、失敗 ${fail} 筆` + (fail ? `（台股 ${failTw}、美股 ${failUs}，已沿用資料庫既有價格）` : ''));
 
     // 3. 計算並寫入快照
     const snapshot = buildSnapshot({ stocks, cash, loans, realEstate, funds, futuresPositions, futuresMargin, rate });

@@ -67,8 +67,22 @@ const toNumber = v => {
     return isFinite(n) ? n : null;
 };
 
-/** CDate + CTime 併成可比較的時間戳字串，用來判斷日盤與夜盤誰比較新 */
-const stampOf = (row) => `${row.CDate || ''}${String(row.CTime || '').padStart(6, '0')}`;
+/**
+ * 併出可比較的時間戳，用來判斷日盤與夜盤誰比較新。
+ *
+ * 陷阱：期交所把夜盤標記為「開始日期」。週五 15:00 開始的夜盤收在週六清晨 05:00，
+ * 回傳的卻是 CDate=週五、CTime=045959。直接把兩者串起來比字串，會得到
+ * 「日盤 13:44 > 夜盤 04:59」的錯誤結論，實際上夜盤晚了將近 16 小時。
+ * 因此夜盤收在清晨（<06:00）時，日期要進一天才是真正的結束時刻。
+ */
+export const effectiveStamp = (row, session) => {
+    const date = String(row.CDate || '');
+    const time = String(row.CTime || '').padStart(6, '0');
+    if (session !== 'night' || time >= '060000' || !/^\d{8}$/.test(date)) return date + time;
+    const d = new Date(Date.UTC(+date.slice(0, 4), +date.slice(4, 6) - 1, +date.slice(6, 8)));
+    d.setUTCDate(d.getUTCDate() + 1);
+    return d.toISOString().slice(0, 10).replace(/-/g, '') + time;
+};
 
 /**
  * 從一次查詢的結果挑出目標契約。
@@ -87,7 +101,7 @@ export const pickContract = (quoteList = [], contractMonth = null) => {
             session: info.session,
             price,
             prevClose: toNumber(row.CRefPrice) || price,
-            stamp: stampOf(row)
+            stamp: effectiveStamp(row, info.session)
         });
     }
     if (!rows.length) return null;

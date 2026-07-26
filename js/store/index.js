@@ -3,7 +3,11 @@ const { ref, reactive, computed } = Vue;
 
 export const user = ref(null);
 export const stocks = ref([]);
-export const exchangeRate = ref(32.5);
+// v5.9.0: 匯率優先用「上次成功取得的值」，避免線上 API 掛掉時整包美股用寫死的 32.5 計價。
+// exchangeRateConfirmed=false 代表現在用的是保底預設值，這種狀態不可寫入每日快照（會永久污染歷史走勢）。
+const _savedRate = parseFloat(localStorage.getItem('lastExchangeRate'));
+export const exchangeRate = ref(_savedRate > 0 ? _savedRate : 32.5);
+export const exchangeRateConfirmed = ref(_savedRate > 0);
 export const lastUpdated = ref('-');
 export const loadingTarget = ref(null);
 export const isLoading = computed(() => loadingTarget.value !== null);
@@ -52,7 +56,7 @@ export const realEstateForm = ref({ id: null, name: '', address: '', purchaseDat
 
 export const chartStartDate = ref(''); 
 export const chartEndDate = ref('');
-export const chartPnl = ref({ amount: null, pct: null, startVal: null, endVal: null });
+export const chartPnl = ref({ amount: null, pct: null, startVal: null, endVal: null, netFlow: 0 });
 export const currentRange = ref('1M');
 export const divRange = ref('YTD');
 export const divSearchQuery = ref('');

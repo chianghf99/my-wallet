@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v5.8.4</title>
+    <title>我的投資組合 | Portfolio v5.9.0</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
@@ -298,7 +298,7 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.8.4</h1>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.9.0</h1>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -318,7 +318,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.8.4</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.9.0</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -338,6 +338,10 @@
                     class="border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 transition-colors">
                     <div class="max-w-6xl mx-auto px-4 py-2 flex justify-between items-center">
                         <div class="text-xs text-gray-500 dark:text-gray-400">USD/TWD: {{ exchangeRate.toFixed(2) }}
+                            <span v-if="!exchangeRateConfirmed" class="text-amber-600 dark:text-amber-400 font-medium"
+                                title="匯率 API 無法連線且本機/雲端都沒有上次的紀錄，目前使用預設值，今日快照暫停記錄以免污染歷史資料">
+                                <i class="fa-solid fa-triangle-exclamation"></i> 預設值
+                            </span>
                             <span class="hidden sm:inline"> | 更新: {{ lastUpdated }}</span>
                         </div>
                         <div class="flex gap-2 items-center">
@@ -573,7 +577,9 @@
                         <!-- 期間損益 -->
                         <div v-if="chartPnl.amount !== null" class="mt-4 flex flex-wrap items-center gap-3 px-1">
                             <div class="flex flex-col">
-                                <span class="text-xs text-gray-400 dark:text-gray-500 font-medium">期間淨資產損益</span>
+                                <span class="text-xs text-gray-400 dark:text-gray-500 font-medium">期間淨資產損益
+                                    <span class="text-[10px] text-gray-400 dark:text-gray-500">(已扣除本金進出)</span>
+                                </span>
                                 <div class="flex items-baseline gap-2 mt-0.5">
                                     <span class="text-lg font-bold" :class="chartPnl.amount >= 0 ? 'text-up' : 'text-down'">
                                         {{ chartPnl.amount >= 0 ? '+' : '' }}{{ formatCurrency(chartPnl.amount, 'TWD') }}
@@ -588,6 +594,10 @@
                                 <div class="text-right">
                                     <div>起始</div>
                                     <div class="font-medium text-gray-600 dark:text-gray-300">{{ formatCurrency(chartPnl.startVal, 'TWD') }}</div>
+                                </div>
+                                <div class="text-right" v-if="chartPnl.netFlow">
+                                    <div>期間淨投入</div>
+                                    <div class="font-medium text-gray-600 dark:text-gray-300">{{ chartPnl.netFlow > 0 ? '+' : '' }}{{ formatCurrency(chartPnl.netFlow, 'TWD') }}</div>
                                 </div>
                                 <div class="text-right">
                                     <div>結束</div>
@@ -1202,8 +1212,9 @@
                             <i class="fa-solid fa-circle-info mr-1"></i>
                             <strong>計算說明：</strong><br>
                             1. <strong>股息</strong> 與 <strong>已實現</strong> 損益由該月份交易紀錄加總。<br>
-                            2. <strong>未實現變動</strong> = (月底未實現損益 - 月初未實現損益) + 本月已實現。<br>
-                            3. 這三項加總即為該月份資產因市場波動與配息所產生的<strong>淨獲利</strong>，不包含您的本金投入。
+                            2. <strong>未實現變動</strong> = 月底未實現損益 - 月初未實現損益（賣出時未實現損益會等額轉為已實現，因此本欄會同步下降，不會重複計算）。<br>
+                            3. 這三項加總即為該月份資產因市場波動與配息所產生的<strong>淨獲利</strong>，不包含您的本金投入。<br>
+                            4. 目前涵蓋股票與期貨；基金與房地產的市值變動未計入本表。
                         </div>
                         </div>
 
@@ -2299,9 +2310,26 @@
 
                     <div class="p-6 overflow-y-auto custom-scrollbar">
                         <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
-                            <!-- v5.8.4: 最新版本節點 -->
+                            <!-- v5.9.0: 最新版本節點 -->
                             <div class="relative pl-6">
                                 <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800"></div>
+                                <div class="text-xs text-gray-400 mb-1">2026-07-26</div>
+                                <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
+                                    <div class="font-bold text-gray-800 dark:text-white mb-2">v5.9.0</div>
+                                    <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                        <li>修正：「每月獲利總結」總計重複計算已實現損益（未實現變動已含當月賣出部位的市值變動，總計又加了一次），數字會虛增，現已修正並更新計算說明。</li>
+                                        <li>修正：匯率 API 失敗時會用寫死的 32.5 計價並寫進歷史快照，永久污染資產走勢圖。現改為優先沿用上次成功的匯率（本機 + 雲端備援），完全無匯率可用時暫停當日快照並在頁尾標示「預設值」。</li>
+                                        <li>新增：每日快照存下當日匯率，歷史圖表改用「當時的匯率」換算美股部位，不再因今天匯率波動而改寫過去的曲線。</li>
+                                        <li>修正：「期間淨資產損益」現會扣除期間的本金進出（銀行活存存入/提出，不含期貨保證金內部劃轉），匯錢進來不再被算成獲利；並加上「期間淨投入」顯示。</li>
+                                        <li>修正：貸款餘額與期貨保證金改用原子加減（FieldValue.increment），保證金劃轉改在單一 Firestore Transaction 內完成餘額檢查與扣款，避免多裝置同時操作互相覆蓋。</li>
+                                        <li>新增：股票交易會記錄「交易前股數與平均成本」，刪除買進/賣出紀錄時可精準還原庫存；賣出紀錄刪除時會一併移除對應的已實現損益，不再需要手動修正。</li>
+                                        <li>修正：股息紀錄與交易紀錄建立雙向連結（dividendId），刪除時不再用「代號+日期+金額」比對，避免同日同金額的股息被刪錯。</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="relative pl-6">
+                                <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-2 border-white dark:border-gray-800"></div>
                                 <div class="text-xs text-gray-400 mb-1">2026-07-18</div>
                                 <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
                                     <div class="font-bold text-gray-800 dark:text-white mb-2">v5.8.4</div>

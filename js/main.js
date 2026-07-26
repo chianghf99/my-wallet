@@ -3,7 +3,7 @@ import { getLocalDate, formatNumber, formatCurrency, getPnlClass, getRoi, format
 import { computePortfolio, calcStats, calcStockExposure, calcFundsValueTwd, calcFundsCostTwd, calcFuturesMarginCash, calcFuturesMarginUsed, calcFuturesExposure } from './utils/valuation.js';
 
 import { 
-    user, stocks, exchangeRate, exchangeRateConfirmed, lastUpdated, loadingTarget, isLoading, viewMode, isMobile, showPrivacy, defaultPrivacyHidden, hideZeroShares, showSettingsModal, isDarkMode, activeSection, showChangelog, autoBackupEnabled, autoBackupIntervalDays, lastBackupAt, showBackupReminder, stockStates, sectionLoading, showStockNoteModal, stockNoteForm, showHistoryModal, historyRecords, historyFilterYear, availableYears, showDeleteModal, pendingDeleteTx, showEditTxModal, editTxForm, showHistoryEditModalVisible, historyEditForm, notes, showNoteModalVisible, noteForm, loanList, showLoanMgrModal, inlineNewLoan, inlineLoanName, loanForm, cashData, prevDayData, realEstateList, showRealEstateModal, realEstateForm, chartStartDate, chartEndDate, chartPnl, currentRange, divRange, divSearchQuery, divStartDate, divEndDate, realizedStartDate, realizedEndDate, transStartDate, transEndDate, transFilterType, transSearchQuery, sortKeyTrans, sortOrderTrans, sortKeyDiv, sortOrderDiv, realizedGains, realizedSearchQuery, sortKeyRealized, sortOrderRealized, realizedRange, dividendRecords, transactionHistory, showModal, isEditing, form, showTransModal, isFundMode, isLoanMode, loanCashMode, transForm,
+    user, stocks, exchangeRate, exchangeRateConfirmed, lastUpdated, loadingTarget, isLoading, viewMode, isMobile, showPrivacy, defaultPrivacyHidden, hideZeroShares, showSettingsModal, isDarkMode, activeSection, showChangelog, toasts, formErrors, autoBackupEnabled, autoBackupIntervalDays, lastBackupAt, showBackupReminder, stockStates, sectionLoading, showStockNoteModal, stockNoteForm, showHistoryModal, historyRecords, historyFilterYear, availableYears, showDeleteModal, pendingDeleteTx, showEditTxModal, editTxForm, showHistoryEditModalVisible, historyEditForm, notes, showNoteModalVisible, noteForm, loanList, showLoanMgrModal, inlineNewLoan, inlineLoanName, loanForm, cashData, prevDayData, realEstateList, showRealEstateModal, realEstateForm, chartStartDate, chartEndDate, chartPnl, currentRange, divRange, divSearchQuery, divStartDate, divEndDate, realizedStartDate, realizedEndDate, transStartDate, transEndDate, transFilterType, transSearchQuery, sortKeyTrans, sortOrderTrans, sortKeyDiv, sortOrderDiv, realizedGains, realizedSearchQuery, sortKeyRealized, sortOrderRealized, realizedRange, dividendRecords, transactionHistory, showModal, isEditing, form, showTransModal, isFundMode, isLoanMode, loanCashMode, transForm,
     monthlyProfitData, monthlyProfitRange,
     futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm, futuresLoading, futuresTransactions, showFuturesActionModal, futuresActionForm,
     investmentsTab, performanceTab, overviewTab,
@@ -15,6 +15,37 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
             setup() {
                 // --- 1. 變數定義區 ---
                 const futuresHistoryTab = ref('pnl');
+
+                // --- v5.15.0: 非阻斷式提示 (toast) ---
+                // 只取代「通知類」的 alert；刪除資料前的 confirm() 一律保留，
+                // 那種阻斷式確認是刻意要擋住使用者的。
+                let _toastSeq = 0;
+                const showToast = (message, type = 'info', duration = 3600) => {
+                    const id = ++_toastSeq;
+                    toasts.value.push({ id, message, type });
+                    setTimeout(() => { toasts.value = toasts.value.filter(t => t.id !== id); }, duration);
+                };
+                const dismissToast = (id) => { toasts.value = toasts.value.filter(t => t.id !== id); };
+                const toastOk = (m) => showToast(m, 'success');
+                const toastErr = (m) => showToast(m, 'error', 5000);
+
+                // --- v5.15.0: 表單行內驗證 ---
+                // 取代「請輸入金額」這類 alert：訊息直接顯示在出問題的欄位下方，
+                // 使用者不必自己猜是哪一格。
+                const clearFormErrors = () => { formErrors.value = {}; };
+                const setFormError = (field, message) => {
+                    formErrors.value = { ...formErrors.value, [field]: message };
+                    return false;
+                };
+                /** 逐條檢查，回傳是否全部通過；錯誤會累積顯示，不會只跳第一個 */
+                const validateForm = (rules) => {
+                    clearFormErrors();
+                    let ok = true;
+                    for (const [field, valid, message] of rules) {
+                        if (!valid) { setFormError(field, message); ok = false; }
+                    }
+                    return ok;
+                };
                 let unsubscribeRealEstate = null, unsubscribeFuturesPositions = null, unsubscribeFuturesMargin = null, unsubscribeFuturesTransactions = null;
                 let _initialChartTimer = null;
                 let _initialStocksReady = false, _initialCashReady = false;
@@ -596,10 +627,11 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     } else {
                         mutualFundForm.value = { id: null, name: '', currency: 'TWD', costBasis: '', currentValue: '', purchaseDate: '', note: '' };
                     }
-                    showMutualFundModal.value = true;
+                    clearFormErrors(); showMutualFundModal.value = true;
                 };
                 const saveMutualFund = async () => {
-                    if (!user.value || !mutualFundForm.value.name) return alert('請輸入基金名稱');
+                    if (!user.value) return;
+                    if (!validateForm([['name', !!mutualFundForm.value.name, '請輸入基金名稱']])) return;
                     const data = {
                         name: mutualFundForm.value.name,
                         currency: mutualFundForm.value.currency || 'TWD',
@@ -653,13 +685,13 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                                   futuresForm.value.currentPrice = Math.round(fbPrice);
                               } else {
                                   futuresForm.value.currentPrice = '';
-                                  alert('無法獲取期貨報價或指數現貨價格');
+                                  toastErr('無法取得期貨報價或指數現貨價格');
                               }
                           }
                       } catch (e) {
                           futuresForm.value.currentPrice = '';
                           console.error(e);
-                          alert('獲取報價失敗：' + e.message);
+                          toastErr('取得報價失敗：' + e.message);
                       }
                   };
                   const fetchFuturesPricesDirect = async () => {
@@ -669,7 +701,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                           return sym.startsWith('TX') || sym.startsWith('MTX') || sym.startsWith('MXF') || sym.startsWith('TMF') || sym.startsWith('CDF') || sym.startsWith('QDF');
                       });
                       if (targetPositions.length === 0) {
-                          alert('您目前沒有需要更新價格的台股期貨部位 (如台指期、小台、微台、台積期等)');
+                          showToast('目前沒有需要更新價格的台股期貨部位', 'info');
                           return;
                       }
                       futuresLoading.value = true;
@@ -687,7 +719,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                           const tsmcPrice = tsmcData?.regularMarketPrice;
                           
                           if (!txPrice && !mxfPrice && !tsmcPrice) {
-                              alert('無法取得期貨即時報價，請稍後再試。');
+                              toastErr('無法取得期貨即時報價，請稍後再試');
                               return;
                           }
                           const batch = db.batch();
@@ -712,17 +744,17 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                           if (updatedCount > 0) {
                               await batch.commit();
                               setTimeout(saveDailySnapshot, 500);
-                              let alertMsg = `期貨價格更新完成！\n已將 ${updatedCount} 筆部位之價格同步為即時價格：`;
-                              if (txPrice) alertMsg += `\n台指期近全 (大台)：${Math.round(txPrice)} 點`;
-                              if (mxfPrice) alertMsg += `\n小台/微台近全：${Math.round(mxfPrice)} 點`;
-                              if (tsmcPrice) alertMsg += `\n台積電現貨 (台積期/小台積期)：${tsmcPrice} 元`;
-                              alert(alertMsg);
+                              const parts = [];
+                              if (txPrice) parts.push(`大台 ${Math.round(txPrice)}`);
+                              if (mxfPrice) parts.push(`小台/微台 ${Math.round(mxfPrice)}`);
+                              if (tsmcPrice) parts.push(`台積電 ${tsmcPrice}`);
+                              toastOk(`已更新 ${updatedCount} 筆期貨部位　${parts.join('　')}`);
                           } else {
-                              alert('沒有符合更新條件的期貨部位。');
+                              showToast('沒有符合更新條件的期貨部位', 'info');
                           }
                       } catch (e) {
                           console.error(e);
-                          alert('更新期貨價格失敗：' + e.message);
+                          toastErr('更新期貨價格失敗：' + e.message);
                       } finally {
                           futuresLoading.value = false;
                       }
@@ -759,11 +791,14 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     } else {
                         realEstateForm.value = { id: null, name: '', address: '', purchaseDate: getLocalDate(), purchaseCost: 0, marketValue: 0, mortgageLoanIds: [], note: '' };
                     }
-                    showRealEstateModal.value = true;
+                    clearFormErrors(); showRealEstateModal.value = true;
                 };
                 const saveRealEstate = async () => {
-                    if (!user.value || !realEstateForm.value.name) return alert('請輸入房產名稱');
-                    if (!realEstateForm.value.marketValue) return alert('請輸入估計市值');
+                    if (!user.value) return;
+                    if (!validateForm([
+                        ['name', !!realEstateForm.value.name, '請輸入房產名稱'],
+                        ['marketValue', !!realEstateForm.value.marketValue, '請輸入估計市值']
+                    ])) return;
                     const data = {
                         name: realEstateForm.value.name,
                         address: realEstateForm.value.address || '',
@@ -805,7 +840,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                             note: ''
                         };
                     }
-                    showFuturesModal.value = true;
+                    clearFormErrors(); showFuturesModal.value = true;
                 };
 
                 const onFuturesSymbolChange = () => {
@@ -830,12 +865,16 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 const saveFuturesPosition = async () => {
                     if (!user.value) return;
                     const f = futuresForm.value;
-                    if (!f.symbol) return alert('請輸入商品代號');
-                    if (!f.contracts || f.contracts <= 0) return alert('請輸入大於 0 的口數');
-                    if (!f.entryPrice || f.entryPrice <= 0) return alert('請輸入大於 0 的建倉價格');
-                    if (!f.currentPrice || f.currentPrice <= 0) return alert('請輸入大於 0 的目前價格');
-                    if (!f.multiplier || f.multiplier <= 0) return alert('請輸入大於 0 的合約乘數');
-                    if (!f.marginUsed || f.marginUsed < 0) return alert('請輸入正確的佔用保證金');
+                    // v5.15.0: 改為行內驗證，錯誤直接標在對應欄位下方且一次列出全部，
+                    // 不再逐條跳 alert 讓使用者一次改一個。
+                    if (!validateForm([
+                        ['symbol', !!f.symbol, '請輸入商品代號'],
+                        ['contracts', f.contracts > 0, '請輸入大於 0 的口數'],
+                        ['entryPrice', f.entryPrice > 0, '請輸入大於 0 的建倉價格'],
+                        ['currentPrice', f.currentPrice > 0, '請輸入大於 0 的目前價格'],
+                        ['multiplier', f.multiplier > 0, '請輸入大於 0 的合約乘數'],
+                        ['marginUsed', f.marginUsed >= 0 && f.marginUsed !== '' && f.marginUsed !== null, '請輸入正確的佔用保證金']
+                    ])) return;
 
                     const data = {
                         symbol: f.symbol.toUpperCase(),
@@ -885,7 +924,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
                 const closeFuturesPosition = (pos) => {
                     futuresActionForm.value = { mode: 'close', pos, closePrice: pos.currentPrice || '', fee: '', newExpiry: '', newOpenPrice: '' };
-                    showFuturesActionModal.value = true;
+                    clearFormErrors(); showFuturesActionModal.value = true;
                 };
 
                 const _executeClose = async (pos, closePrice, fee) => {
@@ -938,12 +977,12 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     await db.collection('users').doc(user.value.uid).collection('futures_positions').doc(pos.id).delete();
 
                     setTimeout(saveDailySnapshot, 500);
-                    alert('平倉成功！平倉損益已歸檔，並調整保證金帳戶餘額。');
+                    toastOk('平倉成功，損益已歸檔並調整保證金餘額');
                 };
 
                 const rollFuturesPosition = (pos) => {
                     futuresActionForm.value = { mode: 'rollover', pos, closePrice: pos.currentPrice || '', fee: '', newExpiry: '', newOpenPrice: '', rollSpreadInput: '' };
-                    showFuturesActionModal.value = true;
+                    clearFormErrors(); showFuturesActionModal.value = true;
                 };
 
                 const applyRollSpread = () => {
@@ -1039,7 +1078,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     await db.collection('users').doc(uid).collection('futures_positions').doc(pos.id).delete();
 
                     setTimeout(saveDailySnapshot, 500);
-                    alert('展期成功！近月損益已計入已實現損益，遠月部位已建立。');
+                    toastOk('展期成功，近月損益已計入已實現、遠月部位已建立');
                 };
 
                 // v5.x bug fix: 找出跟某筆期貨保證金劃轉紀錄配對的銀行現金紀錄。
@@ -1162,10 +1201,10 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                          
                          await batch.commit();
                          setTimeout(saveDailySnapshot, 500);
-                         alert('刪除交易紀錄成功，相關狀態已連動復原！');
+                         toastOk('已刪除交易紀錄，相關狀態同步復原');
                      } catch (err) {
                          console.error('Error deleting transaction:', err);
-                         alert('刪除失敗：' + err.message);
+                         toastErr('刪除失敗：' + err.message);
                      }
                  };
 
@@ -1177,7 +1216,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         syncCash: true,
                         note: ''
                     };
-                    showFuturesMarginModal.value = true;
+                    clearFormErrors(); showFuturesMarginModal.value = true;
                 };
 
                 const submitFuturesAction = async () => {
@@ -1185,16 +1224,18 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     const pos = f.pos;
                     if (!pos) return;
                     const closePrice = Number(f.closePrice);
-                    if (isNaN(closePrice) || closePrice <= 0) return alert('請輸入有效平倉價格');
+                    if (!validateForm([['closePrice', closePrice > 0, '請輸入有效平倉價格']])) return;
                     const fee = Math.max(0, Number(f.fee) || 0);
                     if (f.mode === 'close') {
                         showFuturesActionModal.value = false;
                         await _executeClose(pos, closePrice, fee);
                     } else {
                         const newExpiry = (f.newExpiry || '').trim();
-                        if (!newExpiry) return alert('請選擇遠月結算日');
                         const newOpenPrice = Number(f.newOpenPrice);
-                        if (isNaN(newOpenPrice) || newOpenPrice <= 0) return alert('請輸入有效遠月建倉價格');
+                        if (!validateForm([
+                            ['newExpiry', !!newExpiry, '請選擇遠月結算日'],
+                            ['newOpenPrice', newOpenPrice > 0, '請輸入有效遠月建倉價格']
+                        ])) return;
                         showFuturesActionModal.value = false;
                         await _executeRollover(pos, closePrice, newExpiry, newOpenPrice, fee);
                     }
@@ -1203,7 +1244,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 const adjustFuturesMargin = async () => {
                     const formVal = futuresMarginForm.value;
                     const amt = Number(formVal.amount);
-                    if (isNaN(amt) || amt <= 0) return alert('請輸入有效金額');
+                    if (!validateForm([['marginAmount', amt > 0, '請輸入有效金額']])) return;
 
                     // v5.9.0: 整段改成一個 Firestore transaction。舊版是「用畫面上的餘額檢查 → 算好新餘額 → 整包覆寫」，
                     // 檢查跟寫入之間隔了好幾個 await，而且覆寫用的是本地快照，兩個裝置同時劃轉會蓋掉對方；
@@ -1264,11 +1305,11 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                             }
                         });
                     } catch (e) {
-                        return alert(e.message || '保證金調整失敗，請稍後再試');
+                        return toastErr(e.message || '保證金調整失敗，請稍後再試');
                     }
 
                     showFuturesMarginModal.value = false;
-                    alert('保證金調整成功！');
+                    toastOk('保證金調整成功');
                     setTimeout(saveDailySnapshot, 500);
                 };
                 const getLoanName = (loanId) => { const l = loanList.value.find(x => x.id === loanId); return l ? l.name : '未知帳戶'; };
@@ -1362,10 +1403,10 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         });
                         if (!res.ok) throw new Error(`Drive 上傳失敗：${res.status}`);
                         await markBackupDone();
-                        alert(`✅ 備份成功！\n檔案「${fileName}」已儲存至您的 Google 雲端硬碟。`);
+                        toastOk(`備份成功，已存至 Google 雲端硬碟：${fileName}`);
                     } catch (err) {
                         console.error('[Drive Backup]', err);
-                        alert('備份失敗：' + err.message);
+                        toastErr('備份失敗：' + err.message);
                     } finally {
                         driveLoading.value = false;
                     }
@@ -1449,7 +1490,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                                         location.reload();
                                     } catch (e) {
                                         console.error('[Drive Import]', e);
-                                        alert('還原失敗：' + e.message);
+                                        toastErr('還原失敗：' + e.message);
                                         loadingTarget.value = null;
                                         driveLoading.value = false;
                                     }
@@ -1460,7 +1501,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         });
                     } catch (err) {
                         console.error('[Drive Import]', err);
-                        alert('Drive 匯入失敗：' + err.message);
+                        toastErr('Drive 匯入失敗：' + err.message);
                         driveLoading.value = false;
                     }
                 };
@@ -1470,7 +1511,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 const exportSimplifiedPortfolio = () => {
                     if (!user.value) return;
                     if (typeof XLSX === 'undefined') {
-                        alert('Excel 元件載入失敗，請檢查網路連線。');
+                        toastErr('Excel 元件載入失敗，請檢查網路連線');
                         return;
                     }
                     const twHoldings = twStockList.value.filter(s => s.shares > 0);
@@ -1493,11 +1534,11 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     XLSX.writeFile(wb, `Portfolio_Simplified_${getLocalDate()}.xlsx`);
                 };
 
-                const exportToExcel = async () => { if (!user.value) return; if (typeof XLSX === 'undefined') { alert('Excel 元件載入失敗，請檢查網路連線。'); return; } const uid = user.value.uid; const wb = XLSX.utils.book_new(); const summaryData = [['項目', '金額 (TWD)', '金額 (USD)'], ['總淨資產 (Net Worth)', grandTotalValue.value, grandTotalValue.value / exchangeRate.value], ['台股部位', twStats.value.value, twStats.value.value / exchangeRate.value], ['美股部位', usStats.value.value * exchangeRate.value, usStats.value.value], ['台幣現金', cashData.value.twd, cashData.value.twd / exchangeRate.value], ['美金現金', cashData.value.usd * exchangeRate.value, cashData.value.usd], ['總負債 (Loans)', totalLoanBalance.value, totalLoanBalance.value / exchangeRate.value], ['未實現損益', grandTotalPnL.value, grandTotalPnL.value / exchangeRate.value], ['匯率 (USD/TWD)', exchangeRate.value, '']]; XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryData), "總覽 Summary"); const sSnap = await db.collection('users').doc(uid).collection('stocks').get(); const stockData = sSnap.docs.map(d => d.data()).map(s => ({ 代號: s.symbol, 名稱: s.name, 幣別: s.currency, 股數: s.shares, 平均成本: s.avgCost, 現價: s.currentPrice, 市值: s.shares * s.currentPrice, 損益: (s.currentPrice - s.avgCost) * s.shares })); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(stockData), "庫存 Stocks"); const tSnap = await db.collection('users').doc(uid).collection('transactions').orderBy('date', 'desc').get(); const txData = tSnap.docs.map(d => d.data()); const wsTrans = XLSX.utils.json_to_sheet(txData.map(t => ({ 日期: t.date, 類別: getTypeName(t.type), 代號: t.symbol, 名稱: t.name, 股數: t.shares, 總金額: t.totalAmount, 幣別: t.currency, 備註: t.memo || '' }))); XLSX.utils.book_append_sheet(wb, wsTrans, "交易紀錄 Transactions"); const hSnap = await db.collection('users').doc(uid).collection('history').orderBy('date', 'desc').get(); const histData = hSnap.docs.map(d => d.data()); const wsHist = XLSX.utils.json_to_sheet(histData.map(h => ({ 日期: h.date, 淨資產: h.totalVal, 總資產: (h.totalVal || 0) + (h.loan || 0), 負債: h.loan, 台股: h.twVal, 美股USD: h.usVal, 台幣現金: h.twCash || 0, 美金現金: h.usCash || 0 }))); XLSX.utils.book_append_sheet(wb, wsHist, "歷史淨值 History"); const rSnap = await db.collection('users').doc(uid).collection('realized_gains').orderBy('date', 'desc').get(); const realData = rSnap.docs.map(d => d.data()); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(realData), "已實現損益 Realized"); const dSnap = await db.collection('users').doc(uid).collection('dividends').orderBy('date', 'desc').get(); const divData = dSnap.docs.map(d => d.data()); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(divData), "股息 Dividends"); const lSnap = await db.collection('users').doc(uid).collection('loans').get(); const loanData = lSnap.docs.map(d => d.data()); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(loanData), "借款 Loans"); const nSnap = await db.collection('users').doc(uid).collection('notes').get(); const noteData = nSnap.docs.map(d => d.data()); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(noteData), "筆記 Notes"); const reSnap = await db.collection('users').doc(uid).collection('real_estate').get(); const reData = reSnap.docs.map(d => d.data()); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(reData), "不動產 RealEstate"); XLSX.writeFile(wb, `Portfolio_FULL_Export_${getLocalDate()}.xlsx`); };
+                const exportToExcel = async () => { if (!user.value) return; if (typeof XLSX === 'undefined') { toastErr('Excel 元件載入失敗，請檢查網路連線'); return; } const uid = user.value.uid; const wb = XLSX.utils.book_new(); const summaryData = [['項目', '金額 (TWD)', '金額 (USD)'], ['總淨資產 (Net Worth)', grandTotalValue.value, grandTotalValue.value / exchangeRate.value], ['台股部位', twStats.value.value, twStats.value.value / exchangeRate.value], ['美股部位', usStats.value.value * exchangeRate.value, usStats.value.value], ['台幣現金', cashData.value.twd, cashData.value.twd / exchangeRate.value], ['美金現金', cashData.value.usd * exchangeRate.value, cashData.value.usd], ['總負債 (Loans)', totalLoanBalance.value, totalLoanBalance.value / exchangeRate.value], ['未實現損益', grandTotalPnL.value, grandTotalPnL.value / exchangeRate.value], ['匯率 (USD/TWD)', exchangeRate.value, '']]; XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryData), "總覽 Summary"); const sSnap = await db.collection('users').doc(uid).collection('stocks').get(); const stockData = sSnap.docs.map(d => d.data()).map(s => ({ 代號: s.symbol, 名稱: s.name, 幣別: s.currency, 股數: s.shares, 平均成本: s.avgCost, 現價: s.currentPrice, 市值: s.shares * s.currentPrice, 損益: (s.currentPrice - s.avgCost) * s.shares })); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(stockData), "庫存 Stocks"); const tSnap = await db.collection('users').doc(uid).collection('transactions').orderBy('date', 'desc').get(); const txData = tSnap.docs.map(d => d.data()); const wsTrans = XLSX.utils.json_to_sheet(txData.map(t => ({ 日期: t.date, 類別: getTypeName(t.type), 代號: t.symbol, 名稱: t.name, 股數: t.shares, 總金額: t.totalAmount, 幣別: t.currency, 備註: t.memo || '' }))); XLSX.utils.book_append_sheet(wb, wsTrans, "交易紀錄 Transactions"); const hSnap = await db.collection('users').doc(uid).collection('history').orderBy('date', 'desc').get(); const histData = hSnap.docs.map(d => d.data()); const wsHist = XLSX.utils.json_to_sheet(histData.map(h => ({ 日期: h.date, 淨資產: h.totalVal, 總資產: (h.totalVal || 0) + (h.loan || 0), 負債: h.loan, 台股: h.twVal, 美股USD: h.usVal, 台幣現金: h.twCash || 0, 美金現金: h.usCash || 0 }))); XLSX.utils.book_append_sheet(wb, wsHist, "歷史淨值 History"); const rSnap = await db.collection('users').doc(uid).collection('realized_gains').orderBy('date', 'desc').get(); const realData = rSnap.docs.map(d => d.data()); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(realData), "已實現損益 Realized"); const dSnap = await db.collection('users').doc(uid).collection('dividends').orderBy('date', 'desc').get(); const divData = dSnap.docs.map(d => d.data()); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(divData), "股息 Dividends"); const lSnap = await db.collection('users').doc(uid).collection('loans').get(); const loanData = lSnap.docs.map(d => d.data()); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(loanData), "借款 Loans"); const nSnap = await db.collection('users').doc(uid).collection('notes').get(); const noteData = nSnap.docs.map(d => d.data()); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(noteData), "筆記 Notes"); const reSnap = await db.collection('users').doc(uid).collection('real_estate').get(); const reData = reSnap.docs.map(d => d.data()); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(reData), "不動產 RealEstate"); XLSX.writeFile(wb, `Portfolio_FULL_Export_${getLocalDate()}.xlsx`); };
 
                 const triggerImport = () => { fileInput.value.click(); };
 
-                const handleImport = async (event) => { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = async (e) => { try { const json = JSON.parse(e.target.result); if (!confirm(`警告：這將使用備份檔案中的資料更新您的資產紀錄。\n\n若 ID 相同將覆蓋舊資料，ID 不同則新增。\n\n確定要執行還原嗎？`)) { event.target.value = ''; return; } loadingTarget.value = 'import'; const uid = user.value.uid; const batchLimit = 400; const restoreCollection = async (colName, dataArr) => { if (!dataArr || !Array.isArray(dataArr)) return; const chunks = []; for (let i = 0; i < dataArr.length; i += batchLimit) { chunks.push(dataArr.slice(i, i + batchLimit)); } for (const chunk of chunks) { const batch = db.batch(); chunk.forEach(item => { if (item.id) { const docRef = db.collection('users').doc(uid).collection(colName).doc(item.id); const { id, ...data } = item; batch.set(docRef, data, { merge: true }); } }); await batch.commit(); } }; await restoreCollection('stocks', json.stocks); await restoreCollection('transactions', json.transactions); await restoreCollection('realized_gains', json.realized); await restoreCollection('dividends', json.dividends); await restoreCollection('notes', json.notes); await restoreCollection('loans', json.loans); await restoreCollection('real_estate', json.real_estate); await restoreCollection('futures_positions', json.futures_positions); await restoreCollection('futures_transactions', json.futures_transactions); await restoreCollection('funds', json.funds); if (json.history && Array.isArray(json.history)) { const chunks = []; for (let i = 0; i < json.history.length; i += batchLimit) { chunks.push(json.history.slice(i, i + batchLimit)); } for (const chunk of chunks) { const batch = db.batch(); chunk.forEach(h => { if (h.date) { const docRef = db.collection('users').doc(uid).collection('history').doc(h.date); batch.set(docRef, h, { merge: true }); } }); await batch.commit(); } } if (json.cash) { await db.collection('users').doc(uid).collection('portfolio').doc('cash').set(json.cash, { merge: true }); } if (json.futures_margin) { await db.collection('users').doc(uid).collection('portfolio').doc('futures_margin').set(json.futures_margin, { merge: true }); } alert('還原成功！頁面將重新整理。'); location.reload(); } catch (err) { console.error(err); alert('還原失敗：檔案格式錯誤或網路問題。'); loadingTarget.value = null; } }; reader.readAsText(file); };
+                const handleImport = async (event) => { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = async (e) => { try { const json = JSON.parse(e.target.result); if (!confirm(`警告：這將使用備份檔案中的資料更新您的資產紀錄。\n\n若 ID 相同將覆蓋舊資料，ID 不同則新增。\n\n確定要執行還原嗎？`)) { event.target.value = ''; return; } loadingTarget.value = 'import'; const uid = user.value.uid; const batchLimit = 400; const restoreCollection = async (colName, dataArr) => { if (!dataArr || !Array.isArray(dataArr)) return; const chunks = []; for (let i = 0; i < dataArr.length; i += batchLimit) { chunks.push(dataArr.slice(i, i + batchLimit)); } for (const chunk of chunks) { const batch = db.batch(); chunk.forEach(item => { if (item.id) { const docRef = db.collection('users').doc(uid).collection(colName).doc(item.id); const { id, ...data } = item; batch.set(docRef, data, { merge: true }); } }); await batch.commit(); } }; await restoreCollection('stocks', json.stocks); await restoreCollection('transactions', json.transactions); await restoreCollection('realized_gains', json.realized); await restoreCollection('dividends', json.dividends); await restoreCollection('notes', json.notes); await restoreCollection('loans', json.loans); await restoreCollection('real_estate', json.real_estate); await restoreCollection('futures_positions', json.futures_positions); await restoreCollection('futures_transactions', json.futures_transactions); await restoreCollection('funds', json.funds); if (json.history && Array.isArray(json.history)) { const chunks = []; for (let i = 0; i < json.history.length; i += batchLimit) { chunks.push(json.history.slice(i, i + batchLimit)); } for (const chunk of chunks) { const batch = db.batch(); chunk.forEach(h => { if (h.date) { const docRef = db.collection('users').doc(uid).collection('history').doc(h.date); batch.set(docRef, h, { merge: true }); } }); await batch.commit(); } } if (json.cash) { await db.collection('users').doc(uid).collection('portfolio').doc('cash').set(json.cash, { merge: true }); } if (json.futures_margin) { await db.collection('users').doc(uid).collection('portfolio').doc('futures_margin').set(json.futures_margin, { merge: true }); } alert('還原成功！頁面將重新整理。'); location.reload(); } catch (err) { console.error(err); toastErr('還原失敗：檔案格式錯誤或網路問題'); loadingTarget.value = null; } }; reader.readAsText(file); };
 
                 const clearAllUserData = async () => {
                     if (!user.value) return;
@@ -1523,7 +1564,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         await db.collection('users').doc(uid).collection('portfolio').doc('futures_margin').delete();
                         alert('所有資料已成功清除，系統將自動登出。');
                         logout();
-                    } catch (err) { console.error(err); alert('刪除失敗，請稍後再試：' + err.message); } finally { isLoading.value = false; }
+                    } catch (err) { console.error(err); toastErr('刪除失敗，請稍後再試：' + err.message); } finally { isLoading.value = false; }
                 };
 
                 const fetchRealizedGains = async () => { if (!user.value) return; sectionLoading.value = true; try { const snap = await db.collection('users').doc(user.value.uid).collection('realized_gains').where('date', '>=', realizedStartDate.value).where('date', '<=', realizedEndDate.value).orderBy('date', 'desc').get(); realizedGains.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); } finally { sectionLoading.value = false; } };
@@ -1550,16 +1591,16 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         historyRecords.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); 
                     } catch(err) {
                         console.error('History fetch error:', err);
-                        alert('載入歷史資料失敗：' + err.message);
+                        toastErr('載入歷史資料失敗：' + err.message);
                     }
                 };
                 const deleteHistoryRecord = async (date) => { if (!confirm(`確定要刪除 ${date} 的歷史紀錄嗎？`)) return; await db.collection('users').doc(user.value.uid).collection('history').doc(date).delete(); await openHistoryModal(); drawChart(); };
                 const openHistoryEditModal = (rec) => { historyEditForm.value = { date: rec.date, twVal: rec.twVal || 0, usVal: rec.usVal || 0, twCash: rec.twCash || 0, usCash: rec.usCash || 0, loan: rec.loan || 0, realestate: rec.realestate || rec.realEstateVal || 0 }; showHistoryEditModalVisible.value = true; };
                 const calculateHistoryNetWorth = () => { const asset = (historyEditForm.value.twVal || 0) + (historyEditForm.value.twCash || 0) + ((historyEditForm.value.usVal || 0) + (historyEditForm.value.usCash || 0)) * exchangeRate.value + (historyEditForm.value.realestate || 0); const loan = historyEditForm.value.loan || 0; return asset - loan; };
                 const saveHistoryRecord = async () => { if (!user.value) return; const newNetWorth = calculateHistoryNetWorth(); await db.collection('users').doc(user.value.uid).collection('history').doc(historyEditForm.value.date).update({ twVal: historyEditForm.value.twVal, usVal: historyEditForm.value.usVal, twCash: historyEditForm.value.twCash, usCash: historyEditForm.value.usCash, loan: historyEditForm.value.loan, realestate: historyEditForm.value.realestate, totalVal: newNetWorth }); showHistoryEditModalVisible.value = false; await openHistoryModal(); drawChart(); };
-                const openLoanMgrModal = () => { showLoanMgrModal.value = true; loanForm.value = { id: null, name: '', balance: 0, type: 'other', isInvestmentUse: false, monthlyPayment: 0, note: '' }; };
+                const openLoanMgrModal = () => { clearFormErrors(); showLoanMgrModal.value = true; loanForm.value = { id: null, name: '', balance: 0, type: 'other', isInvestmentUse: false, monthlyPayment: 0, note: '' }; };
                 const editLoanAccount = (l) => { loanForm.value = { type: 'other', isInvestmentUse: false, monthlyPayment: 0, note: '', ...l }; };
-                const saveLoanAccount = async () => { if (!user.value || !loanForm.value.name) return alert('請輸入名稱'); const data = { name: loanForm.value.name, balance: loanForm.value.balance || 0, currency: 'TWD', type: loanForm.value.type || 'other', isInvestmentUse: !!loanForm.value.isInvestmentUse, monthlyPayment: loanForm.value.monthlyPayment || 0, note: loanForm.value.note || '' }; if (loanForm.value.id) await db.collection('users').doc(user.value.uid).collection('loans').doc(loanForm.value.id).update(data); else await db.collection('users').doc(user.value.uid).collection('loans').add(data); loanForm.value = { id: null, name: '', balance: 0, type: 'other', isInvestmentUse: false, monthlyPayment: 0, note: '' }; };
+                const saveLoanAccount = async () => { if (!user.value) return; if (!validateForm([['loanName', !!loanForm.value.name, '請輸入名稱']])) return; const data = { name: loanForm.value.name, balance: loanForm.value.balance || 0, currency: 'TWD', type: loanForm.value.type || 'other', isInvestmentUse: !!loanForm.value.isInvestmentUse, monthlyPayment: loanForm.value.monthlyPayment || 0, note: loanForm.value.note || '' }; if (loanForm.value.id) await db.collection('users').doc(user.value.uid).collection('loans').doc(loanForm.value.id).update(data); else await db.collection('users').doc(user.value.uid).collection('loans').add(data); loanForm.value = { id: null, name: '', balance: 0, type: 'other', isInvestmentUse: false, monthlyPayment: 0, note: '' }; };
                 const deleteLoanAccount = async (l) => { if (!confirm(`確定刪除 ${l.name}？(這不會影響已發生的交易紀錄)`)) return; await db.collection('users').doc(user.value.uid).collection('loans').doc(l.id).delete(); };
                 // Inline 新增帳戶（從到 Modal 內創建，建完自動選中）
                 const saveInlineLoanAccount = async () => {
@@ -1571,9 +1612,9 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     inlineLoanName.value = '';
                     inlineNewLoan.value = false;
                 };
-                const openNoteModal = (note) => { if (note) { noteForm.value = { ...note }; } else { noteForm.value = { id: null, title: '', date: getLocalDate(), content: '' }; } showNoteModalVisible.value = true; };
+                const openNoteModal = (note) => { if (note) { noteForm.value = { ...note }; } else { noteForm.value = { id: null, title: '', date: getLocalDate(), content: '' }; } clearFormErrors(); showNoteModalVisible.value = true; };
                 const closeNoteModal = () => showNoteModalVisible.value = false;
-                const saveNote = async () => { if (!user.value || !noteForm.value.title) return alert('請輸入標題'); const data = { title: noteForm.value.title, date: noteForm.value.date || getLocalDate(), content: noteForm.value.content || '', timestamp: firebase.firestore.FieldValue.serverTimestamp() }; if (noteForm.value.id) { await db.collection('users').doc(user.value.uid).collection('notes').doc(noteForm.value.id).update(data); } else { await db.collection('users').doc(user.value.uid).collection('notes').add(data); } closeNoteModal(); };
+                const saveNote = async () => { if (!user.value) return; if (!validateForm([['noteTitle', !!noteForm.value.title, '請輸入標題']])) return; const data = { title: noteForm.value.title, date: noteForm.value.date || getLocalDate(), content: noteForm.value.content || '', timestamp: firebase.firestore.FieldValue.serverTimestamp() }; if (noteForm.value.id) { await db.collection('users').doc(user.value.uid).collection('notes').doc(noteForm.value.id).update(data); } else { await db.collection('users').doc(user.value.uid).collection('notes').add(data); } closeNoteModal(); };
                 const deleteNote = async (id) => { if (!confirm('確定刪除此筆記？')) return; await db.collection('users').doc(user.value.uid).collection('notes').doc(id).delete(); };
                 // v3.6.0: 交易編輯（僅允許修改日期、備註等非金融欄位）
                 const openEditTxModal = (tx) => {
@@ -1905,9 +1946,9 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 };
 
                 const calculateNewAvg = () => { if (transForm.value.type !== 'buy' || !transForm.value.shares || !transForm.value.totalAmount) return transForm.value.currentAvg; const old = transForm.value.currentShares * transForm.value.currentAvg; return (old + transForm.value.totalAmount) / (transForm.value.currentShares + transForm.value.shares); };
-                const openTransModal = (s, type = 'buy') => { if (s) { transForm.value = { id: s.id, type: 'buy', symbol: s.symbol, name: s.name, shares: '', totalAmount: '', currentShares: s.shares, currentAvg: s.avgCost, date: getLocalDate(), memo: '' }; form.value.currency = s.currency; } else { transForm.value = { id: null, type: type, symbol: '', name: '', shares: '', totalAmount: '', currentShares: 0, currentAvg: 0, date: getLocalDate(), memo: '' }; form.value.currency = 'TWD'; } isFundMode.value = false; isLoanMode.value = false; showTransModal.value = true; };
-                const openFundModal = () => { isFundMode.value = true; isLoanMode.value = false; transForm.value = { id: null, type: 'deposit', symbol: 'CASH', name: '', shares: 0, totalAmount: '', date: getLocalDate(), memo: '' }; form.value.currency = 'TWD'; showTransModal.value = true; };
-                const openLoanModal = () => { isLoanMode.value = true; isFundMode.value = false; loanCashMode.value = 'sync'; inlineNewLoan.value = false; inlineLoanName.value = ''; transForm.value = { id: null, type: 'borrow', symbol: 'LOAN', name: '', shares: 0, totalAmount: '', date: getLocalDate(), loanId: '', memo: '' }; form.value.currency = 'TWD'; showTransModal.value = true; };
+                const openTransModal = (s, type = 'buy') => { if (s) { transForm.value = { id: s.id, type: 'buy', symbol: s.symbol, name: s.name, shares: '', totalAmount: '', currentShares: s.shares, currentAvg: s.avgCost, date: getLocalDate(), memo: '' }; form.value.currency = s.currency; } else { transForm.value = { id: null, type: type, symbol: '', name: '', shares: '', totalAmount: '', currentShares: 0, currentAvg: 0, date: getLocalDate(), memo: '' }; form.value.currency = 'TWD'; } isFundMode.value = false; isLoanMode.value = false; clearFormErrors(); showTransModal.value = true; };
+                const openFundModal = () => { isFundMode.value = true; isLoanMode.value = false; transForm.value = { id: null, type: 'deposit', symbol: 'CASH', name: '', shares: 0, totalAmount: '', date: getLocalDate(), memo: '' }; form.value.currency = 'TWD'; clearFormErrors(); showTransModal.value = true; };
+                const openLoanModal = () => { isLoanMode.value = true; isFundMode.value = false; loanCashMode.value = 'sync'; inlineNewLoan.value = false; inlineLoanName.value = ''; transForm.value = { id: null, type: 'borrow', symbol: 'LOAN', name: '', shares: 0, totalAmount: '', date: getLocalDate(), loanId: '', memo: '' }; form.value.currency = 'TWD'; clearFormErrors(); showTransModal.value = true; };
                 const closeTransModal = () => showTransModal.value = false;
 
                 const submitTransaction = async () => {
@@ -1934,8 +1975,10 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     };
 
                     if (isLoanMode.value) {
-                        if (!transForm.value.totalAmount) return alert('請輸入金額');
-                        if (!transForm.value.loanId) return alert('請選擇借款帳戶');
+                        if (!validateForm([
+                            ['totalAmount', !!transForm.value.totalAmount, '請輸入金額'],
+                            ['loanId', !!transForm.value.loanId, '請選擇借款帳戶']
+                        ])) return;
 
                         // v3.7.3: 簡化邏輯，直接依 loanCashMode 決定是否動現金
                         const shouldSyncCash = loanCashMode.value === 'sync';
@@ -1960,7 +2003,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         return;
                     }
                     if (isFundMode.value) {
-                        if (!transForm.value.totalAmount) return alert('請輸入金額');
+                        if (!validateForm([['totalAmount', !!transForm.value.totalAmount, '請輸入金額']])) return;
                         const amount = transForm.value.type === 'deposit' ? transForm.value.totalAmount : -transForm.value.totalAmount;
                         await updateCash(form.value.currency, amount, 0);
                         await db.collection('users').doc(user.value.uid).collection('transactions').add(logData);
@@ -1970,7 +2013,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     }
 
                     if (transForm.value.type === 'dividend') {
-                        if (!transForm.value.totalAmount) return alert('請輸入金額');
+                        if (!validateForm([['totalAmount', !!transForm.value.totalAmount, '請輸入金額']])) return;
                         // v5.9.0: 先取 doc ref 再寫入，把 id 記在交易紀錄上（dividendId），
                         // 之後刪除這筆交易時可以精準對到股息紀錄，不用再靠「代號+日期+金額」去猜。
                         const divRef = db.collection('users').doc(user.value.uid).collection('dividends').doc();
@@ -1989,7 +2032,10 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     }
 
                     // --- 以下為股票買進/賣出 ---
-                    if (!transForm.value.shares || !transForm.value.totalAmount) return alert('請輸入完整資訊');
+                    if (!validateForm([
+                        ['shares', !!transForm.value.shares, '請輸入股數'],
+                        ['totalAmount', !!transForm.value.totalAmount, '請輸入總金額']
+                    ])) return;
                     logData.price = transForm.value.totalAmount / transForm.value.shares;
 
                     const stockCol = db.collection('users').doc(user.value.uid).collection('stocks');
@@ -2042,7 +2088,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         na = (oldTotal + transForm.value.totalAmount) / ns;
                         await updateCash(form.value.currency, -transForm.value.totalAmount, 0);
                     } else {
-                        if (transForm.value.shares > currentShares) return alert('股數不足');
+                        if (!validateForm([['shares', transForm.value.shares <= currentShares, `庫存僅有 ${currentShares} 股，不足以賣出`]])) return;
                         ns = currentShares - transForm.value.shares;
                         na = currentAvg;
                         const pnl = transForm.value.totalAmount - (transForm.value.shares * currentAvg);
@@ -2064,8 +2110,8 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     closeTransModal();
                 };
 
-                const openModal = () => { isEditing.value = false; form.value = { id: Date.now().toString(), symbol: '', name: '', currency: 'TWD', marketType: '', shares: 0, avgCost: 0, totalCostInput: 0, currentPrice: 0, dividends: 0, previousClose: 0, multiplier: 1, isETF: false }; showModal.value = true; };
-                const editStock = (s) => { isEditing.value = true; form.value = { ...s, totalCostInput: parseFloat((s.shares * s.avgCost).toFixed(2)), multiplier: s.multiplier || 1, isETF: s.isETF || false }; showModal.value = true; };
+                const openModal = () => { isEditing.value = false; form.value = { id: Date.now().toString(), symbol: '', name: '', currency: 'TWD', marketType: '', shares: 0, avgCost: 0, totalCostInput: 0, currentPrice: 0, dividends: 0, previousClose: 0, multiplier: 1, isETF: false }; clearFormErrors(); showModal.value = true; };
+                const editStock = (s) => { isEditing.value = true; form.value = { ...s, totalCostInput: parseFloat((s.shares * s.avgCost).toFixed(2)), multiplier: s.multiplier || 1, isETF: s.isETF || false }; clearFormErrors(); showModal.value = true; };
                 const closeModal = () => showModal.value = false;
                 const saveStock = async () => { if (!user.value || !form.value.symbol) return; const d = { ...form.value }; if (form.value.shares > 0 && form.value.totalCostInput > 0) { d.avgCost = form.value.totalCostInput / form.value.shares; } delete d.totalCostInput; const r = db.collection('users').doc(user.value.uid).collection('stocks'); if (isEditing.value) await r.doc(d.id).update(d); else await r.doc(d.id).set(d); closeModal(); };
 
@@ -2105,7 +2151,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     await db.collection('users').doc(user.value.uid).collection('stocks').doc(stockNoteForm.value.id).update({
                         note: stockNoteForm.value.content
                     });
-                    alert('✅ 筆記已儲存');
+                    toastOk('筆記已儲存');
                     showStockNoteModal.value = false;
                 };
 
@@ -2483,7 +2529,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     }
                     return null;
                 };
-                const autoFetchName = async () => { const s = form.value.symbol; if (!s) return; if (/^\d/.test(s)) { form.value.currency = 'TWD'; } else if (/^[A-Za-z\.-]+$/.test(s)) { form.value.currency = 'USD'; form.value.marketType = 'us'; } if (!form.value.name) form.value.name = '查詢中...'; const d = await getYahooData(s); if (d) { if (form.value.name === '查詢中...') form.value.name = d.name || d.symbol; form.value.currentPrice = d.regularMarketPrice; form.value.previousClose = d.previousClose; } else { if (form.value.name === '查詢中...') form.value.name = ''; alert('查無代號'); } };
+                const autoFetchName = async () => { const s = form.value.symbol; if (!s) return; if (/^\d/.test(s)) { form.value.currency = 'TWD'; } else if (/^[A-Za-z\.-]+$/.test(s)) { form.value.currency = 'USD'; form.value.marketType = 'us'; } if (!form.value.name) form.value.name = '查詢中...'; const d = await getYahooData(s); if (d) { if (form.value.name === '查詢中...') form.value.name = d.name || d.symbol; form.value.currentPrice = d.regularMarketPrice; form.value.previousClose = d.previousClose; } else { if (form.value.name === '查詢中...') form.value.name = ''; toastErr('查無此代號'); } };
                 const autoFetchTransName = async () => { const s = transForm.value.symbol; if (!s) return; const localStock = stocks.value.find(st => st.symbol && st.symbol.toUpperCase() === s.toUpperCase()); if (localStock) { transForm.value.name = localStock.name; form.value.currency = localStock.currency; return; } if (/^\d/.test(s)) form.value.currency = 'TWD'; else if (/^[A-Za-z\.-]+$/.test(s)) form.value.currency = 'USD'; if (!transForm.value.name) transForm.value.name = '查詢中...'; const d = await getYahooData(s); if (d) { if (transForm.value.name === '查詢中...') transForm.value.name = d.name || d.symbol; } else { if (transForm.value.name === '查詢中...') transForm.value.name = ''; } };
                 // [主程式] 批次更新股價 (支援分流 + 必定更新匯率)
                 const fetchPrices = async (marketType) => {
@@ -2503,7 +2549,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
                     // 如果該分類沒有股票，跳出提示並結束
                     if (targetStocks.length === 0) {
-                        alert(marketType === 'TW' ? "您的清單中沒有台股" : "您的清單中沒有美股");
+                        showToast(marketType === 'TW' ? '您的清單中沒有台股' : '您的清單中沒有美股', 'info');
                         return;
                     }
 
@@ -2587,7 +2633,9 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
 
                     const typeName = marketType === 'TW' ? '台股' : (marketType === 'US' ? '美股' : '全部');
-                    alert(`${typeName} 更新完成！\n\n✅ 成功: ${successCount} 筆\n❌ 失敗: ${failCount} 筆`);
+                    // 有失敗才用警示色，全部成功就低調帶過
+                    if (failCount > 0) showToast(`${typeName}更新完成：成功 ${successCount} 筆、失敗 ${failCount} 筆`, 'warning', 5000);
+                    else toastOk(`${typeName}更新完成，共 ${successCount} 筆`);
                 };
 
                 // [v4.8.2] 單一股票更新：統一走 fetchStockData (Yahoo -> MIS -> OpenAPI)
@@ -2695,6 +2743,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     inlineNewLoan, inlineLoanName, saveInlineLoanAccount,
                     exportToExcel, exportSimplifiedPortfolio,
                     showSettingsModal, saveSettings,
+                    toasts, showToast, dismissToast, formErrors, clearFormErrors,
                     autoBackupEnabled, autoBackupIntervalDays, lastBackupAt, showBackupReminder, daysSinceBackup, dismissBackupReminder,
                     triggerImport, fileInput, handleImport,
                     driveLoading, exportDataToDrive, importFromDrive,

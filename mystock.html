@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v5.14.0</title>
+    <title>我的投資組合 | Portfolio v5.15.0</title>
     <!-- v5.12.0: PWA。三個入口各有獨立的 manifest 與圖示，
          加到主畫面後會是三個可分辨的 App，而不是同一顆圖示。 -->
     <link rel="manifest" href="./manifest-stock.webmanifest">
@@ -62,6 +62,47 @@
             background: #1f2937;
             box-shadow: none;
             border: 1px solid #374151;
+        }
+
+        /* v5.15.0: toast 進出場動畫 */
+        .toast-enter-active,
+        .toast-leave-active {
+            transition: all 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .toast-enter-from {
+            opacity: 0;
+            transform: translateY(12px) scale(0.97);
+        }
+
+        .toast-leave-to {
+            opacity: 0;
+            transform: translateY(-8px) scale(0.97);
+        }
+
+        .toast-move {
+            transition: transform 0.28s ease;
+        }
+
+        @media (min-width: 640px) {
+            .toast-enter-from {
+                transform: translateX(16px) scale(0.97);
+            }
+        }
+
+        /* v5.15.0: 表單行內驗證 */
+        .field-error {
+            color: #dc2626;
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+        }
+
+        .dark .field-error {
+            color: #f87171;
+        }
+
+        .zen-input.has-error {
+            border-color: #dc2626;
         }
 
         .zen-input {
@@ -307,7 +348,7 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.14.0</h1>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.15.0</h1>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -327,7 +368,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.14.0</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.15.0</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -2278,6 +2319,7 @@
                                 <label class="block text-xs text-gray-500 mb-1">基金名稱 *</label>
                                 <input v-model="mutualFundForm.name" type="text" placeholder="例：富蘭克林科技基金"
                                     class="w-full border rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-400">
+                                <div v-if="formErrors.name" class="field-error">{{ formErrors.name }}</div>
                             </div>
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
@@ -2338,9 +2380,22 @@
 
                     <div class="p-6 overflow-y-auto custom-scrollbar">
                         <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
-                            <!-- v5.14.0: 最新版本節點 -->
+                            <!-- v5.15.0: 最新版本節點 -->
                             <div class="relative pl-6">
                                 <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800"></div>
+                                <div class="text-xs text-gray-400 mb-1">2026-07-26</div>
+                                <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
+                                    <div class="font-bold text-gray-800 dark:text-white mb-2">v5.15.0</div>
+                                    <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                        <li>調整：更新股價、備份、平倉等完成訊息改為浮動提示，不再需要手動點掉；手機加到主畫面後尤其明顯。</li>
+                                        <li>調整：表單必填欄位改為直接在欄位下方標紅提示，且一次列出所有問題，不用一個一個試。</li>
+                                        <li>保留：刪除資料等破壞性操作仍維持需要確認的對話框。</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="relative pl-6">
+                                <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-2 border-white dark:border-gray-800"></div>
                                 <div class="text-xs text-gray-400 mb-1">2026-07-26</div>
                                 <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
                                     <div class="font-bold text-gray-800 dark:text-white mb-2">v5.14.0</div>
@@ -3189,13 +3244,15 @@
                         <button @click="showRealEstateModal=false" class="text-white hover:text-gray-200"><i class="fa-solid fa-times"></i></button>
                     </div>
                     <div class="p-6 space-y-3">
-                        <div><label class="block text-xs font-bold text-gray-500 mb-1">房產名稱 *</label><input type="text" v-model="realEstateForm.name" class="zen-input" placeholder="如：台北信義區自住"></div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">房產名稱 *</label><input type="text" v-model="realEstateForm.name" class="zen-input" placeholder="如：台北信義區自住">
+                                <div v-if="formErrors.name" class="field-error">{{ formErrors.name }}</div></div>
                         <div><label class="block text-xs font-bold text-gray-500 mb-1">地址（選填）</label><input type="text" v-model="realEstateForm.address" class="zen-input" placeholder="如：台北市信義區...."></div>
                         <div class="grid grid-cols-2 gap-3">
                             <div><label class="block text-xs font-bold text-gray-500 mb-1">購入日期</label><input type="date" v-model="realEstateForm.purchaseDate" class="zen-input"></div>
                             <div><label class="block text-xs font-bold text-gray-500 mb-1">購入總成本 (TWD)</label><input type="number" step="any" v-model.number="realEstateForm.purchaseCost" class="zen-input"></div>
                         </div>
-                        <div><label class="block text-xs font-bold text-gray-500 mb-1">估計市值 (TWD) *</label><input type="number" step="any" v-model.number="realEstateForm.marketValue" class="zen-input" placeholder="手動輸入估計市值"></div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">估計市值 (TWD) *</label><input type="number" step="any" v-model.number="realEstateForm.marketValue" class="zen-input" placeholder="手動輸入估計市值">
+                                <div v-if="formErrors.marketValue" class="field-error">{{ formErrors.marketValue }}</div></div>
                         <div v-if="realEstateForm.purchaseCost > 0 && realEstateForm.marketValue > 0" class="text-xs text-right" :class="getPnlClass(realEstateForm.marketValue - realEstateForm.purchaseCost)">帳面損益：{{ formatCurrency(realEstateForm.marketValue - realEstateForm.purchaseCost, 'TWD') }}</div>
                         <div>
                             <label class="block text-xs font-bold text-gray-500 mb-1">連結房貸帳戶（可多選）</label>
@@ -3246,6 +3303,7 @@
                                     <option value="CDF">台積期 (CDF)</option>
                                     <option value="QDF">小台積期 (QDF)</option>
                                 </select>
+                                <div v-if="formErrors.symbol" class="field-error">{{ formErrors.symbol }}</div>
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 mb-1">結算日</label>
@@ -3274,10 +3332,12 @@
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 mb-1">口數</label>
                                 <input type="number" v-model="futuresForm.contracts" class="zen-input" placeholder="例如: 1">
+                                <div v-if="formErrors.contracts" class="field-error">{{ formErrors.contracts }}</div>
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 mb-1">合約乘數 (每點金額)</label>
                                 <input type="number" v-model="futuresForm.multiplier" class="zen-input" placeholder="小台填 50 / 大台填 200">
+                                <div v-if="formErrors.multiplier" class="field-error">{{ formErrors.multiplier }}</div>
                             </div>
                         </div>
 
@@ -3285,6 +3345,7 @@
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 mb-1">建倉價格 / 點數</label>
                                 <input type="number" v-model="futuresForm.entryPrice" class="zen-input" placeholder="例如: 20000">
+                                <div v-if="formErrors.entryPrice" class="field-error">{{ formErrors.entryPrice }}</div>
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 mb-1 flex justify-between items-center">
@@ -3292,12 +3353,14 @@
                                     <button type="button" @click="autoFetchTaiexIndexPrice" class="text-amber-600 hover:text-amber-500 text-[10px] font-bold"><i class="fa-solid fa-sync mr-0.5"></i>代入期貨現價</button>
                                 </label>
                                 <input v-model="futuresForm.currentPrice" class="zen-input" placeholder="例如: 20500">
+                                <div v-if="formErrors.currentPrice" class="field-error">{{ formErrors.currentPrice }}</div>
                             </div>
                         </div>
 
                         <div>
                             <label class="block text-xs font-bold text-gray-500 mb-1">佔用保證金 (單口或總額)</label>
                             <input type="number" v-model="futuresForm.marginUsed" class="zen-input" placeholder="例如大台 179000 / 小台 45000">
+                                <div v-if="formErrors.marginUsed" class="field-error">{{ formErrors.marginUsed }}</div>
                         </div>
 
                         <div>
@@ -3343,6 +3406,7 @@
                         <div>
                             <label class="block text-xs font-bold text-gray-500 mb-1">金額</label>
                             <input type="number" v-model="futuresMarginForm.amount" class="zen-input" placeholder="請輸入金額">
+                                <div v-if="formErrors.marginAmount" class="field-error">{{ formErrors.marginAmount }}</div>
                         </div>
 
                         <div class="flex items-center gap-2 py-1">
@@ -3419,6 +3483,7 @@
                                 class="zen-input font-mono text-lg"
                                 placeholder="輸入點數"
                                 @input="() => { if(futuresActionForm.mode==='rollover') { if(futuresActionForm.rollSpreadInput !== '' && futuresActionForm.rollSpreadInput !== null && futuresActionForm.rollSpreadInput !== undefined) applyRollSpread(); else if(!futuresActionForm.newOpenPrice) futuresActionForm.newOpenPrice = futuresActionForm.closePrice } }">
+                                <div v-if="formErrors.closePrice" class="field-error">{{ formErrors.closePrice }}</div>
                         </div>
 
                         <!-- 展期專屬欄位 -->
@@ -3441,12 +3506,14 @@
                                     <label class="block text-xs font-bold text-gray-500 mb-1">遠月結算日 <span class="text-red-500">*</span></label>
                                     <input type="date" v-model="futuresActionForm.newExpiry"
                                         class="zen-input font-mono">
+                                <div v-if="formErrors.newExpiry" class="field-error">{{ formErrors.newExpiry }}</div>
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500 mb-1">遠月建倉價格 <span class="text-red-500">*</span></label>
                                     <input type="number" v-model="futuresActionForm.newOpenPrice"
                                         class="zen-input font-mono"
                                         placeholder="輸入點數">
+                                <div v-if="formErrors.newOpenPrice" class="field-error">{{ formErrors.newOpenPrice }}</div>
                                 </div>
                             </div>
                         </template>
@@ -3527,6 +3594,7 @@
                         <div class="space-y-2">
                             <label class="block text-xs font-bold text-gray-500">帳戶名稱</label>
                             <input type="text" v-model="loanForm.name" class="zen-input" placeholder="例如: 股票質押">
+                                <div v-if="formErrors.loanName" class="field-error">{{ formErrors.loanName }}</div>
                             
                             <div class="grid grid-cols-2 gap-2 mt-2">
                                 <div>
@@ -3719,7 +3787,8 @@
                     </div>
                     <div class="p-6 space-y-4">
                         <div><label class="block text-xs font-bold text-gray-500 mb-1">標題</label><input type="text"
-                                v-model="noteForm.title" class="zen-input" placeholder="例如：台積電法說會心得"></div>
+                                v-model="noteForm.title" class="zen-input" placeholder="例如：台積電法說會心得">
+                                <div v-if="formErrors.noteTitle" class="field-error">{{ formErrors.noteTitle }}</div></div>
                         <div><label class="block text-xs font-bold text-gray-500 mb-1">日期</label><input type="date"
                                 v-model="noteForm.date" class="zen-input"></div>
                         <div><label class="block text-xs font-bold text-gray-500 mb-1">內容</label><textarea
@@ -4007,6 +4076,7 @@
                                         {{ l.name }} (餘額 {{ formatNumber(l.balance) }})
                                     </option>
                                 </select>
+                                <div v-if="formErrors.loanId" class="field-error">{{ formErrors.loanId }}</div>
 
                                 <!-- Inline 新增帳戶（無帳戶時自動顯示） -->
                                 <div v-if="inlineNewLoan || activeLoans.length === 0"
@@ -4031,6 +4101,7 @@
                                 <label class="block text-xs font-bold text-gray-500 mb-1">金額</label>
                                 <input type="number" step="any" v-model.number="transForm.totalAmount" class="zen-input"
                                     placeholder="輸入金額">
+                                <div v-if="formErrors.totalAmount" class="field-error">{{ formErrors.totalAmount }}</div>
                             </div>
                             <div class="mt-2">
                                 <label class="block text-xs font-bold text-gray-500 mb-1">備註 (選填)</label>
@@ -4127,6 +4198,7 @@
                                 <label class="block text-xs font-bold text-gray-500 mb-1">股數</label>
                                 <input type="number" step="any" v-model.number="transForm.shares" class="zen-input"
                                     placeholder="0">
+                                <div v-if="formErrors.shares" class="field-error">{{ formErrors.shares }}</div>
                             </div>
                             <div v-if="transForm.type !== 'dividend'" class="mt-2">
                                 <label class="block text-xs font-bold text-gray-500 mb-1">總金額
@@ -4163,6 +4235,30 @@
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <!-- v5.15.0: 非阻斷式提示。z-index 高於 modal(z-50)，
+                 才不會在對話框開著時被蓋住。 -->
+            <div class="fixed z-[60] inset-x-0 bottom-4 sm:bottom-auto sm:top-4 sm:inset-x-auto sm:right-4 px-3 sm:px-0 flex flex-col gap-2 pointer-events-none items-center sm:items-end">
+                <transition-group name="toast">
+                    <div v-for="t in toasts" :key="t.id" @click="dismissToast(t.id)"
+                        class="toast-item pointer-events-auto cursor-pointer w-full sm:w-auto sm:max-w-sm flex items-start gap-2.5 px-4 py-3 rounded-lg shadow-lg text-sm font-medium border"
+                        :class="{
+                            'bg-emerald-50 dark:bg-emerald-900/90 border-emerald-200 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200': t.type === 'success',
+                            'bg-red-50 dark:bg-red-900/90 border-red-200 dark:border-red-700 text-red-800 dark:text-red-200': t.type === 'error',
+                            'bg-amber-50 dark:bg-amber-900/90 border-amber-200 dark:border-amber-700 text-amber-800 dark:text-amber-200': t.type === 'warning',
+                            'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200': t.type === 'info'
+                        }">
+                        <i class="fa-solid mt-0.5 shrink-0"
+                            :class="{
+                                'fa-circle-check': t.type === 'success',
+                                'fa-circle-exclamation': t.type === 'error',
+                                'fa-triangle-exclamation': t.type === 'warning',
+                                'fa-circle-info': t.type === 'info'
+                            }"></i>
+                        <span class="flex-1 leading-snug">{{ t.message }}</span>
+                    </div>
+                </transition-group>
             </div>
 
         </div>

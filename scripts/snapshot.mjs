@@ -9,7 +9,7 @@
 //
 // 需要的環境變數：
 //   FIREBASE_SERVICE_ACCOUNT  Firebase 服務帳戶金鑰 JSON（整份貼上）
-//   FINNHUB_API_KEY           美股報價用
+//   FINNHUB_API_KEY           選填。美股的備援報價來源；主要來源是 Yahoo，不需金鑰
 //   APP_UID                   要快照的帳號 uid，多組以逗號分隔（必填）
 //   SNAPSHOT_ALL_USERS        設為 'true' 才會處理專案下所有帳號（沒有 APP_UID 時的明確開關）
 //
@@ -73,21 +73,30 @@ const fetchExchangeRate = async () => {
     return rate;
 };
 
-// 台股第一層：Yahoo v8 chart。marketType 決定先試 .TW 還是 .TWO，失敗再換另一個。
+// Yahoo v8 chart 的共用查詢。台股與美股都走這裡。
+// 注意 previousClose 實測可能是 null，一定要有 chartPreviousClose 退路，
+// 否則昨收會等於現價，整份漲跌幅都變成 0%。
+const fetchYahooQuote = async (yahooSymbol) => {
+    try {
+        const j = await fetchJson(`https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=1d`);
+        const meta = j?.chart?.result?.[0]?.meta;
+        if (meta?.regularMarketPrice > 0) {
+            return {
+                price: meta.regularMarketPrice,
+                prevClose: meta.previousClose || meta.chartPreviousClose || meta.regularMarketPrice
+            };
+        }
+    } catch (e) { /* 由呼叫端決定退路 */ }
+    return null;
+};
+
+// 台股第一層：Yahoo。marketType 決定先試 .TW 還是 .TWO，失敗再換另一個。
 const fetchTwPriceYahoo = async (stock) => {
     const clean = stock.symbol.replace(/\.(TW|TWO)$/i, '');
     const first = (stock.marketType === 'otc' || stock.marketType === 'esb') ? '.TWO' : '.TW';
     for (const suffix of [first, first === '.TWO' ? '.TW' : '.TWO']) {
-        try {
-            const j = await fetchJson(`https://query2.finance.yahoo.com/v8/finance/chart/${clean}${suffix}?interval=1d&range=1d`);
-            const meta = j?.chart?.result?.[0]?.meta;
-            if (meta?.regularMarketPrice > 0) {
-                return {
-                    price: meta.regularMarketPrice,
-                    prevClose: meta.previousClose || meta.chartPreviousClose || meta.regularMarketPrice
-                };
-            }
-        } catch (e) { /* 換下一個後綴再試 */ }
+        const q = await fetchYahooQuote(`${clean}${suffix}`);
+        if (q) return q;
     }
     return null;
 };
@@ -152,11 +161,17 @@ const fetchTwPrice = async (stock) => {
     return snap.get(stock.symbol.replace(/\.(TW|TWO)$/i, '')) || null;
 };
 
+// 美股：Yahoo 優先，Finnhub 當退路。
+//
+// 為什麼不用 Finnhub 當主力：Finnhub 免費版會擋資料中心 IP。同一把 key 從家用網路
+// 打得到（實測 AAPL/VOO/NVDA 皆 HTTP 200），從 GitHub Actions 的機器打則 100% 失敗，
+// 這正是排程裡「美股 10 檔全滅、台股 0 失敗」的原因。
+// Yahoo 沒有這個限制、不需金鑰、也沒有每分鐘次數限制，實測報價與 Finnhub 完全一致。
 const fetchUsPrice = async (symbol) => {
+    const q = await fetchYahooQuote(symbol);
+    if (q) return q;
     if (!FINNHUB_API_KEY) return null;
     try {
-        // retry=2：Finnhub 免費版 60 次/分鐘，多帳號共用同一把 key 時容易撞到 429，
-        // fetchJson 遇到 429 會等 15 秒再試，而不是直接當成失敗。
         const j = await fetchJson(
             `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${FINNHUB_API_KEY}`,
             { retry: 2 }
@@ -312,7 +327,8 @@ const processUser = async (db, uid, rate, label) => {
             // 抓不到就沿用資料庫裡的舊價，總比算成 0 好
             if (isTw) failTw++; else failUs++;
         }
-        await sleep(isTw ? 250 : 1100); // Finnhub 免費版每分鐘 60 次
+        // 台股美股都以 Yahoo 為主，沒有每分鐘次數限制，統一用較短的間隔即可
+        await sleep(250);
     }
     const fail = failTw + failUs;
 

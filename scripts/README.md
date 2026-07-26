@@ -6,7 +6,7 @@
 在每個交易日 **14:30（台北）** 觸發，流程：
 
 1. 抓匯率（失敗就整支中止，不寫入 —— 用預設匯率算出來的淨值會永久污染走勢圖）
-2. 抓台股（Yahoo v8）、美股（Finnhub）、期貨（鉅亨近全 / 台積電現貨）報價，並寫回 Firestore
+2. 抓台股與美股報價（Yahoo v8 為主，台股另有 MIS 與官方收盤快照兩層退路）、期貨（鉅亨近全 / 台積電現貨），並寫回 Firestore
 3. 依 `js/main.js` 的估值邏輯算出淨資產、槓桿、曝險等指標
 4. 寫入 `users/{uid}/history/{YYYY-MM-DD}`，並標記 `source: 'scheduled'`
 
@@ -20,7 +20,7 @@
 | 名稱 | 內容 | 必填 |
 |---|---|---|
 | `FIREBASE_SERVICE_ACCOUNT` | Firebase 服務帳戶金鑰 JSON（整份貼上） | ✅ |
-| `FINNHUB_API_KEY` | 美股報價 API 金鑰 | 美股持倉才需要 |
+| `FINNHUB_API_KEY` | 美股備援報價金鑰 | 選填 |
 | `APP_UID` | 要快照的帳號 uid，多組以逗號分隔 | ✅ |
 | `SNAPSHOT_ALL_USERS` | 設為 `true` 才會處理專案下所有帳號 | 選填 |
 
@@ -35,6 +35,13 @@
 這個 Firebase 專案可能有其他人的帳號（別人也用這個網頁登入過）。排程跑的是專案擁有者的
 管理金鑰與 API 額度，因此預設只處理 `APP_UID` 指定的帳號；要處理全部必須明確設定
 `SNAPSHOT_ALL_USERS=true`。
+
+### 為什麼美股不用 Finnhub 當主力
+
+Finnhub 免費版會封鎖資料中心 IP。同一把金鑰從家用網路可正常取得報價，
+從 GitHub Actions 的機器則 **100% 失敗** —— 這是排程曾出現「美股全滅、台股 0 失敗」的原因。
+Yahoo v8 沒有這個限制、不需金鑰、無次數限制，實測報價與 Finnhub 完全一致，故改為主要來源，
+Finnhub 僅保留為退路。
 
 ### 注意事項
 

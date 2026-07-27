@@ -6,8 +6,8 @@
 在每個交易日 **14:30（台北）** 觸發，流程：
 
 1. 抓匯率（失敗就整支中止，不寫入 —— 用預設匯率算出來的淨值會永久污染走勢圖）
-2. 抓台股與美股報價（Yahoo v8 為主，台股另有 MIS 與官方收盤快照兩層退路）、期貨（鉅亨近全 / 台積電現貨），並寫回 Firestore
-3. 依 `js/main.js` 的估值邏輯算出淨資產、槓桿、曝險等指標
+2. 抓台股與美股報價（Yahoo v8 為主，台股另有 MIS 與官方收盤快照兩層退路）、期貨（期交所即時行情，日盤與夜盤取較新者；退路為期交所每日行情），並寫回 Firestore
+3. 依 `js/utils/valuation.js`（與前端共用）算出淨資產、槓桿、曝險等指標
 4. 寫入 `users/{uid}/history/{YYYY-MM-DD}`，並標記 `source: 'scheduled'`
 
 ### 為什麼是 14:30
@@ -45,7 +45,7 @@ Finnhub 僅保留為退路。
 
 ### 注意事項
 
-- **估值邏輯與 `js/main.js` 是兩份實作**。前端改公式時，`buildSnapshot()` 要一起改，否則排程與手動快照會算出不同數字。
+- 估值邏輯（`js/utils/valuation.js`）與期貨取價邏輯（`js/utils/futures.js`）皆與前端**共用同一份**，改動只需一處；`scripts/test-valuation.mjs` 與 `test-futures.mjs` 會在寫入快照前於 CI 驗證。
 - GitHub Actions 的 cron 不保證準時，可能延後數分鐘到半小時；對收盤快照沒有影響。
 - 國定假日休市時會照跑，抓到的是前一交易日收盤價，等於複製前一天的快照，走勢圖呈現持平，不影響正確性。
 - 可在 Actions 頁面用 **Run workflow** 手動觸發測試。

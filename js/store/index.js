@@ -28,6 +28,8 @@ export const autoBackupEnabled = ref(localStorage.getItem('autoBackupEnabled') =
 export const autoBackupIntervalDays = ref(Number(localStorage.getItem('autoBackupIntervalDays')) || 7);
 export const lastBackupAt = ref(localStorage.getItem('lastBackupAt') || '');
 export const showBackupReminder = ref(false);
+// v5.18.0: 槓桿儀表板的計算說明預設收起（只會看一兩次，攤開會把數字擠到很下面）
+export const showLeverageNotes = ref(false);
 export const isDarkMode = ref(localStorage.getItem('darkMode') === 'true');
 export const activeSection = ref('overview');
 export const showChangelog = ref(false);
@@ -57,7 +59,7 @@ export const loanList = ref([]);
 export const showLoanMgrModal = ref(false);
 export const inlineNewLoan = ref(false);
 export const inlineLoanName = ref('');
-export const loanForm = ref({ id: null, name: '', balance: 0, type: 'other', isInvestmentUse: false, monthlyPayment: 0, note: '', status: 'active' });
+export const loanForm = ref({ id: null, name: '', balance: 0, type: 'other', isInvestmentUse: false, monthlyPayment: 0, interestRate: 0, note: '', status: 'active' });
 export const cashData = ref({ twd: 0, usd: 0, loan: 0 });
 export const prevDayData = ref(null);
 

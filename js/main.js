@@ -4,7 +4,7 @@ import { TAIFEX_PRODUCTS, TAIFEX_MIS_URL, taifexRequestBody, contractMonthOf, pi
 import { computePortfolio, calcStats, calcStockExposure, calcFundsValueTwd, calcFundsCostTwd, calcFuturesMarginCash, calcFuturesMarginUsed, calcFuturesExposure } from './utils/valuation.js';
 
 import { 
-    user, stocks, exchangeRate, exchangeRateConfirmed, lastUpdated, loadingTarget, isLoading, viewMode, isMobile, showPrivacy, defaultPrivacyHidden, hideZeroShares, showSettingsModal, isDarkMode, activeSection, showChangelog, toasts, formErrors, autoBackupEnabled, autoBackupIntervalDays, lastBackupAt, showBackupReminder, stockStates, sectionLoading, showStockNoteModal, stockNoteForm, showHistoryModal, historyRecords, historyFilterYear, availableYears, showDeleteModal, pendingDeleteTx, showEditTxModal, editTxForm, showHistoryEditModalVisible, historyEditForm, notes, showNoteModalVisible, noteForm, loanList, showLoanMgrModal, inlineNewLoan, inlineLoanName, loanForm, cashData, prevDayData, realEstateList, showRealEstateModal, realEstateForm, chartStartDate, chartEndDate, chartPnl, currentRange, divRange, divSearchQuery, divStartDate, divEndDate, realizedStartDate, realizedEndDate, transStartDate, transEndDate, transFilterType, transSearchQuery, sortKeyTrans, sortOrderTrans, sortKeyDiv, sortOrderDiv, realizedGains, realizedSearchQuery, sortKeyRealized, sortOrderRealized, realizedRange, dividendRecords, transactionHistory, showModal, isEditing, form, showTransModal, isFundMode, isLoanMode, loanCashMode, transForm,
+    user, stocks, exchangeRate, exchangeRateConfirmed, lastUpdated, loadingTarget, isLoading, viewMode, isMobile, showPrivacy, defaultPrivacyHidden, hideZeroShares, showSettingsModal, isDarkMode, activeSection, showChangelog, toasts, formErrors, showLeverageNotes, autoBackupEnabled, autoBackupIntervalDays, lastBackupAt, showBackupReminder, stockStates, sectionLoading, showStockNoteModal, stockNoteForm, showHistoryModal, historyRecords, historyFilterYear, availableYears, showDeleteModal, pendingDeleteTx, showEditTxModal, editTxForm, showHistoryEditModalVisible, historyEditForm, notes, showNoteModalVisible, noteForm, loanList, showLoanMgrModal, inlineNewLoan, inlineLoanName, loanForm, cashData, prevDayData, realEstateList, showRealEstateModal, realEstateForm, chartStartDate, chartEndDate, chartPnl, currentRange, divRange, divSearchQuery, divStartDate, divEndDate, realizedStartDate, realizedEndDate, transStartDate, transEndDate, transFilterType, transSearchQuery, sortKeyTrans, sortOrderTrans, sortKeyDiv, sortOrderDiv, realizedGains, realizedSearchQuery, sortKeyRealized, sortOrderRealized, realizedRange, dividendRecords, transactionHistory, showModal, isEditing, form, showTransModal, isFundMode, isLoanMode, loanCashMode, transForm,
     monthlyProfitData, monthlyProfitRange,
     futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm, futuresLoading, futuresTransactions, showFuturesActionModal, futuresActionForm,
     investmentsTab, performanceTab, overviewTab,
@@ -340,6 +340,51 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 // 金融淨資產
                 const financialNetWorth = computed(() => portfolio.value.financialNetWorth);
 
+                // --- v5.18.0: 資金管理區用的衍生數值 ---
+                const totalCashTwd = computed(() => (cashData.value.twd || 0) + (cashData.value.usd || 0) * exchangeRate.value);
+                const pctOf = (part, whole) => (whole > 0 ? `${(part / whole * 100).toFixed(0)}%` : '—');
+                const cashTwdShare = computed(() => pctOf(cashData.value.twd || 0, totalCashTwd.value));
+                const cashUsdShare = computed(() => pctOf((cashData.value.usd || 0) * exchangeRate.value, totalCashTwd.value));
+
+                // 期貨風險指標 = 權益數 / 原始保證金。期交所規定低於 25% 會被強制平倉，
+                // 維持保證金約為原始保證金的 77%，以此分級提示。
+                const futuresRiskLabel = computed(() => {
+                    if (!(futuresTotalMarginUsed.value > 0)) return '';
+                    const r = futuresRiskRatio.value;
+                    if (r < 25) return '低於強制平倉標準';
+                    if (r < 77) return '低於維持保證金';
+                    if (r < 100) return '偏低';
+                    return '充足';
+                });
+                const futuresRiskClass = computed(() => {
+                    const r = futuresRiskRatio.value;
+                    if (r < 25) return 'text-red-600 dark:text-red-400';
+                    if (r < 77) return 'text-orange-600 dark:text-orange-400';
+                    if (r < 100) return 'text-amber-600 dark:text-amber-400';
+                    return 'text-emerald-600 dark:text-emerald-400';
+                });
+
+                // v5.18.0: 資金管理區直接列出最近的現金進出。
+                // 以前要跳到「歷史績效 → 交易明細」再自己篩類別，叫資金管理卻看不到資金流動。
+                const recentCashFlows = computed(() => {
+                    const kinds = ['deposit', 'withdraw', 'borrow', 'repay'];
+                    return transactionHistory.value
+                        .filter(tx => kinds.includes(tx.type))
+                        .slice()
+                        .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+                        .slice(0, 5);
+                });
+
+                // 借款年化利息成本（利率為選填，沒填就不計入）
+                const totalAnnualInterest = computed(() => loanList.value.filter(l => l.status !== 'archived').reduce(
+                    (acc, l) => acc + (l.balance || 0) * ((l.interestRate || 0) / 100), 0));
+                const weightedInterestRate = computed(() => {
+                    const withRate = loanList.value.filter(l => l.status !== 'archived' && l.interestRate > 0);
+                    const base = withRate.reduce((a, l) => a + (l.balance || 0), 0);
+                    if (base <= 0) return null;
+                    return withRate.reduce((a, l) => a + (l.balance || 0) * l.interestRate, 0) / base;
+                });
+
                 const activeLoans = computed(() => loanList.value.filter(l => l.status !== 'archived'));
                 const archivedLoans = computed(() => loanList.value.filter(l => l.status === 'archived'));
                 const showArchivedLoansList = ref(false);
@@ -579,6 +624,8 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 });
 
                 watch(activeSection, (newSection) => {
+                    // 資金管理要顯示最近的現金進出，需要交易紀錄
+                    if (newSection === 'cash' && !transactionHistory.value.length) fetchTransactions();
                     if (newSection === 'overview') {
                         setTimeout(() => {
                             if (overviewTab.value === 'trend') drawChart();
@@ -1578,9 +1625,9 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 const openHistoryEditModal = (rec) => { historyEditForm.value = { date: rec.date, twVal: rec.twVal || 0, usVal: rec.usVal || 0, twCash: rec.twCash || 0, usCash: rec.usCash || 0, loan: rec.loan || 0, realestate: rec.realestate || rec.realEstateVal || 0 }; showHistoryEditModalVisible.value = true; };
                 const calculateHistoryNetWorth = () => { const asset = (historyEditForm.value.twVal || 0) + (historyEditForm.value.twCash || 0) + ((historyEditForm.value.usVal || 0) + (historyEditForm.value.usCash || 0)) * exchangeRate.value + (historyEditForm.value.realestate || 0); const loan = historyEditForm.value.loan || 0; return asset - loan; };
                 const saveHistoryRecord = async () => { if (!user.value) return; const newNetWorth = calculateHistoryNetWorth(); await db.collection('users').doc(user.value.uid).collection('history').doc(historyEditForm.value.date).update({ twVal: historyEditForm.value.twVal, usVal: historyEditForm.value.usVal, twCash: historyEditForm.value.twCash, usCash: historyEditForm.value.usCash, loan: historyEditForm.value.loan, realestate: historyEditForm.value.realestate, totalVal: newNetWorth }); showHistoryEditModalVisible.value = false; await openHistoryModal(); drawChart(); };
-                const openLoanMgrModal = () => { clearFormErrors(); showLoanMgrModal.value = true; loanForm.value = { id: null, name: '', balance: 0, type: 'other', isInvestmentUse: false, monthlyPayment: 0, note: '' }; };
-                const editLoanAccount = (l) => { loanForm.value = { type: 'other', isInvestmentUse: false, monthlyPayment: 0, note: '', ...l }; };
-                const saveLoanAccount = async () => { if (!user.value) return; if (!validateForm([['loanName', !!loanForm.value.name, '請輸入名稱']])) return; const data = { name: loanForm.value.name, balance: loanForm.value.balance || 0, currency: 'TWD', type: loanForm.value.type || 'other', isInvestmentUse: !!loanForm.value.isInvestmentUse, monthlyPayment: loanForm.value.monthlyPayment || 0, note: loanForm.value.note || '' }; if (loanForm.value.id) await db.collection('users').doc(user.value.uid).collection('loans').doc(loanForm.value.id).update(data); else await db.collection('users').doc(user.value.uid).collection('loans').add(data); loanForm.value = { id: null, name: '', balance: 0, type: 'other', isInvestmentUse: false, monthlyPayment: 0, note: '' }; };
+                const openLoanMgrModal = () => { clearFormErrors(); showLoanMgrModal.value = true; loanForm.value = { id: null, name: '', balance: 0, type: 'other', isInvestmentUse: false, monthlyPayment: 0, interestRate: 0, note: '' }; };
+                const editLoanAccount = (l) => { clearFormErrors(); loanForm.value = { type: 'other', isInvestmentUse: false, monthlyPayment: 0, interestRate: 0, note: '', ...l }; };
+                const saveLoanAccount = async () => { if (!user.value) return; if (!validateForm([['loanName', !!loanForm.value.name, '請輸入名稱']])) return; const data = { name: loanForm.value.name, balance: loanForm.value.balance || 0, currency: 'TWD', type: loanForm.value.type || 'other', isInvestmentUse: !!loanForm.value.isInvestmentUse, monthlyPayment: loanForm.value.monthlyPayment || 0, interestRate: Number(loanForm.value.interestRate) || 0, note: loanForm.value.note || '' }; if (loanForm.value.id) await db.collection('users').doc(user.value.uid).collection('loans').doc(loanForm.value.id).update(data); else await db.collection('users').doc(user.value.uid).collection('loans').add(data); loanForm.value = { id: null, name: '', balance: 0, type: 'other', isInvestmentUse: false, monthlyPayment: 0, interestRate: 0, note: '' }; };
                 const deleteLoanAccount = async (l) => { if (!confirm(`確定刪除 ${l.name}？(這不會影響已發生的交易紀錄)`)) return; await db.collection('users').doc(user.value.uid).collection('loans').doc(l.id).delete(); };
                 // Inline 新增帳戶（從到 Modal 內創建，建完自動選中）
                 const saveInlineLoanAccount = async () => {
@@ -2776,6 +2823,8 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     inlineNewLoan, inlineLoanName, saveInlineLoanAccount,
                     exportToExcel, exportSimplifiedPortfolio,
                     showSettingsModal, saveSettings,
+                    totalCashTwd, cashTwdShare, cashUsdShare, futuresRiskLabel, futuresRiskClass,
+                    totalAnnualInterest, weightedInterestRate, recentCashFlows, showLeverageNotes,
                     toasts, showToast, dismissToast, formErrors, clearFormErrors,
                     autoBackupEnabled, autoBackupIntervalDays, lastBackupAt, showBackupReminder, daysSinceBackup, dismissBackupReminder,
                     triggerImport, fileInput, handleImport,

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的投資組合 | Portfolio v5.17.1</title>
+    <title>我的投資組合 | Portfolio v5.18.0</title>
     <!-- v5.12.0: PWA。三個入口各有獨立的 manifest 與圖示，
          加到主畫面後會是三個可分辨的 App，而不是同一顆圖示。 -->
     <link rel="manifest" href="./manifest-stock.webmanifest">
@@ -348,7 +348,7 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.17.1</h1>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.18.0</h1>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -368,7 +368,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.17.1</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.18.0</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -517,6 +517,12 @@
                         <div class="text-2xl font-bold dark:text-white"><span v-if="showPrivacy">{{
                                 formatCurrency(usStats.value + (cashData.usd || 0), 'USD') }}</span><span
                                 v-else>****</span></div>
+                        <!-- v5.18.0: 補上台幣對照，淨資產是台幣計價的，不用再自己乘匯率 -->
+                        <div class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                            <span v-if="showPrivacy">≈ {{ formatCurrency((usStats.value + (cashData.usd || 0)) *
+                                exchangeRate, 'TWD') }}</span>
+                            <span v-else>****</span>
+                        </div>
                         <div class="mt-1 text-xs flex items-center gap-1" v-if="showPrivacy">
                             <span class="text-gray-400">較前日(未實現損益):</span>
                             <span v-if="prevDayData" :class="getPnlClass(usStats.pnl - (prevDayData.usPnL || 0))">
@@ -728,12 +734,18 @@
                             </div>
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <!-- v5.18.0: 卡片補上原本空白處該有的資訊（台幣對照、現金合計、保證金與風險指標） -->
                             <div
                                 class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-900/30 text-center">
                                 <div class="text-xs text-blue-600 dark:text-blue-400 mb-1">台幣餘額 (TWD)</div>
                                 <div class="text-2xl font-bold text-blue-700 dark:text-blue-300"><span
                                         v-if="showPrivacy">{{ formatCurrency(cashData.twd, 'TWD') }}</span><span
                                         v-else>****</span></div>
+                                <div class="mt-2 pt-2 border-t border-blue-100 dark:border-blue-900/40 text-[11px] text-blue-600/70 dark:text-blue-400/70">
+                                    佔現金合計
+                                    <span v-if="showPrivacy" class="font-semibold">{{ cashTwdShare }}</span>
+                                    <span v-else>**</span>
+                                </div>
                             </div>
                             <div
                                 class="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border border-green-100 dark:border-green-900/30 text-center">
@@ -741,6 +753,11 @@
                                 <div class="text-2xl font-bold text-green-700 dark:text-green-300"><span
                                         v-if="showPrivacy">{{ formatCurrency(cashData.usd, 'USD') }}</span><span
                                         v-else>****</span></div>
+                                <div class="mt-2 pt-2 border-t border-green-100 dark:border-green-900/40 text-[11px] text-green-600/70 dark:text-green-400/70">
+                                    <span v-if="showPrivacy">≈ {{ formatCurrency((cashData.usd || 0) * exchangeRate, 'TWD') }}</span>
+                                    <span v-else>****</span>
+                                    <span class="opacity-70"> · 佔 {{ showPrivacy ? cashUsdShare : '**' }}</span>
+                                </div>
                             </div>
                             <div
                                 class="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-xl border border-orange-100 dark:border-orange-900/30 text-center">
@@ -748,6 +765,28 @@
                                 <div class="text-2xl font-bold text-orange-700 dark:text-orange-300">
                                     <span v-if="showPrivacy">{{ formatCurrency(futuresEquity, 'TWD') }}</span>
                                     <span v-else>****</span>
+                                </div>
+                                <!-- 期貨最該盯的是保證金緩衝，這些數值本來就算好了，只是沒放上來 -->
+                                <div v-if="futuresTotalMarginUsed > 0"
+                                    class="mt-2 pt-2 border-t border-orange-100 dark:border-orange-900/40 space-y-1 text-[11px]">
+                                    <div class="flex justify-between text-orange-700/80 dark:text-orange-300/80">
+                                        <span>已用保證金</span>
+                                        <span v-if="showPrivacy">{{ formatCurrency(futuresTotalMarginUsed, 'TWD') }}</span>
+                                        <span v-else>****</span>
+                                    </div>
+                                    <div class="flex justify-between text-orange-700/80 dark:text-orange-300/80">
+                                        <span>可用餘額</span>
+                                        <span v-if="showPrivacy" :class="futuresEquity - futuresTotalMarginUsed < 0 ? 'text-red-600 dark:text-red-400 font-bold' : ''">
+                                            {{ formatCurrency(futuresEquity - futuresTotalMarginUsed, 'TWD') }}</span>
+                                        <span v-else>****</span>
+                                    </div>
+                                    <div class="flex justify-between items-center font-semibold" :class="futuresRiskClass">
+                                        <span>風險指標</span>
+                                        <span>{{ futuresRiskRatio.toFixed(0) }}%<span class="ml-1 font-normal opacity-80">{{ futuresRiskLabel }}</span></span>
+                                    </div>
+                                </div>
+                                <div v-else class="mt-2 pt-2 border-t border-orange-100 dark:border-orange-900/40 text-[11px] text-orange-600/60 dark:text-orange-400/60">
+                                    無未平倉部位
                                 </div>
                             </div>
                             <div
@@ -767,10 +806,19 @@
                                     <span v-if="showPrivacy">{{ formatCurrency(totalLoanBalance, 'TWD') }}</span><span
                                         v-else>****</span>
                                 </div>
-                                <div v-if="totalMonthlyPayment > 0" class="text-xs text-purple-500 dark:text-purple-400 text-center mb-2 font-medium">
+                                <div v-if="totalMonthlyPayment > 0" class="text-xs text-purple-500 dark:text-purple-400 text-center font-medium">
                                     每月還款總計: 
                                     <span v-if="showPrivacy">{{ formatCurrency(totalMonthlyPayment, 'TWD') }}</span><span
                                         v-else>****</span>
+                                </div>
+                                <!-- v5.18.0: 年化利息成本。月繳含本金攤還，看不出真正的資金成本。 -->
+                                <div v-if="totalAnnualInterest > 0" class="text-xs text-center mb-2 text-purple-600 dark:text-purple-300">
+                                    年利息約
+                                    <span v-if="showPrivacy" class="font-bold">{{ formatCurrency(totalAnnualInterest, 'TWD') }}</span><span v-else>****</span>
+                                    <span v-if="weightedInterestRate !== null" class="opacity-70">（加權 {{ weightedInterestRate.toFixed(2) }}%）</span>
+                                </div>
+                                <div v-else class="text-[11px] text-center mb-2 text-purple-400/70 dark:text-purple-400/50">
+                                    於「管理」中填入年利率即可估算利息成本
                                 </div>
                                 <div class="space-y-1 max-h-24 overflow-y-auto custom-scrollbar">
                                     <div v-for="l in activeLoans" :key="l.id"
@@ -780,8 +828,9 @@
                                                 {{ l.name }}
                                                 <span v-if="l.note" class="text-[10px] text-gray-400 dark:text-gray-500 ml-1">({{ l.note }})</span>
                                             </span>
-                                            <span class="font-bold text-purple-700 dark:text-purple-300"><span
-                                                    v-if="showPrivacy">{{ formatCurrency(l.balance, 'TWD') }}</span><span
+                                            <span class="font-bold text-purple-700 dark:text-purple-300">
+                                                <span v-if="l.interestRate > 0" class="text-[10px] font-normal opacity-70 mr-1">{{ l.interestRate }}%</span>
+                                                <span v-if="showPrivacy">{{ formatCurrency(l.balance, 'TWD') }}</span><span
                                                     v-else>****</span></span>
                                         </div>
                                         <div v-if="l.monthlyPayment > 0" class="text-[10px] text-purple-500/80 dark:text-purple-400/80 text-right mt-0.5">
@@ -793,6 +842,55 @@
                             </div>
                         </div>
                         
+                        <!-- v5.18.0: 現金合計。台幣與美金分開看不出總額，而淨資產是台幣計價的。 -->
+                        <div class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-100 dark:border-gray-700 px-4 py-3">
+                            <div class="flex items-baseline gap-2">
+                                <span class="text-xs text-gray-500 dark:text-gray-400">現金合計（台幣計價）</span>
+                                <span class="text-lg font-bold dark:text-white">
+                                    <span v-if="showPrivacy">{{ formatCurrency(totalCashTwd, 'TWD') }}</span><span v-else>****</span>
+                                </span>
+                            </div>
+                            <div class="text-[11px] text-gray-400 dark:text-gray-500">
+                                台幣 {{ showPrivacy ? cashTwdShare : '**' }} · 美金 {{ showPrivacy ? cashUsdShare : '**' }}
+                                <span class="opacity-70">（匯率 {{ exchangeRate.toFixed(2) }}）</span>
+                            </div>
+                        </div>
+
+                        <!-- v5.18.0: 最近資金進出。以前要跳到歷史績效再篩類別才看得到。 -->
+                        <div class="mt-4 rounded-xl border border-gray-100 dark:border-gray-700 p-4">
+                            <div class="flex justify-between items-center mb-2">
+                                <div class="text-sm font-bold dark:text-white flex items-center gap-1.5">
+                                    <i class="fa-solid fa-right-left text-gray-400"></i>最近資金進出
+                                </div>
+                                <button @click="toggleSection('performance'); performanceTab = 'transactions'"
+                                    class="text-[11px] text-blue-500 hover:underline">看全部</button>
+                            </div>
+                            <div v-if="recentCashFlows.length" class="divide-y divide-gray-100 dark:divide-gray-700">
+                                <div v-for="tx in recentCashFlows" :key="tx.id" class="flex items-center justify-between py-2 text-sm">
+                                    <div class="min-w-0">
+                                        <span class="text-xs px-1.5 py-0.5 rounded mr-2 whitespace-nowrap"
+                                            :class="{
+                                                'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300': tx.type === 'deposit',
+                                                'bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300': tx.type === 'withdraw',
+                                                'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300': tx.type === 'borrow',
+                                                'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300': tx.type === 'repay'
+                                            }">{{ getTypeName(tx.type) }}</span>
+                                        <span class="text-gray-600 dark:text-gray-300 truncate">{{ tx.name || '-' }}</span>
+                                    </div>
+                                    <div class="text-right whitespace-nowrap ml-2">
+                                        <div class="font-medium" :class="getAmountClass(tx)">
+                                            <span v-if="showPrivacy">{{ getAmountSign(tx) }}{{ formatCurrency(tx.totalAmount, tx.currency) }}</span>
+                                            <span v-else>****</span>
+                                        </div>
+                                        <div class="text-[10px] text-gray-400">{{ tx.date }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div v-else class="text-center py-4 text-xs text-gray-400">
+                                近 90 天內無資金進出紀錄
+                            </div>
+                        </div>
+
                         <!-- v4.4.0: 槓桿比儀表板 -->
                         <div v-if="totalLoanBalance > 0" class="mt-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-xl p-4">
                             <div class="flex justify-between items-start mb-3">
@@ -872,8 +970,14 @@
                                 <i class="fa-solid fa-triangle-exclamation mt-0.5 flex-shrink-0"></i>
                                 <span>{{ exposureRatio > leverageRatio + 0.01 ? '加計 槓桿與期貨曝險後' : '槓桿比' }} {{ exposureRatio.toFixed(2) }}x 偏高，請評估風險承受能力。</span>
                             </div>
-                            <!-- 槓桿比與曝險比的說明備註 -->
-                            <div class="mt-3 pt-3 border-t border-amber-200/50 dark:border-amber-800/40 text-[10px] text-amber-700/80 dark:text-amber-400/80 space-y-1.5 leading-relaxed">
+                            <!-- v5.18.0: 說明備註改為可收合。這段只會看一兩次，預設攤開會把數字擠到很下面。 -->
+                            <button @click="showLeverageNotes = !showLeverageNotes"
+                                class="mt-3 pt-3 border-t border-amber-200/50 dark:border-amber-800/40 w-full flex items-center justify-center gap-1.5 text-[11px] text-amber-700/80 dark:text-amber-400/80 hover:text-amber-800 dark:hover:text-amber-300 transition">
+                                <i class="fa-solid fa-circle-question"></i>
+                                <span>{{ showLeverageNotes ? '收起計算說明' : '這些數字怎麼算的？' }}</span>
+                                <i class="fa-solid text-[9px]" :class="showLeverageNotes ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                            </button>
+                            <div v-show="showLeverageNotes" class="mt-2 text-[10px] text-amber-700/80 dark:text-amber-400/80 space-y-1.5 leading-relaxed">
                                 <div class="flex items-start gap-1">
                                     <i class="fa-solid fa-circle-info mt-0.5 flex-shrink-0"></i>
                                     <div>
@@ -2380,9 +2484,24 @@
 
                     <div class="p-6 overflow-y-auto custom-scrollbar">
                         <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
-                            <!-- v5.17.0: 最新版本節點 -->
+                            <!-- v5.18.0: 最新版本節點 -->
                             <div class="relative pl-6">
                                 <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800"></div>
+                                <div class="text-xs text-gray-400 mb-1">2026-07-27</div>
+                                <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
+                                    <div class="font-bold text-gray-800 dark:text-white mb-2">v5.18.0</div>
+                                    <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                        <li>新增：期貨權益卡顯示已用保證金、可用餘額與風險指標，並依期交所標準分級提示（低於 25% 為強制平倉標準、77% 為維持保證金）。</li>
+                                        <li>新增：借款帳戶可填年利率，卡片顯示年化利息成本與加權利率 —— 月繳金額含本金攤還，看不出真正的資金成本。</li>
+                                        <li>新增：美股帳戶與美金餘額補上台幣對照，另新增現金合計（台幣＋美金換算）與幣別佔比。</li>
+                                        <li>新增：資金管理直接列出最近 5 筆資金進出，不必再跳到歷史績效篩選。</li>
+                                        <li>調整：槓桿儀表板的計算說明改為可收合，預設收起。</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="relative pl-6">
+                                <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-2 border-white dark:border-gray-800"></div>
                                 <div class="text-xs text-gray-400 mb-1">2026-07-27</div>
                                 <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
                                     <div class="font-bold text-gray-800 dark:text-white mb-2">v5.17.1</div>
@@ -3646,6 +3765,11 @@
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500">每月還款金額 (TWD)</label>
                                     <input type="number" v-model.number="loanForm.monthlyPayment" class="zen-input mt-1" placeholder="0">
+                                </div>
+                                <div>
+                                    <!-- v5.18.0: 月繳含本金攤還，不等於利息成本；要判斷「借錢投資划不划算」需要利率 -->
+                                    <label class="block text-xs font-bold text-gray-500">年利率 (%)</label>
+                                    <input type="number" step="0.01" v-model.number="loanForm.interestRate" class="zen-input mt-1" placeholder="如：2.5（選填）">
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500">借款備註</label>

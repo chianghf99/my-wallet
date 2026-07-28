@@ -21,7 +21,7 @@ import admin from 'firebase-admin';
 import { buildSnapshotFields } from '../js/utils/valuation.js';
 // 期貨取價的挑選邏輯也與前端共用（日夜盤、週契約、月份對應都在這裡）
 import { TAIFEX_PRODUCTS, TAIFEX_MIS_URL, taifexRequestBody, contractMonthOf,
-         pickContract, pickFreshest, pickFromOpenData, OPEN_DATA_CONTRACT } from '../js/utils/futures.js';
+         pickContract, pickDaySessionFirst, pickFromOpenData, OPEN_DATA_CONTRACT } from '../js/utils/futures.js';
 
 const TZ = 'Asia/Taipei';
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
@@ -228,14 +228,16 @@ const fetchFuturesQuote = async (code, expiry) => {
         fetchTaifexSession(product, '0'),
         fetchTaifexSession(product, '1')
     ]);
-    const hit = pickFreshest([
+    // 固定採用日盤收盤價：排程實際觸發時間會被 GitHub 延遲 1～2.5 小時，
+    // 若取最新時段，落在夜盤時段的那幾天就會記到盤中價，使歷史數列失去可比性。
+    const hit = pickDaySessionFirst([
         day ? pickContract(day, month) : null,
         night ? pickContract(night, month) : null
     ]);
     if (hit) return hit;
 
     const rows = await fetchTaifexOpenData();
-    return rows ? pickFromOpenData(rows, OPEN_DATA_CONTRACT[String(code).toUpperCase()], month) : null;
+    return rows ? pickFromOpenData(rows, OPEN_DATA_CONTRACT[String(code).toUpperCase()], month, 'day') : null;
 };
 
 // --- 主流程 ---

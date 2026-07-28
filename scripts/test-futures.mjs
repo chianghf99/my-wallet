@@ -7,7 +7,7 @@
 
 import {
     parseSymbolId, pickContract, pickFreshest, contractMonthOf,
-    pickFromOpenData, TAIFEX_PRODUCTS, effectiveStamp
+    pickFromOpenData, TAIFEX_PRODUCTS, effectiveStamp, pickDaySessionFirst
 } from '../js/utils/futures.js';
 
 let fail = 0;
@@ -96,6 +96,18 @@ const openWeekly = [
 ];
 const odMtx = pickFromOpenData(openWeekly, 'MTX');
 check('開放資料：近月排除週契約', odMtx && odMtx.contractMonth, '202608');
+
+// --- 每日快照：固定取日盤，不受排程延遲影響 ---
+// GitHub 排程實測延遲 1~2.5 小時，落在夜盤時段（15:00 起）時若取「最新」會記到盤中價。
+const dayQ = pickContract(tmfDay, '202608');
+const nightQ = pickContract(tmfNight, '202608');
+const daily = pickDaySessionFirst([dayQ, nightQ]);
+check('快照：夜盤較新時仍取日盤', daily && daily.session, 'day');
+check('快照：取到日盤收盤 43891', daily && daily.price, 43891);
+check('快照：只有夜盤時退回夜盤', pickDaySessionFirst([null, nightQ]).session, 'night');
+check('快照：兩者皆無回傳 null', pickDaySessionFirst([null, null]), null);
+const odDay = pickFromOpenData(openRows, 'CDF', '202608', 'day');
+check('開放資料：指定 day 取一般時段 2362', odDay && odDay.price, 2362);
 
 // --- 商品對應 ---
 check('微台有獨立契約', TAIFEX_PRODUCTS.TMF.cid, 'TMF');

@@ -1059,6 +1059,11 @@ createApp({
         ];
 
         const changelog = [
+            { version: 'v5.4.0', date: '2026-07-27', items: [
+                '安全性：PIN 雜湊不再上傳至雲端。它是 6 位數字的無鹽 SHA-256，與加密資料放在一起等於附上答案（實測 0.25 秒即可還原 PIN，進而解開所有卡號與 CVV）。PIN 的定位是本機快速解鎖，本就不需跨裝置同步。',
+                '安全性：設定加密密碼時的重新加密流程改為「全部驗證通過才寫入」。舊版是邊解邊寫、失敗時靜默略過，只要有任一欄位解不開，該欄位會保留舊金鑰的密文卻仍翻成新模式，導致資料永久無法解開。',
+                '提醒：目前使用 PIN 模式者，加密強度僅等同 6 位數密碼，建議至系統設定改用「加密密碼」模式。'
+            ] },
             { version: 'v5.3.1', date: '2026-07-19', items: ['修正銀行名稱判定邏輯：將「台灣/台銀」關鍵字比對順序移至最後，以避免「臺灣新光商業銀行」等帶有臺灣前綴的銀行被誤判為「臺灣銀行」的 Bug'] },
             { version: 'v5.3.0', date: '2026-07-01', items: ['優化卡號複製功能：將複製按鈕移出卡片圖像以防止點按誤觸，改為整合於卡片下方的工具列，並移除冗餘的翻轉卡片按鈕', '優化版面資訊流：將「帳單通訊地址」與「結帳日/繳費截止日」一併移至銀行分組標題列旁顯示，卡片背面極簡化', '修正銀行設定修改連動機制與自動扣款帳戶(末五碼)的標示'] },
             { version: 'v5.2.0', date: '2026-06-22', items: ['新增相同銀行信用卡自動帶入功能，若新增同銀行第二張卡時會自動帶入結帳日、繳費日、扣款帳戶與帳單地址，省去重複輸入的繁瑣步驟'] },
@@ -1358,15 +1363,9 @@ createApp({
                             }
                         }
                         syncStatus.value = '同步自雲端 ' + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                        // Sync PIN hash so other devices know to show lock screen
-                        if (d.app_pin_hash) {
-                            localStorage.setItem('app_pin_hash', d.app_pin_hash);
-                            isPinSet.value = true;
-                            // If not already locked, lock now so user must authenticate
-                            if (!isLocked.value && !_sessionKey.value) {
-                                isLocked.value = true;
-                            }
-                        }
+                        // v5.19.0: 不再從雲端還原 PIN 雜湊。
+                        // PIN 的定位是「這台裝置的快速解鎖」，每台裝置各自設定即可；
+                        // 跨裝置同步它只會讓那組無鹽雜湊多流通一份。
                         // Sync 主密碼 salt / 模式，讓新裝置在輸入主密碼時能算出一樣的金鑰
                         if (d.app_key_salt) localStorage.setItem('app_key_salt', d.app_key_salt);
                         if (d.app_key_mode) {
@@ -1383,7 +1382,11 @@ createApp({
                     const dataToSave = {
                         bills: JSON.parse(JSON.stringify(bills.value)),
                         cards: JSON.parse(JSON.stringify(cards.value)),
-                        app_pin_hash: localStorage.getItem('app_pin_hash') || '',
+                        // v5.19.0: PIN 雜湊不再上雲。
+                        // 它是無鹽 SHA-256 的 6 位數字，把它跟密文放在一起等於附上答案 ——
+                        // 實測單執行緒 0.25 秒就能還原 PIN，接著解開所有卡號與 CVV。
+                        // PIN 的定位是「這台裝置的快速解鎖」，本來就不該跨裝置同步。
+                        app_pin_hash: firebase.firestore.FieldValue.delete(),
                         app_key_salt: localStorage.getItem('app_key_salt') || '',
                         app_key_mode: localStorage.getItem('app_key_mode') || 'pin',
                         last_sync: Date.now(),
@@ -1715,26 +1718,67 @@ createApp({
             const salt = ensureKeySalt();
             const newKey = deriveMasterKey(p1, salt);
 
-            // 用現有的 session key（不管原本是 pin 模式還是舊 passphrase）解密後，改用新主密碼重新加密
+            // v5.19.0: 重新加密改為「先全部驗證、確認無誤才落地」。
+            // 舊版是邊解邊寫、失敗時 catch(e){} 直接吞掉：只要有任一欄位解不開，
+            // 該欄位會保留舊金鑰的密文，但模式仍然翻成 passphrase —— 舊金鑰從此消失，
+            // 那格資料就永久解不開了。這裡改成三階段，任何一步失敗就整個中止、不改動任何東西。
             const storedData = localStorage.getItem('myCreditData');
             if (storedData) {
+                let parsed;
                 try {
-                    const parsed = JSON.parse(storedData);
-                    parsed.cards = (parsed.cards || []).map(card => {
-                        ENC_CARD_FIELDS.forEach(f => {
-                            if (card[f]) {
-                                try {
-                                    const plain = CryptoJS.AES.decrypt(card[f], oldKey).toString(CryptoJS.enc.Utf8);
-                                    if (plain) card[f] = CryptoJS.AES.encrypt(plain, newKey).toString();
-                                } catch(e) {}
-                            }
-                        });
-                        return card;
-                    });
-                    localStorage.setItem('myCreditData', JSON.stringify(parsed));
-                    cards.value = parsed.cards || [];
-                    bills.value = parsed.bills || [];
-                } catch(e) {}
+                    parsed = JSON.parse(storedData);
+                } catch (e) {
+                    alert('本機資料讀取失敗，為避免資料損毀已中止設定。請先匯出備份後再試一次。');
+                    return;
+                }
+                const sourceCards = parsed.cards || [];
+
+                // 階段一：用舊金鑰把所有欄位解出來，任何一欄失敗就中止
+                const plainMap = [];
+                for (let i = 0; i < sourceCards.length; i++) {
+                    const card = sourceCards[i];
+                    const fields = {};
+                    for (const f of ENC_CARD_FIELDS) {
+                        if (!card[f]) continue;
+                        let plain = '';
+                        try {
+                            plain = CryptoJS.AES.decrypt(card[f], oldKey).toString(CryptoJS.enc.Utf8);
+                        } catch (e) { plain = ''; }
+                        if (!plain) {
+                            alert(`「${card.name || card.bank || '第 ' + (i + 1) + ' 張'}」的加密欄位無法用目前的金鑰解開，已中止設定以免資料永久遺失。\n\n請先匯出備份，並確認目前是以正確的 PIN 解鎖。`);
+                            return;
+                        }
+                        fields[f] = plain;
+                    }
+                    plainMap.push(fields);
+                }
+
+                // 階段二：用新金鑰重新加密，並立刻驗證解得回原文
+                const rebuilt = sourceCards.map((card, i) => {
+                    const copy = { ...card };
+                    for (const [f, plain] of Object.entries(plainMap[i])) {
+                        copy[f] = CryptoJS.AES.encrypt(plain, newKey).toString();
+                    }
+                    return copy;
+                });
+                for (let i = 0; i < rebuilt.length; i++) {
+                    for (const [f, plain] of Object.entries(plainMap[i])) {
+                        let back = '';
+                        try {
+                            back = CryptoJS.AES.decrypt(rebuilt[i][f], newKey).toString(CryptoJS.enc.Utf8);
+                        } catch (e) { back = ''; }
+                        if (back !== plain) {
+                            alert('重新加密後的驗證未通過，已中止設定，資料維持原狀。請先匯出備份後再試一次。');
+                            return;
+                        }
+                    }
+                }
+
+                // 階段三：驗證全數通過才寫入
+                parsed.cards = rebuilt;
+                localStorage.setItem('myCreditData', JSON.stringify(parsed));
+                cards.value = rebuilt;
+                bills.value = parsed.bills || [];
             }
 
             localStorage.setItem('app_key_mode', 'passphrase');

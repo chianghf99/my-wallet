@@ -640,9 +640,17 @@
                                         </p>
                                         <div class="flex flex-wrap gap-2 pt-1">
                                             <button @click="exportToBitwarden" class="px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl flex items-center gap-2 transition">
-                                                <i class="fas fa-file-export text-[10px]"></i> 匯出成 Bitwarden 匯入檔
+                                                <i class="fas fa-file-export text-[10px]"></i> 1. 匯出成 Bitwarden 匯入檔
+                                            </button>
+                                            <button @click="clearMigratedCardSecrets" class="px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs rounded-xl flex items-center gap-2 transition">
+                                                <i class="fas fa-eraser text-[10px]"></i> 2. 清除本機卡號（保留末四碼）
                                             </button>
                                         </div>
+                                        <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                                            匯入密碼管理器並<strong>確認看得到卡號</strong>後，再執行第 2 步。
+                                            清除的是卡號、到期日與安全碼；末四碼、銀行、額度、繳款日與所有帳單紀錄都會保留，
+                                            回饋統計與 PDF 帳單解析也不受影響。執行前會自動下載一份加密備份。
+                                        </p>
                                         <p class="text-[11px] text-red-600 dark:text-red-400 leading-relaxed">
                                             <i class="fas fa-triangle-exclamation mr-1"></i>
                                             匯出的檔案內含<strong>未加密的明文卡號與安全碼</strong>，請於匯入 Bitwarden 後立即刪除，切勿放入雲端硬碟或以通訊軟體傳送。
@@ -1080,6 +1088,10 @@ createApp({
         ];
 
         const changelog = [
+            { version: 'v5.6.0', date: '2026-07-29', items: [
+                '新增：卡號搬移至密碼管理器後，可一鍵清除本機的卡號、到期日與安全碼，僅保留末四碼。清除後即使資料外洩也無法用於盜刷，而帳單、額度、繳款日、回饋統計與 PDF 解析完全不受影響。',
+                '安全設計：清除前會自動下載一份加密備份；沒有末四碼的舊資料會先自動補齊，避免清除後認不出是哪張卡。'
+            ] },
             { version: 'v5.5.0', date: '2026-07-28', items: [
                 '新增：系統設定可一鍵匯出成 Bitwarden 匯入檔，卡號不必逐筆重打。卡號與安全碼放在專門的密碼管理器比放在本 App 安全得多；帳單、額度與回饋統計仍留在這裡使用。',
                 '提醒：匯出檔內含未加密的明文卡號與安全碼，請於匯入後立即刪除。'
@@ -1946,6 +1958,57 @@ createApp({
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
             showToast(`已匯出 ${items.length} 張卡片，請匯入後刪除檔案`);
+        };
+
+        // --- v5.6.0: 卡號搬至密碼管理器後，清除本機的支付憑證欄位 ---
+        // 清掉卡號、到期日與安全碼之後，就算資料外洩也只剩末四碼，無法用於盜刷；
+        // 帳單、額度、繳款日與回饋統計完全不受影響，卡片外觀仍以 last4 顯示。
+        // 帳單地址（enc_address）不在清除範圍 —— 它不是支付憑證，且仍有查詢用途。
+        const CLEARABLE_SECRET_FIELDS = ['enc_number', 'enc_expiry', 'enc_cvv'];
+
+        const clearMigratedCardSecrets = () => {
+            if (!_sessionKey.value) {
+                alert('請先解鎖再執行。');
+                return;
+            }
+            const targets = cards.value.filter(c => CLEARABLE_SECRET_FIELDS.some(f => c[f]));
+            if (!targets.length) {
+                alert('目前沒有需要清除的卡號資料。');
+                return;
+            }
+            if (!confirm(
+                `即將清除 ${targets.length} 張卡片的「卡號、到期日、安全碼」。\n\n` +
+                `清除後這些資料只會存在你的密碼管理器，本 App 無法再顯示或複製卡號。\n` +
+                `卡片仍會保留末四碼、銀行、額度、繳款日與所有帳單紀錄。\n\n` +
+                `請先確認已在密碼管理器中確實看得到卡號。確定要清除嗎？`
+            )) return;
+
+            // 清除前自動下載一份備份。備份中的卡號欄位仍是密文，需原本的 PIN／主密碼才能解開。
+            try {
+                exportBackup();
+            } catch (e) {
+                if (!confirm('自動備份失敗，仍要繼續清除嗎？（建議先手動匯出備份）')) return;
+            }
+
+            let cleared = 0;
+            cards.value = cards.value.map(c => {
+                const copy = { ...c };
+                let touched = false;
+                // 沒有 last4 的舊資料，先從卡號補上再清除，否則清完會認不出是哪張卡
+                if (!copy.last4 && copy.enc_number) {
+                    const num = decryptField(copy.enc_number, _sessionKey.value);
+                    if (num && num !== '解密失敗') copy.last4 = num.slice(-4);
+                }
+                for (const f of CLEARABLE_SECRET_FIELDS) {
+                    if (copy[f]) { delete copy[f]; touched = true; }
+                }
+                if (touched) cleared++;
+                return copy;
+            });
+
+            saveLocal();
+            if (user.value) triggerSync('upload', true);
+            showToast(`已清除 ${cleared} 張卡片的卡號資料，僅保留末四碼`);
         };
 
         // Bitwarden 的 brand 欄位接受的名稱
@@ -2973,7 +3036,7 @@ createApp({
             commonBanksList, startAddBill, associatedCard, onBillNameInput, getCardOrgIcon, getBillCardInfo,
             exportBackup, importBackup, getOfficialBankName, getTicketBadgeClass, getTicketIcon, quickAddCardForBank,
             encryptionMode, showUnlockPassphrase, unlockPassphraseInput, masterPassphrase, masterPassphraseConfirm,
-            setupPassphrase, unlockWithPassphrase, exportToBitwarden, getCardAddress, revealCardNumber, toggleCardFlip, maskAmount
+            setupPassphrase, unlockWithPassphrase, exportToBitwarden, clearMigratedCardSecrets, getCardAddress, revealCardNumber, toggleCardFlip, maskAmount
         };
     }
 }).mount('#app');

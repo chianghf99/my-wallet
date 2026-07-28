@@ -120,13 +120,31 @@ export const pickFreshest = (candidates = []) => {
 };
 
 /**
+ * 優先採用日盤（一般交易時段）的那筆，沒有才退回夜盤。
+ *
+ * 用於每日快照：GitHub 的排程實測會延遲 1～2.5 小時，而期貨夜盤 15:00 就開始，
+ * 若一律取「最新時段」，就會變成有些天記日盤收盤、有些天記夜盤盤中，
+ * 使走勢圖與每月獲利統計混入不固定的夜盤波動。固定取日盤收盤，
+ * 快照結果便與執行時間無關。
+ *
+ * 前端的「更新期貨價格」不適用這個規則 —— 那裡本來就該顯示當下最新的價格。
+ */
+export const pickDaySessionFirst = (candidates = []) => {
+    const valid = candidates.filter(Boolean);
+    if (!valid.length) return null;
+    const day = valid.filter(c => c.session === 'day');
+    return day.length ? day.reduce((b, c) => (c.stamp > b.stamp ? c : b)) : pickFreshest(valid);
+};
+
+/**
  * 期交所每日行情（開放資料）的挑選邏輯 —— 即時行情失敗時的退路。
- * 這份資料用 TradingSession 欄位區分「一般」與「盤後」，盤後發生在後面，有資料就優先。
+ * 這份資料用 TradingSession 欄位區分「一般」與「盤後」。preferSession 預設 'night'
+ * （盤後發生在後面，較新）；每日快照傳 'day' 以固定取日盤收盤，與即時行情的原則一致。
  * 注意這裡的契約代碼與即時行情不同：大台是 TX、小台 MTX、微台 TMF。
  */
 export const OPEN_DATA_CONTRACT = { TX: 'TX', MTX: 'MTX', TMF: 'TMF', CDF: 'CDF', QFF: 'QFF' };
 
-export const pickFromOpenData = (rows = [], contract, contractMonth = null) => {
+export const pickFromOpenData = (rows = [], contract, contractMonth = null, preferSession = 'night') => {
     const mine = rows.filter(r => (r.Contract || '').trim() === contract);
     if (!mine.length) return null;
     const latest = mine.reduce((a, r) => (r.Date > a ? r.Date : a), '');
@@ -141,7 +159,9 @@ export const pickFromOpenData = (rows = [], contract, contractMonth = null) => {
     }
     const valid = sameDay.filter(r => toNumber(r.Last) > 0);
     if (!valid.length) return null;
-    const pick = valid.find(r => r.TradingSession === '盤後') || valid[0];
+    // preferSession='day' 供每日快照使用，讓退路的取價原則與即時行情一致
+    const wanted = preferSession === 'day' ? '一般' : '盤後';
+    const pick = valid.find(r => r.TradingSession === wanted) || valid[0];
     const last = toNumber(pick.Last);
     const change = toNumber(pick.Change);
     return {

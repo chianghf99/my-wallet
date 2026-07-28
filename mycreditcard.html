@@ -628,6 +628,27 @@
                                             </label>
                                         </div>
                                     </div>
+                                    <!-- v5.5.0: 搬移卡號至密碼管理器 -->
+                                    <div class="p-5 rounded-2xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-900/10 space-y-3">
+                                        <h5 class="text-sm font-bold text-amber-800 dark:text-amber-300 flex items-center gap-2">
+                                            <i class="fas fa-shield-halved"></i>把卡號搬到密碼管理器
+                                        </h5>
+                                        <p class="text-xs text-amber-700/80 dark:text-amber-400/80 leading-relaxed">
+                                            卡號與安全碼一旦外洩即可直接盜刷，放在專門的密碼管理器（如 Bitwarden）比放在本 App 安全得多 ——
+                                            它的金鑰不會落地、有完整性驗證，也不像網頁會從外部 CDN 載入程式碼。
+                                            匯出後可一次匯入，不必逐筆輸入；帳單、額度與回饋統計仍留在這裡使用。
+                                        </p>
+                                        <div class="flex flex-wrap gap-2 pt-1">
+                                            <button @click="exportToBitwarden" class="px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl flex items-center gap-2 transition">
+                                                <i class="fas fa-file-export text-[10px]"></i> 匯出成 Bitwarden 匯入檔
+                                            </button>
+                                        </div>
+                                        <p class="text-[11px] text-red-600 dark:text-red-400 leading-relaxed">
+                                            <i class="fas fa-triangle-exclamation mr-1"></i>
+                                            匯出的檔案內含<strong>未加密的明文卡號與安全碼</strong>，請於匯入 Bitwarden 後立即刪除，切勿放入雲端硬碟或以通訊軟體傳送。
+                                        </p>
+                                    </div>
+
                                     <!-- 雲端備份管理 -->
                                     <div class="p-5 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-3">
                                         <h5 class="text-sm font-bold text-slate-700 dark:text-slate-300">雲端同步備份 (雲端)</h5>
@@ -1059,6 +1080,10 @@ createApp({
         ];
 
         const changelog = [
+            { version: 'v5.5.0', date: '2026-07-28', items: [
+                '新增：系統設定可一鍵匯出成 Bitwarden 匯入檔，卡號不必逐筆重打。卡號與安全碼放在專門的密碼管理器比放在本 App 安全得多；帳單、額度與回饋統計仍留在這裡使用。',
+                '提醒：匯出檔內含未加密的明文卡號與安全碼，請於匯入後立即刪除。'
+            ] },
             { version: 'v5.4.0', date: '2026-07-27', items: [
                 '安全性：PIN 雜湊不再上傳至雲端。它是 6 位數字的無鹽 SHA-256，與加密資料放在一起等於附上答案（實測 0.25 秒即可還原 PIN，進而解開所有卡號與 CVV）。PIN 的定位是本機快速解鎖，本就不需跨裝置同步。',
                 '安全性：設定加密密碼時的重新加密流程改為「全部驗證通過才寫入」。舊版是邊解邊寫、失敗時靜默略過，只要有任一欄位解不開，該欄位會保留舊金鑰的密文卻仍翻成新模式，導致資料永久無法解開。',
@@ -1846,6 +1871,90 @@ createApp({
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+        };
+
+        // --- v5.5.0: 匯出成 Bitwarden 可匯入的 JSON ---
+        // 動機：卡號與 CVV 這類「外洩即可直接盜刷」的資料，放在自製加密裡風險不成比例
+        //（金鑰明文快取於 localStorage、AES-CBC 無完整性驗證、且本頁從 5 個 CDN 載入
+        //  未經 SRI 驗證的函式庫，任一被入侵即可在加密前竊取明文）。
+        // 搬到密碼管理器後，本 App 只需保留末四碼等辨識資訊。
+        //
+        // 注意：Bitwarden 的 CSV 只支援登入與安全筆記，卡片必須走 JSON（type: 3）。
+        const exportToBitwarden = () => {
+            if (!_sessionKey.value) {
+                alert('請先解鎖再匯出。');
+                return;
+            }
+            const key = _sessionKey.value;
+            const usable = cards.value.filter(c => c.enc_number);
+            if (!usable.length) {
+                alert('沒有可匯出的卡號資料。');
+                return;
+            }
+            if (!confirm(
+                `即將匯出 ${usable.length} 張卡片，供 Bitwarden 匯入。\n\n` +
+                `⚠️ 這個檔案內的卡號、到期日與安全碼是「未加密的明文」。\n` +
+                `請在匯入 Bitwarden 之後立刻刪除該檔案，也不要放進雲端硬碟或聊天軟體。\n\n` +
+                `確定要匯出嗎？`
+            )) return;
+
+            const items = [];
+            for (const c of usable) {
+                const number = decryptField(c.enc_number, key);
+                if (!number || number === '解密失敗') {
+                    alert(`「${c.nickname || c.name || '未命名卡片'}」的卡號無法解開，已中止匯出。`);
+                    return;
+                }
+                const expiry = c.enc_expiry ? decryptField(c.enc_expiry, key) : '';
+                const cvv = c.enc_cvv ? decryptField(c.enc_cvv, key) : '';
+                // 到期日在本 App 是自由文字，常見為 MM/YY 或 MM/YYYY
+                const m = String(expiry).match(/(\d{1,2})\s*[\/\-]?\s*(\d{2,4})/);
+                let expMonth = '', expYear = '';
+                if (m) {
+                    expMonth = String(parseInt(m[1], 10));
+                    expYear = m[2].length === 2 ? '20' + m[2] : m[2];
+                }
+                items.push({
+                    type: 3,                       // 3 = card
+                    name: [c.name, c.nickname].filter(Boolean).join(' ') || '信用卡',
+                    notes: [c.notes, c.org && ('組織/通路：' + c.org)].filter(Boolean).join('\n') || null,
+                    favorite: false,
+                    fields: null,
+                    card: {
+                        cardholderName: null,
+                        brand: detectCardBrand(number),
+                        number: number,
+                        expMonth: expMonth || null,
+                        expYear: expYear || null,
+                        code: cvv || null
+                    }
+                });
+            }
+
+            const payload = { encrypted: false, folders: [], items };
+            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `bitwarden_import_明文請匯入後刪除_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast(`已匯出 ${items.length} 張卡片，請匯入後刪除檔案`);
+        };
+
+        // Bitwarden 的 brand 欄位接受的名稱
+        const detectCardBrand = (number) => {
+            const n = String(number).replace(/\D/g, '');
+            if (/^4/.test(n)) return 'Visa';
+            if (/^(5[1-5]|2[2-7])/.test(n)) return 'Mastercard';
+            if (/^3[47]/.test(n)) return 'Amex';
+            if (/^(6011|65|64[4-9])/.test(n)) return 'Discover';
+            if (/^35/.test(n)) return 'JCB';
+            if (/^(30[0-5]|36|38)/.test(n)) return 'Diners Club';
+            if (/^62/.test(n)) return 'UnionPay';
+            return null;
         };
 
         const importBackup = (event) => {
@@ -2860,7 +2969,7 @@ createApp({
             commonBanksList, startAddBill, associatedCard, onBillNameInput, getCardOrgIcon, getBillCardInfo,
             exportBackup, importBackup, getOfficialBankName, getTicketBadgeClass, getTicketIcon, quickAddCardForBank,
             encryptionMode, showUnlockPassphrase, unlockPassphraseInput, masterPassphrase, masterPassphraseConfirm,
-            setupPassphrase, unlockWithPassphrase, getCardAddress, revealCardNumber, toggleCardFlip, maskAmount
+            setupPassphrase, unlockWithPassphrase, exportToBitwarden, getCardAddress, revealCardNumber, toggleCardFlip, maskAmount
         };
     }
 }).mount('#app');

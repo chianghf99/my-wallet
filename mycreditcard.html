@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#6366f1">
+    <!-- 外部資源皆已鎖定版本並加上 SRI（Subresource Integrity）。
+         瀏覽器會比對下載內容的雜湊，不符即拒絕執行 —— 即使 CDN 被入侵或連線遭劫持，
+         也無法把函式庫換成惡意版本。注意：升級版本時 integrity 雜湊必須同步更新，
+         否則資源會被擋下、頁面無法運作。
+
+         以下三類刻意不加 SRI，因為它們的內容本來就會變動，加了必定壞掉：
+           - fonts.googleapis.com/css2：回應內容依瀏覽器 User-Agent 而異
+           - apis.google.com/js/api.js、accounts.google.com/gsi/client：
+             Google 的載入器，內容持續更新且官方不提供固定雜湊 -->
     <title>卡片管家 Pro | Card Manager</title>
     <!-- v5.12.0: PWA。三個入口各有獨立的 manifest 與圖示，
          加到主畫面後會是三個可分辨的 App，而不是同一顆圖示。 -->
@@ -17,9 +26,14 @@
     <meta name="apple-mobile-web-app-title" content="卡片管家">
     
     <!-- Dependencies -->
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="https://unpkg.com/vue@3.5.40/dist/vue.global.js"
+        integrity="sha384-xZGBZ8/+QRtMg/kJMPyo4v1otVc8kxjAeiKnaCg+yBlIxeE+11fWfYLJAM6BdWbc" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <!-- Tailwind 的 CDN 不回傳 CORS 標頭，而 SRI 必須搭配 crossorigin，
+         兩者並用會讓瀏覽器直接拒絕載入。因此這支僅鎖定版本、不加 SRI。
+         鎖版本仍有意義：bare URL 會 302 導向最新版，改版可能帶來破壞性變更。 -->
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"
+        integrity="sha384-S3wQ/l0OsbJoFeJC81UIr3JOlx/OzNJpRt1bV+yhpWQxPAahfpQtpxBSfn+Isslc" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -33,15 +47,21 @@
             }
         }
     </script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+        integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1"
+        integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"
+        integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
 
     <!-- Firebase v9 Compat -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"
+        integrity="sha384-ViccRjS0k/lvYsrtaKXk+ES61/4PAZlFI/mPHmLC1YWzK0AIbXbI5ZXDzcm3F8gH" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"
+        integrity="sha384-+/4lqMnmLqwbdHXshvGDmBTeWlNoPRdjXi4ZsiBj10EhQXaTBe3RF5JZktdSjug6" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"
+        integrity="sha384-7TetnPNdXXu6qURzIEXWCwpXedGGBJSXIR5Cv0gOWTB34UD5TxPHx33PhjA6wFQ3" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
     <style>
         :root {

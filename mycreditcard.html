@@ -1914,19 +1914,23 @@ createApp({
                     expMonth = String(parseInt(m[1], 10));
                     expYear = m[2].length === 2 ? '20' + m[2] : m[2];
                 }
+                // 欄位與 Bitwarden 實際匯出檔逐項比對過：
+                // fields 是空陣列（不是 null）、reprompt 為 0、cardholderName 允許空字串、
+                // brand 用 'Mastercard' 這類全名、expYear 為四位數。
                 items.push({
                     type: 3,                       // 3 = card
                     name: [c.name, c.nickname].filter(Boolean).join(' ') || '信用卡',
-                    notes: [c.notes, c.org && ('組織/通路：' + c.org)].filter(Boolean).join('\n') || null,
+                    notes: [c.notes, c.org && ('組織/通路：' + c.org)].filter(Boolean).join('\n') || '',
                     favorite: false,
-                    fields: null,
+                    reprompt: 0,
+                    fields: [],
                     card: {
-                        cardholderName: null,
-                        brand: detectCardBrand(number),
+                        cardholderName: '',
+                        brand: detectCardBrand(number) || '',
                         number: number,
-                        expMonth: expMonth || null,
-                        expYear: expYear || null,
-                        code: cvv || null
+                        expMonth: expMonth || '',
+                        expYear: expYear || '',
+                        code: cvv || ''
                     }
                 });
             }

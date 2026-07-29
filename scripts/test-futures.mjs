@@ -7,7 +7,7 @@
 
 import {
     parseSymbolId, pickContract, pickFreshest, contractMonthOf,
-    pickFromOpenData, TAIFEX_PRODUCTS, effectiveStamp, pickDaySessionFirst, isWithinDays
+    pickFromOpenData, TAIFEX_PRODUCTS, effectiveStamp, pickDaySessionFirst, isWithinDays, cnyesEntry, cnyesUrl, parseCnyesQuote
 } from '../js/utils/futures.js';
 
 let fail = 0;
@@ -130,6 +130,20 @@ check('isWithinDays：9 天前不在 3 天內', isWithinDays(D9, 3), false);
 check('isWithinDays：昨天在 1 天內', isWithinDays(ymd(-1), 1), true);
 check('isWithinDays：2 天前不在 1 天內', isWithinDays(ymd(-2), 1), false);
 check('isWithinDays：格式錯誤回傳 false', isWithinDays('abc', 3), false);
+
+// --- 鉅亨備援（期交所擋 Cloudflare 時的即時來源）---
+check('大台有鉅亨對應', cnyesEntry('TX').sym, 'TWF:TXF:FUTURES');
+check('小台有鉅亨對應', cnyesEntry('MTX').sym, 'TWF:MXF:FUTURES');
+check('微台借用小台報價', cnyesEntry('TMF').sym, 'TWF:MXF:FUTURES');
+check('微台標記為近似值', cnyesEntry('TMF').approx, true);
+check('小台不是近似值', cnyesEntry('MTX').approx, false);
+check('個股期貨無鉅亨來源', cnyesEntry('CDF'), null);
+check('無來源時不產生網址', cnyesUrl('CDF'), null);
+const cn = parseCnyesQuote({ data: [{ '6': 40203, '11': -163 }] }, true);
+check('鉅亨解析：成交價', cn.price, 40203);
+check('鉅亨解析：昨收 = 成交 - 漲跌', cn.prevClose, 40366);
+check('鉅亨解析：帶回 approx 標記', cn.approx, true);
+check('鉅亨解析：無成交價回傳 null', parseCnyesQuote({ data: [{}] }), null);
 
 // --- 商品對應 ---
 check('微台有獨立契約', TAIFEX_PRODUCTS.TMF.cid, 'TMF');

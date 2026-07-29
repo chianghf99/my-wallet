@@ -163,12 +163,21 @@ export const pickDaySessionFirst = (candidates = []) => {
  * 限制：只有指數期貨，且是「近全」（近月連續），不分契約月份；
  * 微台與個股期貨（CDF/QFF）皆無資料。因此僅作為期交所失敗時的備援。
  */
-export const CNYES_SYMBOL = { TX: 'TWF:TXF:FUTURES', MTX: 'TWF:MXF:FUTURES' };
-export const cnyesUrl = (code) => {
-    const sym = CNYES_SYMBOL[String(code || '').toUpperCase()];
-    return sym ? `https://ws.api.cnyes.com/ws/api/v1/quote/quotes/${sym}` : null;
+// 微台沒有自己的鉅亨報價，但它與小台追蹤同一個指數、同一契約月份。
+// 實測同一時間戳的價差極小：日盤 7 點、夜盤 1 點（微台乘數 10 → 一口差 10～70 元）。
+// 相較於「完全不更新而沿用舊價」動輒數千點的誤差，這個近似值明顯划算，
+// 但仍標記 approx 讓介面標示出來，不假裝它是微台自己的成交價。
+export const CNYES_SYMBOL = {
+    TX:  { sym: 'TWF:TXF:FUTURES', approx: false },
+    MTX: { sym: 'TWF:MXF:FUTURES', approx: false },
+    TMF: { sym: 'TWF:MXF:FUTURES', approx: true }
 };
-export const parseCnyesQuote = (json) => {
+export const cnyesEntry = (code) => CNYES_SYMBOL[String(code || '').toUpperCase()] || null;
+export const cnyesUrl = (code) => {
+    const e = cnyesEntry(code);
+    return e ? `https://ws.api.cnyes.com/ws/api/v1/quote/quotes/${e.sym}` : null;
+};
+export const parseCnyesQuote = (json, approx = false) => {
     const q = (json && json.data && json.data[0]) || null;
     const price = q ? toNumber(q['6']) : null;
     if (!(price > 0)) return null;
@@ -177,7 +186,8 @@ export const parseCnyesQuote = (json) => {
         price,
         prevClose: change === null ? price : price - change,
         session: 'unknown',
-        nearContinuous: true   // 近全報價，非特定契約月份
+        nearContinuous: true,  // 近全報價，非特定契約月份
+        approx                 // true 代表這是以相近商品替代的近似值
     };
 };
 

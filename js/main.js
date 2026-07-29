@@ -1,6 +1,6 @@
 import { db, auth } from './firebase-config.js';
 import { getLocalDate, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountSign, getFuturesDisplayName } from './utils/format.js';
-import { TAIFEX_PRODUCTS, TAIFEX_MIS_URL, taifexRequestBody, contractMonthOf, pickContract, pickFreshest, pickFromOpenData, OPEN_DATA_CONTRACT, cnyesUrl, parseCnyesQuote } from './utils/futures.js';
+import { TAIFEX_PRODUCTS, TAIFEX_MIS_URL, taifexRequestBody, contractMonthOf, pickContract, pickFreshest, pickFromOpenData, OPEN_DATA_CONTRACT, cnyesUrl, cnyesEntry, parseCnyesQuote } from './utils/futures.js';
 import { computePortfolio, calcStats, calcStockExposure, calcFundsValueTwd, calcFundsCostTwd, calcFuturesMarginCash, calcFuturesMarginUsed, calcFuturesExposure } from './utils/valuation.js';
 
 import { 
@@ -765,7 +765,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                               const ref = db.collection('users').doc(user.value.uid).collection('futures_positions').doc(pos.id);
                               batch.update(ref, { currentPrice: Number(q.price), updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
                               updatedCount++;
-                              const tag = `${sym} ${q.price}${q.stale ? '(收盤價)' : q.session === 'night' ? '(夜盤)' : ''}`;
+                              const tag = `${sym} ${q.price}${q.stale ? '(收盤價)' : q.approx ? '(近似)' : ''}`;
                               if (!shown.includes(tag)) shown.push(tag);
                           });
                           if (updatedCount > 0) {
@@ -2245,7 +2245,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     if (cn) {
                         try {
                             const resp = await fetchWithRetry(CF_PROXY + encodeURIComponent(cn), 1, 8000);
-                            const q = parseCnyesQuote(await resp.json());
+                            const q = parseCnyesQuote(await resp.json(), !!cnyesEntry(code)?.approx);
                             if (q) return q;
                         } catch (e) { console.warn('[鉅亨] 取價失敗', e); }
                     }

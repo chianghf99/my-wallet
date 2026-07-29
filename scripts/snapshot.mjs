@@ -21,7 +21,8 @@ import admin from 'firebase-admin';
 import { buildSnapshotFields } from '../js/utils/valuation.js';
 // 期貨取價的挑選邏輯也與前端共用（日夜盤、週契約、月份對應都在這裡）
 import { TAIFEX_PRODUCTS, TAIFEX_MIS_URL, taifexRequestBody, contractMonthOf,
-         pickContract, pickDaySessionFirst, pickFromOpenData, OPEN_DATA_CONTRACT } from '../js/utils/futures.js';
+         pickContract, pickDaySessionFirst, pickFromOpenData, OPEN_DATA_CONTRACT,
+         cnyesUrl, cnyesEntry, parseCnyesQuote } from '../js/utils/futures.js';
 
 const TZ = 'Asia/Taipei';
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
@@ -236,6 +237,14 @@ const fetchFuturesQuote = async (code, expiry) => {
     ]);
     if (hit) return hit;
 
+    // 期交所即時行情會擋部分機房 IP，指數期貨改走鉅亨（微台以小台近似，實測價差 1~7 點）
+    const cn = cnyesUrl(code);
+    if (cn) {
+        try {
+            const q = parseCnyesQuote(await fetchJson(cn), !!cnyesEntry(code)?.approx);
+            if (q) return q;
+        } catch (e) { /* 交給下一層 */ }
+    }
     const rows = await fetchTaifexOpenData();
     return rows ? pickFromOpenData(rows, OPEN_DATA_CONTRACT[String(code).toUpperCase()], month, 'day') : null;
 };

@@ -1,6 +1,6 @@
 import { db, auth } from './firebase-config.js';
 import { getLocalDate, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountSign, getFuturesDisplayName } from './utils/format.js';
-import { TAIFEX_PRODUCTS, TAIFEX_MIS_URL, taifexRequestBody, contractMonthOf, pickContract, pickFreshest, pickFromOpenData, OPEN_DATA_CONTRACT } from './utils/futures.js';
+import { TAIFEX_PRODUCTS, TAIFEX_MIS_URL, taifexRequestBody, contractMonthOf, pickContract, pickFreshest, pickFromOpenData, OPEN_DATA_CONTRACT, cnyesUrl, parseCnyesQuote } from './utils/futures.js';
 import { computePortfolio, calcStats, calcStockExposure, calcFundsValueTwd, calcFundsCostTwd, calcFuturesMarginCash, calcFuturesMarginUsed, calcFuturesExposure } from './utils/valuation.js';
 
 import { 
@@ -713,17 +713,13 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                           if (price) {
                               futuresForm.value.currentPrice = Number(price);
                           } else {
-                              // 備援：抓取加權指數現貨
-                              const fallbackUrl = CF_PROXY + encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/^TWII');
-                              const fbResp = await fetch(fallbackUrl);
-                              const fbData = await fbResp.json();
-                              const fbPrice = fbData.chart.result[0].meta.regularMarketPrice;
-                              if (fbPrice) {
-                                  futuresForm.value.currentPrice = Math.round(fbPrice);
-                              } else {
-                                  futuresForm.value.currentPrice = '';
-                                  toastErr('無法取得期貨報價或指數現貨價格');
-                              }
+                              // v5.19.0: 移除「抓不到就用加權指數現貨代替」的舊備援。
+                              // 那是這個函式還只服務台指期時留下的，個股期貨套用會離譜到不能再離譜：
+                              // 實測台積電期貨應為 2,320，卻被填成加權指數的 40,039（差 17 倍）。
+                              // 指數期貨也不該用現貨代替 —— 期現價差本來就存在。
+                              // 取不到就明確告知並保持空白，讓使用者自己輸入，不要猜。
+                              futuresForm.value.currentPrice = '';
+                              toastErr(`無法取得 ${sym} 的期貨報價，請稍後再試或手動輸入`);
                           }
                       } catch (e) {
                           futuresForm.value.currentPrice = '';
@@ -769,7 +765,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                               const ref = db.collection('users').doc(user.value.uid).collection('futures_positions').doc(pos.id);
                               batch.update(ref, { currentPrice: Number(q.price), updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
                               updatedCount++;
-                              const tag = `${sym} ${q.price}${q.session === 'night' ? '(夜盤)' : ''}`;
+                              const tag = `${sym} ${q.price}${q.stale ? '(收盤價)' : q.session === 'night' ? '(夜盤)' : ''}`;
                               if (!shown.includes(tag)) shown.push(tag);
                           });
                           if (updatedCount > 0) {
@@ -2244,6 +2240,17 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     ]);
                     if (hit) return hit;
 
+                    // 期交所即時行情會擋 Cloudflare Worker 的 IP，這時指數期貨改走鉅亨（仍是即時的）
+                    const cn = cnyesUrl(code);
+                    if (cn) {
+                        try {
+                            const resp = await fetchWithRetry(CF_PROXY + encodeURIComponent(cn), 1, 8000);
+                            const q = parseCnyesQuote(await resp.json());
+                            if (q) return q;
+                        } catch (e) { console.warn('[鉅亨] 取價失敗', e); }
+                    }
+
+                    // 最後才用每日行情，且過期就不用（寧可不更新，也不要拿舊價當現價）
                     const rows = await fetchTaifexOpenData();
                     if (!rows) return null;
                     return pickFromOpenData(rows, OPEN_DATA_CONTRACT[String(code).toUpperCase()], month);

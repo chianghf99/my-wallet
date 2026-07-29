@@ -62,6 +62,17 @@ export const parseSymbolId = (symbolId) => {
     };
 };
 
+/** 判斷 YYYYMMDD 是否在今天往前 days 天之內（用台北時間比較） */
+export const isWithinDays = (yyyymmdd, days, now = new Date()) => {
+    if (!/^\d{8}$/.test(String(yyyymmdd || ''))) return false;
+    const tp = new Date(now.getTime() + (8 * 60 + now.getTimezoneOffset()) * 60000);
+    const today = Date.UTC(tp.getFullYear(), tp.getMonth(), tp.getDate());
+    const d = String(yyyymmdd);
+    const that = Date.UTC(+d.slice(0, 4), +d.slice(4, 6) - 1, +d.slice(6, 8));
+    const diff = (today - that) / 86400000;
+    return diff >= 0 && diff <= days;
+};
+
 const toNumber = v => {
     const n = parseFloat(String(v ?? '').replace(/,/g, ''));
     return isFinite(n) ? n : null;
@@ -142,12 +153,46 @@ export const pickDaySessionFirst = (candidates = []) => {
  * （盤後發生在後面，較新）；每日快照傳 'day' 以固定取日盤收盤，與即時行情的原則一致。
  * 注意這裡的契約代碼與即時行情不同：大台是 TX、小台 MTX、微台 TMF。
  */
+/**
+ * 鉅亨「近全」報價 —— 期交所即時行情不可用時的即時來源。
+ *
+ * 背景：期交所 mis.taifex.com.tw 會封鎖 Cloudflare Worker 的 IP（實測穩定 520，
+ * 但同樣的 header 從家用網路直連為 200），導致前端只能退回每日行情，
+ * 而那份資料落後一到兩個交易日。鉅亨可經由 Worker 存取且涵蓋日夜盤。
+ *
+ * 限制：只有指數期貨，且是「近全」（近月連續），不分契約月份；
+ * 微台與個股期貨（CDF/QFF）皆無資料。因此僅作為期交所失敗時的備援。
+ */
+export const CNYES_SYMBOL = { TX: 'TWF:TXF:FUTURES', MTX: 'TWF:MXF:FUTURES' };
+export const cnyesUrl = (code) => {
+    const sym = CNYES_SYMBOL[String(code || '').toUpperCase()];
+    return sym ? `https://ws.api.cnyes.com/ws/api/v1/quote/quotes/${sym}` : null;
+};
+export const parseCnyesQuote = (json) => {
+    const q = (json && json.data && json.data[0]) || null;
+    const price = q ? toNumber(q['6']) : null;
+    if (!(price > 0)) return null;
+    const change = toNumber(q['11']);
+    return {
+        price,
+        prevClose: change === null ? price : price - change,
+        session: 'unknown',
+        nearContinuous: true   // 近全報價，非特定契約月份
+    };
+};
+
 export const OPEN_DATA_CONTRACT = { TX: 'TX', MTX: 'MTX', TMF: 'TMF', CDF: 'CDF', QFF: 'QFF' };
 
-export const pickFromOpenData = (rows = [], contract, contractMonth = null, preferSession = 'night') => {
+export const pickFromOpenData = (rows = [], contract, contractMonth = null, preferSession = 'night', maxAgeDays = 1) => {
     const mine = rows.filter(r => (r.Contract || '').trim() === contract);
     if (!mine.length) return null;
     const latest = mine.reduce((a, r) => (r.Date > a ? r.Date : a), '');
+    // 這份是每日收盤資料，實測可能落後一到兩個交易日。太舊就回傳 null 讓呼叫端放棄。
+    // 窗口刻意收得很緊（預設只接受今天或昨天）：曾發生 7/30 取到 7/28 的盤後價，
+    // 與真實價差 2,780 點（大台一口 55 萬）。
+    // 兩害相權：「沒更新」使用者看得到，「用舊價當現價」則會安靜地算錯損益。
+    // 代價是週一開盤前這條退路會失效 —— 但那時本來就沒有新價格可用。
+    if (!isWithinDays(latest, maxAgeDays)) return null;
     let sameDay = mine.filter(r => r.Date === latest);
     if (contractMonth) {
         const byMonth = sameDay.filter(r => r['ContractMonth(Week)'] === contractMonth);
@@ -168,6 +213,8 @@ export const pickFromOpenData = (rows = [], contract, contractMonth = null, pref
         price: last,
         prevClose: change === null ? last : last - change,
         session: pick.TradingSession === '盤後' ? 'night' : 'day',
-        contractMonth: pick['ContractMonth(Week)']
+        contractMonth: pick['ContractMonth(Week)'],
+        sourceDate: latest,
+        stale: true            // 這是每日收盤資料，不是即時報價
     };
 };

@@ -7,7 +7,7 @@
 
 import {
     parseSymbolId, pickContract, pickFreshest, contractMonthOf,
-    pickFromOpenData, TAIFEX_PRODUCTS, effectiveStamp, pickDaySessionFirst
+    pickFromOpenData, TAIFEX_PRODUCTS, effectiveStamp, pickDaySessionFirst, isWithinDays
 } from '../js/utils/futures.js';
 
 let fail = 0;
@@ -77,11 +77,17 @@ check('夜盤進行中：夜盤勝出', freshest3 && freshest3.session, 'night')
 check('取到夜盤價格 44200', freshest3 && freshest3.price, 44200);
 
 // --- 開放資料退路 ---
+// 日期改用相對於今天，否則測資一過期就會被時效檢查擋掉、測試隨時間失效
+const ymd = (offsetDays) => {
+    const d = new Date(Date.now() + offsetDays * 86400000);
+    return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+};
+const D0 = ymd(0), D1 = ymd(-1), D9 = ymd(-9);
 const openRows = [
-    { Date: '20260724', Contract: 'CDF', 'ContractMonth(Week)': '202608', Last: '2362', Change: '-51', TradingSession: '一般' },
-    { Date: '20260724', Contract: 'CDF', 'ContractMonth(Week)': '202608', Last: '2390', Change: '-23', TradingSession: '盤後' },
-    { Date: '20260724', Contract: 'CDF', 'ContractMonth(Week)': '202609', Last: '2376', Change: '-54', TradingSession: '一般' },
-    { Date: '20260723', Contract: 'CDF', 'ContractMonth(Week)': '202608', Last: '2413', Change: '10',  TradingSession: '一般' }
+    { Date: D0, Contract: 'CDF', 'ContractMonth(Week)': '202608', Last: '2362', Change: '-51', TradingSession: '一般' },
+    { Date: D0, Contract: 'CDF', 'ContractMonth(Week)': '202608', Last: '2390', Change: '-23', TradingSession: '盤後' },
+    { Date: D0, Contract: 'CDF', 'ContractMonth(Week)': '202609', Last: '2376', Change: '-54', TradingSession: '一般' },
+    { Date: D1, Contract: 'CDF', 'ContractMonth(Week)': '202608', Last: '2413', Change: '10',  TradingSession: '一般' }
 ];
 const od = pickFromOpenData(openRows, 'CDF', '202608');
 check('開放資料：優先採用盤後', od && od.price, 2390);
@@ -91,8 +97,8 @@ check('開放資料：指定 202609', odSep && odSep.price, 2376);
 
 // 週契約在未指定月份時要被排除
 const openWeekly = [
-    { Date: '20260724', Contract: 'MTX', 'ContractMonth(Week)': '202607W5', Last: '43895', Change: '-908', TradingSession: '一般' },
-    { Date: '20260724', Contract: 'MTX', 'ContractMonth(Week)': '202608',   Last: '43894', Change: '-1018', TradingSession: '一般' }
+    { Date: D0, Contract: 'MTX', 'ContractMonth(Week)': '202607W5', Last: '43895', Change: '-908', TradingSession: '一般' },
+    { Date: D0, Contract: 'MTX', 'ContractMonth(Week)': '202608',   Last: '43894', Change: '-1018', TradingSession: '一般' }
 ];
 const odMtx = pickFromOpenData(openWeekly, 'MTX');
 check('開放資料：近月排除週契約', odMtx && odMtx.contractMonth, '202608');
@@ -108,6 +114,22 @@ check('快照：只有夜盤時退回夜盤', pickDaySessionFirst([null, nightQ]
 check('快照：兩者皆無回傳 null', pickDaySessionFirst([null, null]), null);
 const odDay = pickFromOpenData(openRows, 'CDF', '202608', 'day');
 check('開放資料：指定 day 取一般時段 2362', odDay && odDay.price, 2362);
+
+// --- 時效檢查：過期的每日行情不可當現價使用 ---
+// 實測 7/30 曾取到 7/28 的盤後價，與真實價差 2,780 點（大台一口 55 萬）。
+const staleRows = [{ Date: D9, Contract: 'CDF', 'ContractMonth(Week)': '202608', Last: '2390', Change: '-23', TradingSession: '盤後' }];
+check('開放資料：9 天前的資料回傳 null', pickFromOpenData(staleRows, 'CDF', '202608'), null);
+const twoDayRows = [{ Date: ymd(-2), Contract: 'CDF', 'ContractMonth(Week)': '202608', Last: '2390', Change: '-23', TradingSession: '盤後' }];
+check('開放資料：2 天前也擋掉（預設只收今天與昨天）', pickFromOpenData(twoDayRows, 'CDF', '202608'), null);
+check('開放資料：放寬到 3 天則可用', !!pickFromOpenData(twoDayRows, 'CDF', '202608', 'night', 3), true);
+check('開放資料：今日資料可用', !!pickFromOpenData(openRows, 'CDF', '202608'), true);
+check('開放資料：回傳值標記為 stale', pickFromOpenData(openRows, 'CDF', '202608').stale, true);
+check('開放資料：附帶來源日期', pickFromOpenData(openRows, 'CDF', '202608').sourceDate, D0);
+check('isWithinDays：今天在 3 天內', isWithinDays(D0, 3), true);
+check('isWithinDays：9 天前不在 3 天內', isWithinDays(D9, 3), false);
+check('isWithinDays：昨天在 1 天內', isWithinDays(ymd(-1), 1), true);
+check('isWithinDays：2 天前不在 1 天內', isWithinDays(ymd(-2), 1), false);
+check('isWithinDays：格式錯誤回傳 false', isWithinDays('abc', 3), false);
 
 // --- 商品對應 ---
 check('微台有獨立契約', TAIFEX_PRODUCTS.TMF.cid, 'TMF');

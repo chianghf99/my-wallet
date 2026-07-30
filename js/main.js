@@ -1951,15 +1951,8 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     const isDark = document.documentElement.classList.contains('dark');
                     const totalColor = isDark ? '#a78bfa' : '#1f2937';
                     const gridColor = isDark ? '#374151' : '#e5e7eb';
-                    // v4.4.0: 計算歷史槓桿比（有存 leverage 欄位用它，否則從 totalVal + loan 推算）
-                    const calcLeverage = x => {
-                        if (x.leverage !== undefined) return x.leverage;
-                        const netWorth = calcNetWorth(x);
-                        if (netWorth <= 0) return 1;
-                        const gross = netWorth + (x.loan || 0);
-                        return gross / netWorth;
-                    };
-                    const hasLoan = d.some(x => (x.loan || 0) > 0 || (x.leverage !== undefined && x.leverage > 1.01));
+                    // v5.21.0: 移除走勢圖上的槓桿比曲線。它與淨資產共用一張圖但單位完全不同（倍數 vs 金額），
+                    // 需要副 Y 軸才畫得下，實際上很難從中讀出有用的資訊；槓桿比在「資金管理」的儀表板看更清楚。
 
                     chartInstance = new Chart(document.getElementById('assetChart').getContext('2d'), {
                         type: 'line',
@@ -1971,22 +1964,13 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                                 { label: '美股 (Stock TWD)', data: d.map(x => (x.usVal || 0) * rateOf(x)), borderColor: '#ef4444', hidden: true, tension: 0.3, yAxisID: 'y' },
                                 { label: '台股帳戶 (Stock+Cash)', data: d.map(x => (x.twVal || 0) + (x.twCash || 0)), borderColor: '#93c5fd', borderDash: [5, 5], hidden: true, tension: 0.3, yAxisID: 'y' },
                                 { label: '美股帳戶 (Stock+Cash)', data: d.map(x => ((x.usVal || 0) + (x.usCash || 0)) * rateOf(x)), borderColor: '#fca5a5', borderDash: [5, 5], hidden: true, tension: 0.3, yAxisID: 'y' },
-                                // v4.4.0: 槓桿比（副 Y 軸，右側）
-                                { label: '槓桿比 (Leverage)', data: hasLoan ? d.map(calcLeverage) : [], borderColor: '#f59e0b', borderDash: [3, 3], borderWidth: 1.5, pointRadius: 2, tension: 0.3, yAxisID: 'yLeverage', hidden: !hasLoan }
                             ]
                         },
                         options: {
                             responsive: true, maintainAspectRatio: false,
                             scales: {
                                 y: { ticks: { callback: v => 'NT$' + (v / 10000).toFixed(0) + '萬', color: isDark ? '#9ca3af' : '#666' }, grid: { color: gridColor } },
-                                x: { ticks: { color: isDark ? '#9ca3af' : '#666' }, grid: { color: gridColor } },
-                                yLeverage: {
-                                    position: 'right',
-                                    display: hasLoan,
-                                    min: 1,
-                                    ticks: { callback: v => v.toFixed(2) + 'x', color: '#f59e0b' },
-                                    grid: { drawOnChartArea: false }
-                                }
+                                x: { ticks: { color: isDark ? '#9ca3af' : '#666' }, grid: { color: gridColor } }
                             },
                             plugins: { legend: { labels: { color: isDark ? '#e5e7eb' : '#666' } } }
                         }

@@ -51,7 +51,11 @@ export const pendingDeleteTx = ref(null);
 export const showEditTxModal = ref(false);
 export const editTxForm = ref({ id: null, date: '', name: '', memo: '' });
 export const showHistoryEditModalVisible = ref(false);
-export const historyEditForm = ref({ date: '', twVal: 0, usVal: 0, twCash: 0, usCash: 0, loan: 0, realestate: 0 });
+export const historyEditForm = ref({ date: '', twVal: 0, usVal: 0, twCash: 0, usCash: 0, loan: 0, realestate: 0, futures: 0, funds: 0 });
+// v5.20.0: 批次修正歷史紀錄。早期的房地產／房貸處理方式與現在不同，逐日手改太累。
+export const showBulkHistoryModal = ref(false);
+export const bulkHistoryForm = ref({ start: '', end: '', fields: { realestate: false, loan: false, futures: false, funds: false }, values: { realestate: 0, loan: 0, futures: 0, funds: 0 } });
+export const bulkHistoryBusy = ref(false);
 export const notes = ref([]);
 export const showNoteModalVisible = ref(false);
 export const noteForm = ref({ id: null, title: '', date: '', content: '' });

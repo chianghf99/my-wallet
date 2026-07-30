@@ -13,7 +13,7 @@
            - fonts.googleapis.com/css2：回應內容依瀏覽器 User-Agent 而異
            - apis.google.com/js/api.js、accounts.google.com/gsi/client：
              Google 的載入器，內容持續更新且官方不提供固定雜湊 -->
-    <title>我的投資組合 | Portfolio v5.19.0</title>
+    <title>我的投資組合 | Portfolio v5.20.0</title>
     <!-- v5.12.0: PWA。三個入口各有獨立的 manifest 與圖示，
          加到主畫面後會是三個可分辨的 App，而不是同一顆圖示。 -->
     <link rel="manifest" href="./manifest-stock.webmanifest">
@@ -367,7 +367,7 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.19.0</h1>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.20.0</h1>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -387,7 +387,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.19.0</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.20.0</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -2508,6 +2508,19 @@
                                 <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800"></div>
                                 <div class="text-xs text-gray-400 mb-1">2026-07-30</div>
                                 <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
+                                    <div class="font-bold text-gray-800 dark:text-white mb-2">v5.20.0</div>
+                                    <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                        <li>修正：「校正歷史紀錄」重算淨資產時漏掉期貨權益與基金現值 —— 只要編輯任何一天，當天的這兩項就會從淨資產中消失。已編輯過的日期建議重新確認。</li>
+                                        <li>新增：校正視窗可直接編輯「期貨權益」與「基金現值」。</li>
+                                        <li>新增：歷史紀錄支援「批次修正」，可將一段期間的不動產、貸款、期貨、基金一次改為指定值並重算淨資產，適合修正早期處理方式不同的紀錄。</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="relative pl-6">
+                                <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-2 border-white dark:border-gray-800"></div>
+                                <div class="text-xs text-gray-400 mb-1">2026-07-30</div>
+                                <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
                                     <div class="font-bold text-gray-800 dark:text-white mb-2">v5.19.0</div>
                                     <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
                                         <li>修正：基金的損益納入「總未實現損益」與「每月獲利總結」—— 先前基金雖計入總資產，損益卻沒被計算，看不到基金的漲跌。</li>
@@ -3999,6 +4012,12 @@
                                 class="text-gray-800 text-xs px-2 py-1 rounded border-none focus:ring-0 cursor-pointer">
                                 <option v-for="y in availableYears" :key="y" :value="y">{{ y }}年</option>
                             </select>
+                            <!-- v5.20.0: 批次修正入口 -->
+                            <button @click="openBulkHistoryModal"
+                                class="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded transition"
+                                title="一次修正一段期間的歷史紀錄">
+                                <i class="fa-solid fa-wand-magic-sparkles mr-1"></i>批次修正
+                            </button>
                         </div><button @click="showHistoryModal=false" class="text-gray-300 hover:text-white"><i
                                 class="fa-solid fa-times"></i></button>
                     </div>
@@ -4035,6 +4054,61 @@
                         刪除後圖表將自動重繪</div>
                 </div>
             </div>
+            <!-- v5.20.0: 批次修正歷史紀錄 -->
+            <div v-if="showBulkHistoryModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+                    <div class="bg-gray-800 dark:bg-gray-900 text-white px-6 py-4 flex justify-between items-center">
+                        <h3 class="font-bold">批次修正歷史紀錄</h3>
+                        <button @click="showBulkHistoryModal=false" class="text-gray-300 hover:text-white"><i class="fa-solid fa-times"></i></button>
+                    </div>
+                    <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                        <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                            把一段期間內的欄位一次改成你指定的值，並依新數值重算每天的淨資產。
+                            只會套用你勾選的欄位，其餘保持原狀。適合修正早期房地產／房貸處理方式不同的紀錄。
+                        </p>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div><label class="block text-xs font-bold text-gray-500 mb-1">開始日期</label>
+                                <input type="date" v-model="bulkHistoryForm.start" class="zen-input">
+                                <div v-if="formErrors.bulkStart" class="field-error">{{ formErrors.bulkStart }}</div>
+                            </div>
+                            <div><label class="block text-xs font-bold text-gray-500 mb-1">結束日期</label>
+                                <input type="date" v-model="bulkHistoryForm.end" class="zen-input">
+                                <div v-if="formErrors.bulkEnd" class="field-error">{{ formErrors.bulkEnd }}</div>
+                            </div>
+                        </div>
+                        <div class="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                            <div class="text-xs font-bold text-gray-500">要修正哪些欄位</div>
+                            <div v-for="f in [
+                                    { k: 'realestate', label: '不動產市值' },
+                                    { k: 'loan', label: '貸款總額' },
+                                    { k: 'futures', label: '期貨權益' },
+                                    { k: 'funds', label: '基金現值' }]" :key="f.k"
+                                class="flex items-center gap-3">
+                                <label class="flex items-center gap-2 w-32 text-sm cursor-pointer">
+                                    <input type="checkbox" v-model="bulkHistoryForm.fields[f.k]" class="rounded">
+                                    <span class="dark:text-gray-200">{{ f.label }}</span>
+                                </label>
+                                <input type="number" v-model.number="bulkHistoryForm.values[f.k]"
+                                    :disabled="!bulkHistoryForm.fields[f.k]"
+                                    class="zen-input text-right flex-1 disabled:opacity-40" placeholder="0">
+                            </div>
+                            <div v-if="formErrors.bulkFields" class="field-error">{{ formErrors.bulkFields }}</div>
+                        </div>
+                        <div class="text-[11px] text-amber-600 dark:text-amber-400 leading-relaxed bg-amber-50 dark:bg-amber-900/20 rounded-lg p-3">
+                            <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+                            此操作會直接覆寫歷史資料且無法復原。建議先到「偏好設定」匯出一份備份再執行。
+                        </div>
+                    </div>
+                    <div class="px-6 pb-6 flex gap-3 justify-end">
+                        <button @click="showBulkHistoryModal=false" class="px-4 py-2 rounded-lg text-sm border text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700">取消</button>
+                        <button @click="applyBulkHistory" :disabled="bulkHistoryBusy"
+                            class="px-5 py-2 rounded-lg text-sm bg-gray-800 text-white hover:bg-gray-700 font-bold disabled:opacity-50">
+                            <i v-if="bulkHistoryBusy" class="fa-solid fa-circle-notch fa-spin mr-1"></i>套用修正
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <div v-if="showHistoryEditModalVisible"
                 class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                 <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
@@ -4067,6 +4141,15 @@
                             <div><label class="block text-xs font-bold text-gray-500 mb-1">貸款總額 (台幣)</label><input
                                     type="number" v-model.number="historyEditForm.loan"
                                     class="zen-input text-right text-red-500">
+                            </div>
+                        </div>
+                        <!-- v5.20.0: 補上期貨與基金。舊版沒有這兩格，一旦編輯就會把它們從淨資產裡抹掉。 -->
+                        <div class="grid grid-cols-2 gap-3 mt-3">
+                            <div><label class="block text-xs font-bold text-gray-500 mb-1">期貨權益 (台幣)</label><input
+                                    type="number" v-model.number="historyEditForm.futures" class="zen-input text-right text-orange-600 dark:text-orange-400">
+                            </div>
+                            <div><label class="block text-xs font-bold text-gray-500 mb-1">基金現值 (台幣)</label><input
+                                    type="number" v-model.number="historyEditForm.funds" class="zen-input text-right text-teal-600 dark:text-teal-400">
                             </div>
                         </div>
                         <div class="text-center mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">

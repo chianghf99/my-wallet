@@ -4,7 +4,7 @@ import { TAIFEX_PRODUCTS, TAIFEX_MIS_URL, taifexRequestBody, contractMonthOf, pi
 import { computePortfolio, calcStats, calcStockExposure, calcFundsValueTwd, calcFundsCostTwd, calcFuturesMarginCash, calcFuturesMarginUsed, calcFuturesExposure } from './utils/valuation.js';
 
 import { 
-    user, stocks, exchangeRate, exchangeRateConfirmed, lastUpdated, loadingTarget, isLoading, viewMode, isMobile, showPrivacy, defaultPrivacyHidden, hideZeroShares, showSettingsModal, isDarkMode, activeSection, showChangelog, toasts, formErrors, showLeverageNotes, autoBackupEnabled, autoBackupIntervalDays, lastBackupAt, showBackupReminder, stockStates, sectionLoading, showStockNoteModal, stockNoteForm, showHistoryModal, historyRecords, historyFilterYear, availableYears, showDeleteModal, pendingDeleteTx, showEditTxModal, editTxForm, showHistoryEditModalVisible, historyEditForm, notes, showNoteModalVisible, noteForm, loanList, showLoanMgrModal, inlineNewLoan, inlineLoanName, loanForm, cashData, prevDayData, realEstateList, showRealEstateModal, realEstateForm, chartStartDate, chartEndDate, chartPnl, currentRange, divRange, divSearchQuery, divStartDate, divEndDate, realizedStartDate, realizedEndDate, transStartDate, transEndDate, transFilterType, transSearchQuery, sortKeyTrans, sortOrderTrans, sortKeyDiv, sortOrderDiv, realizedGains, realizedSearchQuery, sortKeyRealized, sortOrderRealized, realizedRange, dividendRecords, transactionHistory, showModal, isEditing, form, showTransModal, isFundMode, isLoanMode, loanCashMode, transForm,
+    user, stocks, exchangeRate, exchangeRateConfirmed, lastUpdated, loadingTarget, isLoading, viewMode, isMobile, showPrivacy, defaultPrivacyHidden, hideZeroShares, showSettingsModal, isDarkMode, activeSection, showChangelog, toasts, formErrors, showLeverageNotes, autoBackupEnabled, autoBackupIntervalDays, lastBackupAt, showBackupReminder, stockStates, sectionLoading, showStockNoteModal, stockNoteForm, showHistoryModal, historyRecords, historyFilterYear, availableYears, showDeleteModal, pendingDeleteTx, showEditTxModal, editTxForm, showHistoryEditModalVisible, historyEditForm, showBulkHistoryModal, bulkHistoryForm, bulkHistoryBusy, notes, showNoteModalVisible, noteForm, loanList, showLoanMgrModal, inlineNewLoan, inlineLoanName, loanForm, cashData, prevDayData, realEstateList, showRealEstateModal, realEstateForm, chartStartDate, chartEndDate, chartPnl, currentRange, divRange, divSearchQuery, divStartDate, divEndDate, realizedStartDate, realizedEndDate, transStartDate, transEndDate, transFilterType, transSearchQuery, sortKeyTrans, sortOrderTrans, sortKeyDiv, sortOrderDiv, realizedGains, realizedSearchQuery, sortKeyRealized, sortOrderRealized, realizedRange, dividendRecords, transactionHistory, showModal, isEditing, form, showTransModal, isFundMode, isLoanMode, loanCashMode, transForm,
     monthlyProfitData, monthlyProfitRange,
     futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm, futuresLoading, futuresTransactions, showFuturesActionModal, futuresActionForm,
     investmentsTab, performanceTab, overviewTab,
@@ -1618,9 +1618,89 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     }
                 };
                 const deleteHistoryRecord = async (date) => { if (!confirm(`確定要刪除 ${date} 的歷史紀錄嗎？`)) return; await db.collection('users').doc(user.value.uid).collection('history').doc(date).delete(); await openHistoryModal(); drawChart(); };
-                const openHistoryEditModal = (rec) => { historyEditForm.value = { date: rec.date, twVal: rec.twVal || 0, usVal: rec.usVal || 0, twCash: rec.twCash || 0, usCash: rec.usCash || 0, loan: rec.loan || 0, realestate: rec.realestate || rec.realEstateVal || 0 }; showHistoryEditModalVisible.value = true; };
-                const calculateHistoryNetWorth = () => { const asset = (historyEditForm.value.twVal || 0) + (historyEditForm.value.twCash || 0) + ((historyEditForm.value.usVal || 0) + (historyEditForm.value.usCash || 0)) * exchangeRate.value + (historyEditForm.value.realestate || 0); const loan = historyEditForm.value.loan || 0; return asset - loan; };
-                const saveHistoryRecord = async () => { if (!user.value) return; const newNetWorth = calculateHistoryNetWorth(); await db.collection('users').doc(user.value.uid).collection('history').doc(historyEditForm.value.date).update({ twVal: historyEditForm.value.twVal, usVal: historyEditForm.value.usVal, twCash: historyEditForm.value.twCash, usCash: historyEditForm.value.usCash, loan: historyEditForm.value.loan, realestate: historyEditForm.value.realestate, totalVal: newNetWorth }); showHistoryEditModalVisible.value = false; await openHistoryModal(); drawChart(); };
+                const openHistoryEditModal = (rec) => { historyEditForm.value = { date: rec.date, twVal: rec.twVal || 0, usVal: rec.usVal || 0, twCash: rec.twCash || 0, usCash: rec.usCash || 0, loan: rec.loan || 0, realestate: rec.realestate || rec.realEstateVal || 0, futures: rec.futures || 0, funds: rec.funds || 0 }; showHistoryEditModalVisible.value = true; };
+                // v5.20.0: 補上 futures 與 funds。舊版漏掉這兩項，只要編輯任何一天的歷史紀錄，
+                // 當天的期貨權益與基金現值就會從淨資產裡消失，起始點被低估、後續績效被高估。
+                const calculateHistoryNetWorth = () => {
+                    const f = historyEditForm.value;
+                    const asset = (f.twVal || 0) + (f.twCash || 0)
+                        + ((f.usVal || 0) + (f.usCash || 0)) * exchangeRate.value
+                        + (f.realestate || 0) + (f.futures || 0) + (f.funds || 0);
+                    return asset - (f.loan || 0);
+                };
+                const saveHistoryRecord = async () => {
+                    if (!user.value) return;
+                    const f = historyEditForm.value;
+                    await db.collection('users').doc(user.value.uid).collection('history').doc(f.date).update({
+                        twVal: f.twVal, usVal: f.usVal, twCash: f.twCash, usCash: f.usCash,
+                        loan: f.loan, realestate: f.realestate, futures: f.futures, funds: f.funds,
+                        totalVal: calculateHistoryNetWorth()
+                    });
+                    showHistoryEditModalVisible.value = false;
+                    await openHistoryModal();
+                    drawChart();
+                };
+
+                // v5.20.0: 批次修正一段期間的歷史紀錄。
+                // 早期房地產與房貸的處理方式與現在不同，逐日手改不切實際；
+                // 這裡只套用「使用者自己指定的值」，不做任何推算，並同步重算該日 totalVal。
+                const openBulkHistoryModal = () => {
+                    const y = new Date().getFullYear();
+                    bulkHistoryForm.value = {
+                        start: `${y}-01-01`, end: getLocalDate(),
+                        fields: { realestate: false, loan: false, futures: false, funds: false },
+                        values: { realestate: 0, loan: 0, futures: 0, funds: 0 }
+                    };
+                    showBulkHistoryModal.value = true;
+                };
+
+                const applyBulkHistory = async () => {
+                    if (!user.value) return;
+                    const b = bulkHistoryForm.value;
+                    const chosen = Object.keys(b.fields).filter(k => b.fields[k]);
+                    if (!validateForm([
+                        ['bulkStart', !!b.start, '請選擇開始日期'],
+                        ['bulkEnd', !!b.end && b.end >= b.start, '結束日期需晚於開始日期'],
+                        ['bulkFields', chosen.length > 0, '請至少勾選一個要修正的欄位']
+                    ])) return;
+
+                    bulkHistoryBusy.value = true;
+                    try {
+                        const col = db.collection('users').doc(user.value.uid).collection('history');
+                        const snap = await col.where('date', '>=', b.start).where('date', '<=', b.end).get();
+                        if (snap.empty) { showToast('這段期間沒有歷史紀錄', 'info'); return; }
+                        if (!confirm(`即將修改 ${snap.size} 天的紀錄，套用欄位：${chosen.join('、')}。\n\n每天的淨資產會依新數值重算。此操作無法復原，確定嗎？`)) return;
+
+                        let done = 0;
+                        const docs = snap.docs;
+                        for (let i = 0; i < docs.length; i += 400) {
+                            const batch = db.batch();
+                            for (const doc of docs.slice(i, i + 400)) {
+                                const d = doc.data();
+                                const merged = { ...d };
+                                for (const k of chosen) merged[k] = Number(b.values[k]) || 0;
+                                // 用該日自己的匯率重算，沒有就退回目前匯率
+                                const r = merged.rate > 0 ? merged.rate : exchangeRate.value;
+                                const asset = (merged.twVal || 0) + (merged.twCash || 0)
+                                    + ((merged.usVal || 0) + (merged.usCash || 0)) * r
+                                    + (merged.realestate || 0) + (merged.futures || 0) + (merged.funds || 0);
+                                const payload = { totalVal: asset - (merged.loan || 0) };
+                                for (const k of chosen) payload[k] = merged[k];
+                                batch.update(doc.ref, payload);
+                                done++;
+                            }
+                            await batch.commit();
+                        }
+                        showBulkHistoryModal.value = false;
+                        toastOk(`已修正 ${done} 天的歷史紀錄`);
+                        await openHistoryModal();
+                        drawChart();
+                    } catch (e) {
+                        toastErr('批次修正失敗：' + e.message);
+                    } finally {
+                        bulkHistoryBusy.value = false;
+                    }
+                };
                 const openLoanMgrModal = () => { clearFormErrors(); showLoanMgrModal.value = true; loanForm.value = { id: null, name: '', balance: 0, type: 'other', isInvestmentUse: false, monthlyPayment: 0, interestRate: 0, note: '' }; };
                 const editLoanAccount = (l) => { clearFormErrors(); loanForm.value = { type: 'other', isInvestmentUse: false, monthlyPayment: 0, interestRate: 0, note: '', ...l }; };
                 const saveLoanAccount = async () => { if (!user.value) return; if (!validateForm([['loanName', !!loanForm.value.name, '請輸入名稱']])) return; const data = { name: loanForm.value.name, balance: loanForm.value.balance || 0, currency: 'TWD', type: loanForm.value.type || 'other', isInvestmentUse: !!loanForm.value.isInvestmentUse, monthlyPayment: loanForm.value.monthlyPayment || 0, interestRate: Number(loanForm.value.interestRate) || 0, note: loanForm.value.note || '' }; if (loanForm.value.id) await db.collection('users').doc(user.value.uid).collection('loans').doc(loanForm.value.id).update(data); else await db.collection('users').doc(user.value.uid).collection('loans').add(data); loanForm.value = { id: null, name: '', balance: 0, type: 'other', isInvestmentUse: false, monthlyPayment: 0, interestRate: 0, note: '' }; };
@@ -2826,6 +2906,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     realizedRange, setRealizedRange,
                     showDeleteModal, pendingDeleteTx, executeDelete,
                     showHistoryEditModalVisible, openHistoryEditModal, saveHistoryRecord, historyEditForm, calculateHistoryNetWorth,
+                    showBulkHistoryModal, bulkHistoryForm, bulkHistoryBusy, openBulkHistoryModal, applyBulkHistory,
                     loanList, totalLoanBalance, totalMonthlyPayment, activeLoans, archivedLoans, showArchivedLoansList, toggleArchiveLoan, showLoanMgrModal, loanForm, openLoanMgrModal, editLoanAccount, saveLoanAccount, deleteLoanAccount, openLoanModal, isLoanMode, loanCashMode,
                     inlineNewLoan, inlineLoanName, saveInlineLoanAccount,
                     exportToExcel, exportSimplifiedPortfolio,

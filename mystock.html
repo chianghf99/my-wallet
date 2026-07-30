@@ -13,7 +13,7 @@
            - fonts.googleapis.com/css2：回應內容依瀏覽器 User-Agent 而異
            - apis.google.com/js/api.js、accounts.google.com/gsi/client：
              Google 的載入器，內容持續更新且官方不提供固定雜湊 -->
-    <title>我的投資組合 | Portfolio v5.18.0</title>
+    <title>我的投資組合 | Portfolio v5.19.0</title>
     <!-- v5.12.0: PWA。三個入口各有獨立的 manifest 與圖示，
          加到主畫面後會是三個可分辨的 App，而不是同一顆圖示。 -->
     <link rel="manifest" href="./manifest-stock.webmanifest">
@@ -367,7 +367,7 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.18.0</h1>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.19.0</h1>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -387,7 +387,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.18.0</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.19.0</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -1000,13 +1000,13 @@
                                 <div class="flex items-start gap-1">
                                     <i class="fa-solid fa-circle-info mt-0.5 flex-shrink-0"></i>
                                     <div>
-                                        <strong>金融總資產</strong> = 股票總市值 + 活存現金餘額 + 期貨權益 (排除房地產)
+                                        <strong>金融總資產</strong> = 股票總市值 + 活存現金餘額 + 期貨權益 + 基金現值 (排除房地產)
                                     </div>
                                 </div>
                                 <div class="flex items-start gap-1">
                                     <i class="fa-solid fa-circle-info mt-0.5 flex-shrink-0"></i>
                                     <div>
-                                        <strong>金融總曝險</strong> = 股票曝險 (市值 × 槓桿倍數) + 現金 + 期貨曝險 (合約價值 + 期貨空閒資金)
+                                        <strong>金融總曝險</strong> = 股票曝險 (市值 × 槓桿倍數) + 現金 + 基金現值 + 期貨曝險 (合約價值 + 期貨空閒資金)
                                     </div>
                                 </div>
                                 <div class="flex items-start gap-1">
@@ -1406,7 +1406,7 @@
                             1. <strong>股息</strong> 與 <strong>已實現</strong> 損益由該月份交易紀錄加總。<br>
                             2. <strong>未實現變動</strong> = 月底未實現損益 - 月初未實現損益（賣出時未實現損益會等額轉為已實現，因此本欄會同步下降，不會重複計算）。<br>
                             3. 這三項加總即為該月份資產因市場波動與配息所產生的<strong>淨獲利</strong>，不包含您的本金投入。<br>
-                            4. 目前涵蓋股票與期貨；基金與房地產的市值變動未計入本表。
+                            4. 涵蓋股票、期貨與基金；房地產的市值變動未計入本表。
                         </div>
                         </div>
 
@@ -2503,9 +2503,21 @@
 
                     <div class="p-6 overflow-y-auto custom-scrollbar">
                         <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
-                            <!-- v5.18.0: 最新版本節點 -->
+                            <!-- v5.19.0: 最新版本節點 -->
                             <div class="relative pl-6">
                                 <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800"></div>
+                                <div class="text-xs text-gray-400 mb-1">2026-07-30</div>
+                                <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
+                                    <div class="font-bold text-gray-800 dark:text-white mb-2">v5.19.0</div>
+                                    <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                        <li>修正：基金的損益納入「總未實現損益」與「每月獲利總結」—— 先前基金雖計入總資產，損益卻沒被計算，看不到基金的漲跌。</li>
+                                        <li>修正：基金納入「金融資產」與「金融總曝險」。基金是流動的金融資產，排除它會讓槓桿比的分母偏小、數字看起來比實際高。</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="relative pl-6">
+                                <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-2 border-white dark:border-gray-800"></div>
                                 <div class="text-xs text-gray-400 mb-1">2026-07-27</div>
                                 <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
                                     <div class="font-bold text-gray-800 dark:text-white mb-2">v5.18.0</div>

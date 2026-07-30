@@ -8,7 +8,10 @@
 
 import { computePortfolio, buildSnapshotFields } from '../js/utils/valuation.js';
 
-// --- 重構前的原始公式（勿修改，這是比對基準）---
+// --- 比對基準 ---
+// 原則上逐字對應線上公式，用來確認重構沒有改變計算結果。
+// v5.19.0 起基金納入「總未實現損益」與「金融資產」，屬刻意的行為變更，
+// 因此基準也同步調整；另於下方加了專門的測試驗證基金確實有被計入。
 
 const legacy = ({ twStocks, usStocks, cash, loans, realEstate, funds, futuresPositions, futuresMargin, rate }) => {
     const calculateStats = (subset) => {
@@ -54,12 +57,14 @@ const legacy = ({ twStocks, usStocks, cash, loans, realEstate, funds, futuresPos
         return twExposure + usExposure + cashVal + realEstateTotalMarket + futuresExp + mutualFundTotalValue;
     })();
     const grandTotalValue = grandTotalAssets - totalLoanBalance;
-    const grandTotalPnL = twStats.pnl + (usStats.pnl * rate) + futuresTotalUnrealizedPnL;
+    const mutualFundTotalCost = funds.reduce((acc, f) => acc + ((f.costBasis || 0) * (f.currency === 'USD' ? rate : 1)), 0);
+    const mutualFundPnL = mutualFundTotalValue - mutualFundTotalCost;
+    const grandTotalPnL = twStats.pnl + (usStats.pnl * rate) + futuresTotalUnrealizedPnL + mutualFundPnL;
 
     const financialAssets = (() => {
         const stockVal = twStats.value + (usStats.value * rate);
         const cashVal = (cash.twd || 0) + ((cash.usd || 0) * rate);
-        return stockVal + cashVal + futuresEquity;
+        return stockVal + cashVal + futuresEquity + mutualFundTotalValue;
     })();
     const financialLoans = loans
         .filter(l => l.status !== 'archived')
@@ -71,7 +76,7 @@ const legacy = ({ twStocks, usStocks, cash, loans, realEstate, funds, futuresPos
         const usExposure = usStocks.reduce((acc, s) => acc + (s.currentPrice * s.shares * (s.multiplier || 1)), 0) * rate;
         const cashVal = (cash.twd || 0) + ((cash.usd || 0) * rate);
         const futuresExp = futuresTotalExposure + Math.max(0, futuresEquity - futuresTotalMarginUsed);
-        return twExposure + usExposure + cashVal + futuresExp;
+        return twExposure + usExposure + cashVal + futuresExp + mutualFundTotalValue;
     })();
 
     return {
@@ -175,6 +180,28 @@ for (const [name, input] of Object.entries(cases)) {
         console.log(`✅ ${name}  淨資產 ${Math.round(after.grandTotalValue).toLocaleString()}、槓桿 ${after.leverageRatio.toFixed(2)}x、曝險 ${after.exposureRatio.toFixed(2)}x`);
     }
 }
+
+// --- 基金確實被計入（v5.19.0）---
+const withFunds = cases['典型組合（台美股 + 現金 + 期貨 + 房貸 + 基金）'];
+const noFunds = { ...withFunds, funds: [] };
+const a = computePortfolio(withFunds), b = computePortfolio(noFunds);
+const fundsTwd = 300000 + 8000 * 32.35;          // 台幣基金 + 美元基金換算
+const fundsCostTwd = 280000 + 7000 * 32.35;
+const near2 = (x, y) => Math.abs(x - y) < 1e-6;
+if (!near2(a.fundsValue, fundsTwd)) { failures++; console.log('❌ 基金市值換算不符'); }
+else console.log('✅ 基金市值含匯率換算正確');
+if (!near2(a.fundsPnl, fundsTwd - fundsCostTwd)) { failures++; console.log('❌ 基金損益不符'); }
+else console.log('✅ 基金損益 = 現值 - 成本');
+if (!near2(a.grandTotalPnL - b.grandTotalPnL, a.fundsPnl)) { failures++; console.log('❌ 總未實現損益未含基金損益'); }
+else console.log('✅ 總未實現損益已含基金損益');
+if (!near2(a.financialAssets - b.financialAssets, fundsTwd)) { failures++; console.log('❌ 金融資產未含基金'); }
+else console.log('✅ 金融資產已含基金');
+if (!near2(a.financialExposure - b.financialExposure, fundsTwd)) { failures++; console.log('❌ 金融曝險未含基金'); }
+else console.log('✅ 金融曝險已含基金（1 倍計入）');
+if (!(a.leverageRatio < b.leverageRatio)) { failures++; console.log('❌ 納入基金後槓桿比應下降'); }
+else console.log(`✅ 納入基金後槓桿比下降（${b.leverageRatio.toFixed(3)} → ${a.leverageRatio.toFixed(3)}）`);
+if (!near2(a.grandTotalAssets, b.grandTotalAssets + fundsTwd)) { failures++; console.log('❌ 總資產不符'); }
+else console.log('✅ 總資產含基金（本來就有，確認未被改壞）');
 
 // 快照欄位也要對齊
 const snap = buildSnapshotFields(cases['典型組合（台美股 + 現金 + 期貨 + 房貸 + 基金）']);

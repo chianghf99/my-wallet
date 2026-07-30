@@ -126,6 +126,8 @@ export const computePortfolio = ({
     const cashValue = calcCashValue(cash, rate);
     const realEstateValue = calcRealEstateMarket(realEstate);
     const fundsValue = calcFundsValueTwd(funds, rate);
+    const fundsCost = calcFundsCostTwd(funds, rate);
+    const fundsPnl = fundsValue - fundsCost;
 
     const futuresUnrealizedPnl = calcFuturesUnrealizedPnl(futuresPositions, rate);
     const futuresEquity = calcFuturesMarginCash(futuresMargin, rate) + futuresUnrealizedPnl;
@@ -139,16 +141,20 @@ export const computePortfolio = ({
     const grandTotalAssets = stockValue + cashValue + realEstateValue + futuresEquity + fundsValue;
     const grandTotalValue = grandTotalAssets - totalLoan;
     const grandTotalExposure = stockExposure + cashValue + realEstateValue + futuresExposureContribution + fundsValue;
-    const grandTotalPnL = twStats.pnl + usStats.pnl * rate + futuresUnrealizedPnl;
+    // v5.19.0: 基金損益納入總未實現損益。基金有成本與現值，損益算得出來，
+    // 先前遺漏會讓「總未實現損益」與「每月獲利總結」看不到基金的漲跌。
+    const grandTotalPnL = twStats.pnl + usStats.pnl * rate + futuresUnrealizedPnl + fundsPnl;
 
-    // 金融資產／負債刻意排除房地產與自住房貸，避免房產市值稀釋掉真實的投資槓桿
-    const financialAssets = stockValue + cashValue + futuresEquity;
+    // 金融資產／負債刻意排除房地產與自住房貸，避免房產市值稀釋掉真實的投資槓桿。
+    // v5.19.0: 基金改為納入 —— 它是流動的金融資產，排除它會讓分母偏小、槓桿比看起來比實際高。
+    const financialAssets = stockValue + cashValue + futuresEquity + fundsValue;
     const financialNetWorth = financialAssets - financialLoans;
-    const financialExposure = stockExposure + cashValue + futuresExposureContribution;
+    // 基金以 1 倍計入曝險（與現金相同，無槓桿放大）
+    const financialExposure = stockExposure + cashValue + futuresExposureContribution + fundsValue;
 
     return {
         twStats, usStats,
-        stockValue, cashValue, realEstateValue, fundsValue,
+        stockValue, cashValue, realEstateValue, fundsValue, fundsCost, fundsPnl,
         futuresUnrealizedPnl, futuresEquity, futuresExposureContribution,
         totalLoan, financialLoans,
         grandTotalAssets, grandTotalValue, grandTotalExposure, grandTotalPnL,

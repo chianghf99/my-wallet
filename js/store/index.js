@@ -45,6 +45,9 @@ export const showHistoryModal = ref(false);
 export const historyRecords = ref([]);
 export const historyFilterYear = ref(new Date().getFullYear());
 export const availableYears = ref([]);
+// v5.22.0: 歷史紀錄累積後清單很長（一年約 250 筆），加上月份篩選與「只看手動校正過的」
+export const historyFilterMonth = ref(0);      // 0 = 全年
+export const historyOnlyEdited = ref(false);
 
 export const showDeleteModal = ref(false);
 export const pendingDeleteTx = ref(null);

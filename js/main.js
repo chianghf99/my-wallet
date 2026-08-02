@@ -4,7 +4,7 @@ import { TAIFEX_PRODUCTS, TAIFEX_MIS_URL, taifexRequestBody, contractMonthOf, pi
 import { computePortfolio, calcStats, calcStockExposure, calcFundsValueTwd, calcFundsCostTwd, calcFuturesMarginCash, calcFuturesMarginUsed, calcFuturesExposure } from './utils/valuation.js';
 
 import { 
-    user, stocks, exchangeRate, exchangeRateConfirmed, lastUpdated, loadingTarget, isLoading, viewMode, isMobile, showPrivacy, defaultPrivacyHidden, hideZeroShares, showSettingsModal, isDarkMode, activeSection, showChangelog, toasts, formErrors, showLeverageNotes, autoBackupEnabled, autoBackupIntervalDays, lastBackupAt, showBackupReminder, stockStates, sectionLoading, showStockNoteModal, stockNoteForm, showHistoryModal, historyRecords, historyFilterYear, availableYears, showDeleteModal, pendingDeleteTx, showEditTxModal, editTxForm, showHistoryEditModalVisible, historyEditForm, showBulkHistoryModal, bulkHistoryForm, bulkHistoryBusy, notes, showNoteModalVisible, noteForm, loanList, showLoanMgrModal, inlineNewLoan, inlineLoanName, loanForm, cashData, prevDayData, realEstateList, showRealEstateModal, realEstateForm, chartStartDate, chartEndDate, chartPnl, currentRange, divRange, divSearchQuery, divStartDate, divEndDate, realizedStartDate, realizedEndDate, transStartDate, transEndDate, transFilterType, transSearchQuery, sortKeyTrans, sortOrderTrans, sortKeyDiv, sortOrderDiv, realizedGains, realizedSearchQuery, sortKeyRealized, sortOrderRealized, realizedRange, dividendRecords, transactionHistory, showModal, isEditing, form, showTransModal, isFundMode, isLoanMode, loanCashMode, transForm,
+    user, stocks, exchangeRate, exchangeRateConfirmed, lastUpdated, loadingTarget, isLoading, viewMode, isMobile, showPrivacy, defaultPrivacyHidden, hideZeroShares, showSettingsModal, isDarkMode, activeSection, showChangelog, toasts, formErrors, showLeverageNotes, autoBackupEnabled, autoBackupIntervalDays, lastBackupAt, showBackupReminder, stockStates, sectionLoading, showStockNoteModal, stockNoteForm, showHistoryModal, historyRecords, historyFilterYear, availableYears, historyFilterMonth, historyOnlyEdited, showDeleteModal, pendingDeleteTx, showEditTxModal, editTxForm, showHistoryEditModalVisible, historyEditForm, showBulkHistoryModal, bulkHistoryForm, bulkHistoryBusy, notes, showNoteModalVisible, noteForm, loanList, showLoanMgrModal, inlineNewLoan, inlineLoanName, loanForm, cashData, prevDayData, realEstateList, showRealEstateModal, realEstateForm, chartStartDate, chartEndDate, chartPnl, currentRange, divRange, divSearchQuery, divStartDate, divEndDate, realizedStartDate, realizedEndDate, transStartDate, transEndDate, transFilterType, transSearchQuery, sortKeyTrans, sortOrderTrans, sortKeyDiv, sortOrderDiv, realizedGains, realizedSearchQuery, sortKeyRealized, sortOrderRealized, realizedRange, dividendRecords, transactionHistory, showModal, isEditing, form, showTransModal, isFundMode, isLoanMode, loanCashMode, transForm,
     monthlyProfitData, monthlyProfitRange,
     futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm, futuresLoading, futuresTransactions, showFuturesActionModal, futuresActionForm,
     investmentsTab, performanceTab, overviewTab,
@@ -250,6 +250,21 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 });
 
                 // --- 3. 計算屬性 ---
+                // v5.22.0: 歷史紀錄的顯示用清單。一年約 250 筆，全部攤開很難找到要修的那天。
+                // 「手動校正過」的判定：排程與前端寫入時都會帶 source 或 savedHour，
+                // 手動編輯則只更新欄位、不會補這兩個，因此缺少 savedHour 者視為人工改過。
+                const visibleHistoryRecords = computed(() => {
+                    let list = historyRecords.value;
+                    if (historyFilterMonth.value > 0) {
+                        const mm = String(historyFilterMonth.value).padStart(2, '0');
+                        list = list.filter(r => (r.date || '').slice(5, 7) === mm);
+                    }
+                    if (historyOnlyEdited.value) {
+                        list = list.filter(r => r.savedHour === undefined && r.source === undefined);
+                    }
+                    return list;
+                });
+
                 const sortedRealizedGains = computed(() => {
                     let data = realizedGains.value.slice();
                     if (realizedSearchQuery.value) {
@@ -2885,6 +2900,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     realizedStartDate, realizedEndDate, fetchRealizedGains, cashData,
                     transFilterType, transSearchQuery, jumpToFundHistory,
                     showHistoryModal, historyRecords, openHistoryModal, deleteHistoryRecord,
+                    historyFilterMonth, historyOnlyEdited, visibleHistoryRecords,
                     notes, openNoteModal, closeNoteModal, saveNote, deleteNote, showNoteModalVisible, noteForm,
                     realizedSearchQuery, sortRealized, sortedRealizedGains, 
                     realizedRange, setRealizedRange,

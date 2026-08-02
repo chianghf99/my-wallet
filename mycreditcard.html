@@ -191,7 +191,7 @@
                     <h1 class="text-xl font-black text-slate-800 dark:text-white tracking-tight">卡片管家</h1>
                     <span @click="showChangelog = true" 
                           class="cursor-pointer bg-indigo-50 dark:bg-slate-800 text-[10px] font-black px-2 py-0.5 rounded-lg text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-slate-700 transition-all select-none">
-                        v{{ changelog[0]?.version || '4.2.0' }}
+                        {{ changelog[0]?.version || 'v4.2.0' }}
                     </span>
                 </div>
             </div>
@@ -589,7 +589,7 @@
                                     </div>
                                 </div>
                                 <p class="text-xs text-slate-400 mb-4 leading-relaxed">
-                                    預設卡號等敏感資料是直接用 6 碼 PIN 算出加密金鑰，PIN 位數少，理論上如果雲端資料外洩是有機會被暴力破解的。設定「加密密碼」後，PIN 只負責這台裝置的快速解鎖，真正用來加密資料的金鑰改由這組更長的密碼產生——密碼本身完全不會被儲存或同步，只有你自己記得。<b class="text-rose-500">請務必牢記，忘記將無法救援卡片資料。</b>換新裝置時，PIN 通過後系統會再請你輸入一次這組密碼。
+                                    預設帳單通訊地址等個資是直接用 6 碼 PIN 算出加密金鑰，PIN 位數少，理論上如果雲端資料外洩是有機會被暴力破解的。設定「加密密碼」後，PIN 只負責這台裝置的快速解鎖，真正用來加密資料的金鑰改由這組更長的密碼產生——密碼本身完全不會被儲存或同步，只有你自己記得。<b class="text-rose-500">請務必牢記，忘記將無法救援加密欄位。</b>換新裝置時，PIN 通過後系統會再請你輸入一次這組密碼。
                                 </p>
                                 <div class="space-y-3">
                                     <input type="password" v-model="masterPassphrase" placeholder="設定加密密碼（至少 10 個字元）"
@@ -648,35 +648,6 @@
                                             </label>
                                         </div>
                                     </div>
-                                    <!-- v5.5.0: 搬移卡號至密碼管理器 -->
-                                    <div class="p-5 rounded-2xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-900/10 space-y-3">
-                                        <h5 class="text-sm font-bold text-amber-800 dark:text-amber-300 flex items-center gap-2">
-                                            <i class="fas fa-shield-halved"></i>把卡號搬到密碼管理器
-                                        </h5>
-                                        <p class="text-xs text-amber-700/80 dark:text-amber-400/80 leading-relaxed">
-                                            卡號與安全碼一旦外洩即可直接盜刷，放在專門的密碼管理器（如 Bitwarden）比放在本 App 安全得多 ——
-                                            它的金鑰不會落地、有完整性驗證，也不像網頁會從外部 CDN 載入程式碼。
-                                            匯出後可一次匯入，不必逐筆輸入；帳單、額度與回饋統計仍留在這裡使用。
-                                        </p>
-                                        <div class="flex flex-wrap gap-2 pt-1">
-                                            <button @click="exportToBitwarden" class="px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl flex items-center gap-2 transition">
-                                                <i class="fas fa-file-export text-[10px]"></i> 1. 匯出成 Bitwarden 匯入檔
-                                            </button>
-                                            <button @click="clearMigratedCardSecrets" class="px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs rounded-xl flex items-center gap-2 transition">
-                                                <i class="fas fa-eraser text-[10px]"></i> 2. 清除本機卡號（保留末四碼）
-                                            </button>
-                                        </div>
-                                        <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                                            匯入密碼管理器並<strong>確認看得到卡號</strong>後，再執行第 2 步。
-                                            清除的是卡號、到期日與安全碼；末四碼、銀行、額度、繳款日與所有帳單紀錄都會保留，
-                                            回饋統計與 PDF 帳單解析也不受影響。執行前會自動下載一份加密備份。
-                                        </p>
-                                        <p class="text-[11px] text-red-600 dark:text-red-400 leading-relaxed">
-                                            <i class="fas fa-triangle-exclamation mr-1"></i>
-                                            匯出的檔案內含<strong>未加密的明文卡號與安全碼</strong>，請於匯入 Bitwarden 後立即刪除，切勿放入雲端硬碟或以通訊軟體傳送。
-                                        </p>
-                                    </div>
-
                                     <!-- 雲端備份管理 -->
                                     <div class="p-5 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-3">
                                         <h5 class="text-sm font-bold text-slate-700 dark:text-slate-300">雲端同步備份 (雲端)</h5>
@@ -777,9 +748,16 @@
                                                             </div>
                                                         </div>
                                                         
-                                                        <div class="relative z-10">
-                                                            <div class="text-[10px] opacity-70 uppercase tracking-widest mb-1">Card Number</div>
-                                                            <div class="font-mono text-xl tracking-[0.15em] opacity-90">{{ card.last4 ? '**** **** **** ' + card.last4 : '**** **** **** ****' }}</div>
+                                                        <!-- v5.7.0: 到期日不再是秘密，直接放在正面 —— 這是使用者最常要查的兩項之一 -->
+                                                        <div class="relative z-10 flex justify-between items-end gap-3">
+                                                            <div>
+                                                                <div class="text-[10px] opacity-70 uppercase tracking-widest mb-1">Card Number</div>
+                                                                <div class="font-mono text-xl tracking-[0.15em] opacity-90">{{ card.last4 ? '**** **** **** ' + card.last4 : '**** **** **** ****' }}</div>
+                                                            </div>
+                                                            <div v-if="getCardExpiry(card)" class="text-right shrink-0">
+                                                                <div class="text-[9px] opacity-70 uppercase tracking-wider mb-0.5">Expires</div>
+                                                                <div class="font-mono text-sm tracking-widest opacity-90">{{ getCardExpiry(card) }}</div>
+                                                            </div>
                                                         </div>
                                                         
                                                         <div class="flex justify-between items-end relative z-10">
@@ -809,14 +787,15 @@
                                                         <div class="w-full h-10 bg-black/80 mt-6"></div>
                                                         <!-- Back Content -->
                                                         <div class="p-5 pt-3 flex-1 flex flex-col gap-2 text-xs">
-                                                             <div class="bg-white/20 p-2 rounded flex justify-between items-center shadow-inner">
-                                                                 <span class="font-mono text-slate-100 tracking-widest">{{ expandedCards[card.originalIndex] && card.enc_number ? decryptField(card.enc_number, getPinKey()) : (card.last4 ? '**** **** **** ' + card.last4 : '無記錄') }}</span>
-                                                                 <span class="font-mono bg-white/30 px-2 py-0.5 rounded text-white italic tracking-widest">{{ expandedCards[card.originalIndex] && card.enc_cvv ? decryptField(card.enc_cvv, getPinKey()) : '***' }}</span>
+                                                             <!-- v5.7.0: 本 App 不再保存完整卡號與安全碼，背面就不再擺 ****／*** 這種永遠空著的欄位 -->
+                                                             <div class="bg-white/10 p-2 rounded flex items-center gap-2 text-[11px] text-slate-200 leading-snug">
+                                                                 <i class="fas fa-shield-halved text-emerald-300"></i>
+                                                                 <span>完整卡號與安全碼存在密碼管理器</span>
                                                              </div>
                                                              <div class="flex justify-between text-slate-200">
-                                                                 <div>EXP: <span class="font-mono text-white tracking-widest">{{ expandedCards[card.originalIndex] && card.enc_expiry ? decryptField(card.enc_expiry, getPinKey()) : 'MM/YY' }}</span></div>
+                                                                 <div>末四碼：<span class="font-mono text-white tracking-widest">{{ card.last4 || '未記錄' }}</span></div>
+                                                                 <div>EXP: <span class="font-mono text-white tracking-widest">{{ getCardExpiry(card) || '未記錄' }}</span></div>
                                                              </div>
-                                                             <div class="text-[9px] text-slate-400 text-center mt-1">{{ expandedCards[card.originalIndex] ? '8 秒後自動翻回正面' : '' }}</div>
                                                             <div v-if="card.notes" class="truncate text-[10px] opacity-80 bg-black/20 p-1.5 rounded mt-auto" :title="card.notes">
                                                                 <i class="fas fa-sticky-note mr-1"></i> {{ card.notes }}
                                                             </div>
@@ -831,9 +810,6 @@
                                                     <span v-if="card.autopayFrom" class="text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-lg border border-indigo-100 dark:border-indigo-800"><i class="fas fa-university mr-1"></i>自動扣款(末五碼): {{ card.autopayFrom }}</span>
                                                 </div>
                                                 <div class="flex gap-1.5">
-                                                     <button @click.stop="copyCardNumber(card)" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-indigo-100 hover:text-indigo-600 transition-all flex items-center justify-center shadow-sm" title="複製卡號">
-                                                         <i class="far fa-copy text-xs"></i>
-                                                     </button>
                                                     <button @click.stop="editCard(card.originalIndex)" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-amber-100 hover:text-amber-600 transition-all flex items-center justify-center shadow-sm">
                                                         <i class="fas fa-edit text-xs"></i>
                                                     </button>
@@ -990,22 +966,21 @@
                         <label class="block text-xs font-bold text-slate-400 mb-1">自動扣款帳戶(末五碼) (選填)</label>
                         <input type="text" v-model="cardForm.autopay" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white" placeholder="例如: 12345">
                     </div>
+                    <!-- v5.7.0: 本 App 不再保存完整卡號與安全碼 —— 那兩項湊齊即可盜刷，交給密碼管理器。
+                         末四碼與到期日單獨存在無法用於交易，但辨識卡片與掌握換卡時間很有用，因此改為一般欄位（不加密）。 -->
                     <div>
-                        <label class="block text-xs font-bold text-slate-400 mb-1">信用卡卡號 (敏感資訊)</label>
-                        <div class="relative">
-                            <input :type="revealCardNumber ? 'text' : 'password'" v-model="cardForm.number" placeholder="1234567812345678" class="w-full glass px-4 py-2 pr-10 rounded-lg outline-none dark:text-white">
-                            <button type="button" @click="revealCardNumber = !revealCardNumber" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" tabindex="-1">
-                                <i :class="revealCardNumber ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
-                            </button>
-                        </div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1">卡號末四碼</label>
+                        <input type="text" inputmode="numeric" maxlength="4" v-model="cardForm.last4" placeholder="1234" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white font-mono tracking-[0.3em]">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-400 mb-1">到期日 (MM/YY)</label>
-                        <input type="text" v-model="cardForm.expiry" placeholder="12/29" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
+                        <input type="text" v-model="cardForm.expiry" placeholder="12/29" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white font-mono">
                     </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-400 mb-1">背面末三碼 (CVV)</label>
-                        <input type="password" v-model="cardForm.cvv" placeholder="***" maxlength="4" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white">
+                    <div class="md:col-span-2 -mt-1">
+                        <p class="text-[10px] text-slate-400 leading-relaxed">
+                            <i class="fas fa-shield-halved mr-1 text-emerald-500"></i>
+                            本 App 只保存末四碼與到期日，不保存完整卡號與安全碼 —— 這兩項請放在密碼管理器（如 Bitwarden）。
+                        </p>
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-400 mb-1">信用額度 (NT$)</label>
@@ -1019,6 +994,7 @@
                         <label class="block text-xs font-bold text-slate-400 mb-1">備註 (選填)</label>
                         <textarea v-model="cardForm.notes" placeholder="請輸入備註資訊 (例如: 專屬優惠、年費條件等)" rows="2" class="w-full glass px-4 py-2 rounded-lg outline-none dark:text-white resize-none"></textarea>
                     </div>
+
                 </div>
             </div>
             
@@ -1085,8 +1061,10 @@ createApp({
         
         const billForm = reactive({ name: '', amount: '', date: '', cardId: '' });
         const editingBillId = ref(null);
-        const cardForm = reactive({ name: '', nickname: '', day: '', dueDay: '', autopay: '', number: '', expiry: '', cvv: '', address: '', limit: '', org: '', ticket: '', notes: '' });
-        const revealCardNumber = ref(false);
+        // v5.7.0: last4 改為表單的一級欄位。先前它只是 number.slice(-4) 的衍生值，
+        // 卡號搬走之後 number 必為空，編輯任何一張卡都會把末四碼一併洗掉（且救不回來）。
+        // 同版移除 number 與 cvv：本 App 不再保存完整卡號與安全碼。
+        const cardForm = reactive({ name: '', nickname: '', day: '', dueDay: '', autopay: '', last4: '', expiry: '', address: '', limit: '', org: '', ticket: '', notes: '' });
         const editingCardIndex = ref(null);
         
         const pdfFile = ref(null);
@@ -1108,6 +1086,15 @@ createApp({
         ];
 
         const changelog = [
+            { version: 'v5.7.0', date: '2026-08-02', items: [
+                '定位調整：本 App 不再保存完整卡號與安全碼（那兩項湊齊即可盜刷，交給密碼管理器），改為只保存末四碼與到期日 —— 這兩項單獨存在無法用於交易，但辨識卡片與掌握換卡時間很有用。新增卡片的表單也只剩這兩欄。',
+                '修正：編輯一張已把卡號搬到密碼管理器的卡片時，末四碼會被清空（卡面變成 **** **** **** ****）。原因是末四碼一直是從完整卡號推導出來的，卡號清掉後就推不出來了；現在末四碼是獨立欄位，會原樣保留。',
+                '調整：到期日改為不加密，未解鎖也看得到，並直接顯示在卡片正面。舊資料在下次解鎖時會自動轉換，不需要手動處理。',
+                '調整：移除「複製卡號」按鈕（本機已無卡號可複製）。卡片背面改為顯示末四碼與到期日，不再擺 ****／*** 這類永遠是空的欄位。',
+                '移除：系統設定的「把卡號搬到密碼管理器」整區（含 Bitwarden 匯出與清除按鈕）。遷移已完成，這是一次性的工具。舊資料若還殘留卡號或安全碼，解鎖時會自動移除，並在移除前先下載一份加密備份。',
+                '調整：關閉安全鎖不再把卡號與安全碼解成明文暫存 —— 本 App 已不保存這兩項，攤成明文只是把可盜刷的資料換個地方放。',
+                '修正：解鎖用的「加密密碼是否正確」原本只拿卡號當驗證樣本，卡號不再保存後會找不到樣本而略過檢查，密碼打錯也會被放行。改為任一加密欄位都可當樣本。'
+            ] },
             { version: 'v5.6.0', date: '2026-07-29', items: [
                 '新增：卡號搬移至密碼管理器後，可一鍵清除本機的卡號、到期日與安全碼，僅保留末四碼。清除後即使資料外洩也無法用於盜刷，而帳單、額度、繳款日、回饋統計與 PDF 解析完全不受影響。',
                 '安全設計：清除前會自動下載一份加密備份；沒有末四碼的舊資料會先自動補齊，避免清除後認不出是哪張卡。'
@@ -1270,7 +1257,7 @@ createApp({
 
         const expandedBanks = ref({});
         const expandedCards = ref({});
-        // 卡片翻到背面看到卡號/CVV 後，幾秒沒動作就自動翻回正面，避免螢幕被瞄到後一直露著
+        // 翻到背面後幾秒沒動作就自動翻回正面（v5.7.0 起背面已無敏感資料，保留只為維持一致的操作手感）
         const _cardFlipTimers = {};
         const toggleCardFlip = (idx) => {
             const willExpand = !expandedCards.value[idx];
@@ -1505,6 +1492,16 @@ createApp({
         };
         const ENC_CARD_FIELDS = ['enc_number', 'enc_expiry', 'enc_cvv', 'enc_address'];
 
+        /** 找一段已加密的內容當作「金鑰對不對」的驗證樣本（欄位不拘，有就好） */
+        const findEncryptedSample = (list) => {
+            for (const card of (list || cards.value || [])) {
+                for (const f of ENC_CARD_FIELDS) {
+                    if (card && card[f]) return { field: f, ciphertext: card[f] };
+                }
+            }
+            return null;
+        };
+
         const checkLock = () => {
             if (localStorage.getItem('app_pin_hash') || localStorage.getItem('app_pin')) {
                 isLocked.value = true;
@@ -1533,7 +1530,7 @@ createApp({
                             if (cachedKey) {
                                 _sessionKey.value = cachedKey;
                                 isLocked.value = false;
-                                migrateAddressToEncrypted(cachedKey);
+                                migrateCardFields(cachedKey);
                             } else {
                                 // \u9019\u53f0\u88dd\u7f6e\u9084\u6c92\u5feb\u53d6\u904e\u4e3b\u5bc6\u78bc\u7b97\u51fa\u7684\u91d1\u9470\uff08\u4f8b\u5982\u65b0\u88dd\u7f6e\uff09\uff0c\u9700\u8981\u518d\u8f38\u5165\u4e00\u6b21\u4e3b\u5bc6\u78bc
                                 isLocked.value = false;
@@ -1551,9 +1548,9 @@ createApp({
                         if (storedData) {
                             try {
                                 const parsed = JSON.parse(storedData);
-                                const sampleCard = (parsed.cards || []).find(c => c.enc_number);
-                                if (sampleCard) {
-                                    const testBytes = CryptoJS.AES.decrypt(sampleCard.enc_number, newKey);
+                                const sample = findEncryptedSample(parsed.cards);
+                                if (sample) {
+                                    const testBytes = CryptoJS.AES.decrypt(sample.ciphertext, newKey);
                                     const testPlain = testBytes.toString(CryptoJS.enc.Utf8);
                                     if (!testPlain) needsMigration = true;
                                 }
@@ -1594,7 +1591,7 @@ createApp({
 
                         _sessionKey.value = newKey;
                         isLocked.value = false;
-                        migrateAddressToEncrypted(newKey);
+                        migrateCardFields(newKey);
                     } else {
                         alert('\u5bc6\u78bc\u932f\u8aa4');
                         pinBuffer.value = "";
@@ -1630,7 +1627,7 @@ createApp({
                         _sessionKey.value = newKey;
                         isLocked.value = false;
                         pinBuffer.value = "";
-                        migrateAddressToEncrypted(newKey);
+                        migrateCardFields(newKey);
                         console.log('[Security] Migrated PIN to PBKDF2 scheme.');
                     } else {
                         alert('密碼錯誤');
@@ -1669,7 +1666,6 @@ createApp({
                     try {
                         const parsed = JSON.parse(storedData);
                         const oldKey = _sessionKey.value || localStorage.getItem('app_pin') || '';
-                        const TMP_FIELDS = ['_tmp_number', '_tmp_expiry', '_tmp_cvv', '_tmp_address'];
                         parsed.cards = (parsed.cards || []).map(card => {
                             // Case 1: re-encrypt from current session key
                             if (oldKey) {
@@ -1684,12 +1680,13 @@ createApp({
                             }
 
                             // Case 2: encrypt from _tmp_* fields (set by removePin)
-                            TMP_FIELDS.forEach((tf, i) => {
-                                if (card[tf]) {
-                                    card[ENC_CARD_FIELDS[i]] = CryptoJS.AES.encrypt(card[tf], newKey).toString();
-                                    delete card[tf];
-                                }
-                            });
+                            // v5.7.0: 只剩地址需要重新加密。舊版關鎖時留下的 _tmp_number / _tmp_cvv
+                            // 是明文卡號與安全碼，本 App 已不保存這兩項，直接丟掉而不是加密存回去。
+                            if (card._tmp_address) {
+                                card.enc_address = CryptoJS.AES.encrypt(card._tmp_address, newKey).toString();
+                            }
+                            if (card._tmp_expiry && !card.expiry) card.expiry = card._tmp_expiry;
+                            ['_tmp_address', '_tmp_expiry', '_tmp_number', '_tmp_cvv'].forEach(f => delete card[f]);
 
                             return card;
                         });
@@ -1710,25 +1707,31 @@ createApp({
             } else { alert('請輸入 6 位數字'); }
         };
         const removePin = () => {
-            if (confirm('確定要關閉安全密碼鎖嗎？關閉後，您的敏感欄位（卡號、帳單地址等）將會直接顯示。')) {
+            if (confirm('確定要關閉安全密碼鎖嗎？關閉後，帳單通訊地址將會直接顯示。')) {
                 const currentKey = _sessionKey.value;
-                // Decrypt enc_* fields into _tmp_* so setPin can re-encrypt later
+                // 關鎖後就沒有金鑰可加密，地址先解成 _tmp_address 暫存，setPin 時再加密回去。
+                // v5.7.0: enc_number / enc_cvv 不再解成明文暫存 —— 本 App 已不保存這兩項，
+                // 把它們攤成明文只是把「外洩即可盜刷」的資料換個地方放。到期日則轉成一般欄位。
                 if (currentKey) {
                     const storedData = localStorage.getItem('myCreditData');
                     if (storedData) {
                         try {
                             const parsed = JSON.parse(storedData);
-                            const TMP_FIELDS = ['_tmp_number', '_tmp_expiry', '_tmp_cvv', '_tmp_address'];
+                            const decrypt = (ct) => {
+                                try { return CryptoJS.AES.decrypt(ct, currentKey).toString(CryptoJS.enc.Utf8) || ''; }
+                                catch (e) { return ''; }
+                            };
                             parsed.cards = (parsed.cards || []).map(card => {
-                                ENC_CARD_FIELDS.forEach((f, i) => {
-                                    if (card[f]) {
-                                        try {
-                                            const plain = CryptoJS.AES.decrypt(card[f], currentKey).toString(CryptoJS.enc.Utf8);
-                                            card[TMP_FIELDS[i]] = plain || '';
-                                        } catch(e) { card[TMP_FIELDS[i]] = ''; }
-                                        card[f] = ''; // clear encrypted field
-                                    }
-                                });
+                                if (card.enc_address) {
+                                    card._tmp_address = decrypt(card.enc_address);
+                                    card.enc_address = '';
+                                }
+                                if (card.enc_expiry) {
+                                    if (!card.expiry) card.expiry = decrypt(card.enc_expiry);
+                                    delete card.enc_expiry;
+                                }
+                                delete card.enc_number;
+                                delete card.enc_cvv;
                                 return card;
                             });
                             localStorage.setItem('myCreditData', JSON.stringify(parsed));
@@ -1767,7 +1770,7 @@ createApp({
                 alert('兩次輸入的加密密碼不一致。');
                 return;
             }
-            if (!confirm('請務必牢記這組加密密碼：它不會被儲存在任何地方（包含雲端），遺失將無法救援卡號等資料。確定要設定嗎？')) {
+            if (!confirm('請務必牢記這組加密密碼：它不會被儲存在任何地方（包含雲端），遺失將無法救援帳單通訊地址等加密欄位。確定要設定嗎？')) {
                 return;
             }
 
@@ -1860,9 +1863,11 @@ createApp({
                 return;
             }
             const key = deriveMasterKey(unlockPassphraseInput.value, salt);
-            const sample = cards.value.find(c => c.enc_number);
+            // v5.7.0: 原本只拿 enc_number 當驗證樣本。卡號不再保存後就找不到樣本，
+            // 密碼打錯也會被放行，接著把 enc_address 解成亂碼。改為任一加密欄位都能當樣本。
+            const sample = findEncryptedSample();
             if (sample) {
-                const test = decryptField(sample.enc_number, key);
+                const test = decryptField(sample.ciphertext, key);
                 if (!test || test === '解密失敗') {
                     alert('加密密碼錯誤');
                     unlockPassphraseInput.value = '';
@@ -1873,7 +1878,7 @@ createApp({
             localStorage.setItem('app_master_key_cache', key);
             showUnlockPassphrase.value = false;
             unlockPassphraseInput.value = '';
-            migrateAddressToEncrypted(key);
+            migrateCardFields(key);
         };
 
         // 忘記快取但想在「這台裝置」切回舊 PIN 模式而不重灌，用不到，先留給使用者手動走「關閉密碼鎖」流程即可。
@@ -1905,144 +1910,6 @@ createApp({
             URL.revokeObjectURL(url);
         };
 
-        // --- v5.5.0: 匯出成 Bitwarden 可匯入的 JSON ---
-        // 動機：卡號與 CVV 這類「外洩即可直接盜刷」的資料，放在自製加密裡風險不成比例
-        //（金鑰明文快取於 localStorage、AES-CBC 無完整性驗證、且本頁從 5 個 CDN 載入
-        //  未經 SRI 驗證的函式庫，任一被入侵即可在加密前竊取明文）。
-        // 搬到密碼管理器後，本 App 只需保留末四碼等辨識資訊。
-        //
-        // 注意：Bitwarden 的 CSV 只支援登入與安全筆記，卡片必須走 JSON（type: 3）。
-        const exportToBitwarden = () => {
-            if (!_sessionKey.value) {
-                alert('請先解鎖再匯出。');
-                return;
-            }
-            const key = _sessionKey.value;
-            const usable = cards.value.filter(c => c.enc_number);
-            if (!usable.length) {
-                alert('沒有可匯出的卡號資料。');
-                return;
-            }
-            if (!confirm(
-                `即將匯出 ${usable.length} 張卡片，供 Bitwarden 匯入。\n\n` +
-                `⚠️ 這個檔案內的卡號、到期日與安全碼是「未加密的明文」。\n` +
-                `請在匯入 Bitwarden 之後立刻刪除該檔案，也不要放進雲端硬碟或聊天軟體。\n\n` +
-                `確定要匯出嗎？`
-            )) return;
-
-            const items = [];
-            for (const c of usable) {
-                const number = decryptField(c.enc_number, key);
-                if (!number || number === '解密失敗') {
-                    alert(`「${c.nickname || c.name || '未命名卡片'}」的卡號無法解開，已中止匯出。`);
-                    return;
-                }
-                const expiry = c.enc_expiry ? decryptField(c.enc_expiry, key) : '';
-                const cvv = c.enc_cvv ? decryptField(c.enc_cvv, key) : '';
-                // 到期日在本 App 是自由文字，常見為 MM/YY 或 MM/YYYY
-                const m = String(expiry).match(/(\d{1,2})\s*[\/\-]?\s*(\d{2,4})/);
-                let expMonth = '', expYear = '';
-                if (m) {
-                    expMonth = String(parseInt(m[1], 10));
-                    expYear = m[2].length === 2 ? '20' + m[2] : m[2];
-                }
-                // 欄位與 Bitwarden 實際匯出檔逐項比對過：
-                // fields 是空陣列（不是 null）、reprompt 為 0、cardholderName 允許空字串、
-                // brand 用 'Mastercard' 這類全名、expYear 為四位數。
-                items.push({
-                    type: 3,                       // 3 = card
-                    name: [c.name, c.nickname].filter(Boolean).join(' ') || '信用卡',
-                    notes: [c.notes, c.org && ('組織/通路：' + c.org)].filter(Boolean).join('\n') || '',
-                    favorite: false,
-                    reprompt: 0,
-                    fields: [],
-                    card: {
-                        cardholderName: '',
-                        brand: detectCardBrand(number) || '',
-                        number: number,
-                        expMonth: expMonth || '',
-                        expYear: expYear || '',
-                        code: cvv || ''
-                    }
-                });
-            }
-
-            const payload = { encrypted: false, folders: [], items };
-            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `bitwarden_import_明文請匯入後刪除_${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            showToast(`已匯出 ${items.length} 張卡片，請匯入後刪除檔案`);
-        };
-
-        // --- v5.6.0: 卡號搬至密碼管理器後，清除本機的支付憑證欄位 ---
-        // 清掉卡號、到期日與安全碼之後，就算資料外洩也只剩末四碼，無法用於盜刷；
-        // 帳單、額度、繳款日與回饋統計完全不受影響，卡片外觀仍以 last4 顯示。
-        // 帳單地址（enc_address）不在清除範圍 —— 它不是支付憑證，且仍有查詢用途。
-        const CLEARABLE_SECRET_FIELDS = ['enc_number', 'enc_expiry', 'enc_cvv'];
-
-        const clearMigratedCardSecrets = () => {
-            if (!_sessionKey.value) {
-                alert('請先解鎖再執行。');
-                return;
-            }
-            const targets = cards.value.filter(c => CLEARABLE_SECRET_FIELDS.some(f => c[f]));
-            if (!targets.length) {
-                alert('目前沒有需要清除的卡號資料。');
-                return;
-            }
-            if (!confirm(
-                `即將清除 ${targets.length} 張卡片的「卡號、到期日、安全碼」。\n\n` +
-                `清除後這些資料只會存在你的密碼管理器，本 App 無法再顯示或複製卡號。\n` +
-                `卡片仍會保留末四碼、銀行、額度、繳款日與所有帳單紀錄。\n\n` +
-                `請先確認已在密碼管理器中確實看得到卡號。確定要清除嗎？`
-            )) return;
-
-            // 清除前自動下載一份備份。備份中的卡號欄位仍是密文，需原本的 PIN／主密碼才能解開。
-            try {
-                exportBackup();
-            } catch (e) {
-                if (!confirm('自動備份失敗，仍要繼續清除嗎？（建議先手動匯出備份）')) return;
-            }
-
-            let cleared = 0;
-            cards.value = cards.value.map(c => {
-                const copy = { ...c };
-                let touched = false;
-                // 沒有 last4 的舊資料，先從卡號補上再清除，否則清完會認不出是哪張卡
-                if (!copy.last4 && copy.enc_number) {
-                    const num = decryptField(copy.enc_number, _sessionKey.value);
-                    if (num && num !== '解密失敗') copy.last4 = num.slice(-4);
-                }
-                for (const f of CLEARABLE_SECRET_FIELDS) {
-                    if (copy[f]) { delete copy[f]; touched = true; }
-                }
-                if (touched) cleared++;
-                return copy;
-            });
-
-            saveLocal();
-            if (user.value) triggerSync('upload', true);
-            showToast(`已清除 ${cleared} 張卡片的卡號資料，僅保留末四碼`);
-        };
-
-        // Bitwarden 的 brand 欄位接受的名稱
-        const detectCardBrand = (number) => {
-            const n = String(number).replace(/\D/g, '');
-            if (/^4/.test(n)) return 'Visa';
-            if (/^(5[1-5]|2[2-7])/.test(n)) return 'Mastercard';
-            if (/^3[47]/.test(n)) return 'Amex';
-            if (/^(6011|65|64[4-9])/.test(n)) return 'Discover';
-            if (/^35/.test(n)) return 'JCB';
-            if (/^(30[0-5]|36|38)/.test(n)) return 'Diners Club';
-            if (/^62/.test(n)) return 'UnionPay';
-            return null;
-        };
 
         const importBackup = (event) => {
             const file = event.target.files[0];
@@ -2384,9 +2251,24 @@ createApp({
             }
         };
 
-        // 把還留著明文 address 的卡片改成加密儲存（地址跟卡號/CVV 一樣敏感，不該是唯一沒加密的欄位）
-        const migrateAddressToEncrypted = (key) => {
+        // v5.7.0: 本 App 不再保存的欄位。舊資料留著這些密文沒有任何用途，
+        // 卻仍是「外洩即可盜刷」的內容，所以一律清掉，不留一個永遠不會被讀到的風險。
+        const RETIRED_CARD_FIELDS = ['enc_number', 'enc_cvv', 'enc_expiry'];
+
+        // 解鎖後補做欄位搬遷（都需要金鑰，所以綁在同一個時機）：
+        //  1. 還留著明文 address 的卡片改成加密儲存（地址是個資，不該是唯一沒加密的欄位）
+        //  2. enc_expiry 轉回明文 expiry —— 到期日已改為保留欄位，加密只會害它在未解鎖時讀不到
+        //  3. 清掉 enc_number / enc_cvv
+        //
+        // 第 3 點是不可逆的，所以清之前先自動下載一份加密備份（內容仍是密文，
+        // 需要原本的 PIN／加密密碼才解得開），萬一有人還沒把卡號存到密碼管理器還救得回來。
+        const migrateCardFields = (key) => {
             if (!key) return;
+            const hadRetired = cards.value.some(c => RETIRED_CARD_FIELDS.some(f => c[f]));
+            let purged = 0;
+            if (cards.value.some(c => c.enc_number || c.enc_cvv)) {
+                try { exportBackup(); } catch (e) { /* 備份失敗不阻擋清除，密文本來就無法再被讀取 */ }
+            }
             let cardsMigrated = false;
             cards.value = cards.value.map(card => {
                 if (card._tmp_address !== undefined) {
@@ -2400,12 +2282,24 @@ createApp({
                     delete card.address;
                     cardsMigrated = true;
                 }
+                if (card.enc_expiry && !card.expiry) {
+                    const exp = decryptField(card.enc_expiry, key);
+                    if (exp && exp !== '解密失敗') card.expiry = exp;
+                }
+                if (card.enc_number || card.enc_cvv) purged++;
+                for (const f of RETIRED_CARD_FIELDS) {
+                    if (card[f]) { delete card[f]; cardsMigrated = true; }
+                }
                 return card;
             });
             if (cardsMigrated) {
                 saveLocal();
                 if (user.value) triggerSync('upload', true);
             }
+            if (purged) {
+                showToast(`已移除 ${purged} 張卡片殘留的完整卡號與安全碼（已先下載備份）`);
+            }
+            return hadRetired;
         };
 
         // Key lives only in memory — never read from localStorage
@@ -2415,20 +2309,15 @@ createApp({
             if (card.enc_address) return decryptField(card.enc_address, getPinKey());
             return card.address || ''; // 尚未加密過的舊資料/未啟用鎖定的情況
         };
-        const copyCardNumber = (card) => {
-            const pin = getPinKey();
-            const rawNumber = card.enc_number ? decryptField(card.enc_number, pin) : '';
-            if (!rawNumber || rawNumber === '解密失敗') {
-                showToast('請先解鎖以複製卡號');
-                return;
-            }
-            const cleanNumber = rawNumber.replace(/\s+/g, '');
-            navigator.clipboard.writeText(cleanNumber).then(() => {
-                showToast('卡號已複製到剪貼簿！');
-            }).catch(err => {
-                showToast('複製失敗，請手動複製');
-            });
+        // v5.7.0: 到期日改為不加密的一般欄位。舊資料可能還是 enc_expiry，讀取時往下退。
+        const getCardExpiry = (card) => {
+            if (!card) return '';
+            if (card.expiry) return card.expiry;
+            if (!card.enc_expiry) return '';
+            const plain = decryptField(card.enc_expiry, getPinKey());
+            return plain === '解密失敗' ? '' : plain;
         };
+
 
         const startAddCard = () => { 
             editingCardIndex.value = null; 
@@ -2436,13 +2325,11 @@ createApp({
             cardForm.nickname = '';
             cardForm.day = ''; 
             cardForm.dueDay = '';
-            cardForm.autopay = ''; 
-            cardForm.number = '';
+            cardForm.autopay = '';
+            cardForm.last4 = '';
             cardForm.expiry = '';
-            cardForm.cvv = '';
             cardForm.address = '';
             cardForm.limit = '';
-            revealCardNumber.value = false;
             cardForm.org = '';
             cardForm.ticket = '';
             cardForm.notes = '';
@@ -2456,18 +2343,15 @@ createApp({
         
         const editCard = (i) => {
             const c = cards.value[i];
-            const pin = getPinKey();
-            cardForm.name = c.name || ''; 
+            cardForm.name = c.name || '';
             cardForm.nickname = c.nickname || '';
-            cardForm.day = c.day || ''; 
+            cardForm.day = c.day || '';
             cardForm.dueDay = c.dueDay || '';
             cardForm.autopay = c.autopayFrom || '';
-            cardForm.number = c.enc_number ? decryptField(c.enc_number, pin) : '';
-            cardForm.expiry = c.enc_expiry ? decryptField(c.enc_expiry, pin) : '';
-            cardForm.cvv = c.enc_cvv ? decryptField(c.enc_cvv, pin) : '';
+            cardForm.last4 = c.last4 || '';
+            cardForm.expiry = getCardExpiry(c);
             cardForm.address = getCardAddress(c);
             cardForm.limit = c.limit || '';
-            revealCardNumber.value = false;
             cardForm.org = c.org || '';
             cardForm.ticket = c.ticket || '';
             cardForm.notes = c.notes || '';
@@ -2477,11 +2361,7 @@ createApp({
         
         const saveCard = () => {
             const pin = getPinKey();
-            if (!pin && (cardForm.number || cardForm.expiry || cardForm.cvv)) {
-                alert('請先在設定中啟用 PIN 碼鎖定，系統需要 PIN 密鑰來加密敏感資訊。');
-                return;
-            }
-            
+
             // Preserve or generate unique ID for linking
             const existingId = editingCardIndex.value !== null ? cards.value[editingCardIndex.value].id : null;
             const cardId = existingId || (Date.now().toString() + Math.random().toString(36).substr(2, 5));
@@ -2496,14 +2376,15 @@ createApp({
                 limit: cardForm.limit ? parseInt(cardForm.limit) : '',
                 org: cardForm.org,
                 ticket: cardForm.ticket,
-                enc_number: encryptField(cardForm.number, pin),
-                enc_expiry: encryptField(cardForm.expiry, pin),
-                enc_cvv: encryptField(cardForm.cvv, pin),
-                // 地址跟卡號一樣敏感：有金鑰就加密存，只有完全沒設定 PIN 鎖時才退回明文（維持未啟用鎖定使用者原本的行為）
+                // 地址仍然加密：它是個資，跟末四碼、到期日不同等級。
+                // 有金鑰就加密存，只有完全沒設定 PIN 鎖時才退回明文（維持未啟用鎖定使用者原本的行為）
                 enc_address: pin ? encryptField(cardForm.address, pin) : '',
                 address: pin ? '' : cardForm.address,
                 notes: cardForm.notes,
-                last4: cardForm.number ? cardForm.number.slice(-4) : ''
+                // 末四碼與到期日不加密：單獨存在無法用於交易，卻是辨識卡片與掌握換卡時間的主要依據。
+                // 加密它們只會換來「沒解鎖就看不到自己記了什麼」的麻煩。
+                last4: String(cardForm.last4 || '').replace(/\D/g, '').slice(-4),
+                expiry: String(cardForm.expiry || '').trim()
             };
             
             if(editingCardIndex.value !== null) cards.value[editingCardIndex.value] = c;
@@ -3044,7 +2925,7 @@ createApp({
         });
 
         return {
-            toastMessage, copyCardNumber,
+            toastMessage,
             isLocked, pinBuffer, isLoading, loadingText, user, activePage, theme, isPrivacyOn, syncStatus, bills, cards,
             showAddModal, showChangelog, showCardEditor, showMobileMenu, billForm, editingBillId, cardForm, editingCardIndex,
             pdfPassword, historySearch, historyPeriod, analysisStart, analysisEnd, analysisBank,
@@ -3056,7 +2937,7 @@ createApp({
             commonBanksList, startAddBill, associatedCard, onBillNameInput, getCardOrgIcon, getBillCardInfo,
             exportBackup, importBackup, getOfficialBankName, getTicketBadgeClass, getTicketIcon, quickAddCardForBank,
             encryptionMode, showUnlockPassphrase, unlockPassphraseInput, masterPassphrase, masterPassphraseConfirm,
-            setupPassphrase, unlockWithPassphrase, exportToBitwarden, clearMigratedCardSecrets, getCardAddress, revealCardNumber, toggleCardFlip, maskAmount
+            setupPassphrase, unlockWithPassphrase, getCardAddress, toggleCardFlip, maskAmount, getCardExpiry
         };
     }
 }).mount('#app');

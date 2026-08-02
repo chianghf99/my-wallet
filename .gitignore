@@ -17,3 +17,7 @@ test_pdfjs.js
 *.key
 .env
 .env.*
+
+# 給 AI 助理讀的本機筆記，不進版控（repo 為 public）
+.claude/
+CLAUDE.md

@@ -13,7 +13,7 @@
            - fonts.googleapis.com/css2：回應內容依瀏覽器 User-Agent 而異
            - apis.google.com/js/api.js、accounts.google.com/gsi/client：
              Google 的載入器，內容持續更新且官方不提供固定雜湊 -->
-    <title>我的投資組合 | Portfolio v5.21.0</title>
+    <title>我的投資組合 | Portfolio v5.22.0</title>
     <!-- v5.12.0: PWA。三個入口各有獨立的 manifest 與圖示，
          加到主畫面後會是三個可分辨的 App，而不是同一顆圖示。 -->
     <link rel="manifest" href="./manifest-stock.webmanifest">
@@ -367,7 +367,7 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.21.0</h1>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.22.0</h1>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -387,7 +387,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.21.0</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.22.0</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -2508,6 +2508,18 @@
                                 <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800"></div>
                                 <div class="text-xs text-gray-400 mb-1">2026-07-30</div>
                                 <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
+                                    <div class="font-bold text-gray-800 dark:text-white mb-2">v5.22.0</div>
+                                    <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                        <li>新增：維護歷史資料可依月份篩選，並顯示目前筆數 —— 一年約 250 筆，全部攤開很難找到要修的那天。</li>
+                                        <li>新增：「只看手動校正過的」篩選，快速找出曾經人工調整過的日期。</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="relative pl-6">
+                                <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-2 border-white dark:border-gray-800"></div>
+                                <div class="text-xs text-gray-400 mb-1">2026-08-01</div>
+                                <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
                                     <div class="font-bold text-gray-800 dark:text-white mb-2">v5.21.0</div>
                                     <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
                                         <li>調整：資產走勢圖移除「槓桿比」曲線。它與淨資產單位不同（倍數 vs 金額）需借用副 Y 軸，實際上不易判讀；槓桿比在「資金管理」的儀表板看更清楚。</li>
@@ -4023,6 +4035,12 @@
                                 class="text-gray-800 text-xs px-2 py-1 rounded border-none focus:ring-0 cursor-pointer">
                                 <option v-for="y in availableYears" :key="y" :value="y">{{ y }}年</option>
                             </select>
+                            <!-- v5.22.0: 月份篩選，一年 250 筆全攤開很難找到要修的那天 -->
+                            <select v-model.number="historyFilterMonth"
+                                class="text-gray-800 text-xs px-2 py-1 rounded border-none focus:ring-0 cursor-pointer">
+                                <option :value="0">全年</option>
+                                <option v-for="m in 12" :key="m" :value="m">{{ m }}月</option>
+                            </select>
                             <!-- v5.20.0: 批次修正入口 -->
                             <button @click="openBulkHistoryModal"
                                 class="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded transition"
@@ -4033,6 +4051,17 @@
                                 class="fa-solid fa-times"></i></button>
                     </div>
                     <div class="p-0 overflow-y-auto flex-grow custom-scrollbar">
+                        <!-- v5.22.0: 筆數與快速篩選 -->
+                        <div class="flex items-center justify-between gap-2 mb-2 text-xs">
+                            <span class="text-gray-500 dark:text-gray-400">
+                                共 <strong class="text-gray-700 dark:text-gray-200">{{ visibleHistoryRecords.length }}</strong> 筆
+                                <span v-if="visibleHistoryRecords.length !== historyRecords.length" class="opacity-70">／{{ historyRecords.length }}</span>
+                            </span>
+                            <label class="flex items-center gap-1.5 cursor-pointer text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
+                                <input type="checkbox" v-model="historyOnlyEdited" class="rounded">
+                                只看手動校正過的
+                            </label>
+                        </div>
                         <table class="w-full text-sm text-left">
                             <thead
                                 class="bg-gray-100 dark:bg-gray-700 text-gray-500 uppercase font-medium sticky top-0">
@@ -4043,7 +4072,7 @@
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                                <tr v-for="rec in historyRecords" :key="rec.id"
+                                <tr v-for="rec in visibleHistoryRecords" :key="rec.id"
                                     class="hover:bg-gray-50 dark:hover:bg-gray-800">
                                     <td class="px-6 py-3 font-medium">{{ rec.date }}</td>
                                     <td class="px-6 py-3 text-right font-bold">{{ formatCurrency((rec.totalVal || 0),

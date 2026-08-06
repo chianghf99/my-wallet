@@ -13,7 +13,7 @@
            - fonts.googleapis.com/css2：回應內容依瀏覽器 User-Agent 而異
            - apis.google.com/js/api.js、accounts.google.com/gsi/client：
              Google 的載入器，內容持續更新且官方不提供固定雜湊 -->
-    <title>我的投資組合 | Portfolio v5.22.0</title>
+    <title>我的投資組合 | Portfolio v5.23.0</title>
     <!-- v5.12.0: PWA。三個入口各有獨立的 manifest 與圖示，
          加到主畫面後會是三個可分辨的 App，而不是同一顆圖示。 -->
     <link rel="manifest" href="./manifest-stock.webmanifest">
@@ -367,7 +367,7 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.22.0</h1>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.23.0</h1>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -387,7 +387,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.22.0</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.23.0</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -2105,22 +2105,75 @@
 
                         <!-- 期貨交易歷史與出入金紀錄 -->
                         <div class="zen-card p-4 md:p-6 mb-8">
-                            <div class="flex justify-between items-center mb-4 border-b border-gray-100 dark:border-gray-700 pb-3">
+                            <div class="flex flex-wrap justify-between items-center gap-3 mb-4 border-b border-gray-100 dark:border-gray-700 pb-3">
                                 <h3 class="font-bold dark:text-white flex items-center gap-2">
                                     <i class="fa-solid fa-clock-rotate-left text-amber-600"></i> 期貨歷史明細與已實現損益
                                 </h3>
                                 <!-- 雙標籤切換 -->
                                 <div class="flex bg-gray-100 dark:bg-gray-800 rounded p-1 text-xs font-semibold">
-                                    <button @click="futuresHistoryTab = 'pnl'" 
+                                    <button @click="futuresHistoryTab = 'pnl'"
                                         :class="futuresHistoryTab === 'pnl' ? 'bg-white dark:bg-gray-700 shadow text-amber-600 dark:text-amber-400' : 'text-gray-500 hover:text-gray-700'"
                                         class="px-3 py-1 rounded transition">
                                         📉 歷史平倉損益
                                     </button>
-                                    <button @click="futuresHistoryTab = 'ledger'" 
+                                    <button @click="futuresHistoryTab = 'ledger'"
                                         :class="futuresHistoryTab === 'ledger' ? 'bg-white dark:bg-gray-700 shadow text-amber-600 dark:text-amber-400' : 'text-gray-500 hover:text-gray-700'"
                                         class="px-3 py-1 rounded transition ml-1">
                                         💸 出入金與明細
                                     </button>
+                                </div>
+                            </div>
+
+                            <!-- v5.23.0: 時間篩選。預設近一個月，避免紀錄累積後清單過長 -->
+                            <div class="flex flex-wrap items-center gap-2 mb-4">
+                                <div class="flex bg-gray-100 dark:bg-gray-800 rounded p-1 text-[11px] font-semibold">
+                                    <button v-for="opt in [{k:'1M',l:'近一月'},{k:'3M',l:'近三月'},{k:'YTD',l:'今年'},{k:'ALL',l:'全部'},{k:'custom',l:'自訂'}]"
+                                        :key="opt.k" @click="futuresHistoryRange = opt.k"
+                                        :class="futuresHistoryRange === opt.k ? 'bg-white dark:bg-gray-700 shadow text-amber-600 dark:text-amber-400' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
+                                        class="px-2.5 py-1 rounded transition">{{ opt.l }}</button>
+                                </div>
+                                <div v-if="futuresHistoryRange === 'custom'" class="flex items-center gap-1 text-xs">
+                                    <input type="date" v-model="futuresHistoryStart"
+                                        class="border rounded px-2 py-1 dark:bg-gray-800 dark:border-gray-600 dark:text-white">
+                                    <span class="text-gray-400">～</span>
+                                    <input type="date" v-model="futuresHistoryEnd"
+                                        class="border rounded px-2 py-1 dark:bg-gray-800 dark:border-gray-600 dark:text-white">
+                                </div>
+                                <span class="text-[11px] text-gray-400">
+                                    {{ futuresHistoryRange === 'ALL' ? '顯示全部紀錄' : (futuresHistoryBounds.start || '—') + ' ～ ' + (futuresHistoryBounds.end || '—') }}
+                                </span>
+                            </div>
+
+                            <!-- 期間已實現彙總。平倉與展期都會結算近月損益，兩者都算在內 -->
+                            <div v-if="futuresHistoryTab === 'pnl'"
+                                class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5 p-3 rounded-lg bg-amber-50/60 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30">
+                                <div>
+                                    <div class="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5">期間已實現（淨）</div>
+                                    <div class="text-lg font-bold" :class="getPnlClass(futuresRealizedSummary.net)">
+                                        <span v-if="showPrivacy">{{ formatCurrency(futuresRealizedSummary.net, 'TWD') }}</span>
+                                        <span v-else>****</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5">毛損益</div>
+                                    <div class="text-sm font-semibold pt-1" :class="getPnlClass(futuresRealizedSummary.gross)">
+                                        <span v-if="showPrivacy">{{ formatCurrency(futuresRealizedSummary.gross, 'TWD') }}</span>
+                                        <span v-else>****</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5">手續費合計</div>
+                                    <div class="text-sm font-semibold pt-1 text-orange-500 dark:text-orange-400">
+                                        <span v-if="showPrivacy">{{ formatCurrency(futuresRealizedSummary.fee, 'TWD') }}</span>
+                                        <span v-else>****</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5">筆數</div>
+                                    <div class="text-sm font-semibold pt-1 text-gray-700 dark:text-gray-200">{{ futuresRealizedSummary.count }} 筆</div>
+                                </div>
+                                <div v-if="futuresRealizedSummary.hasUsd" class="col-span-2 md:col-span-4 text-[10px] text-gray-400">
+                                    ※ 含美元計價部位，已用目前匯率（{{ exchangeRate }}）換算為台幣，非成交當時匯率
                                 </div>
                             </div>
 
@@ -2142,7 +2195,7 @@
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                                        <tr v-for="tx in futuresTransactions.filter(t => t.type === 'close')" :key="tx.id" class="hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                                        <tr v-for="tx in futuresCloseRecords" :key="tx.id" class="hover:bg-gray-50 dark:hover:bg-gray-800 transition">
                                             <td class="px-4 py-3 text-gray-500">{{ tx.date }}</td>
                                             <td class="px-4 py-3 font-bold dark:text-white">
                                                 {{ getFuturesDisplayName(tx.symbol) }} <span class="text-[10px] font-normal text-gray-400" v-if="tx.expiry">{{ tx.expiry }}</span>
@@ -2155,9 +2208,22 @@
                                             <td class="px-4 py-3 text-right">{{ tx.contracts }} 口</td>
                                             <td class="px-4 py-3 text-right">{{ formatNumber(tx.entryPrice) }}</td>
                                             <td class="px-4 py-3 text-right">{{ formatNumber(tx.closePrice) }}</td>
+                                            <!-- v5.23.0: 手續費可事後補填。下單當下看不到費用，要等對帳單才知道。 -->
                                             <td class="px-4 py-3 text-right">
-                                                <span v-if="showPrivacy && tx.fee > 0" class="text-orange-500 dark:text-orange-400">-{{ formatNumber(tx.fee) }}</span>
-                                                <span v-else class="text-gray-300 dark:text-gray-600">-</span>
+                                                <div v-if="editingFuturesFeeId === tx.id" class="flex items-center justify-end gap-1">
+                                                    <input type="number" min="0" step="1" v-model="editingFuturesFeeValue"
+                                                        @keyup.enter="saveFuturesFee(tx)" @keyup.esc="cancelEditFuturesFee"
+                                                        class="w-20 border rounded px-1.5 py-0.5 text-right dark:bg-gray-800 dark:border-gray-600 dark:text-white">
+                                                    <button @click="saveFuturesFee(tx)" class="text-emerald-600 hover:text-emerald-500" title="儲存"><i class="fa-solid fa-check"></i></button>
+                                                    <button @click="cancelEditFuturesFee" class="text-gray-400 hover:text-gray-600" title="取消"><i class="fa-solid fa-xmark"></i></button>
+                                                </div>
+                                                <button v-else @click="startEditFuturesFee(tx)"
+                                                    class="group inline-flex items-center gap-1 hover:text-amber-600 dark:hover:text-amber-400 transition" title="點擊補填／修改手續費">
+                                                    <span v-if="showPrivacy && tx.fee > 0" class="text-orange-500 dark:text-orange-400">-{{ formatNumber(tx.fee) }}</span>
+                                                    <span v-else-if="showPrivacy" class="text-gray-300 dark:text-gray-600">未填</span>
+                                                    <span v-else class="text-gray-300 dark:text-gray-600">****</span>
+                                                    <i class="fa-solid fa-pen text-[9px] opacity-0 group-hover:opacity-100 transition"></i>
+                                                </button>
                                             </td>
                                             <td class="px-4 py-3 text-right font-bold" :class="getPnlClass(tx.netPnl !== undefined ? tx.netPnl : tx.pnl)">
                                                 <span v-if="showPrivacy">
@@ -2171,18 +2237,22 @@
                                                 <button @click="deleteFuturesTransaction(tx)" class="text-red-500 hover:text-red-400 font-medium">刪除</button>
                                             </td>
                                         </tr>
-                                        <tr v-if="futuresTransactions.filter(t => t.type === 'close').length === 0">
-                                            <td colspan="10" class="text-center py-6 text-gray-400">目前沒有平倉損益明細</td>
+                                        <tr v-if="futuresCloseRecords.length === 0">
+                                            <td colspan="10" class="text-center py-6 text-gray-400">
+                                                這個期間沒有平倉紀錄<span v-if="futuresHistoryRange !== 'ALL'">，可切換到「全部」查看更早的紀錄</span>
+                                            </td>
                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
 
                             <!-- 1b. 展期紀錄 -->
-                            <div v-if="futuresHistoryTab === 'pnl' && futuresTransactions.filter(t => t.type === 'rollover').length > 0" class="mt-6">
-                                <div class="flex items-center gap-2 mb-3">
+                            <div v-if="futuresHistoryTab === 'pnl' && futuresRolloverRecords.length > 0" class="mt-6">
+                                <div class="flex items-center gap-2 mb-3 flex-wrap">
                                     <span class="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wide">📅 展期紀錄</span>
-                                    <span class="text-[10px] text-gray-400">（不計入已實現損益）</span>
+                                    <!-- v5.23.0: 原本寫「不計入已實現損益」是錯的（v5.6 之後的設計就會計入），
+                                         導致上面的合計看起來對不起來。展期＝近月真的平掉了，損益當然要認列。 -->
+                                    <span class="text-[10px] text-gray-400">近月損益已計入上方的期間已實現合計；建立的遠月部位以「遠月建倉價」為新成本</span>
                                 </div>
                                 <div class="overflow-x-auto">
                                     <table class="w-full text-xs text-left">
@@ -2193,15 +2263,16 @@
                                                 <th class="px-4 py-2 text-center">方向</th>
                                                 <th class="px-4 py-2 text-right">口數</th>
                                                 <th class="px-4 py-2 text-center">近月→遠月</th>
+                                                <th class="px-4 py-2 text-right">近月平倉價</th>
+                                                <th class="px-4 py-2 text-right">遠月建倉價</th>
                                                 <th class="px-4 py-2 text-right">近月損益</th>
-                                                <th class="px-4 py-2 text-right">展期成本</th>
-                                                <th class="px-4 py-2 text-right">費用</th>
-                                                <th class="px-4 py-2 text-right">保證金調整</th>
+                                                <th class="px-4 py-2 text-right">手續費</th>
+                                                <th class="px-4 py-2 text-right">淨額（進保證金）</th>
                                                 <th class="px-4 py-2 text-center">操作</th>
                                             </tr>
                                         </thead>
                                         <tbody class="divide-y divide-amber-100 dark:divide-amber-900/30">
-                                            <tr v-for="tx in futuresTransactions.filter(t => t.type === 'rollover')" :key="tx.id"
+                                            <tr v-for="tx in futuresRolloverRecords" :key="tx.id"
                                                 class="hover:bg-amber-50/50 dark:hover:bg-amber-900/10 transition">
                                                 <td class="px-4 py-2 text-gray-500">{{ tx.date }}</td>
                                                 <td class="px-4 py-2 font-bold dark:text-white">{{ getFuturesDisplayName(tx.symbol) }}</td>
@@ -2216,20 +2287,27 @@
                                                     <span class="text-amber-500 mx-1">→</span>
                                                     <span class="text-gray-700 dark:text-gray-200 font-medium">{{ tx.toExpiry }}</span>
                                                 </td>
+                                                <td class="px-4 py-2 text-right">{{ formatNumber(tx.closePrice) }}</td>
+                                                <td class="px-4 py-2 text-right">{{ formatNumber(tx.openPrice) }}</td>
                                                 <td class="px-4 py-2 text-right" :class="getPnlClass(tx.nearMonthPnL)">
                                                     <span v-if="showPrivacy">{{ formatNumber(tx.nearMonthPnL) }} ({{ tx.currency }})</span>
                                                     <span v-else>****</span>
                                                 </td>
-                                                <td class="px-4 py-2 text-right" :class="tx.rollSpread > 0 ? 'text-red-500 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'">
-                                                    <span v-if="showPrivacy">
-                                                        {{ tx.rollSpread > 0 ? '-' : '+' }}{{ formatNumber(Math.abs(tx.rollSpread)) }}
-                                                        <span class="text-[9px] text-gray-400 ml-0.5">{{ tx.rollSpread > 0 ? '成本' : '溢價' }}</span>
-                                                    </span>
-                                                    <span v-else>****</span>
-                                                </td>
-                                                <td class="px-4 py-2 text-right text-orange-500 dark:text-orange-400">
-                                                    <span v-if="tx.fee > 0 && showPrivacy">-{{ formatNumber(tx.fee) }}</span>
-                                                    <span v-else class="text-gray-300 dark:text-gray-600">-</span>
+                                                <td class="px-4 py-2 text-right">
+                                                    <div v-if="editingFuturesFeeId === tx.id" class="flex items-center justify-end gap-1">
+                                                        <input type="number" min="0" step="1" v-model="editingFuturesFeeValue"
+                                                            @keyup.enter="saveFuturesFee(tx)" @keyup.esc="cancelEditFuturesFee"
+                                                            class="w-20 border rounded px-1.5 py-0.5 text-right dark:bg-gray-800 dark:border-gray-600 dark:text-white">
+                                                        <button @click="saveFuturesFee(tx)" class="text-emerald-600 hover:text-emerald-500" title="儲存"><i class="fa-solid fa-check"></i></button>
+                                                        <button @click="cancelEditFuturesFee" class="text-gray-400 hover:text-gray-600" title="取消"><i class="fa-solid fa-xmark"></i></button>
+                                                    </div>
+                                                    <button v-else @click="startEditFuturesFee(tx)"
+                                                        class="group inline-flex items-center gap-1 hover:text-amber-600 dark:hover:text-amber-400 transition" title="點擊補填／修改手續費">
+                                                        <span v-if="showPrivacy && tx.fee > 0" class="text-orange-500 dark:text-orange-400">-{{ formatNumber(tx.fee) }}</span>
+                                                        <span v-else-if="showPrivacy" class="text-gray-300 dark:text-gray-600">未填</span>
+                                                        <span v-else class="text-gray-300 dark:text-gray-600">****</span>
+                                                        <i class="fa-solid fa-pen text-[9px] opacity-0 group-hover:opacity-100 transition"></i>
+                                                    </button>
                                                 </td>
                                                 <td class="px-4 py-2 text-right font-bold" :class="getPnlClass(tx.marginAdjustment)">
                                                     <span v-if="showPrivacy">{{ formatNumber(tx.marginAdjustment) }} ({{ tx.currency }})</span>
@@ -2258,13 +2336,14 @@
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                                        <tr v-for="tx in futuresTransactions" :key="tx.id" class="hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                                        <tr v-for="tx in futuresHistoryFiltered" :key="tx.id" class="hover:bg-gray-50 dark:hover:bg-gray-800 transition">
                                             <td class="px-4 py-3 text-gray-500">{{ tx.date }}</td>
                                             <td class="px-4 py-3 font-semibold">
                                                 <span v-if="tx.type === 'deposit'" class="text-emerald-600"><i class="fa-solid fa-arrow-right-to-bracket mr-1"></i>保證金存入</span>
                                                 <span v-else-if="tx.type === 'withdraw'" class="text-red-500"><i class="fa-solid fa-arrow-right-from-bracket mr-1"></i>保證金提出</span>
                                                 <span v-else-if="tx.type === 'open'" class="text-blue-500"><i class="fa-solid fa-plus mr-1"></i>建倉 ({{ tx.direction === 'long' ? '多' : '空' }})</span>
                                                 <span v-else-if="tx.type === 'close'" class="text-purple-500"><i class="fa-solid fa-scale-balanced mr-1"></i>平倉結算</span>
+                                                <span v-else-if="tx.type === 'rollover'" class="text-amber-600"><i class="fa-solid fa-rotate mr-1"></i>展期 ({{ tx.fromExpiry }}→{{ tx.toExpiry }})</span>
                                             </td>
                                             <td class="px-4 py-3 font-bold dark:text-white">
                                                 {{ getFuturesDisplayName(tx.symbol) }} 
@@ -2277,14 +2356,19 @@
                                                 <span v-else-if="tx.type === 'close'" :class="getPnlClass(tx.pnl)">
                                                     {{ tx.pnl >= 0 ? '+' : '' }}{{ showPrivacy ? formatCurrency(tx.pnl, tx.currency) : '****' }}
                                                 </span>
+                                                <span v-else-if="tx.type === 'rollover'" :class="getPnlClass(tx.marginAdjustment)">
+                                                    {{ tx.marginAdjustment >= 0 ? '+' : '' }}{{ showPrivacy ? formatCurrency(tx.marginAdjustment, tx.currency) : '****' }}
+                                                </span>
                                             </td>
                                             <td class="px-4 py-3 text-gray-400 max-w-[200px] truncate" :title="tx.note">{{ tx.note || '-' }}</td>
                                             <td class="px-4 py-3 text-center">
                                                 <button @click="deleteFuturesTransaction(tx)" class="text-red-500 hover:text-red-400 font-medium">刪除</button>
                                             </td>
                                         </tr>
-                                        <tr v-if="futuresTransactions.length === 0">
-                                            <td colspan="6" class="text-center py-6 text-gray-400">目前沒有交易流水紀錄</td>
+                                        <tr v-if="futuresHistoryFiltered.length === 0">
+                                            <td colspan="6" class="text-center py-6 text-gray-400">
+                                                這個期間沒有交易流水<span v-if="futuresHistoryRange !== 'ALL'">，可切換到「全部」查看更早的紀錄</span>
+                                            </td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -2503,9 +2587,25 @@
 
                     <div class="p-6 overflow-y-auto custom-scrollbar">
                         <div class="relative border-l-2 border-gray-200 dark:border-gray-700 ml-3 space-y-8">
-                            <!-- v5.19.0: 最新版本節點 -->
+                            <!-- 最新版本節點 -->
                             <div class="relative pl-6">
                                 <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800"></div>
+                                <div class="text-xs text-gray-400 mb-1">2026-08-06</div>
+                                <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
+                                    <div class="font-bold text-gray-800 dark:text-white mb-2">v5.23.0</div>
+                                    <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                        <li>修正：展期紀錄上標示的「（不計入已實現損益）」是錯的 —— 展期等於近月真的平掉了，損益一直都有計入已實現與保證金。這行字是舊版設計留下來的，會讓合計看起來對不起來。</li>
+                                        <li>新增：期貨歷史明細加上時間篩選（近一月／近三月／今年／全部／自訂），預設近一個月。</li>
+                                        <li>新增：期間已實現彙總 —— 淨損益、毛損益、手續費合計與筆數，跟著篩選走，選「今年」就是本年度已實現。平倉與展期都計入。</li>
+                                        <li>新增：手續費可事後補填。下單當下看不到費用，等對帳單出來再點表格裡的手續費欄位直接改，淨損益、已實現紀錄與保證金餘額會同步調整。</li>
+                                        <li>簡化：展期只需填「遠月結算日」與「遠月建倉價」，近月平倉價自動帶入目前報價。移除「價差點數」反推欄位（方向填反會讓整筆歪掉，而遠月價本來就看得到）與「展期成本」欄位，改為直接顯示近月平倉價與遠月建倉價。</li>
+                                        <li>新增：出入金明細也會顯示展期紀錄，先前只有建倉／平倉／出入金四種。</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="relative pl-6">
+                                <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-2 border-white dark:border-gray-800"></div>
                                 <div class="text-xs text-gray-400 mb-1">2026-07-30</div>
                                 <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
                                     <div class="font-bold text-gray-800 dark:text-white mb-2">v5.22.0</div>
@@ -3689,48 +3789,46 @@
                             </div>
                         </div>
 
-                        <!-- 近月平倉價 (兩種模式都需要) -->
-                        <div>
+                        <!-- 平倉：唯一要填的價格 -->
+                        <div v-if="futuresActionForm.mode === 'close'">
                             <label class="block text-xs font-bold text-gray-500 mb-1">
-                                {{ futuresActionForm.mode === 'close' ? '平倉價格 / 點數' : '近月平倉價格' }}
-                                <span class="text-red-500">*</span>
+                                平倉價格 / 點數 <span class="text-red-500">*</span>
                             </label>
                             <input type="number" v-model="futuresActionForm.closePrice"
-                                class="zen-input font-mono text-lg"
-                                placeholder="輸入點數"
-                                @input="() => { if(futuresActionForm.mode==='rollover') { if(futuresActionForm.rollSpreadInput !== '' && futuresActionForm.rollSpreadInput !== null && futuresActionForm.rollSpreadInput !== undefined) applyRollSpread(); else if(!futuresActionForm.newOpenPrice) futuresActionForm.newOpenPrice = futuresActionForm.closePrice } }">
-                                <div v-if="formErrors.closePrice" class="field-error">{{ formErrors.closePrice }}</div>
+                                class="zen-input font-mono text-lg" placeholder="輸入點數">
+                            <div v-if="formErrors.closePrice" class="field-error">{{ formErrors.closePrice }}</div>
                         </div>
 
-                        <!-- 展期專屬欄位 -->
+                        <!-- 展期：主要輸入就是遠月的兩個欄位。
+                             v5.23.0: 近月平倉價自動帶目前市價、移到下面的灰框，需要時才改；
+                             原本的「價差點數」反推欄位已移除（方向搞反整筆就歪掉，而遠月價本來就看得到）。 -->
                         <template v-if="futuresActionForm.mode === 'rollover'">
-                            <!-- 價差單快速展期 -->
-                            <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg px-4 py-3">
-                                <label class="block text-xs font-bold text-blue-600 dark:text-blue-400 mb-1">
-                                    價差點數（選填，用價差單展期時填這裡）
-                                </label>
-                                <input type="number" v-model="futuresActionForm.rollSpreadInput"
-                                    class="zen-input font-mono"
-                                    placeholder="遠月−近月 價差"
-                                    @input="applyRollSpread">
-                                <p class="text-xs text-blue-500 dark:text-blue-400 mt-1">
-                                    自動算出遠月建倉價 = 近月平倉價 {{ futuresActionForm.pos.direction === 'long' ? '+' : '−' }} 價差點數
-                                </p>
-                            </div>
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500 mb-1">遠月結算日 <span class="text-red-500">*</span></label>
                                     <input type="date" v-model="futuresActionForm.newExpiry"
                                         class="zen-input font-mono">
-                                <div v-if="formErrors.newExpiry" class="field-error">{{ formErrors.newExpiry }}</div>
+                                    <div v-if="formErrors.newExpiry" class="field-error">{{ formErrors.newExpiry }}</div>
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500 mb-1">遠月建倉價格 <span class="text-red-500">*</span></label>
                                     <input type="number" v-model="futuresActionForm.newOpenPrice"
-                                        class="zen-input font-mono"
-                                        placeholder="輸入點數">
-                                <div v-if="formErrors.newOpenPrice" class="field-error">{{ formErrors.newOpenPrice }}</div>
+                                        class="zen-input font-mono text-lg" placeholder="輸入點數">
+                                    <div v-if="formErrors.newOpenPrice" class="field-error">{{ formErrors.newOpenPrice }}</div>
                                 </div>
+                            </div>
+
+                            <div class="bg-gray-50 dark:bg-gray-800/60 rounded-lg px-4 py-3">
+                                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">
+                                    近月平倉價（已自動帶入目前報價，通常不用改）
+                                </label>
+                                <input type="number" v-model="futuresActionForm.closePrice"
+                                    class="zen-input font-mono" placeholder="輸入點數">
+                                <div v-if="formErrors.closePrice" class="field-error">{{ formErrors.closePrice }}</div>
+                                <p class="text-[11px] text-gray-400 mt-1.5 leading-relaxed">
+                                    近月是真的平掉了，這個價格決定結算多少損益進保證金、以及計入已實現。
+                                    報價沒更新或跟實際成交差太多時再手動修正。
+                                </p>
                             </div>
                         </template>
 

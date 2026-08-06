@@ -7,6 +7,7 @@ import {
     user, stocks, exchangeRate, exchangeRateConfirmed, lastUpdated, loadingTarget, isLoading, viewMode, isMobile, showPrivacy, defaultPrivacyHidden, hideZeroShares, showSettingsModal, isDarkMode, activeSection, showChangelog, toasts, formErrors, showLeverageNotes, autoBackupEnabled, autoBackupIntervalDays, lastBackupAt, showBackupReminder, stockStates, sectionLoading, showStockNoteModal, stockNoteForm, showHistoryModal, historyRecords, historyFilterYear, availableYears, historyFilterMonth, historyOnlyEdited, showDeleteModal, pendingDeleteTx, showEditTxModal, editTxForm, showHistoryEditModalVisible, historyEditForm, showBulkHistoryModal, bulkHistoryForm, bulkHistoryBusy, notes, showNoteModalVisible, noteForm, loanList, showLoanMgrModal, inlineNewLoan, inlineLoanName, loanForm, cashData, prevDayData, realEstateList, showRealEstateModal, realEstateForm, chartStartDate, chartEndDate, chartPnl, currentRange, divRange, divSearchQuery, divStartDate, divEndDate, realizedStartDate, realizedEndDate, transStartDate, transEndDate, transFilterType, transSearchQuery, sortKeyTrans, sortOrderTrans, sortKeyDiv, sortOrderDiv, realizedGains, realizedSearchQuery, sortKeyRealized, sortOrderRealized, realizedRange, dividendRecords, transactionHistory, showModal, isEditing, form, showTransModal, isFundMode, isLoanMode, loanCashMode, transForm,
     monthlyProfitData, monthlyProfitRange,
     futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm, futuresLoading, futuresTransactions, showFuturesActionModal, futuresActionForm,
+    futuresHistoryRange, futuresHistoryStart, futuresHistoryEnd, editingFuturesFeeId, editingFuturesFeeValue,
     investmentsTab, performanceTab, overviewTab,
     mutualFundList, showMutualFundModal, mutualFundForm
 } from './store/index.js';
@@ -340,6 +341,59 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     const eq = futuresEquity.value;
                     if (eq <= 0) return 0;
                     return futuresTotalExposure.value / eq;
+                });
+
+                // --- v5.23.0: 期貨歷史明細的時間篩選與期間統計 ---
+                // 紀錄累積一兩年後一次列出全部會有上百筆，實務上大多只在意最近的幾筆，
+                // 所以預設近一個月；另外提供「今年」讓年度已實現一眼看得到。
+                const futuresHistoryBounds = computed(() => {
+                    const today = getLocalDate();
+                    // 用本地時間欄位組回字串，不能走 toISOString() —— 那會先轉成 UTC，
+                    // 台北 +8 會讓日期整個退一天（實測 8/6 往前一個月得到 7/5 而不是 7/6）。
+                    const shift = (months) => {
+                        const d = new Date(today + 'T00:00:00');
+                        d.setMonth(d.getMonth() - months);
+                        const p = n => String(n).padStart(2, '0');
+                        return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+                    };
+                    switch (futuresHistoryRange.value) {
+                        case '1M': return { start: shift(1), end: today };
+                        case '3M': return { start: shift(3), end: today };
+                        case 'YTD': return { start: today.slice(0, 4) + '-01-01', end: today };
+                        case 'ALL': return { start: '', end: '' };
+                        default: return { start: futuresHistoryStart.value, end: futuresHistoryEnd.value };
+                    }
+                });
+
+                const inFuturesHistoryRange = (tx) => {
+                    const { start, end } = futuresHistoryBounds.value;
+                    const d = tx.date || '';
+                    if (start && d < start) return false;
+                    if (end && d > end) return false;
+                    return true;
+                };
+
+                const futuresHistoryFiltered = computed(() => futuresTransactions.value.filter(inFuturesHistoryRange));
+                const futuresCloseRecords = computed(() => futuresHistoryFiltered.value.filter(t => t.type === 'close'));
+                const futuresRolloverRecords = computed(() => futuresHistoryFiltered.value.filter(t => t.type === 'rollover'));
+
+                /**
+                 * 期間已實現彙總。平倉與展期都會結算近月損益，兩者都要算進來。
+                 * 美元部位以目前匯率換算成台幣後合計 —— 這是「大概多少」的參考值，
+                 * 不是當時成交匯率，所以介面上要標示清楚。
+                 */
+                const futuresRealizedSummary = computed(() => {
+                    let gross = 0, fee = 0, count = 0, hasUsd = false;
+                    for (const tx of futuresHistoryFiltered.value) {
+                        if (tx.type !== 'close' && tx.type !== 'rollover') continue;
+                        const rate = tx.currency === 'USD' ? exchangeRate.value : 1;
+                        if (tx.currency === 'USD') hasUsd = true;
+                        // 平倉的毛損益存在 pnl；展期存在 nearMonthPnL
+                        gross += (tx.type === 'close' ? (tx.pnl || 0) : (tx.nearMonthPnL || 0)) * rate;
+                        fee += (tx.fee || 0) * rate;
+                        count++;
+                    }
+                    return { gross, fee, net: gross - fee, count, hasUsd };
                 });
 
                 const grandTotalAssets = computed(() => portfolio.value.grandTotalAssets);
@@ -1018,18 +1072,14 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     toastOk('平倉成功，損益已歸檔並調整保證金餘額');
                 };
 
+                // v5.23.0: 展期只需要填「新結算日 + 遠月建倉價」。
+                // 近月平倉價自動帶入目前抓到的市價 —— 那本來就是近月結算的依據，
+                // 平常不用改，但仍然開放修改（例如自己盯到的成交價跟報價有落差）。
+                // 舊版還有一個「價差點數」欄位可反推遠月價，實測容易填錯（方向搞反就整筆歪掉），
+                // 而且遠月價本來就看得到，多一層換算沒有換到任何好處，因此移除。
                 const rollFuturesPosition = (pos) => {
-                    futuresActionForm.value = { mode: 'rollover', pos, closePrice: pos.currentPrice || '', fee: '', newExpiry: '', newOpenPrice: '', rollSpreadInput: '' };
+                    futuresActionForm.value = { mode: 'rollover', pos, closePrice: pos.currentPrice || '', fee: '', newExpiry: '', newOpenPrice: '' };
                     clearFormErrors(); showFuturesActionModal.value = true;
-                };
-
-                const applyRollSpread = () => {
-                    const f = futuresActionForm.value;
-                    if (!f.pos || f.rollSpreadInput === '' || f.rollSpreadInput === null || f.rollSpreadInput === undefined) return;
-                    const spread = Number(f.rollSpreadInput);
-                    const closePrice = Number(f.closePrice);
-                    if (isNaN(spread) || isNaN(closePrice)) return;
-                    f.newOpenPrice = f.pos.direction === 'long' ? closePrice + spread : closePrice - spread;
                 };
 
                 const _executeRollover = async (pos, closePrice, newExpiry, newOpenPrice, fee) => {
@@ -1117,6 +1167,65 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
                     setTimeout(saveDailySnapshot, 500);
                     toastOk('展期成功，近月損益已計入已實現、遠月部位已建立');
+                };
+
+                // --- v5.23.0: 手續費事後補填 ---
+                // 下單當下看不到手續費，要等券商對帳單才知道實際金額，所以做成表格內直接改。
+                // 改一筆費用要連動三個地方：交易紀錄本身、對應的已實現損益、以及保證金餘額，
+                // 少改任何一個帳就會對不起來。
+                const startEditFuturesFee = (tx) => {
+                    editingFuturesFeeId.value = tx.id;
+                    editingFuturesFeeValue.value = tx.fee || 0;
+                };
+                const cancelEditFuturesFee = () => {
+                    editingFuturesFeeId.value = null;
+                    editingFuturesFeeValue.value = '';
+                };
+
+                const saveFuturesFee = async (tx) => {
+                    if (!user.value) return;
+                    const newFee = Number(editingFuturesFeeValue.value);
+                    if (isNaN(newFee) || newFee < 0) { toastErr('手續費必須是 0 或正數'); return; }
+                    const oldFee = Number(tx.fee) || 0;
+                    const delta = newFee - oldFee;
+                    if (delta === 0) { cancelEditFuturesFee(); return; }
+
+                    const uid = user.value.uid;
+                    const key = tx.currency === 'USD' ? 'usd' : 'twd';
+                    const inc = firebase.firestore.FieldValue.increment;
+                    // 平倉的毛損益在 pnl，展期在 nearMonthPnL
+                    const gross = tx.type === 'close' ? (tx.pnl || 0) : (tx.nearMonthPnL || 0);
+                    const newNet = gross - newFee;
+
+                    try {
+                        const batch = db.batch();
+                        const txRef = db.collection('users').doc(uid).collection('futures_transactions').doc(tx.id);
+                        // close 用 netPnl 欄位、rollover 用 marginAdjustment，兩者都是「扣掉費用後」的數字
+                        batch.update(txRef, tx.type === 'close'
+                            ? { fee: newFee, netPnl: newNet }
+                            : { fee: newFee, marginAdjustment: newNet });
+
+                        // 已實現損益跟著改（沒有 realizedGainsId 的是很舊的資料，跳過但仍更新其他兩處）
+                        if (tx.realizedGainsId) {
+                            batch.update(
+                                db.collection('users').doc(uid).collection('realized_gains').doc(tx.realizedGainsId),
+                                { pnl: newNet }
+                            );
+                        }
+
+                        // 費用變多 → 保證金要再扣掉差額
+                        batch.set(
+                            db.collection('users').doc(uid).collection('portfolio').doc('futures_margin'),
+                            { [key]: inc(-delta) }, { merge: true }
+                        );
+
+                        await batch.commit();
+                        cancelEditFuturesFee();
+                        setTimeout(saveDailySnapshot, 500);
+                        toastOk(`手續費已更新，淨損益與保證金餘額同步調整${tx.realizedGainsId ? '' : '（此筆為舊資料，已實現紀錄需自行核對）'}`);
+                    } catch (e) {
+                        toastErr('更新手續費失敗：' + e.message);
+                    }
                 };
 
                 // v5.x bug fix: 找出跟某筆期貨保證金劃轉紀錄配對的銀行現金紀錄。
@@ -1262,7 +1371,8 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     const pos = f.pos;
                     if (!pos) return;
                     const closePrice = Number(f.closePrice);
-                    if (!validateForm([['closePrice', closePrice > 0, '請輸入有效平倉價格']])) return;
+                    if (!validateForm([['closePrice', closePrice > 0,
+                        f.mode === 'close' ? '請輸入有效平倉價格' : '近月平倉價無效，請確認已更新期貨報價或手動填入']])) return;
                     const fee = Math.max(0, Number(f.fee) || 0);
                     if (f.mode === 'close') {
                         showFuturesActionModal.value = false;
@@ -2932,7 +3042,9 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
                     futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm, futuresLoading, futuresTransactions,
                     futuresTotalUnrealizedPnL, futuresEquity, futuresTotalMarginUsed, futuresTotalExposure, futuresRiskRatio, futuresLeverageRatio,
-                    openFuturesModal, saveFuturesPosition, deleteFuturesPosition, closeFuturesPosition, rollFuturesPosition, applyRollSpread, showFuturesActionModal, futuresActionForm, submitFuturesAction, openFuturesMarginModal, adjustFuturesMargin, autoFetchTaiexIndexPrice, fetchFuturesPricesDirect, onFuturesSymbolChange, deleteFuturesTransaction, futuresHistoryTab, getFuturesDisplayName, futuresTotalMarginCashTwd,
+                    openFuturesModal, saveFuturesPosition, deleteFuturesPosition, closeFuturesPosition, rollFuturesPosition, showFuturesActionModal, futuresActionForm, submitFuturesAction, openFuturesMarginModal, adjustFuturesMargin, autoFetchTaiexIndexPrice, fetchFuturesPricesDirect, onFuturesSymbolChange, deleteFuturesTransaction, futuresHistoryTab, getFuturesDisplayName, futuresTotalMarginCashTwd,
+                    futuresHistoryRange, futuresHistoryStart, futuresHistoryEnd, futuresHistoryBounds, futuresHistoryFiltered, futuresCloseRecords, futuresRolloverRecords, futuresRealizedSummary,
+                    editingFuturesFeeId, editingFuturesFeeValue, startEditFuturesFee, cancelEditFuturesFee, saveFuturesFee,
                     investmentsTab, performanceTab, overviewTab,
                     mutualFundList, showMutualFundModal, mutualFundForm, mutualFundTotalCost, mutualFundTotalValue, mutualFundTotalPnL, openMutualFundModal, saveMutualFund, deleteMutualFund
                 };

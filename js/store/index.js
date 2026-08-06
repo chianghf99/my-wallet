@@ -127,6 +127,13 @@ export const showFuturesActionModal = ref(false);
 export const futuresActionForm = ref({ mode: 'close', pos: null, closePrice: '', fee: '', newExpiry: '', newOpenPrice: '' });
 export const futuresLoading = ref(false);
 export const futuresTransactions = ref([]);
+// v5.23.0: 期貨歷史明細的時間篩選。累積久了一次列出全部會很長，預設只看近一個月。
+export const futuresHistoryRange = ref('1M');   // 1M / 3M / YTD / ALL / custom
+export const futuresHistoryStart = ref('');
+export const futuresHistoryEnd = ref('');
+// 手續費事後補填：下單當下看不到費用，要等對帳單才知道，所以做成表格內可直接改。
+export const editingFuturesFeeId = ref(null);
+export const editingFuturesFeeValue = ref('');
 
 // --- 子分頁切換狀態 ---
 export const investmentsTab = ref('stocks');

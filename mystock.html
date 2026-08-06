@@ -13,7 +13,7 @@
            - fonts.googleapis.com/css2：回應內容依瀏覽器 User-Agent 而異
            - apis.google.com/js/api.js、accounts.google.com/gsi/client：
              Google 的載入器，內容持續更新且官方不提供固定雜湊 -->
-    <title>我的投資組合 | Portfolio v5.23.1</title>
+    <title>我的投資組合 | Portfolio v5.24.0</title>
     <!-- v5.12.0: PWA。三個入口各有獨立的 manifest 與圖示，
          加到主畫面後會是三個可分辨的 App，而不是同一顆圖示。 -->
     <link rel="manifest" href="./manifest-stock.webmanifest">
@@ -367,7 +367,7 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.23.1</h1>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.24.0</h1>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -387,7 +387,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.23.1</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.24.0</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -2233,7 +2233,8 @@
                                                 <span v-else>****</span>
                                             </td>
                                             <td class="px-4 py-3 text-gray-400 max-w-[150px] truncate" :title="tx.note">{{ tx.note || '-' }}</td>
-                                            <td class="px-4 py-3 text-center">
+                                            <td class="px-4 py-3 text-center whitespace-nowrap">
+                                                <button @click="openFuturesTxEdit(tx)" class="text-amber-600 hover:text-amber-500 font-medium mr-2">編輯</button>
                                                 <button @click="deleteFuturesTransaction(tx)" class="text-red-500 hover:text-red-400 font-medium">刪除</button>
                                             </td>
                                         </tr>
@@ -2313,7 +2314,8 @@
                                                     <span v-if="showPrivacy">{{ formatNumber(tx.marginAdjustment) }} ({{ tx.currency }})</span>
                                                     <span v-else>****</span>
                                                 </td>
-                                                <td class="px-4 py-2 text-center">
+                                                <td class="px-4 py-2 text-center whitespace-nowrap">
+                                                    <button @click="openFuturesTxEdit(tx)" class="text-amber-600 hover:text-amber-500 font-medium mr-2">編輯</button>
                                                     <button @click="deleteFuturesTransaction(tx)" class="text-red-500 hover:text-red-400 font-medium">刪除</button>
                                                 </td>
                                             </tr>
@@ -2590,6 +2592,19 @@
                             <!-- 最新版本節點 -->
                             <div class="relative pl-6">
                                 <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800"></div>
+                                <div class="text-xs text-gray-400 mb-1">2026-08-06</div>
+                                <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
+                                    <div class="font-bold text-gray-800 dark:text-white mb-2">v5.24.0</div>
+                                    <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                        <li>新增：歷史平倉與展期紀錄可「編輯」，修正近月平倉價、遠月建倉價與手續費 —— 自動帶入的是期交所最後成交價而非本人成交價，對完帳單才發現填錯是常態。</li>
+                                        <li>改價後會一併重算：毛損益、已實現損益紀錄、保證金餘額（只補差額）。展期若建立的遠月部位還開著，建倉價也會同步改，否則未實現損益會用錯的成本計算。</li>
+                                        <li>編輯視窗會先顯示「改動後」的預覽（毛損益、淨損益、保證金變動多少），確認無誤再儲存；遠月部位已不存在、或舊資料沒有已實現連結時，也會事先說明哪些不會連動。</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="relative pl-6">
+                                <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-2 border-white dark:border-gray-800"></div>
                                 <div class="text-xs text-gray-400 mb-1">2026-08-06</div>
                                 <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
                                     <div class="font-bold text-gray-800 dark:text-white mb-2">v5.23.1</div>
@@ -3932,6 +3947,114 @@
                             class="px-6 py-2 rounded text-white font-semibold transition">
                             {{ futuresActionForm.mode === 'close' ? '確認平倉' : '確認展期' }}
                         </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- v5.24.0: 事後修正成交價。自動帶入的是期交所最後成交價，不是本人成交價，
+                 對完帳單才發現填錯是常態，所以要能改價並讓所有連動數字一起重算。 -->
+            <div v-if="showFuturesTxEditModal"
+                class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col">
+                    <div class="bg-amber-600 text-white px-6 py-4 flex justify-between items-center">
+                        <div>
+                            <h3 class="font-bold">✏️ 修正{{ futuresTxEditForm.type === 'rollover' ? '展期' : '平倉' }}紀錄</h3>
+                            <p class="text-xs opacity-80 mt-0.5">
+                                {{ getFuturesDisplayName(futuresTxEditForm.symbol) }} ・
+                                {{ futuresTxEditForm.direction === 'long' ? '多' : '空' }}
+                                {{ futuresTxEditForm.contracts }} 口 ・ {{ futuresTxEditForm.date }}
+                            </p>
+                        </div>
+                        <button @click="showFuturesTxEditModal=false" class="text-white/80 hover:text-white"><i class="fa-solid fa-times"></i></button>
+                    </div>
+
+                    <div class="p-6 space-y-4 overflow-y-auto">
+                        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg px-4 py-3 flex justify-between text-sm">
+                            <div><span class="text-xs text-gray-400 block">建倉價</span>
+                                <span class="font-mono font-bold text-gray-700 dark:text-gray-200">{{ futuresTxEditForm.entryPrice.toLocaleString() }}</span></div>
+                            <div><span class="text-xs text-gray-400 block">乘數</span>
+                                <span class="font-mono font-bold text-gray-700 dark:text-gray-200">{{ futuresTxEditForm.multiplier }}</span></div>
+                            <div><span class="text-xs text-gray-400 block">幣別</span>
+                                <span class="font-mono font-bold text-gray-700 dark:text-gray-200">{{ futuresTxEditForm.currency }}</span></div>
+                        </div>
+
+                        <template v-if="futuresTxEditForm.type === 'rollover'">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 mb-1">遠月建倉價 <span class="text-red-500">*</span></label>
+                                <input type="number" v-model="futuresTxEditForm.openPrice" class="zen-input font-mono text-lg"
+                                    placeholder="輸入點數" @input="applyTxEditSpread">
+                                <div v-if="formErrors.openPrice" class="field-error">{{ formErrors.openPrice }}</div>
+                            </div>
+                            <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg px-4 py-3">
+                                <label class="block text-xs font-bold text-blue-600 dark:text-blue-400 mb-1">價差（選填）</label>
+                                <input type="number" v-model="futuresTxEditForm.spreadInput" class="zen-input font-mono"
+                                    placeholder="遠月 − 近月" @input="applyTxEditSpread">
+                                <p class="text-[11px] text-blue-500 dark:text-blue-400 mt-1.5">
+                                    定義是 <strong>遠月 − 近月</strong>，跟做多做空無關。填了會反推近月平倉價。
+                                </p>
+                            </div>
+                        </template>
+
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-1">
+                                {{ futuresTxEditForm.type === 'rollover' ? '近月平倉價' : '平倉價' }} <span class="text-red-500">*</span>
+                            </label>
+                            <input type="number" v-model="futuresTxEditForm.closePrice" class="zen-input font-mono text-lg"
+                                placeholder="輸入點數" @input="onTxEditClosePriceInput">
+                            <div v-if="formErrors.closePrice" class="field-error">{{ formErrors.closePrice }}</div>
+                            <p class="text-[11px] text-gray-400 mt-1.5">已實現損益完全由這個數字決定。</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-1">手續費 + 交易稅</label>
+                            <input type="number" min="0" v-model="futuresTxEditForm.fee" class="zen-input font-mono" placeholder="0">
+                        </div>
+
+                        <!-- 改動預覽：明確告訴使用者帳會怎麼變 -->
+                        <div v-if="futuresTxEditPreview" class="bg-gray-50 dark:bg-gray-700/50 rounded-lg px-4 py-3 space-y-1.5 text-sm">
+                            <div class="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">改動後</div>
+                            <div class="flex justify-between text-gray-500 dark:text-gray-400">
+                                <span>毛損益</span>
+                                <span :class="getPnlClass(futuresTxEditPreview.gross)">{{ formatCurrency(futuresTxEditPreview.gross, futuresTxEditForm.currency) }}</span>
+                            </div>
+                            <div v-if="futuresTxEditPreview.fee > 0" class="flex justify-between text-gray-400">
+                                <span>手續費/稅</span>
+                                <span>− {{ formatCurrency(futuresTxEditPreview.fee, futuresTxEditForm.currency) }}</span>
+                            </div>
+                            <div class="flex justify-between border-t border-gray-200 dark:border-gray-600 pt-1.5">
+                                <span class="font-bold text-gray-600 dark:text-gray-300">已實現損益（淨）</span>
+                                <span class="font-bold" :class="getPnlClass(futuresTxEditPreview.net)">{{ formatCurrency(futuresTxEditPreview.net, futuresTxEditForm.currency) }}</span>
+                            </div>
+                            <div class="flex justify-between text-xs pt-1">
+                                <span class="text-gray-400">保證金餘額變動</span>
+                                <span :class="getPnlClass(futuresTxEditPreview.delta)">
+                                    {{ futuresTxEditPreview.delta >= 0 ? '+' : '' }}{{ formatCurrency(futuresTxEditPreview.delta, futuresTxEditForm.currency) }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <p v-if="futuresTxEditForm.type === 'rollover' && futuresTxEditForm.farPositionOpen"
+                            class="text-xs text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg px-3 py-2">
+                            <i class="fa-solid fa-link mr-1"></i>
+                            這次展期建立的遠月部位還開著，儲存時它的建倉價會一併改成上面的「遠月建倉價」。
+                        </p>
+                        <p v-else-if="futuresTxEditForm.type === 'rollover' && futuresTxEditForm.newPositionId"
+                            class="text-xs text-gray-500 bg-gray-100 dark:bg-gray-700/50 rounded-lg px-3 py-2">
+                            <i class="fa-solid fa-circle-info mr-1"></i>
+                            這次展期建立的遠月部位已經不在了（可能已再展期或平倉），只會修正這筆紀錄本身。
+                        </p>
+                        <p v-if="!futuresTxEditForm.realizedGainsId"
+                            class="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2">
+                            <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+                            這筆是舊資料、沒有連到已實現損益紀錄，儲存後「歷史已實現損益」那邊需要自行核對。
+                        </p>
+                    </div>
+
+                    <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex justify-end gap-3">
+                        <button @click="showFuturesTxEditModal=false"
+                            class="px-4 py-2 rounded text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button>
+                        <button @click="saveFuturesTxEdit"
+                            class="px-6 py-2 rounded text-white font-semibold bg-amber-600 hover:bg-amber-500 transition">儲存修正</button>
                     </div>
                 </div>
             </div>

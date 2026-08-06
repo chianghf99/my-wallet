@@ -8,6 +8,7 @@ import {
     monthlyProfitData, monthlyProfitRange,
     futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm, futuresLoading, futuresTransactions, showFuturesActionModal, futuresActionForm,
     futuresHistoryRange, futuresHistoryStart, futuresHistoryEnd, editingFuturesFeeId, editingFuturesFeeValue,
+    showFuturesTxEditModal, futuresTxEditForm,
     investmentsTab, performanceTab, overviewTab,
     mutualFundList, showMutualFundModal, mutualFundForm
 } from './store/index.js';
@@ -1256,6 +1257,144 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         toastOk(`手續費已更新，淨損益與保證金餘額同步調整${tx.realizedGainsId ? '' : '（此筆為舊資料，已實現紀錄需自行核對）'}`);
                     } catch (e) {
                         toastErr('更新手續費失敗：' + e.message);
+                    }
+                };
+
+                // --- v5.24.0: 事後修正成交價 ---
+                // 平倉／展期當下自動帶入的是期交所的「最後成交價」，不是本人的成交價，
+                // 對完券商帳單才發現填錯是常態。改價要連動：
+                //   毛損益 → 淨損益 → 已實現損益紀錄 → 保證金餘額
+                // 展期還多一項：它建立的遠月部位，建倉價就是這裡的「遠月建倉價」，
+                // 若那個部位還在就要一起改，否則未實現損益會用錯的成本算。
+                const openFuturesTxEdit = async (tx) => {
+                    if (tx.type !== 'close' && tx.type !== 'rollover') return;
+                    const isRoll = tx.type === 'rollover';
+                    const fee = Number(tx.fee) || 0;
+                    // 舊資料可能沒有 netPnl / marginAdjustment，用毛損益減費用補回來
+                    const gross = isRoll ? (tx.nearMonthPnL || 0) : (tx.pnl || 0);
+                    const origNet = isRoll
+                        ? (tx.marginAdjustment !== undefined ? tx.marginAdjustment : gross - fee)
+                        : (tx.netPnl !== undefined ? tx.netPnl : gross - fee);
+
+                    // 展期建立的遠月部位還在不在？不在就不能連動改建倉價（可能已再展期或平掉）
+                    let farOpen = false;
+                    if (isRoll && tx.newPositionId && user.value) {
+                        try {
+                            const snap = await db.collection('users').doc(user.value.uid)
+                                .collection('futures_positions').doc(tx.newPositionId).get();
+                            farOpen = snap.exists;
+                        } catch (e) { farOpen = false; }
+                    }
+
+                    futuresTxEditForm.value = {
+                        id: tx.id, type: tx.type, symbol: tx.symbol,
+                        direction: tx.direction, contracts: tx.contracts, multiplier: tx.multiplier,
+                        entryPrice: tx.entryPrice, currency: tx.currency || 'TWD', date: tx.date,
+                        closePrice: tx.closePrice, openPrice: isRoll ? tx.openPrice : '', fee,
+                        spreadInput: isRoll && tx.openPrice && tx.closePrice
+                            ? Number((Number(tx.openPrice) - Number(tx.closePrice)).toFixed(4)) : '',
+                        realizedGainsId: tx.realizedGainsId || null,
+                        newPositionId: tx.newPositionId || null,
+                        origNet, farPositionOpen: farOpen
+                    };
+                    clearFormErrors();
+                    showFuturesTxEditModal.value = true;
+                };
+
+                /** 編輯視窗裡同樣用「遠月 − 近月」反推近月平倉價 */
+                const applyTxEditSpread = () => {
+                    const f = futuresTxEditForm.value;
+                    const spread = Number(f.spreadInput), far = Number(f.openPrice);
+                    if (f.spreadInput === '' || f.spreadInput === null || isNaN(spread) || !(far > 0)) return;
+                    f.closePrice = Number((far - spread).toFixed(4));
+                };
+                const onTxEditClosePriceInput = () => {
+                    const f = futuresTxEditForm.value;
+                    const near = Number(f.closePrice), far = Number(f.openPrice);
+                    if (near > 0 && far > 0) f.spreadInput = Number((far - near).toFixed(4));
+                };
+
+                /** 依目前輸入算出的新淨損益（畫面即時預覽用） */
+                const futuresTxEditPreview = computed(() => {
+                    const f = futuresTxEditForm.value;
+                    const close = Number(f.closePrice);
+                    if (!(close > 0)) return null;
+                    const fee = Math.max(0, Number(f.fee) || 0);
+                    const gross = (f.direction === 'long' ? close - f.entryPrice : f.entryPrice - close)
+                        * f.contracts * f.multiplier;
+                    const net = gross - fee;
+                    return { gross, fee, net, delta: net - f.origNet };
+                });
+
+                const saveFuturesTxEdit = async () => {
+                    if (!user.value) return;
+                    const f = futuresTxEditForm.value;
+                    const isRoll = f.type === 'rollover';
+                    const closePrice = Number(f.closePrice);
+                    const openPrice = Number(f.openPrice);
+                    const fee = Math.max(0, Number(f.fee) || 0);
+                    if (!validateForm([
+                        ['closePrice', closePrice > 0, isRoll ? '請輸入有效的近月平倉價' : '請輸入有效的平倉價'],
+                        ['openPrice', !isRoll || openPrice > 0, '請輸入有效的遠月建倉價']
+                    ])) return;
+
+                    const gross = (f.direction === 'long' ? closePrice - f.entryPrice : f.entryPrice - closePrice)
+                        * f.contracts * f.multiplier;
+                    const net = gross - fee;
+                    const delta = net - f.origNet;
+                    const uid = user.value.uid;
+                    const key = f.currency === 'USD' ? 'usd' : 'twd';
+                    const inc = firebase.firestore.FieldValue.increment;
+
+                    try {
+                        const batch = db.batch();
+                        const txRef = db.collection('users').doc(uid).collection('futures_transactions').doc(f.id);
+                        if (isRoll) {
+                            // rollSpread 沿用建立時的算法（含方向），保持既有資料格式一致
+                            const rollSpread = (f.direction === 'long' ? (openPrice - closePrice) : (closePrice - openPrice))
+                                * f.contracts * f.multiplier;
+                            batch.update(txRef, {
+                                closePrice, openPrice, fee,
+                                nearMonthPnL: gross, marginAdjustment: net, rollSpread
+                            });
+                        } else {
+                            batch.update(txRef, { closePrice, fee, pnl: gross, netPnl: net });
+                        }
+
+                        if (f.realizedGainsId) {
+                            batch.update(
+                                db.collection('users').doc(uid).collection('realized_gains').doc(f.realizedGainsId),
+                                { pnl: net, sellPrice: closePrice }
+                            );
+                        }
+
+                        if (delta !== 0) {
+                            batch.set(
+                                db.collection('users').doc(uid).collection('portfolio').doc('futures_margin'),
+                                { [key]: inc(delta) }, { merge: true }
+                            );
+                        }
+
+                        // 展期建立的遠月部位若還開著，建倉價要一起改，否則未實現損益會用錯成本
+                        if (isRoll && f.farPositionOpen && f.newPositionId) {
+                            batch.update(
+                                db.collection('users').doc(uid).collection('futures_positions').doc(f.newPositionId),
+                                { entryPrice: openPrice }
+                            );
+                        }
+
+                        await batch.commit();
+                        showFuturesTxEditModal.value = false;
+                        setTimeout(saveDailySnapshot, 500);
+
+                        const notes = [];
+                        if (delta !== 0) notes.push(`保證金${delta > 0 ? '增加' : '減少'} ${formatCurrency(Math.abs(delta), f.currency)}`);
+                        if (isRoll && f.farPositionOpen) notes.push('遠月部位建倉價已同步');
+                        if (isRoll && !f.farPositionOpen && f.newPositionId) notes.push('該遠月部位已不存在，未連動');
+                        if (!f.realizedGainsId) notes.push('此筆為舊資料、無已實現連結，請自行核對');
+                        toastOk('已更新' + (notes.length ? '：' + notes.join('；') : ''));
+                    } catch (e) {
+                        toastErr('更新失敗：' + e.message);
                     }
                 };
 
@@ -3076,6 +3215,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     openFuturesModal, saveFuturesPosition, deleteFuturesPosition, closeFuturesPosition, rollFuturesPosition, applyRollSpread, onRollClosePriceInput, showFuturesActionModal, futuresActionForm, submitFuturesAction, openFuturesMarginModal, adjustFuturesMargin, autoFetchTaiexIndexPrice, fetchFuturesPricesDirect, onFuturesSymbolChange, deleteFuturesTransaction, futuresHistoryTab, getFuturesDisplayName, futuresTotalMarginCashTwd,
                     futuresHistoryRange, futuresHistoryStart, futuresHistoryEnd, futuresHistoryBounds, futuresHistoryFiltered, futuresCloseRecords, futuresRolloverRecords, futuresRealizedSummary,
                     editingFuturesFeeId, editingFuturesFeeValue, startEditFuturesFee, cancelEditFuturesFee, saveFuturesFee,
+                    showFuturesTxEditModal, futuresTxEditForm, openFuturesTxEdit, applyTxEditSpread, onTxEditClosePriceInput, futuresTxEditPreview, saveFuturesTxEdit,
                     investmentsTab, performanceTab, overviewTab,
                     mutualFundList, showMutualFundModal, mutualFundForm, mutualFundTotalCost, mutualFundTotalValue, mutualFundTotalPnL, openMutualFundModal, saveMutualFund, deleteMutualFund
                 };

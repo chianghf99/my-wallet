@@ -1072,14 +1072,45 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     toastOk('平倉成功，損益已歸檔並調整保證金餘額');
                 };
 
-                // v5.23.0: 展期只需要填「新結算日 + 遠月建倉價」。
-                // 近月平倉價自動帶入目前抓到的市價 —— 那本來就是近月結算的依據，
-                // 平常不用改，但仍然開放修改（例如自己盯到的成交價跟報價有落差）。
-                // 舊版還有一個「價差點數」欄位可反推遠月價，實測容易填錯（方向搞反就整筆歪掉），
-                // 而且遠月價本來就看得到，多一層換算沒有換到任何好處，因此移除。
+                // 展期的輸入設計（v5.23.1 修正 v5.23.0 的方向）
+                //
+                // 已實現損益只取決於「近月平倉價」：(近月平倉價 − 原建倉價) × 口數 × 乘數。
+                // 遠月建倉價不在這條公式裡，它只是新部位的成本。
+                //
+                // 但實務上手邊有的資訊剛好相反：遠月價看得到（那是新部位的成本），
+                // 近月價才是不確定的那個 —— 自動帶入的報價是「最後成交價」而非自己的成交價，
+                // 微台在期交所擋掉時甚至是拿小台近似的（實測差 1~7 點），不能當結算依據。
+                // 所以提供價差反推：近月平倉價 = 遠月建倉價 − 價差。
+                //
+                // 正負號一律用市場報價慣例「價差 = 遠月 − 近月」，**與做多做空無關**。
+                // v5.23.0 之前的版本讓正負號跟著多空翻（long 加、short 減），做空時要自己
+                // 把符號反過來填，這是使用者回報「容易出錯」的真正原因。
                 const rollFuturesPosition = (pos) => {
-                    futuresActionForm.value = { mode: 'rollover', pos, closePrice: pos.currentPrice || '', fee: '', newExpiry: '', newOpenPrice: '' };
+                    futuresActionForm.value = {
+                        mode: 'rollover', pos,
+                        closePrice: pos.currentPrice || '', fee: '',
+                        newExpiry: '', newOpenPrice: '', spreadInput: '',
+                        closePriceFromQuote: !!pos.currentPrice   // 還沒被人改過 → 提醒使用者確認
+                    };
                     clearFormErrors(); showFuturesActionModal.value = true;
+                };
+
+                /** 價差或遠月價變動時，反推近月平倉價（兩者都要有值才算） */
+                const applyRollSpread = () => {
+                    const f = futuresActionForm.value;
+                    const spread = Number(f.spreadInput);
+                    const far = Number(f.newOpenPrice);
+                    if (f.spreadInput === '' || f.spreadInput === null || isNaN(spread) || !(far > 0)) return;
+                    f.closePrice = Number((far - spread).toFixed(4));
+                    f.closePriceFromQuote = false;
+                };
+
+                /** 手動改近月平倉價 → 不再視為「報價自動帶入」，並反算價差供核對 */
+                const onRollClosePriceInput = () => {
+                    const f = futuresActionForm.value;
+                    f.closePriceFromQuote = false;
+                    const near = Number(f.closePrice), far = Number(f.newOpenPrice);
+                    if (near > 0 && far > 0) f.spreadInput = Number((far - near).toFixed(4));
                 };
 
                 const _executeRollover = async (pos, closePrice, newExpiry, newOpenPrice, fee) => {
@@ -3042,7 +3073,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
                     futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm, futuresLoading, futuresTransactions,
                     futuresTotalUnrealizedPnL, futuresEquity, futuresTotalMarginUsed, futuresTotalExposure, futuresRiskRatio, futuresLeverageRatio,
-                    openFuturesModal, saveFuturesPosition, deleteFuturesPosition, closeFuturesPosition, rollFuturesPosition, showFuturesActionModal, futuresActionForm, submitFuturesAction, openFuturesMarginModal, adjustFuturesMargin, autoFetchTaiexIndexPrice, fetchFuturesPricesDirect, onFuturesSymbolChange, deleteFuturesTransaction, futuresHistoryTab, getFuturesDisplayName, futuresTotalMarginCashTwd,
+                    openFuturesModal, saveFuturesPosition, deleteFuturesPosition, closeFuturesPosition, rollFuturesPosition, applyRollSpread, onRollClosePriceInput, showFuturesActionModal, futuresActionForm, submitFuturesAction, openFuturesMarginModal, adjustFuturesMargin, autoFetchTaiexIndexPrice, fetchFuturesPricesDirect, onFuturesSymbolChange, deleteFuturesTransaction, futuresHistoryTab, getFuturesDisplayName, futuresTotalMarginCashTwd,
                     futuresHistoryRange, futuresHistoryStart, futuresHistoryEnd, futuresHistoryBounds, futuresHistoryFiltered, futuresCloseRecords, futuresRolloverRecords, futuresRealizedSummary,
                     editingFuturesFeeId, editingFuturesFeeValue, startEditFuturesFee, cancelEditFuturesFee, saveFuturesFee,
                     investmentsTab, performanceTab, overviewTab,

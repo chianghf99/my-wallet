@@ -13,7 +13,7 @@
            - fonts.googleapis.com/css2：回應內容依瀏覽器 User-Agent 而異
            - apis.google.com/js/api.js、accounts.google.com/gsi/client：
              Google 的載入器，內容持續更新且官方不提供固定雜湊 -->
-    <title>我的投資組合 | Portfolio v5.23.0</title>
+    <title>我的投資組合 | Portfolio v5.23.1</title>
     <!-- v5.12.0: PWA。三個入口各有獨立的 manifest 與圖示，
          加到主畫面後會是三個可分辨的 App，而不是同一顆圖示。 -->
     <link rel="manifest" href="./manifest-stock.webmanifest">
@@ -367,7 +367,7 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.23.0</h1>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.23.1</h1>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -387,7 +387,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.23.0</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.23.1</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -2592,13 +2592,26 @@
                                 <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800"></div>
                                 <div class="text-xs text-gray-400 mb-1">2026-08-06</div>
                                 <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
+                                    <div class="font-bold text-gray-800 dark:text-white mb-2">v5.23.1</div>
+                                    <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                        <li>展期加回「價差」欄位，但方向與上一版相反：已實現損益只取決於近月平倉價，而實際交易時看得到的是遠月價與價差，所以改成用「近月平倉價 = 遠月建倉價 − 價差」反推。</li>
+                                        <li>價差的正負號統一為市場報價慣例「遠月 − 近月」，不再跟著做多做空翻符號 —— 舊版做空時要自己把符號反過來填，這才是先前容易填錯的原因。</li>
+                                        <li>近月平倉價若還是系統自動帶入的報價，欄位會轉為警示色並標明「這是最後成交價，不是你的成交價」（微台在期交所不可用時甚至可能是小台的近似值），提醒先確認再送出。手動改過或用價差算出來之後就恢復正常樣式。</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="relative pl-6">
+                                <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-2 border-white dark:border-gray-800"></div>
+                                <div class="text-xs text-gray-400 mb-1">2026-08-06</div>
+                                <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
                                     <div class="font-bold text-gray-800 dark:text-white mb-2">v5.23.0</div>
                                     <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
                                         <li>修正：展期紀錄上標示的「（不計入已實現損益）」是錯的 —— 展期等於近月真的平掉了，損益一直都有計入已實現與保證金。這行字是舊版設計留下來的，會讓合計看起來對不起來。</li>
                                         <li>新增：期貨歷史明細加上時間篩選（近一月／近三月／今年／全部／自訂），預設近一個月。</li>
                                         <li>新增：期間已實現彙總 —— 淨損益、毛損益、手續費合計與筆數，跟著篩選走，選「今年」就是本年度已實現。平倉與展期都計入。</li>
                                         <li>新增：手續費可事後補填。下單當下看不到費用，等對帳單出來再點表格裡的手續費欄位直接改，淨損益、已實現紀錄與保證金餘額會同步調整。</li>
-                                        <li>簡化：展期只需填「遠月結算日」與「遠月建倉價」，近月平倉價自動帶入目前報價。移除「價差點數」反推欄位（方向填反會讓整筆歪掉，而遠月價本來就看得到）與「展期成本」欄位，改為直接顯示近月平倉價與遠月建倉價。</li>
+                                        <li>簡化：展期改以「遠月結算日」與「遠月建倉價」為主要輸入，移除表格的「展期成本」欄位，改為直接顯示近月平倉價與遠月建倉價兩個原始數字。（價差欄位在 v5.23.1 以正確的方向加回）</li>
                                         <li>新增：出入金明細也會顯示展期紀錄，先前只有建倉／平倉／出入金四種。</li>
                                     </ul>
                                 </div>
@@ -3813,21 +3826,47 @@
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500 mb-1">遠月建倉價格 <span class="text-red-500">*</span></label>
                                     <input type="number" v-model="futuresActionForm.newOpenPrice"
-                                        class="zen-input font-mono text-lg" placeholder="輸入點數">
+                                        class="zen-input font-mono text-lg" placeholder="輸入點數"
+                                        @input="applyRollSpread">
                                     <div v-if="formErrors.newOpenPrice" class="field-error">{{ formErrors.newOpenPrice }}</div>
                                 </div>
                             </div>
 
-                            <div class="bg-gray-50 dark:bg-gray-800/60 rounded-lg px-4 py-3">
-                                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">
-                                    近月平倉價（已自動帶入目前報價，通常不用改）
+                            <!-- v5.23.1: 用價差反推近月平倉價。
+                                 已實現損益只看近月平倉價，但實務上手邊有的是「遠月價 + 價差」，
+                                 自動帶入的報價是最後成交價而非自己的成交價（微台還可能是小台近似值）。 -->
+                            <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg px-4 py-3">
+                                <label class="block text-xs font-bold text-blue-600 dark:text-blue-400 mb-1">
+                                    價差（選填，用價差單展期時填這裡）
+                                </label>
+                                <input type="number" v-model="futuresActionForm.spreadInput"
+                                    class="zen-input font-mono" placeholder="遠月 − 近月"
+                                    @input="applyRollSpread">
+                                <p class="text-[11px] text-blue-500 dark:text-blue-400 mt-1.5 leading-relaxed">
+                                    定義是 <strong>遠月 − 近月</strong>，跟做多做空無關，照報價填就好。
+                                    填了會自動反推近月平倉價 = 遠月建倉價 − 價差。
+                                </p>
+                            </div>
+
+                            <div class="rounded-lg px-4 py-3"
+                                :class="futuresActionForm.closePriceFromQuote ? 'bg-amber-50 dark:bg-amber-900/20' : 'bg-gray-50 dark:bg-gray-800/60'">
+                                <label class="block text-xs font-bold mb-1"
+                                    :class="futuresActionForm.closePriceFromQuote ? 'text-amber-700 dark:text-amber-400' : 'text-gray-500 dark:text-gray-400'">
+                                    近月平倉價 <span class="text-red-500">*</span>
+                                    <span v-if="futuresActionForm.closePriceFromQuote" class="font-normal">（目前是系統報價，請確認）</span>
                                 </label>
                                 <input type="number" v-model="futuresActionForm.closePrice"
-                                    class="zen-input font-mono" placeholder="輸入點數">
+                                    class="zen-input font-mono text-lg" placeholder="輸入點數"
+                                    @input="onRollClosePriceInput">
                                 <div v-if="formErrors.closePrice" class="field-error">{{ formErrors.closePrice }}</div>
-                                <p class="text-[11px] text-gray-400 mt-1.5 leading-relaxed">
-                                    近月是真的平掉了，這個價格決定結算多少損益進保證金、以及計入已實現。
-                                    報價沒更新或跟實際成交差太多時再手動修正。
+                                <p v-if="futuresActionForm.closePriceFromQuote"
+                                    class="text-[11px] text-amber-700 dark:text-amber-400 mt-1.5 leading-relaxed">
+                                    <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+                                    這是抓到的<strong>最後成交價</strong>，不是你的成交價（微台在期交所不可用時還可能是小台近似值）。
+                                    <strong>已實現損益完全由這個數字決定</strong> —— 請填價差讓它自動算，或直接改成實際成交價。
+                                </p>
+                                <p v-else class="text-[11px] text-gray-400 mt-1.5 leading-relaxed">
+                                    已實現損益 =（近月平倉價 − 建倉價 {{ futuresActionForm.pos.entryPrice.toLocaleString() }}）× {{ futuresActionForm.pos.contracts }} 口 × {{ futuresActionForm.pos.multiplier }}
                                 </p>
                             </div>
                         </template>

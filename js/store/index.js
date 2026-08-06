@@ -134,6 +134,15 @@ export const futuresHistoryEnd = ref('');
 // 手續費事後補填：下單當下看不到費用，要等對帳單才知道，所以做成表格內可直接改。
 export const editingFuturesFeeId = ref(null);
 export const editingFuturesFeeValue = ref('');
+// v5.24.0: 事後修正成交價。展期／平倉當下自動帶入的是「最後成交價」而非本人成交價，
+// 對完帳單才發現填錯時，需要能改價並讓損益、已實現、保證金一起重算。
+export const showFuturesTxEditModal = ref(false);
+export const futuresTxEditForm = ref({
+    id: null, type: '', symbol: '', direction: 'long', contracts: 0, multiplier: 0,
+    entryPrice: 0, currency: 'TWD', date: '', closePrice: '', openPrice: '', fee: '',
+    spreadInput: '', realizedGainsId: null, newPositionId: null,
+    origNet: 0, farPositionOpen: false
+});
 
 // --- 子分頁切換狀態 ---
 export const investmentsTab = ref('stocks');

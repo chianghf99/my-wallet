@@ -1086,6 +1086,10 @@ createApp({
         ];
 
         const changelog = [
+            { version: 'v5.7.1', date: '2026-08-11', items: [
+                '修正：中國信託應繳 0 元的帳單 PDF 一律顯示「解析失敗」。實際是兩道關卡各壞一半，缺一不可：(1) 解析成功與否判斷寫成「金額大於 0」，但 -1 才是「沒抓到」的代號，0 是合法金額，被一起判成失敗；(2) 中信 0 元的兜底判定把圖樣寫成「/ 0/ 0」「0 +0」的單一空格，而 PDF 取字是把每個 text item 用空白串起來、中信又是每個字元自成一個 item，實際長相是「/   0   /   0」，這兩個判定從來沒成立過。已用實際帳單驗證修正後可正確帶入 0 元。',
+                '說明：中信的 PDF 用自訂字型，pdf.js 抽不出任何中文，連 $ 符號都沒有，版面只剩一串裸數字，因此金額只能靠版面圖樣辨識，無法像其他銀行那樣直接讀「本期應繳總金額」欄位。'
+            ] },
             { version: 'v5.7.0', date: '2026-08-02', items: [
                 '定位調整：本 App 不再保存完整卡號與安全碼（那兩項湊齊即可盜刷，交給密碼管理器），改為只保存末四碼與到期日 —— 這兩項單獨存在無法用於交易，但辨識卡片與掌握換卡時間很有用。新增卡片的表單也只剩這兩欄。',
                 '修正：編輯一張已把卡號搬到密碼管理器的卡片時，末四碼會被清空（卡面變成 **** **** **** ****）。原因是末四碼一直是從完整卡號推導出來的，卡號清掉後就推不出來了；現在末四碼是獨立欄位，會原樣保留。',
@@ -2578,7 +2582,10 @@ createApp({
                         }
                         
                         const result = processBankRules(pdfFile.value.name, fullText);
-                        if (result.amount > 0) {
+                        // amount 的 sentinel 是 -1（沒抓到），0 是合法金額。
+                        // 原本寫成 > 0，導致「這期 0 元」的帳單一律被當成解析失敗 ——
+                        // 連中信規則裡特地寫的 0 元判定也被這道關卡吞掉。
+                        if (result.amount >= 0) {
                             const matchedCard = cards.value.find(c => result.bankName.includes(c.name) || c.name.includes(result.bankName));
                             if (matchedCard) {
                                 billForm.cardId = matchedCard.id;
@@ -2762,8 +2769,14 @@ createApp({
                     let nums = amtMatch.map(m => parseInt(m.replace(/[$,]/g, "")));
                     amount = Math.max(...nums);
                 }
-                // 處理 0 元特徵 (亂碼情況)
-                if (amount === -1 && (text.includes("/ 0/ 0") || text.includes("0 +0"))) amount = 0;
+                // 0 元帳單的兜底判定。
+                // 中信的 PDF 用自訂字型，pdf.js 抽不出任何中文，也沒有 $ 符號 ——
+                // 版面只剩一堆裸數字，沒有「本期應繳總金額」這類標籤可定位，
+                // 只能靠 0 元版面特有的「/ 0 / 0」與「0 +0」兩個圖樣來認。
+                // 原本用 includes 寫死單一空格，但上面的分行是把每個 text item 用 " " 串起來，
+                // 而中信每個字元自成一個 item，實際長相是「/   0   /   0」——
+                // 所以這兩個判定從來沒成立過。改用容許任意空白的 regex。
+                if (amount === -1 && (/\/\s*0\s*\/\s*0/.test(text) || /\s0\s+\+\s*0(?!\d)/.test(text))) amount = 0;
             }
             // 11. 新光銀行 (檔名: 信用卡帳單YYYY年M月.pdf)
             else if (filename.includes("新光") || /信用卡帳單\d+年\d+月/.test(filename)) {

@@ -13,7 +13,7 @@
            - fonts.googleapis.com/css2：回應內容依瀏覽器 User-Agent 而異
            - apis.google.com/js/api.js、accounts.google.com/gsi/client：
              Google 的載入器，內容持續更新且官方不提供固定雜湊 -->
-    <title>我的投資組合 | Portfolio v5.24.0</title>
+    <title>我的投資組合 | Portfolio v5.25.0</title>
     <!-- v5.12.0: PWA。三個入口各有獨立的 manifest 與圖示，
          加到主畫面後會是三個可分辨的 App，而不是同一顆圖示。 -->
     <link rel="manifest" href="./manifest-stock.webmanifest">
@@ -367,7 +367,7 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.24.0</h1>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.25.0</h1>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -387,7 +387,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.24.0</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.25.0</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -2032,6 +2032,28 @@
                             </div>
                         </div>
 
+                        <!-- v5.25.0: 保證金是開倉當下記下來的，期交所調高之後舊部位不會自動跟著變，
+                             維持率會沿用偏小的分母而顯得比實際安全。這裡主動點出來，讓使用者知道要去改。 -->
+                        <div v-if="futuresStaleMarginPositions.length" class="mb-5 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 px-4 py-3">
+                            <div class="font-bold text-sm text-amber-800 dark:text-amber-300 flex items-center gap-2">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                                有 {{ futuresStaleMarginPositions.length }} 筆部位的佔用保證金低於現行標準
+                            </div>
+                            <p class="text-xs text-amber-700 dark:text-amber-400 mt-1.5 leading-relaxed">
+                                保證金是建倉當下記錄的，期交所調整後不會自動更新。
+                                <strong>維持率＝期貨權益 ÷ 佔用保證金</strong>，分母偏小會讓風險看起來比實際安全。
+                                點該筆部位的「編輯」改成下列金額即可。
+                            </p>
+                            <ul class="text-xs text-amber-800 dark:text-amber-300 mt-2 space-y-0.5">
+                                <li v-for="p in futuresStaleMarginPositions" :key="p.id" class="font-mono">
+                                    {{ getFuturesDisplayName(p.symbol) }} {{ p.contracts }} 口：
+                                    <span class="line-through opacity-60">{{ formatNumber(p.current) }}</span>
+                                    <i class="fa-solid fa-arrow-right mx-1 text-[9px]"></i>
+                                    <strong>{{ formatNumber(p.expected) }}</strong>
+                                </li>
+                            </ul>
+                        </div>
+
                         <!-- 未平倉部位清單 -->
                         <div class="overflow-x-auto">
                             <table class="w-full text-xs text-left">
@@ -2592,6 +2614,20 @@
                             <!-- 最新版本節點 -->
                             <div class="relative pl-6">
                                 <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800"></div>
+                                <div class="text-xs text-gray-400 mb-1">2026-08-06</div>
+                                <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
+                                    <div class="font-bold text-gray-800 dark:text-white mb-2">v5.25.0</div>
+                                    <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                        <li>修正：新增期貨部位時自動帶入的保證金停留在舊制（大台 179,000／小台 45,000／微台 11,100），比期交所現行的原始保證金少了 3～4 倍。維持率＝期貨權益 ÷ 佔用保證金，分母少算就會把風險看得比實際安全 3～4 倍。</li>
+                                        <li>更新為 2026-08-06 期交所公告：大台 701,000、小台 175,250、微台 35,050（原始保證金／每口）。數字集中在 <code>js/utils/futures.js</code>，期交所日後調整只需改一處。</li>
+                                        <li>新增：表單會標明帶入的是哪個商品的原始保證金、維持保證金多少、以及資料日期；個股期貨（台積電、小型台積電）另標示為概估值，因為它是契約價值的比例、隨股價浮動。</li>
+                                        <li>新增：既有部位若佔用保證金低於現行標準，部位清單上方會列出是哪幾筆、該改成多少 —— 保證金是建倉當下記錄的，期交所調整後不會自動更新。</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="relative pl-6">
+                                <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-2 border-white dark:border-gray-800"></div>
                                 <div class="text-xs text-gray-400 mb-1">2026-08-06</div>
                                 <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
                                     <div class="font-bold text-gray-800 dark:text-white mb-2">v5.24.0</div>
@@ -3703,7 +3739,20 @@
 
                         <div>
                             <label class="block text-xs font-bold text-gray-500 mb-1">佔用保證金 (單口或總額)</label>
-                            <input type="number" v-model="futuresForm.marginUsed" class="zen-input" placeholder="例如大台 179000 / 小台 45000">
+                            <input type="number" v-model="futuresForm.marginUsed" class="zen-input" placeholder="選擇商品後自動帶入原始保證金">
+                            <!-- v5.25.0: 標明數字的來源與日期。期交所會不定期調整，
+                                 使用者看到公告才知道要不要改，光給一個數字看不出新舊。 -->
+                            <p v-if="futuresMarginInfo" class="text-[11px] text-gray-400 mt-1 leading-relaxed">
+                                <template v-if="futuresMarginInfo.estimated">
+                                    <i class="fa-solid fa-circle-info mr-1"></i>
+                                    個股期貨的保證金是契約價值的一定比例、隨股價浮動，這裡是<strong>概估值</strong>，請依券商實際佔用金額修正。
+                                </template>
+                                <template v-else>
+                                    已帶入{{ futuresMarginInfo.name }}的<strong>原始保證金</strong>（{{ formatNumber(futuresMarginInfo.marginUsed) }}／口，
+                                    維持保證金 {{ formatNumber(futuresMarginInfo.maintenance) }}）。
+                                    資料為 {{ futuresMarginAsOf }} 的期交所公告；多口請自行乘上口數。
+                                </template>
+                            </p>
                                 <div v-if="formErrors.marginUsed" class="field-error">{{ formErrors.marginUsed }}</div>
                         </div>
 

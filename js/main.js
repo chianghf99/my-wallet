@@ -1,6 +1,6 @@
 import { db, auth } from './firebase-config.js';
 import { getLocalDate, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountSign, getFuturesDisplayName } from './utils/format.js';
-import { TAIFEX_PRODUCTS, TAIFEX_MIS_URL, taifexRequestBody, contractMonthOf, pickContract, pickFreshest, pickFromOpenData, OPEN_DATA_CONTRACT, cnyesUrl, cnyesEntry, parseCnyesQuote } from './utils/futures.js';
+import { TAIFEX_PRODUCTS, TAIFEX_MIS_URL, taifexRequestBody, contractMonthOf, pickContract, pickFreshest, pickFromOpenData, OPEN_DATA_CONTRACT, cnyesUrl, cnyesEntry, parseCnyesQuote, TAIFEX_MARGINS, futuresDefaultsFor } from './utils/futures.js';
 import { computePortfolio, calcStats, calcStockExposure, calcFundsValueTwd, calcFundsCostTwd, calcFuturesMarginCash, calcFuturesMarginUsed, calcFuturesExposure } from './utils/valuation.js';
 
 import { 
@@ -936,25 +936,42 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     clearFormErrors(); showFuturesModal.value = true;
                 };
 
+                // v5.25.0: 乘數與保證金改由 js/utils/futures.js 的 TAIFEX_MARGINS 提供。
+                // 原本是寫死在這裡的 if/else，數字停在舊制（大台 179,000／小台 45,000／微台 11,100），
+                // 比期交所現行的少了 3~4 倍 —— 而維持率＝期貨權益÷佔用保證金，
+                // 分母少算就等於把風險看得比實際安全 3~4 倍。集中管理後，期交所調整時只要改一處。
                 const onFuturesSymbolChange = () => {
-                    const sym = futuresForm.value.symbol;
-                    if (sym === 'TX') {
-                        futuresForm.value.multiplier = 200;
-                        futuresForm.value.marginUsed = 179000;
-                    } else if (sym === 'MTX') {
-                        futuresForm.value.multiplier = 50;
-                        futuresForm.value.marginUsed = 45000;
-                    } else if (sym === 'TMF') {
-                        futuresForm.value.multiplier = 10;
-                        futuresForm.value.marginUsed = 11100;
-                    } else if (sym === 'CDF') {
-                        futuresForm.value.multiplier = 2000;
-                        futuresForm.value.marginUsed = 300000; // 台積電期貨 2000股 (預估保證金)
-                    } else if (sym === 'QFF') {
-                        futuresForm.value.multiplier = 100;
-                        futuresForm.value.marginUsed = 15000; // 小型台積電期貨 100股 (預估保證金)
-                    }
+                    const d = futuresDefaultsFor(futuresForm.value.symbol);
+                    if (!d) return;
+                    futuresForm.value.multiplier = d.multiplier;
+                    futuresForm.value.marginUsed = d.marginUsed;
                 };
+
+                /** 表單目前選到的商品的保證金資訊（供介面顯示來源與日期） */
+                const futuresMarginInfo = computed(() => futuresDefaultsFor(futuresForm.value.symbol));
+                const futuresMarginAsOf = TAIFEX_MARGINS.asOf;
+
+                /**
+                 * 既有部位裡，佔用保證金明顯低於現行原始保證金的那些。
+                 * 保證金是開倉當下記下來的，期交所調高之後舊部位不會自動跟著變，
+                 * 維持率會沿用舊分母而偏樂觀。差 5% 以上就提示，避免小數點誤差也在叫。
+                 */
+                const futuresStaleMarginPositions = computed(() =>
+                    futuresPositions.value.filter(p => {
+                        const d = futuresDefaultsFor(p.symbol);
+                        if (!d || d.estimated) return false;
+                        const expected = d.marginUsed * (Number(p.contracts) || 0);
+                        const actual = Number(p.marginUsed) || 0;
+                        return expected > 0 && actual < expected * 0.95;
+                    }).map(p => {
+                        const d = futuresDefaultsFor(p.symbol);
+                        return {
+                            id: p.id, symbol: p.symbol, contracts: p.contracts,
+                            current: Number(p.marginUsed) || 0,
+                            expected: d.marginUsed * (Number(p.contracts) || 0)
+                        };
+                    })
+                );
                 const saveFuturesPosition = async () => {
                     if (!user.value) return;
                     const f = futuresForm.value;
@@ -3215,6 +3232,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     openFuturesModal, saveFuturesPosition, deleteFuturesPosition, closeFuturesPosition, rollFuturesPosition, applyRollSpread, onRollClosePriceInput, showFuturesActionModal, futuresActionForm, submitFuturesAction, openFuturesMarginModal, adjustFuturesMargin, autoFetchTaiexIndexPrice, fetchFuturesPricesDirect, onFuturesSymbolChange, deleteFuturesTransaction, futuresHistoryTab, getFuturesDisplayName, futuresTotalMarginCashTwd,
                     futuresHistoryRange, futuresHistoryStart, futuresHistoryEnd, futuresHistoryBounds, futuresHistoryFiltered, futuresCloseRecords, futuresRolloverRecords, futuresRealizedSummary,
                     editingFuturesFeeId, editingFuturesFeeValue, startEditFuturesFee, cancelEditFuturesFee, saveFuturesFee,
+                    futuresMarginInfo, futuresMarginAsOf, futuresStaleMarginPositions,
                     showFuturesTxEditModal, futuresTxEditForm, openFuturesTxEdit, applyTxEditSpread, onTxEditClosePriceInput, futuresTxEditPreview, saveFuturesTxEdit,
                     investmentsTab, performanceTab, overviewTab,
                     mutualFundList, showMutualFundModal, mutualFundForm, mutualFundTotalCost, mutualFundTotalValue, mutualFundTotalPnL, openMutualFundModal, saveMutualFund, deleteMutualFund

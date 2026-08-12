@@ -18,6 +18,53 @@ export const TAIFEX_PRODUCTS = {
     QFF: { cid: 'QFF', kind: '4', name: '小型台積電期貨' }
 };
 
+/**
+ * 期交所保證金（新臺幣／每口）。
+ *
+ * 來源：期交所「結算保證金、維持保證金及原始保證金一覽表」，2026-08-06 由使用者提供的公告擷取。
+ * 期交所會依指數波動不定期調整，**看到公告請回來改這裡**，這是唯一的來源。
+ *
+ * 為什麼要記在程式裡：新增部位時「佔用保證金」會自動帶入 initial 值，而
+ * 首頁的維持率（風控指標）＝ 期貨權益 ÷ 佔用保證金。這個數字寫錯，風控就整個失真 ——
+ * v5.24.0 以前寫死的是舊制（大台 179,000、小台 45,000、微台 11,100），
+ * 比實際少了 3~4 倍，維持率會顯示成實際的 3~4 倍，等於把風險看反了。
+ *
+ * maintenance / initial ≈ 76.7%，與介面上「77% 為維持保證金」的分級一致；
+ * 調整保證金時這個比例大致不變，但仍應一併核對。
+ *
+ * 個股期貨（CDF／QFF）不在這張表裡 —— 它的保證金是契約價值的一定比例（隨股價浮動），
+ * 沒有固定金額，因此只能是估計值，開倉後請依券商實際佔用金額修正。
+ */
+export const TAIFEX_MARGINS = {
+    asOf: '2026-08-06',
+    source: '期交所保證金一覽表',
+    products: {
+        TX:  { clearing: 519000, maintenance: 538000, initial: 701000, name: '臺股期貨（大台）' },
+        MTX: { clearing: 129750, maintenance: 134500, initial: 175250, name: '小型臺指期貨（小台）' },
+        TMF: { clearing:  25950, maintenance:  26900, initial:  35050, name: '微型臺指期貨（微台）' },
+        // 以下為個股期貨，非表列固定值，僅為概估
+        CDF: { initial: 300000, estimated: true, name: '台積電期貨（2000 股）' },
+        QFF: { initial:  15000, estimated: true, name: '小型台積電期貨（100 股）' }
+    }
+};
+
+/** 契約乘數（點數 → 新臺幣） */
+export const CONTRACT_MULTIPLIERS = { TX: 200, MTX: 50, TMF: 10, CDF: 2000, QFF: 100 };
+
+/** 新增部位時要帶入的預設值；查無代號回傳 null */
+export const futuresDefaultsFor = (symbol) => {
+    const m = TAIFEX_MARGINS.products[symbol];
+    const mult = CONTRACT_MULTIPLIERS[symbol];
+    if (!m || !mult) return null;
+    return {
+        multiplier: mult,
+        marginUsed: m.initial,
+        maintenance: m.maintenance || null,
+        estimated: !!m.estimated,
+        name: m.name
+    };
+};
+
 export const TAIFEX_MIS_URL = 'https://mis.taifex.com.tw/futures/api/getQuoteList';
 
 /** 組出期交所即時行情的查詢條件；marketType: '0'=日盤 '1'=夜盤 */

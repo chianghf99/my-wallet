@@ -13,7 +13,7 @@
            - fonts.googleapis.com/css2：回應內容依瀏覽器 User-Agent 而異
            - apis.google.com/js/api.js、accounts.google.com/gsi/client：
              Google 的載入器，內容持續更新且官方不提供固定雜湊 -->
-    <title>我的投資組合 | Portfolio v5.25.0</title>
+    <title>我的投資組合 | Portfolio v5.26.0</title>
     <!-- v5.12.0: PWA。三個入口各有獨立的 manifest 與圖示，
          加到主畫面後會是三個可分辨的 App，而不是同一顆圖示。 -->
     <link rel="manifest" href="./manifest-stock.webmanifest">
@@ -367,7 +367,7 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.25.0</h1>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.26.0</h1>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -387,7 +387,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.25.0</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.26.0</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -753,18 +753,13 @@
                             </div>
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <!-- v5.18.0: 卡片補上原本空白處該有的資訊（台幣對照、現金合計、保證金與風險指標） -->
+                            <!-- 四張卡片：台幣 / 美金 / 期貨權益 / 借款。v5.26.0 拿掉幣別佔比 —— 台美股帳戶是獨立看的，跨幣別合併沒有意義 -->
                             <div
                                 class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-900/30 text-center">
                                 <div class="text-xs text-blue-600 dark:text-blue-400 mb-1">台幣餘額 (TWD)</div>
                                 <div class="text-2xl font-bold text-blue-700 dark:text-blue-300"><span
                                         v-if="showPrivacy">{{ formatCurrency(cashData.twd, 'TWD') }}</span><span
                                         v-else>****</span></div>
-                                <div class="mt-2 pt-2 border-t border-blue-100 dark:border-blue-900/40 text-[11px] text-blue-600/70 dark:text-blue-400/70">
-                                    佔現金合計
-                                    <span v-if="showPrivacy" class="font-semibold">{{ cashTwdShare }}</span>
-                                    <span v-else>**</span>
-                                </div>
                             </div>
                             <div
                                 class="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border border-green-100 dark:border-green-900/30 text-center">
@@ -775,7 +770,6 @@
                                 <div class="mt-2 pt-2 border-t border-green-100 dark:border-green-900/40 text-[11px] text-green-600/70 dark:text-green-400/70">
                                     <span v-if="showPrivacy">≈ {{ formatCurrency((cashData.usd || 0) * exchangeRate, 'TWD') }}</span>
                                     <span v-else>****</span>
-                                    <span class="opacity-70"> · 佔 {{ showPrivacy ? cashUsdShare : '**' }}</span>
                                 </div>
                             </div>
                             <div
@@ -861,228 +855,206 @@
                             </div>
                         </div>
                         
-                        <!-- v5.18.0: 現金合計。台幣與美金分開看不出總額，而淨資產是台幣計價的。 -->
-                        <div class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-100 dark:border-gray-700 px-4 py-3">
-                            <div class="flex items-baseline gap-2">
-                                <span class="text-xs text-gray-500 dark:text-gray-400">現金合計（台幣計價）</span>
-                                <span class="text-lg font-bold dark:text-white">
-                                    <span v-if="showPrivacy">{{ formatCurrency(totalCashTwd, 'TWD') }}</span><span v-else>****</span>
-                                </span>
-                            </div>
-                            <div class="text-[11px] text-gray-400 dark:text-gray-500">
-                                台幣 {{ showPrivacy ? cashTwdShare : '**' }} · 美金 {{ showPrivacy ? cashUsdShare : '**' }}
-                                <span class="opacity-70">（匯率 {{ exchangeRate.toFixed(2) }}）</span>
-                            </div>
-                        </div>
-
-                        <!-- v5.18.0: 最近資金進出。以前要跳到歷史績效再篩類別才看得到。 -->
+                        <!-- ══ 配置：我把手上的錢放成多少市場部位 ══
+                             v5.26.0: 原本「持倉曝險倍率」只是槓桿儀表板裡的一條細長條，
+                             而且整個儀表板 v-if="totalLoanBalance > 0" —— 沒有借款的人根本看不到，
+                             即使他持有期貨或槓桿 ETF。配置與風險是兩種決策，拆開各自獨立顯示。 -->
                         <div class="mt-4 rounded-xl border border-gray-100 dark:border-gray-700 p-4">
-                            <div class="flex justify-between items-center mb-2">
-                                <div class="text-sm font-bold dark:text-white flex items-center gap-1.5">
-                                    <i class="fa-solid fa-right-left text-gray-400"></i>最近資金進出
-                                </div>
-                                <button @click="toggleSection('performance'); performanceTab = 'transactions'"
-                                    class="text-[11px] text-blue-500 hover:underline">看全部</button>
-                            </div>
-                            <div v-if="recentCashFlows.length" class="divide-y divide-gray-100 dark:divide-gray-700">
-                                <div v-for="tx in recentCashFlows" :key="tx.id" class="flex items-center justify-between py-2 text-sm">
-                                    <div class="min-w-0">
-                                        <span class="text-xs px-1.5 py-0.5 rounded mr-2 whitespace-nowrap"
-                                            :class="{
-                                                'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300': tx.type === 'deposit',
-                                                'bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300': tx.type === 'withdraw',
-                                                'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300': tx.type === 'borrow',
-                                                'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300': tx.type === 'repay'
-                                            }">{{ getTypeName(tx.type) }}</span>
-                                        <span class="text-gray-600 dark:text-gray-300 truncate">{{ tx.name || '-' }}</span>
+                            <div class="flex justify-between items-start mb-3">
+                                <div>
+                                    <div class="text-sm font-bold dark:text-white flex items-center gap-2">
+                                        <i class="fa-solid fa-bullseye text-purple-500"></i> 持倉配置
                                     </div>
-                                    <div class="text-right whitespace-nowrap ml-2">
-                                        <div class="font-medium" :class="getAmountClass(tx)">
-                                            <span v-if="showPrivacy">{{ getAmountSign(tx) }}{{ formatCurrency(tx.totalAmount, tx.currency) }}</span>
-                                            <span v-else>****</span>
+                                    <div class="text-[11px] text-gray-400 mt-0.5">手上的金融資產放大成多少市場曝險 —— 這是配置目標，與借款無關</div>
+                                </div>
+                                <div class="text-right" v-if="showPrivacy">
+                                    <div class="text-3xl font-bold" :class="positionExposureLevel.cls">{{ positionExposureMultiplier.toFixed(2) }}x</div>
+                                    <div class="text-[10px] font-bold" :class="positionExposureLevel.cls">{{ positionExposureLevel.text }}</div>
+                                </div>
+                                <div v-else class="text-2xl font-bold text-gray-300">****</div>
+                            </div>
+
+                            <div v-if="showPrivacy" class="mb-3">
+                                <div class="h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                    <div class="h-full rounded-full transition-all duration-500" :class="positionExposureLevel.bar"
+                                        :style="{ width: Math.min(((positionExposureMultiplier - 1) / 1.5) * 100, 100) + '%' }"></div>
+                                </div>
+                                <div class="flex justify-between text-[10px] text-gray-400 mt-1">
+                                    <span>1x 純現貨</span><span>1.5x</span><span>2x</span><span>2.5x+</span>
+                                </div>
+                            </div>
+
+                            <!-- 曝險組成：知道倍率之後，接著要問「放大來自哪裡」 -->
+                            <div v-if="showPrivacy && exposureBreakdown.total > 0" class="mb-3">
+                                <div class="flex justify-between items-baseline mb-1.5">
+                                    <span class="text-[11px] text-gray-500 dark:text-gray-400">曝險組成</span>
+                                    <span class="text-xs font-bold dark:text-gray-200">{{ formatCurrency(exposureBreakdown.total, 'TWD') }}</span>
+                                </div>
+                                <div class="h-3 rounded-full overflow-hidden flex bg-gray-100 dark:bg-gray-700">
+                                    <div v-for="it in exposureBreakdown.items" :key="it.key"
+                                        :class="it.color" class="h-full transition-all duration-700"
+                                        :style="{ width: it.pct + '%' }" :title="it.label"></div>
+                                </div>
+                                <div class="flex flex-wrap gap-x-3 gap-y-1 mt-1.5">
+                                    <span v-for="it in exposureBreakdown.items" :key="it.key"
+                                        class="text-[10px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                        <span class="w-2 h-2 rounded-full inline-block" :class="it.color"></span>
+                                        {{ it.label }} {{ it.pct.toFixed(0) }}%
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- 台股 / 美股 各自的持倉放大倍率（只在真的有放大時才佔版面） -->
+                            <div class="flex items-center gap-4 flex-wrap" v-if="showPrivacy && (twPositionExposureMultiplier > 1.01 || usPositionExposureMultiplier > 1.01)">
+                                <div v-if="twPositionExposureMultiplier > 1.01" class="flex items-center gap-1.5">
+                                    <img src="https://flagcdn.com/w20/tw.png" class="w-4 h-auto" alt="台股">
+                                    <span class="text-[10px] text-gray-400">台股持倉</span>
+                                    <span class="text-[11px] font-bold text-purple-500 dark:text-purple-400">{{ twPositionExposureMultiplier.toFixed(2) }}x</span>
+                                </div>
+                                <div v-if="usPositionExposureMultiplier > 1.01" class="flex items-center gap-1.5">
+                                    <img src="https://flagcdn.com/w20/us.png" class="w-4 h-auto" alt="美股">
+                                    <span class="text-[10px] text-gray-400">美股持倉</span>
+                                    <span class="text-[11px] font-bold text-purple-500 dark:text-purple-400">{{ usPositionExposureMultiplier.toFixed(2) }}x</span>
+                                </div>
+                            </div>
+
+                            <!-- 股票 / 現金比例：台美股帳戶各自獨立看，不做跨幣別合併 -->
+                            <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                                <div class="text-[11px] text-gray-500 dark:text-gray-400 mb-2.5">股票 / 現金比例（各帳戶獨立）</div>
+
+                                <div class="mb-3">
+                                    <div class="flex justify-between items-center mb-1">
+                                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                            <img src="https://flagcdn.com/w20/tw.png" class="w-4 h-auto" alt=""> 台股帳戶
+                                        </span>
+                                        <span class="text-xs text-gray-400" v-if="twStockList.length > 0 || cashData.twd > 0">
+                                            <span class="text-blue-500 font-bold">{{ (twStockList.reduce((a,s)=>a+s.currentPrice*s.shares,0) / (twStockList.reduce((a,s)=>a+s.currentPrice*s.shares,0) + (cashData.twd||0)) * 100 || 0).toFixed(0) }}% 股票</span>
+                                            <span class="text-gray-300 mx-1">/</span>
+                                            <span class="text-gray-400 font-bold">{{ (100 - (twStockList.reduce((a,s)=>a+s.currentPrice*s.shares,0) / (twStockList.reduce((a,s)=>a+s.currentPrice*s.shares,0) + (cashData.twd||0)) * 100 || 0)).toFixed(0) }}% 現金</span>
+                                        </span>
+                                    </div>
+                                    <div class="h-3 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden flex">
+                                        <div class="h-full bg-blue-500 transition-all duration-700 rounded-l-full"
+                                            :style="{ width: (() => { const s = twStockList.reduce((a,x)=>a+x.currentPrice*x.shares,0); const c = cashData.twd||0; const t = s+c; return t>0 ? (s/t*100).toFixed(1)+'%' : '50%'; })() }">
                                         </div>
-                                        <div class="text-[10px] text-gray-400">{{ tx.date }}</div>
+                                        <div class="h-full bg-gray-300 dark:bg-gray-500 flex-1 rounded-r-full"></div>
                                     </div>
                                 </div>
-                            </div>
-                            <div v-else class="text-center py-4 text-xs text-gray-400">
-                                近 90 天內無資金進出紀錄
+
+                                <div>
+                                    <div class="flex justify-between items-center mb-1">
+                                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                            <img src="https://flagcdn.com/w20/us.png" class="w-4 h-auto" alt=""> 美股帳戶
+                                        </span>
+                                        <span class="text-xs text-gray-400" v-if="usStockList.length > 0 || cashData.usd > 0">
+                                            <span class="text-emerald-500 font-bold">{{ (usStockList.reduce((a,s)=>a+s.currentPrice*s.shares,0) / (usStockList.reduce((a,s)=>a+s.currentPrice*s.shares,0) + (cashData.usd||0)) * 100 || 0).toFixed(0) }}% 股票</span>
+                                            <span class="text-gray-300 mx-1">/</span>
+                                            <span class="text-gray-400 font-bold">{{ (100 - (usStockList.reduce((a,s)=>a+s.currentPrice*s.shares,0) / (usStockList.reduce((a,s)=>a+s.currentPrice*s.shares,0) + (cashData.usd||0)) * 100 || 0)).toFixed(0) }}% 現金</span>
+                                        </span>
+                                    </div>
+                                    <div class="h-3 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden flex">
+                                        <div class="h-full bg-emerald-500 transition-all duration-700 rounded-l-full"
+                                            :style="{ width: (() => { const s = usStockList.reduce((a,x)=>a+x.currentPrice*x.shares,0); const c = cashData.usd||0; const t = s+c; return t>0 ? (s/t*100).toFixed(1)+'%' : '50%'; })() }">
+                                        </div>
+                                        <div class="h-full bg-gray-300 dark:bg-gray-500 flex-1 rounded-r-full"></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- v4.4.0: 槓桿比儀表板 -->
+                        <!-- ══ 風險：我借了多少錢來撐這些資產 ══ -->
                         <div v-if="totalLoanBalance > 0" class="mt-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-xl p-4">
                             <div class="flex justify-between items-start mb-3">
                                 <div>
                                     <div class="text-sm font-bold text-amber-800 dark:text-amber-300 flex items-center gap-2">
-                                        <i class="fa-solid fa-scale-unbalanced"></i> 槓桿比儀表板
+                                        <i class="fa-solid fa-scale-unbalanced"></i> 財務槓桿
                                     </div>
-                                    <div class="text-xs text-amber-600 dark:text-amber-400 mt-0.5">槓桿比 = 金融資產 / 金融淨資產 (排除房產與一般房貸)</div>
+                                    <div class="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5">借款把資產撐大幾倍 —— 這是風險承受度，與配置無關</div>
                                 </div>
-                                <div class="flex flex-col items-end">
-                                    <span class="text-3xl font-bold"
-                                        :class="leverageRatio >= 2.5 ? 'text-red-500 dark:text-red-400' : leverageRatio >= 1.5 ? 'text-orange-500 dark:text-orange-400' : 'text-emerald-600 dark:text-emerald-400'"
-                                        v-if="showPrivacy">{{ leverageRatio.toFixed(2) }}x</span>
-                                    <span v-else class="text-2xl font-bold text-gray-300">****</span>
-                                    <div class="text-[10px] font-bold text-gray-400 mt-0.5" v-if="showPrivacy && exposureRatio !== leverageRatio">
-                                        曝險比: {{ exposureRatio.toFixed(2) }}x
-                                    </div>
+                                <div class="text-right" v-if="showPrivacy">
+                                    <div class="text-3xl font-bold" :class="leverageLevel.cls">{{ leverageRatio.toFixed(2) }}x</div>
+                                    <div class="text-[10px] font-bold" :class="leverageLevel.cls">{{ leverageLevel.text }}</div>
                                 </div>
+                                <div v-else class="text-2xl font-bold text-gray-300">****</div>
                             </div>
-                            <!-- 視覺化進度條 -->
+
                             <div class="mb-3" v-if="showPrivacy">
-                                <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                                    <div class="h-full rounded-full transition-all duration-500"
-                                        :style="{ width: Math.min(((leverageRatio - 1) / 2) * 100, 100) + '%' }"
-                                        :class="leverageRatio >= 2.5 ? 'bg-red-500' : leverageRatio >= 1.5 ? 'bg-orange-400' : 'bg-emerald-500'">
-                                    </div>
+                                <div class="h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                    <div class="h-full rounded-full transition-all duration-500" :class="leverageLevel.bar"
+                                        :style="{ width: Math.min(((leverageRatio - 1) / 1.5) * 100, 100) + '%' }"></div>
                                 </div>
                                 <div class="flex justify-between text-[10px] text-gray-400 mt-1">
-                                    <span>1x (無槓桿)</span><span>1.5x</span><span>2x</span><span>2.5x (高)</span><span>3x+</span>
-                                </div>
-                                <!-- v4.5.0: 曝險指示器 -->
-                                <div class="mt-2 flex items-center gap-2" v-if="exposureRatio > leverageRatio + 0.01">
-                                    <div class="flex-grow h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                                        <div class="h-full bg-orange-400 opacity-50" :style="{ width: Math.min(((exposureRatio - 1) / 2) * 100, 100) + '%' }"></div>
-                                    </div>
-                                    <span class="text-[9px] text-orange-500 font-bold whitespace-nowrap">含 槓桿與期貨曝險: {{ exposureRatio.toFixed(2) }}x</span>
+                                    <span>1x 無借款</span><span>1.5x</span><span>2x</span><span>2.5x+</span>
                                 </div>
                             </div>
-                            <div class="mt-2 flex items-center gap-2" v-if="showPrivacy && positionExposureMultiplier > 1.01">
-                                <div class="flex-grow h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                                    <div class="h-full bg-purple-400 opacity-60" :style="{ width: Math.min(((positionExposureMultiplier - 1) / 2) * 100, 100) + '%' }"></div>
-                                </div>
-                                <span class="text-[9px] text-purple-500 dark:text-purple-400 font-bold whitespace-nowrap">持倉曝險倍率: {{ positionExposureMultiplier.toFixed(2) }}x</span>
-                            </div>
-                            <!-- 台股 / 美股各自的持倉曝險倍率 -->
-                            <div class="mt-1.5 flex items-center gap-3 flex-wrap" v-if="showPrivacy && (twPositionExposureMultiplier > 1.01 || usPositionExposureMultiplier > 1.01)">
-                                <div v-if="twPositionExposureMultiplier > 1.01" class="flex items-center gap-1.5">
-                                    <img src="https://flagcdn.com/w20/tw.png" class="w-4 h-auto">
-                                    <div class="w-16 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                                        <div class="h-full bg-purple-300 opacity-70" :style="{ width: Math.min(((twPositionExposureMultiplier - 1) / 2) * 100, 100) + '%' }"></div>
-                                    </div>
-                                    <span class="text-[9px] text-purple-500 dark:text-purple-400 font-bold whitespace-nowrap">{{ twPositionExposureMultiplier.toFixed(2) }}x</span>
-                                </div>
-                                <div v-if="usPositionExposureMultiplier > 1.01" class="flex items-center gap-1.5">
-                                    <img src="https://flagcdn.com/w20/us.png" class="w-4 h-auto">
-                                    <div class="w-16 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                                        <div class="h-full bg-purple-300 opacity-70" :style="{ width: Math.min(((usPositionExposureMultiplier - 1) / 2) * 100, 100) + '%' }"></div>
-                                    </div>
-                                    <span class="text-[9px] text-purple-500 dark:text-purple-400 font-bold whitespace-nowrap">{{ usPositionExposureMultiplier.toFixed(2) }}x</span>
-                                </div>
-                            </div>
+
                             <div class="grid grid-cols-3 gap-2 text-center text-xs" v-if="showPrivacy">
                                 <div class="bg-white dark:bg-gray-800 rounded-lg p-2">
-                                    <div class="text-gray-400 mb-0.5">{{ exposureRatio > leverageRatio + 0.01 ? '金融總曝險' : '金融總資產' }}</div>
-                                    <div class="font-bold text-gray-700 dark:text-gray-200">{{ formatCurrency(exposureRatio > leverageRatio + 0.01 ? financialExposure : financialAssets, 'TWD') }}</div>
-                                </div>
-                                <div class="bg-white dark:bg-gray-800 rounded-lg p-2">
-                                    <div class="text-gray-400 mb-0.5">金融淨資產</div>
-                                    <div class="font-bold text-gray-700 dark:text-gray-200">{{ formatCurrency(financialNetWorth, 'TWD') }}</div>
+                                    <div class="text-gray-400 mb-0.5">金融資產</div>
+                                    <div class="font-bold text-gray-700 dark:text-gray-200">{{ formatCurrency(financialAssets, 'TWD') }}</div>
                                 </div>
                                 <div class="bg-purple-50 dark:bg-purple-900/30 rounded-lg p-2">
                                     <div class="text-purple-500 dark:text-purple-400 mb-0.5">金融負債</div>
                                     <div class="font-bold text-purple-600 dark:text-purple-300">{{ formatCurrency(financialLoans, 'TWD') }}</div>
                                 </div>
+                                <div class="bg-white dark:bg-gray-800 rounded-lg p-2">
+                                    <div class="text-gray-400 mb-0.5">金融淨資產</div>
+                                    <div class="font-bold text-gray-700 dark:text-gray-200">{{ formatCurrency(financialNetWorth, 'TWD') }}</div>
+                                </div>
                             </div>
-                            <div class="mt-2 text-[11px] text-red-600 dark:text-red-400 flex items-start gap-1" v-if="exposureRatio >= 2">
-                                <i class="fa-solid fa-triangle-exclamation mt-0.5 flex-shrink-0"></i>
-                                <span>{{ exposureRatio > leverageRatio + 0.01 ? '加計 槓桿與期貨曝險後' : '槓桿比' }} {{ exposureRatio.toFixed(2) }}x 偏高，請評估風險承受能力。</span>
-                            </div>
-                            <!-- v5.18.0: 說明備註改為可收合。這段只會看一兩次，預設攤開會把數字擠到很下面。 -->
-                            <button @click="showLeverageNotes = !showLeverageNotes"
-                                class="mt-3 pt-3 border-t border-amber-200/50 dark:border-amber-800/40 w-full flex items-center justify-center gap-1.5 text-[11px] text-amber-700/80 dark:text-amber-400/80 hover:text-amber-800 dark:hover:text-amber-300 transition">
-                                <i class="fa-solid fa-circle-question"></i>
-                                <span>{{ showLeverageNotes ? '收起計算說明' : '這些數字怎麼算的？' }}</span>
-                                <i class="fa-solid text-[9px]" :class="showLeverageNotes ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
-                            </button>
-                            <div v-show="showLeverageNotes" class="mt-2 text-[10px] text-amber-700/80 dark:text-amber-400/80 space-y-1.5 leading-relaxed">
-                                <div class="flex items-start gap-1">
-                                    <i class="fa-solid fa-circle-info mt-0.5 flex-shrink-0"></i>
-                                    <div>
-                                        <strong>金融總資產</strong> = 股票總市值 + 活存現金餘額 + 期貨權益 + 基金現值 (排除房地產)
-                                    </div>
-                                </div>
-                                <div class="flex items-start gap-1">
-                                    <i class="fa-solid fa-circle-info mt-0.5 flex-shrink-0"></i>
-                                    <div>
-                                        <strong>金融總曝險</strong> = 股票曝險 (市值 × 槓桿倍數) + 現金 + 基金現值 + 期貨曝險 (合約價值 + 期貨空閒資金)
-                                    </div>
-                                </div>
-                                <div class="flex items-start gap-1">
-                                    <i class="fa-solid fa-circle-info mt-0.5 flex-shrink-0"></i>
-                                    <div>
-                                        <strong>金融淨資產</strong> = 金融總資產 - 金融負債
-                                    </div>
-                                </div>
-                                <div class="flex items-start gap-1">
-                                    <i class="fa-solid fa-circle-info mt-0.5 flex-shrink-0"></i>
-                                    <div>
-                                        <strong>金融負債</strong> = 總借款 - 一般房貸 (包含已勾選投資用途之增貸)
-                                    </div>
-                                </div>
-                                <div class="flex items-start gap-1" v-if="positionExposureMultiplier > 1.01">
-                                    <i class="fa-solid fa-circle-info mt-0.5 flex-shrink-0"></i>
-                                    <div>
-                                        <strong>持倉曝險倍率</strong> = 金融總曝險 / 金融資產，反映持倉本身放大幾倍（槓桿ETF + 期貨）；純現貨無借款時 = 1x
-                                    </div>
-                                </div>
+
+                            <div v-if="showPrivacy && totalAnnualInterest > 0" class="mt-2 text-[11px] text-amber-700/80 dark:text-amber-400/80 text-center">
+                                這些借款每年的利息成本約 <strong>{{ formatCurrency(totalAnnualInterest, 'TWD') }}</strong><span v-if="weightedInterestRate !== null">（加權 {{ weightedInterestRate.toFixed(2) }}%）</span>
                             </div>
                         </div>
 
-                        <!-- v4.8.0: 股票 / 現金比例 -->
-                        <div class="mt-4 rounded-xl border border-gray-100 dark:border-gray-700 p-4">
-                            <div class="flex items-center gap-2 mb-4">
-                                <i class="fa-solid fa-scale-balanced text-blue-500 text-sm"></i>
-                                <span class="font-bold text-sm dark:text-white">股票 / 現金比例</span>
-                            </div>
-
-                            <!-- 台股 -->
-                            <div class="mb-4">
-                                <div class="flex justify-between items-center mb-1">
-                                    <span class="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                                        <img src="https://flagcdn.com/w20/tw.png" class="w-4 h-auto"> 台股
-                                    </span>
-                                    <span class="text-xs text-gray-400" v-if="twStockList.length > 0 || cashData.twd > 0">
-                                        <span class="text-blue-500 font-bold">{{ (twStockList.reduce((a,s)=>a+s.currentPrice*s.shares,0) / (twStockList.reduce((a,s)=>a+s.currentPrice*s.shares,0) + (cashData.twd||0)) * 100 || 0).toFixed(0) }}% 股票</span>
-                                        <span class="text-gray-300 mx-1">/</span>
-                                        <span class="text-gray-400 font-bold">{{ (100 - (twStockList.reduce((a,s)=>a+s.currentPrice*s.shares,0) / (twStockList.reduce((a,s)=>a+s.currentPrice*s.shares,0) + (cashData.twd||0)) * 100 || 0)).toFixed(0) }}% 現金</span>
-                                    </span>
+                        <!-- ══ 兩者相乘＝實際承受的市場曝險 ══
+                             持倉曝險 (E/A) × 財務槓桿 (A/N) = 曝險比 (E/N)，數學上完全相等。
+                             把它寫出來，使用者才知道上面兩塊不是兩個並列的指標，而是相乘的關係。 -->
+                        <div v-if="showPrivacy && leverageRatio > 1.01 && positionExposureMultiplier > 1.01"
+                            class="mt-4 rounded-xl border p-4"
+                            :class="exposureRatio >= 2 ? 'border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-900/20' : 'border-gray-100 dark:border-gray-700'">
+                            <div class="flex items-center justify-center gap-2 sm:gap-4 flex-wrap text-center">
+                                <div>
+                                    <div class="text-lg font-bold text-purple-500 dark:text-purple-400">{{ positionExposureMultiplier.toFixed(2) }}x</div>
+                                    <div class="text-[10px] text-gray-400">持倉配置</div>
                                 </div>
-                                <div class="h-3 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden flex">
-                                    <div class="h-full bg-blue-500 transition-all duration-700 rounded-l-full"
-                                        :style="{ width: (() => { const s = twStockList.reduce((a,x)=>a+x.currentPrice*x.shares,0); const c = cashData.twd||0; const t = s+c; return t>0 ? (s/t*100).toFixed(1)+'%' : '50%'; })() }">
-                                    </div>
-                                    <div class="h-full bg-gray-300 dark:bg-gray-500 flex-1 rounded-r-full"></div>
+                                <span class="text-gray-300 dark:text-gray-600 text-lg">×</span>
+                                <div>
+                                    <div class="text-lg font-bold text-amber-600 dark:text-amber-400">{{ leverageRatio.toFixed(2) }}x</div>
+                                    <div class="text-[10px] text-gray-400">財務槓桿</div>
                                 </div>
-                                <div class="flex justify-between text-[10px] text-gray-400 mt-0.5">
-                                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-500 inline-block"></span>股票</span>
-                                    <span class="flex items-center gap-1">現金<span class="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-500 inline-block"></span></span>
+                                <span class="text-gray-300 dark:text-gray-600 text-lg">=</span>
+                                <div>
+                                    <div class="text-2xl font-bold" :class="exposureRatio >= 2 ? 'text-red-500 dark:text-red-400' : 'text-gray-700 dark:text-gray-200'">{{ exposureRatio.toFixed(2) }}x</div>
+                                    <div class="text-[10px] text-gray-400 font-bold">實際承受曝險</div>
                                 </div>
                             </div>
+                            <div class="text-[11px] text-gray-500 dark:text-gray-400 text-center mt-2 leading-relaxed">
+                                淨資產每變動 1%，實際部位約變動 {{ exposureRatio.toFixed(2) }}%。
+                            </div>
+                            <div class="mt-2 text-[11px] text-red-600 dark:text-red-400 flex items-start justify-center gap-1" v-if="exposureRatio >= 2">
+                                <i class="fa-solid fa-triangle-exclamation mt-0.5 flex-shrink-0"></i>
+                                <span>實際承受曝險 {{ exposureRatio.toFixed(2) }}x 偏高，請評估風險承受能力。</span>
+                            </div>
 
-                            <!-- 美股 -->
-                            <div>
-                                <div class="flex justify-between items-center mb-1">
-                                    <span class="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                                        <img src="https://flagcdn.com/w20/us.png" class="w-4 h-auto"> 美股
-                                    </span>
-                                    <span class="text-xs text-gray-400" v-if="usStockList.length > 0 || cashData.usd > 0">
-                                        <span class="text-emerald-500 font-bold">{{ (usStockList.reduce((a,s)=>a+s.currentPrice*s.shares,0) / (usStockList.reduce((a,s)=>a+s.currentPrice*s.shares,0) + (cashData.usd||0)) * 100 || 0).toFixed(0) }}% 股票</span>
-                                        <span class="text-gray-300 mx-1">/</span>
-                                        <span class="text-gray-400 font-bold">{{ (100 - (usStockList.reduce((a,s)=>a+s.currentPrice*s.shares,0) / (usStockList.reduce((a,s)=>a+s.currentPrice*s.shares,0) + (cashData.usd||0)) * 100 || 0)).toFixed(0) }}% 現金</span>
-                                    </span>
-                                </div>
-                                <div class="h-3 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden flex">
-                                    <div class="h-full bg-emerald-500 transition-all duration-700 rounded-l-full"
-                                        :style="{ width: (() => { const s = usStockList.reduce((a,x)=>a+x.currentPrice*x.shares,0); const c = cashData.usd||0; const t = s+c; return t>0 ? (s/t*100).toFixed(1)+'%' : '50%'; })() }">
-                                    </div>
-                                    <div class="h-full bg-gray-300 dark:bg-gray-500 flex-1 rounded-r-full"></div>
-                                </div>
-                                <div class="flex justify-between text-[10px] text-gray-400 mt-0.5">
-                                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>股票</span>
-                                    <span class="flex items-center gap-1">現金<span class="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-500 inline-block"></span></span>
-                                </div>
+                        </div>
+                        <!-- 計算說明獨立出來：乘法區塊會在「無借款」或「純現貨」時隱藏，
+                             說明卻是任何情況都該查得到的。 -->
+                        <div v-if="showPrivacy" class="mt-4">
+                            <button @click="showLeverageNotes = !showLeverageNotes"
+                            class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 w-full flex items-center justify-center gap-1.5 text-[11px] text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition">
+                            <i class="fa-solid fa-circle-question"></i>
+                            <span>{{ showLeverageNotes ? '收起計算說明' : '這些數字怎麼算的？' }}</span>
+                            <i class="fa-solid text-[9px]" :class="showLeverageNotes ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                        </button>
+                        <div v-show="showLeverageNotes" class="mt-2 text-[10px] text-gray-500 dark:text-gray-400 space-y-1.5 leading-relaxed">
+                            <div><strong>持倉配置</strong> = 金融總曝險 ÷ 金融資產。反映持倉本身放大幾倍（槓桿 ETF、期貨）；純現貨 = 1x。</div>
+                            <div><strong>財務槓桿</strong> = 金融資產 ÷ 金融淨資產。反映借款把資產撐大幾倍；無借款 = 1x。</div>
+                            <div><strong>金融資產</strong> = 股票市值 + 活存現金 + 期貨權益 + 基金現值（排除房地產）</div>
+                            <div><strong>金融總曝險</strong> = 股票曝險（市值 × 槓桿倍數）+ 現金 + 基金 + 期貨曝險（合約價值 + 期貨閒置資金）</div>
+                            <div><strong>金融負債</strong> = 總借款 − 一般房貸（含已勾選投資用途的增貸）</div>
+                            <div class="pt-1 border-t border-gray-100 dark:border-gray-700">兩者相乘剛好等於 金融總曝險 ÷ 金融淨資產，所以可以分開看、也可以合起來看。</div>
                             </div>
                         </div>
                     </div>
@@ -2614,6 +2586,21 @@
                             <!-- 最新版本節點 -->
                             <div class="relative pl-6">
                                 <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800"></div>
+                                <div class="text-xs text-gray-400 mb-1">2026-08-06</div>
+                                <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
+                                    <div class="font-bold text-gray-800 dark:text-white mb-2">v5.26.0</div>
+                                    <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                        <li>重整資金管理：把「持倉配置」與「財務槓桿」拆成兩個獨立區塊。前者是配置目標（手上的錢放大成多少市場部位，與借款無關），後者是風險評估（借款把資產撐大幾倍），兩者的決策邏輯不同，混在一起看會互相干擾。</li>
+                                        <li>修正：舊版整個槓桿儀表板只在「有借款」時才顯示，導致沒有借款但持有期貨或槓桿 ETF 的人完全看不到自己的持倉曝險。持倉配置區塊現在一律顯示。</li>
+                                        <li>新增：曝險組成長條，看得出放大來自台股、美股、期貨還是基金 —— 只知道倍率不知道來源，沒辦法據以調整。</li>
+                                        <li>新增：「持倉配置 × 財務槓桿 = 實際承受曝險」的關係式。這三個數字在數學上剛好是乘法關係，寫出來才知道它們不是三個並列的指標。</li>
+                                        <li>移除：最近資金進出（需要時到交易明細看即可）、現金合計與台幣／美金佔比（台股與美股帳戶各自獨立，跨幣別合併的佔比沒有參考價值，各帳戶的股現比就夠了）。</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="relative pl-6">
+                                <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-2 border-white dark:border-gray-800"></div>
                                 <div class="text-xs text-gray-400 mb-1">2026-08-06</div>
                                 <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
                                     <div class="font-bold text-gray-800 dark:text-white mb-2">v5.25.0</div>

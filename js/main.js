@@ -411,10 +411,6 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 const financialNetWorth = computed(() => portfolio.value.financialNetWorth);
 
                 // --- v5.18.0: 資金管理區用的衍生數值 ---
-                const totalCashTwd = computed(() => (cashData.value.twd || 0) + (cashData.value.usd || 0) * exchangeRate.value);
-                const pctOf = (part, whole) => (whole > 0 ? `${(part / whole * 100).toFixed(0)}%` : '—');
-                const cashTwdShare = computed(() => pctOf(cashData.value.twd || 0, totalCashTwd.value));
-                const cashUsdShare = computed(() => pctOf((cashData.value.usd || 0) * exchangeRate.value, totalCashTwd.value));
 
                 // 期貨風險指標 = 權益數 / 原始保證金。期交所規定低於 25% 會被強制平倉，
                 // 維持保證金約為原始保證金的 77%，以此分級提示。
@@ -432,17 +428,6 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     if (r < 77) return 'text-orange-600 dark:text-orange-400';
                     if (r < 100) return 'text-amber-600 dark:text-amber-400';
                     return 'text-emerald-600 dark:text-emerald-400';
-                });
-
-                // v5.18.0: 資金管理區直接列出最近的現金進出。
-                // 以前要跳到「歷史績效 → 交易明細」再自己篩類別，叫資金管理卻看不到資金流動。
-                const recentCashFlows = computed(() => {
-                    const kinds = ['deposit', 'withdraw', 'borrow', 'repay'];
-                    return transactionHistory.value
-                        .filter(tx => kinds.includes(tx.type))
-                        .slice()
-                        .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
-                        .slice(0, 5);
                 });
 
                 // 借款年化利息成本（利率為選填，沒填就不計入）
@@ -496,6 +481,58 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
                 // 曝險比例 = 金融總曝險 / 金融淨資產
                 const exposureRatio = computed(() => portfolio.value.exposureRatio);
+
+                // --- v5.26.0: 把「配置」與「風險」拆成兩件事 ---
+                //
+                // 這三個數字原本擠在同一個儀表板裡，看起來像三個並列的指標，其實是乘法關係：
+                //
+                //     持倉曝險倍率 (E/A) × 槓桿比 (A/N) = 曝險比 (E/N)
+                //
+                //   E = 金融總曝險  A = 金融資產  N = 金融淨資產
+                //
+                // 前者是「我把手上的錢配置成多少市場部位」（槓桿 ETF、期貨造成的放大）——
+                // 那是主動選擇的配置目標，跟有沒有借錢無關。
+                // 後者是「我借了多少錢來撐這些資產」—— 那是風險承受度的問題。
+                // 兩件事的決策邏輯完全不同，混在一起看只會互相干擾。
+                const exposureBreakdown = computed(() => {
+                    const rate = exchangeRate.value;
+                    const tw = calcStockExposure(twStockList.value);
+                    const us = calcStockExposure(usStockList.value) * rate;
+                    const fut = calcFuturesExposure(futuresPositions.value, rate)
+                        + Math.max(0, futuresEquity.value - futuresTotalMarginUsed.value);
+                    const cash = (cashData.value.twd || 0) + (cashData.value.usd || 0) * rate;
+                    const funds = portfolio.value.fundsValue;
+                    const total = financialExposure.value;
+                    const pct = v => (total > 0 ? (v / total * 100) : 0);
+                    return {
+                        total,
+                        items: [
+                            { key: 'tw',    label: '台股',   value: tw,    pct: pct(tw),    color: 'bg-blue-500' },
+                            { key: 'us',    label: '美股',   value: us,    pct: pct(us),    color: 'bg-emerald-500' },
+                            { key: 'fut',   label: '期貨',   value: fut,   pct: pct(fut),   color: 'bg-orange-500' },
+                            { key: 'funds', label: '基金',   value: funds, pct: pct(funds), color: 'bg-indigo-400' },
+                            { key: 'cash',  label: '現金',   value: cash,  pct: pct(cash),  color: 'bg-gray-300 dark:bg-gray-500' }
+                        ].filter(i => i.value > 0)
+                    };
+                });
+
+                /** 配置面的分級：純現貨 = 1x，超過 1.5x 代表持倉本身已有明顯放大 */
+                const positionExposureLevel = computed(() => {
+                    const m = positionExposureMultiplier.value;
+                    if (m >= 2) return { text: '高度放大', cls: 'text-red-500 dark:text-red-400', bar: 'bg-red-500' };
+                    if (m >= 1.5) return { text: '中度放大', cls: 'text-orange-500 dark:text-orange-400', bar: 'bg-orange-400' };
+                    if (m > 1.01) return { text: '輕度放大', cls: 'text-amber-600 dark:text-amber-400', bar: 'bg-amber-400' };
+                    return { text: '純現貨', cls: 'text-emerald-600 dark:text-emerald-400', bar: 'bg-emerald-500' };
+                });
+
+                /** 風險面的分級：只看借款造成的財務槓桿 */
+                const leverageLevel = computed(() => {
+                    const m = leverageRatio.value;
+                    if (m >= 2.5) return { text: '偏高', cls: 'text-red-500 dark:text-red-400', bar: 'bg-red-500' };
+                    if (m >= 1.5) return { text: '中等', cls: 'text-orange-500 dark:text-orange-400', bar: 'bg-orange-400' };
+                    if (m > 1.01) return { text: '輕度', cls: 'text-amber-600 dark:text-amber-400', bar: 'bg-amber-400' };
+                    return { text: '無借款槓桿', cls: 'text-emerald-600 dark:text-emerald-400', bar: 'bg-emerald-500' };
+                });
                 const realizedTotalTw = computed(() => sortedRealizedGains.value.filter(r => r.currency === 'TWD').reduce((acc, cur) => acc + cur.pnl, 0));
                 const realizedTotalUs = computed(() => sortedRealizedGains.value.filter(r => r.currency === 'USD').reduce((acc, cur) => acc + cur.pnl, 0));
 
@@ -3208,8 +3245,9 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     inlineNewLoan, inlineLoanName, saveInlineLoanAccount,
                     exportToExcel, exportSimplifiedPortfolio,
                     showSettingsModal, saveSettings,
-                    totalCashTwd, cashTwdShare, cashUsdShare, futuresRiskLabel, futuresRiskClass,
-                    totalAnnualInterest, weightedInterestRate, recentCashFlows, showLeverageNotes,
+                    futuresRiskLabel, futuresRiskClass,
+                    totalAnnualInterest, weightedInterestRate, showLeverageNotes,
+                    exposureBreakdown, positionExposureLevel, leverageLevel,
                     toasts, showToast, dismissToast, formErrors, clearFormErrors,
                     autoBackupEnabled, autoBackupIntervalDays, lastBackupAt, showBackupReminder, daysSinceBackup, dismissBackupReminder,
                     triggerImport, fileInput, handleImport,

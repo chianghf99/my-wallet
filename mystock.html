@@ -13,7 +13,7 @@
            - fonts.googleapis.com/css2：回應內容依瀏覽器 User-Agent 而異
            - apis.google.com/js/api.js、accounts.google.com/gsi/client：
              Google 的載入器，內容持續更新且官方不提供固定雜湊 -->
-    <title>我的投資組合 | Portfolio v5.26.0</title>
+    <title>我的投資組合 | Portfolio v5.27.0</title>
     <!-- v5.12.0: PWA。三個入口各有獨立的 manifest 與圖示，
          加到主畫面後會是三個可分辨的 App，而不是同一顆圖示。 -->
     <link rel="manifest" href="./manifest-stock.webmanifest">
@@ -367,7 +367,7 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.26.0</h1>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.27.0</h1>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -387,7 +387,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.26.0</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.27.0</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -915,6 +915,54 @@
                                     <img src="https://flagcdn.com/w20/us.png" class="w-4 h-auto" alt="美股">
                                     <span class="text-[10px] text-gray-400">美股持倉</span>
                                     <span class="text-[11px] font-bold text-purple-500 dark:text-purple-400">{{ usPositionExposureMultiplier.toFixed(2) }}x</span>
+                                </div>
+                            </div>
+
+                            <!-- v5.27.0: 持倉曝險趨勢。
+                                 不需要補歷史資料 —— 快照存的是 leverage(A/N) 與 exposure(E/N)，
+                                 相除 N 就約掉，直接得到當天的持倉曝險 E/A。
+                                 另開一張圖而非併入資產走勢：單位是倍數不是金額，同圖要副 Y 軸，
+                                 v5.21.0 正是因為那樣難以判讀才把槓桿比曲線移除。 -->
+                            <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700" v-if="showPrivacy">
+                                <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
+                                    <span class="text-[11px] text-gray-500 dark:text-gray-400">曝險趨勢（配置有沒有偏離目標）</span>
+                                    <div class="flex bg-gray-100 dark:bg-gray-800 rounded p-0.5 text-[10px] font-semibold">
+                                        <button v-for="o in [{k:'1M',l:'1月'},{k:'3M',l:'3月'},{k:'6M',l:'半年'},{k:'1Y',l:'1年'},{k:'ALL',l:'全部'}]"
+                                            :key="o.k" @click="setExposureTrendRange(o.k)"
+                                            :class="exposureTrendRange === o.k ? 'bg-white dark:bg-gray-700 shadow text-purple-600 dark:text-purple-400' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
+                                            class="px-2 py-0.5 rounded transition">{{ o.l }}</button>
+                                    </div>
+                                </div>
+
+                                <div class="h-40 relative">
+                                    <canvas id="exposureTrendChart"></canvas>
+                                    <div v-if="exposureTrendLoading" class="absolute inset-0 flex items-center justify-center text-xs text-gray-400">載入中…</div>
+                                    <div v-else-if="exposureTrendStats.count === 0" class="absolute inset-0 flex items-center justify-center text-xs text-gray-400">
+                                        這個期間沒有可用的歷史快照
+                                    </div>
+                                </div>
+
+                                <div v-if="exposureTrendStats.count > 0" class="grid grid-cols-4 gap-2 mt-2 text-center">
+                                    <div>
+                                        <div class="text-[9px] text-gray-400">期初</div>
+                                        <div class="text-xs font-bold text-gray-600 dark:text-gray-300">{{ exposureTrendStats.first.toFixed(2) }}x</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-[9px] text-gray-400">期末</div>
+                                        <div class="text-xs font-bold" :class="positionExposureLevel.cls">{{ exposureTrendStats.last.toFixed(2) }}x</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-[9px] text-gray-400">區間</div>
+                                        <div class="text-xs font-bold text-gray-600 dark:text-gray-300">{{ exposureTrendStats.min.toFixed(2) }}–{{ exposureTrendStats.max.toFixed(2) }}x</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-[9px] text-gray-400">平均</div>
+                                        <div class="text-xs font-bold text-gray-600 dark:text-gray-300">{{ exposureTrendStats.avg.toFixed(2) }}x</div>
+                                    </div>
+                                </div>
+                                <!-- 早期快照沒有 leverage/exposure 欄位，跳過的點要講出來，否則線看起來莫名其妙地短 -->
+                                <div v-if="exposureTrendStats.partial > 0" class="text-[10px] text-gray-400 mt-1.5 text-center">
+                                    有 {{ exposureTrendStats.partial }} 天的快照缺少槓桿欄位（早期資料），已略過不畫
                                 </div>
                             </div>
 
@@ -2586,6 +2634,19 @@
                             <!-- 最新版本節點 -->
                             <div class="relative pl-6">
                                 <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800"></div>
+                                <div class="text-xs text-gray-400 mb-1">2026-08-06</div>
+                                <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
+                                    <div class="font-bold text-gray-800 dark:text-white mb-2">v5.27.0</div>
+                                    <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                        <li>新增：持倉配置區塊加上曝險趨勢圖，看得出配置有沒有隨時間偏離目標，可選 1 月／3 月／半年／1 年／全部，並顯示期初、期末、區間與平均。</li>
+                                        <li>不需要補任何歷史資料 —— 每日快照本來就存了槓桿比與曝險比，兩者相除剛好等於持倉曝險，所以過去每一天都能還原，趨勢圖一啟用就有完整歷史。</li>
+                                        <li>圖上畫有 1x（純現貨）基準線，並確保它一定在可視範圍內；早期快照若缺少槓桿欄位會略過並註明幾天，不會畫出憑空補出來的線。</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="relative pl-6">
+                                <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-2 border-white dark:border-gray-800"></div>
                                 <div class="text-xs text-gray-400 mb-1">2026-08-06</div>
                                 <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
                                     <div class="font-bold text-gray-800 dark:text-white mb-2">v5.26.0</div>

@@ -1,13 +1,14 @@
 import { db, auth } from './firebase-config.js';
 import { getLocalDate, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountSign, getFuturesDisplayName } from './utils/format.js';
 import { TAIFEX_PRODUCTS, TAIFEX_MIS_URL, taifexRequestBody, contractMonthOf, pickContract, pickFreshest, pickFromOpenData, OPEN_DATA_CONTRACT, cnyesUrl, cnyesEntry, parseCnyesQuote, TAIFEX_MARGINS, futuresDefaultsFor } from './utils/futures.js';
-import { computePortfolio, calcStats, calcStockExposure, calcFundsValueTwd, calcFundsCostTwd, calcFuturesMarginCash, calcFuturesMarginUsed, calcFuturesExposure } from './utils/valuation.js';
+import { computePortfolio, calcStats, calcStockExposure, calcFundsValueTwd, calcFundsCostTwd, calcFuturesMarginCash, calcFuturesMarginUsed, calcFuturesExposure, buildExposureTrend } from './utils/valuation.js';
 
 import { 
     user, stocks, exchangeRate, exchangeRateConfirmed, lastUpdated, loadingTarget, isLoading, viewMode, isMobile, showPrivacy, defaultPrivacyHidden, hideZeroShares, showSettingsModal, isDarkMode, activeSection, showChangelog, toasts, formErrors, showLeverageNotes, autoBackupEnabled, autoBackupIntervalDays, lastBackupAt, showBackupReminder, stockStates, sectionLoading, showStockNoteModal, stockNoteForm, showHistoryModal, historyRecords, historyFilterYear, availableYears, historyFilterMonth, historyOnlyEdited, showDeleteModal, pendingDeleteTx, showEditTxModal, editTxForm, showHistoryEditModalVisible, historyEditForm, showBulkHistoryModal, bulkHistoryForm, bulkHistoryBusy, notes, showNoteModalVisible, noteForm, loanList, showLoanMgrModal, inlineNewLoan, inlineLoanName, loanForm, cashData, prevDayData, realEstateList, showRealEstateModal, realEstateForm, chartStartDate, chartEndDate, chartPnl, currentRange, divRange, divSearchQuery, divStartDate, divEndDate, realizedStartDate, realizedEndDate, transStartDate, transEndDate, transFilterType, transSearchQuery, sortKeyTrans, sortOrderTrans, sortKeyDiv, sortOrderDiv, realizedGains, realizedSearchQuery, sortKeyRealized, sortOrderRealized, realizedRange, dividendRecords, transactionHistory, showModal, isEditing, form, showTransModal, isFundMode, isLoanMode, loanCashMode, transForm,
     monthlyProfitData, monthlyProfitRange,
     futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm, futuresLoading, futuresTransactions, showFuturesActionModal, futuresActionForm,
     futuresHistoryRange, futuresHistoryStart, futuresHistoryEnd, editingFuturesFeeId, editingFuturesFeeValue,
+    exposureTrendRange, exposureTrendStats, exposureTrendLoading,
     showFuturesTxEditModal, futuresTxEditForm,
     investmentsTab, performanceTab, overviewTab,
     mutualFundList, showMutualFundModal, mutualFundForm
@@ -711,6 +712,8 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     if (activeSection.value === 'performance' && performanceTab.value === 'monthly') {
                         setTimeout(drawMonthlyChart, 100);
                     }
+                
+                    if (activeSection.value === 'cash') setTimeout(drawExposureTrend, 100);
                 });
 
                 watch(performanceTab, (newTab) => {
@@ -731,8 +734,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 });
 
                 watch(activeSection, (newSection) => {
-                    // 資金管理要顯示最近的現金進出，需要交易紀錄
-                    if (newSection === 'cash' && !transactionHistory.value.length) fetchTransactions();
+                    if (newSection === 'cash') setTimeout(drawExposureTrend, 100);
                     if (newSection === 'overview') {
                         setTimeout(() => {
                             if (overviewTab.value === 'trend') drawChart();
@@ -752,6 +754,113 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
                 const toggleSection = (s) => {
                     activeSection.value = s;
+                };
+
+                // --- v5.27.0: 持倉曝險趨勢 ---
+                //
+                // 不需要補任何歷史資料。每日快照存的是 leverage (=A/N) 與 exposure (=E/N)，
+                // 而持倉曝險 = E/A = exposure ÷ leverage —— 兩者相除 N 就約掉了。
+                // 所以既有的每一筆快照都能直接還原出當天的持倉曝險。
+                //
+                // 為什麼另開一張圖而不是加到資產走勢：單位是倍數不是金額，
+                // 同圖要用副 Y 軸，v5.21.0 正是因為那樣難以判讀才把槓桿比曲線移除的。
+                let exposureChartInstance = null;
+
+                const exposureTrendBounds = () => {
+                    const today = getLocalDate();
+                    const back = (months) => {
+                        const d = new Date(today + 'T00:00:00');
+                        d.setMonth(d.getMonth() - months);
+                        const p = n => String(n).padStart(2, '0');
+                        return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+                    };
+                    switch (exposureTrendRange.value) {
+                        case '1M': return { start: back(1), end: today };
+                        case '6M': return { start: back(6), end: today };
+                        case '1Y': return { start: back(12), end: today };
+                        case 'ALL': return { start: '1970-01-01', end: today };
+                        default: return { start: back(3), end: today };
+                    }
+                };
+
+                const drawExposureTrend = async () => {
+                    const canvas = document.getElementById('exposureTrendChart');
+                    if (!user.value || !canvas) return;
+                    exposureTrendLoading.value = true;
+                    try {
+                        const { start, end } = exposureTrendBounds();
+                        const snap = await db.collection('users').doc(user.value.uid).collection('history')
+                            .where('date', '>=', start).where('date', '<=', end)
+                            .orderBy('date', 'asc').get();
+
+                        // 推導與統計是純函式（js/utils/valuation.js），可離線測試
+                        const { points, stats } = buildExposureTrend(snap.docs.map(d => d.data()));
+                        const vals = points.map(p => p.pos);
+                        exposureTrendStats.value = stats;
+
+                        if (exposureChartInstance) exposureChartInstance.destroy();
+                        if (!points.length) return;
+
+                        const isDark = document.documentElement.classList.contains('dark');
+                        const gridColor = isDark ? '#374151' : '#e5e7eb';
+                        const line = '#a855f7';
+                        exposureChartInstance = new Chart(canvas.getContext('2d'), {
+                            type: 'line',
+                            data: {
+                                labels: points.map(p => p.date),
+                                datasets: [
+                                    {
+                                        label: '持倉曝險倍率',
+                                        data: vals,
+                                        borderColor: line,
+                                        backgroundColor: isDark ? 'rgba(168,85,247,0.15)' : 'rgba(168,85,247,0.10)',
+                                        fill: true, tension: 0.3, pointRadius: 0, pointHitRadius: 12, borderWidth: 2
+                                    },
+                                    {
+                                        // 1x = 純現貨，作為判讀基準線
+                                        label: '1x（純現貨）',
+                                        data: vals.map(() => 1),
+                                        borderColor: isDark ? '#4b5563' : '#d1d5db',
+                                        borderDash: [4, 4], borderWidth: 1, pointRadius: 0, fill: false
+                                    }
+                                ]
+                            },
+                            options: {
+                                responsive: true, maintainAspectRatio: false,
+                                interaction: { mode: 'index', intersect: false },
+                                plugins: {
+                                    legend: { display: false },
+                                    tooltip: {
+                                        callbacks: {
+                                            label: c => `${c.dataset.label}: ${Number(c.parsed.y).toFixed(2)}x`
+                                        }
+                                    }
+                                },
+                                scales: {
+                                    x: { grid: { display: false }, ticks: { maxTicksLimit: 6, font: { size: 9 }, color: '#9ca3af' } },
+                                    y: {
+                                        grid: { color: gridColor },
+                                        ticks: { font: { size: 9 }, color: '#9ca3af', callback: v => Number(v).toFixed(1) + 'x' },
+                                        // 貼著資料範圍縮放，不硬把 1x 塞進視野 —— 這張圖要看的是
+                                        // 「配置有沒有偏離自己的目標」，長期都在 2x 以上時強留 1x
+                                        // 會讓超過三成的高度空著、把實際變化壓平。
+                                        // 1x 基準線仍然畫著，落在範圍內時自然看得到。
+                                        suggestedMin: Math.min(...vals) - 0.1,
+                                        suggestedMax: Math.max(...vals) + 0.1
+                                    }
+                                }
+                            }
+                        });
+                    } catch (e) {
+                        toastErr('載入持倉曝險趨勢失敗：' + e.message);
+                    } finally {
+                        exposureTrendLoading.value = false;
+                    }
+                };
+
+                const setExposureTrendRange = (r) => {
+                    exposureTrendRange.value = r;
+                    setTimeout(drawExposureTrend, 50);
                 };
                 const jumpToFundHistory = () => { setTimeout(() => { const el = document.querySelector('[data-section="fund-history"]'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }, 100); };
                 const loadUserData = (uid) => {
@@ -3248,6 +3357,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     futuresRiskLabel, futuresRiskClass,
                     totalAnnualInterest, weightedInterestRate, showLeverageNotes,
                     exposureBreakdown, positionExposureLevel, leverageLevel,
+                    exposureTrendRange, exposureTrendStats, exposureTrendLoading, setExposureTrendRange, drawExposureTrend,
                     toasts, showToast, dismissToast, formErrors, clearFormErrors,
                     autoBackupEnabled, autoBackupIntervalDays, lastBackupAt, showBackupReminder, daysSinceBackup, dismissBackupReminder,
                     triggerImport, fileInput, handleImport,

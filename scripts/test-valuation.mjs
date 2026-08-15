@@ -6,7 +6,7 @@
 //
 // 執行：node scripts/test-valuation.mjs
 
-import { computePortfolio, buildSnapshotFields } from '../js/utils/valuation.js';
+import { computePortfolio, buildSnapshotFields, buildExposureTrend } from '../js/utils/valuation.js';
 
 // --- 比對基準 ---
 // 原則上逐字對應線上公式，用來確認重構沒有改變計算結果。
@@ -209,6 +209,59 @@ const expectKeys = ['totalVal', 'twVal', 'usVal', 'twCash', 'usCash', 'loan', 't
 const missing = expectKeys.filter(k => snap[k] === undefined);
 if (missing.length) { failures++; console.log('❌ 快照缺少欄位:', missing.join(', ')); }
 else console.log('✅ 快照欄位齊全');
+
+
+// --- v5.27.0: 從歷史快照還原持倉曝險倍率 ---
+// 快照存 leverage=A/N 與 exposure=E/N，相除 N 約掉 → E/A。不需要補任何欄位。
+const expect = (name, actual, want) => {
+    const ok = JSON.stringify(actual) === JSON.stringify(want);
+    if (!ok) { failures++; console.log(`❌ ${name}\n     實得 ${JSON.stringify(actual)}\n     期望 ${JSON.stringify(want)}`); }
+    else console.log(`✅ ${name}`);
+};
+
+// 用 computePortfolio 產生一組真實快照，再回推，驗證與 positionExposureMultiplier 相同
+const scenario = {
+    twStocks: [{ currentPrice: 120, shares: 20000, avgCost: 100, multiplier: 2 }],
+    usStocks: [{ currentPrice: 500, shares: 100, avgCost: 400, currency: 'USD' }],
+    cash: { twd: 500000, usd: 10000 },
+    loans: [{ balance: 800000, type: 'other' }],
+    funds: [{ currentValue: 250000, costBasis: 200000 }],
+    futuresPositions: [{ direction: 'long', contracts: 2, multiplier: 50, entryPrice: 43000, currentPrice: 43800, marginUsed: 350500 }],
+    futuresMargin: { twd: 300000 },
+    rate: 32
+};
+const p = computePortfolio(scenario);
+const snapRow = { date: '2026-08-14', leverage: p.leverageRatio, exposure: p.exposureRatio };
+const back = buildExposureTrend([snapRow]);
+const roundTrip = Math.abs(back.points[0].pos - p.positionExposureMultiplier) < 1e-12;
+expect('由快照回推 = positionExposureMultiplier', roundTrip, true);
+console.log(`     持倉曝險 ${p.positionExposureMultiplier.toFixed(4)}x = 曝險比 ${p.exposureRatio.toFixed(4)} ÷ 槓桿比 ${p.leverageRatio.toFixed(4)}`);
+
+// 統計值
+const rows = [
+    { date: '2026-08-01', leverage: 1.0, exposure: 1.0 },   // 1.00x
+    { date: '2026-08-02', leverage: 1.25, exposure: 2.5 },  // 2.00x
+    { date: '2026-08-03', leverage: 2.0, exposure: 6.0 },   // 3.00x
+];
+const t = buildExposureTrend(rows);
+expect('序列值', t.points.map(x => +x.pos.toFixed(4)), [1, 2, 3]);
+expect('期初/期末', [t.stats.first, t.stats.last], [1, 3]);
+expect('最小/最大', [t.stats.min, t.stats.max], [1, 3]);
+expect('平均', +t.stats.avg.toFixed(4), 2);
+expect('筆數', t.stats.count, 3);
+
+// 缺欄位／異常值要被略過而非畫出假線
+const dirty = buildExposureTrend([
+    { date: 'a', leverage: 1.5, exposure: 3 },      // 2.00x
+    { date: 'b' },                                   // 早期快照，無欄位
+    { date: 'c', leverage: 0, exposure: 2 },         // 分母 0
+    { date: 'd', leverage: null, exposure: 2 },
+    { date: 'e', leverage: 1, exposure: 1.5 }        // 1.50x
+]);
+expect('略過缺值後只留有效點', dirty.points.map(x => x.date), ['a', 'e']);
+expect('略過筆數', dirty.stats.partial, 3);
+expect('空輸入不炸', buildExposureTrend([]).stats.count, 0);
+expect('空輸入統計為 null', buildExposureTrend([]).stats.first, null);
 
 console.log(failures ? `\n❌ ${failures} 項不一致` : '\n全部通過：重構未改變任何計算結果');
 // 在 Node 下以離開碼回報結果；其他 JS 引擎（例如用 jsc 快速跑）則略過

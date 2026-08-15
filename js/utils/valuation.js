@@ -166,6 +166,43 @@ export const computePortfolio = ({
     };
 };
 
+/**
+ * 從歷史快照還原「持倉曝險倍率」的時間序列。
+ *
+ * 快照存的是 leverage = 金融資產/金融淨資產 (A/N) 與 exposure = 金融總曝險/金融淨資產 (E/N)。
+ * 兩者相除 N 就約掉：exposure / leverage = E/A = 持倉曝險倍率。
+ * 所以不需要為了畫趨勢圖補寫任何新欄位，既有的每一筆快照都還原得出來。
+ *
+ * 缺 leverage/exposure 的早期快照（或 leverage <= 0 的異常值）一律略過並計數，
+ * 寧可線短一點，也不要用猜的值把圖補滿。
+ *
+ * @param {Array} rows 依日期排序的快照
+ * @returns {{points: Array<{date: string, pos: number}>, stats: object}}
+ */
+export const buildExposureTrend = (rows = []) => {
+    const points = [];
+    let skipped = 0;
+    for (const x of rows) {
+        const lev = Number(x && x.leverage);
+        const exp = Number(x && x.exposure);
+        if (!isFinite(lev) || !isFinite(exp) || lev <= 0) { skipped++; continue; }
+        points.push({ date: x.date, pos: exp / lev });
+    }
+    const vals = points.map(p => p.pos);
+    return {
+        points,
+        stats: {
+            count: points.length,
+            partial: skipped,
+            first: vals.length ? vals[0] : null,
+            last: vals.length ? vals[vals.length - 1] : null,
+            min: vals.length ? Math.min(...vals) : null,
+            max: vals.length ? Math.max(...vals) : null,
+            avg: vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null
+        }
+    };
+};
+
 /** 每日快照要寫進 Firestore 的欄位，由 computePortfolio 的結果整理而成 */
 export const buildSnapshotFields = (input) => {
     const p = computePortfolio(input);

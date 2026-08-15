@@ -30,6 +30,11 @@ export const lastBackupAt = ref(localStorage.getItem('lastBackupAt') || '');
 export const showBackupReminder = ref(false);
 // v5.18.0: 槓桿儀表板的計算說明預設收起（只會看一兩次，攤開會把數字擠到很下面）
 export const showLeverageNotes = ref(false);
+// v5.27.0: 持倉曝險趨勢。與資產走勢圖分開，因為單位是倍數不是金額 ——
+// 兩者同圖需要副 Y 軸，v5.21.0 已因為難以判讀而把槓桿比曲線從走勢圖移除。
+export const exposureTrendRange = ref('3M');   // 1M / 3M / 6M / 1Y / ALL
+export const exposureTrendStats = ref({ count: 0, first: null, last: null, min: null, max: null, avg: null, partial: 0 });
+export const exposureTrendLoading = ref(false);
 export const isDarkMode = ref(localStorage.getItem('darkMode') === 'true');
 export const activeSection = ref('overview');
 export const showChangelog = ref(false);

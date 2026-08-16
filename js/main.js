@@ -1086,11 +1086,28 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 // 原本是寫死在這裡的 if/else，數字停在舊制（大台 179,000／小台 45,000／微台 11,100），
                 // 比期交所現行的少了 3~4 倍 —— 而維持率＝期貨權益÷佔用保證金，
                 // 分母少算就等於把風險看得比實際安全 3~4 倍。集中管理後，期交所調整時只要改一處。
-                const onFuturesSymbolChange = () => {
+                // v5.27.1: 保證金要乘上口數。
+                // calcFuturesMarginUsed 是直接加總 p.marginUsed，所以這個欄位的語意是「總額」，
+                // 但舊版自動帶入的是「單口」金額 —— 持 2 口就少算一半，維持率顯示成實際的兩倍
+                // （實測 228% vs 實際 114%）。這會抵銷掉 v5.25.0 更新保證金數字的意義。
+                const applyFuturesDefaults = () => {
                     const d = futuresDefaultsFor(futuresForm.value.symbol);
                     if (!d) return;
                     futuresForm.value.multiplier = d.multiplier;
-                    futuresForm.value.marginUsed = d.marginUsed;
+                    const lots = Number(futuresForm.value.contracts);
+                    futuresForm.value.marginUsed = d.marginUsed * (lots > 0 ? lots : 1);
+                };
+                const onFuturesSymbolChange = applyFuturesDefaults;
+
+                /** 改口數時同步重算保證金；使用者若已手動改過金額就不覆蓋 */
+                const onFuturesContractsChange = () => {
+                    const d = futuresDefaultsFor(futuresForm.value.symbol);
+                    if (!d) return;
+                    const lots = Number(futuresForm.value.contracts);
+                    const cur = Number(futuresForm.value.marginUsed);
+                    // 只有目前金額仍是「某個口數 × 標準保證金」時才自動跟著調整
+                    const isUntouched = !(cur > 0) || Math.abs(cur % d.marginUsed) < 0.01;
+                    if (lots > 0 && isUntouched) futuresForm.value.marginUsed = d.marginUsed * lots;
                 };
 
                 /** 表單目前選到的商品的保證金資訊（供介面顯示來源與日期） */
@@ -3377,7 +3394,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
                     futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm, futuresLoading, futuresTransactions,
                     futuresTotalUnrealizedPnL, futuresEquity, futuresTotalMarginUsed, futuresTotalExposure, futuresRiskRatio, futuresLeverageRatio,
-                    openFuturesModal, saveFuturesPosition, deleteFuturesPosition, closeFuturesPosition, rollFuturesPosition, applyRollSpread, onRollClosePriceInput, showFuturesActionModal, futuresActionForm, submitFuturesAction, openFuturesMarginModal, adjustFuturesMargin, autoFetchTaiexIndexPrice, fetchFuturesPricesDirect, onFuturesSymbolChange, deleteFuturesTransaction, futuresHistoryTab, getFuturesDisplayName, futuresTotalMarginCashTwd,
+                    openFuturesModal, saveFuturesPosition, deleteFuturesPosition, closeFuturesPosition, rollFuturesPosition, applyRollSpread, onRollClosePriceInput, showFuturesActionModal, futuresActionForm, submitFuturesAction, openFuturesMarginModal, adjustFuturesMargin, autoFetchTaiexIndexPrice, fetchFuturesPricesDirect, onFuturesSymbolChange, onFuturesContractsChange, deleteFuturesTransaction, futuresHistoryTab, getFuturesDisplayName, futuresTotalMarginCashTwd,
                     futuresHistoryRange, futuresHistoryStart, futuresHistoryEnd, futuresHistoryBounds, futuresHistoryFiltered, futuresCloseRecords, futuresRolloverRecords, futuresRealizedSummary,
                     editingFuturesFeeId, editingFuturesFeeValue, startEditFuturesFee, cancelEditFuturesFee, saveFuturesFee,
                     futuresMarginInfo, futuresMarginAsOf, futuresStaleMarginPositions,

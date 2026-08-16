@@ -13,7 +13,7 @@
            - fonts.googleapis.com/css2：回應內容依瀏覽器 User-Agent 而異
            - apis.google.com/js/api.js、accounts.google.com/gsi/client：
              Google 的載入器，內容持續更新且官方不提供固定雜湊 -->
-    <title>我的投資組合 | Portfolio v5.27.0</title>
+    <title>我的投資組合 | Portfolio v5.27.1</title>
     <!-- v5.12.0: PWA。三個入口各有獨立的 manifest 與圖示，
          加到主畫面後會是三個可分辨的 App，而不是同一顆圖示。 -->
     <link rel="manifest" href="./manifest-stock.webmanifest">
@@ -367,7 +367,7 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.27.0</h1>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.27.1</h1>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -387,13 +387,17 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.27.0</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.27.1</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
                         <div class="flex items-center gap-2 mr-1">
-                            <img :src="user.photoURL"
+                            <!-- 沒有大頭貼的 Google 帳號 photoURL 會是 null，直接綁上去會顯示破圖 -->
+                            <img v-if="user.photoURL" :src="user.photoURL" alt=""
                                 class="w-8 h-8 rounded-full border border-gray-200 dark:border-gray-600">
+                            <div v-else class="w-8 h-8 rounded-full border border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-xs font-bold text-gray-500 dark:text-gray-300">
+                                {{ (user.displayName || '?').charAt(0) }}
+                            </div>
                             <span class="hidden md:inline text-sm font-medium">{{ user.displayName }}</span>
                         </div>
                         <button @click="showSettingsModal=true"
@@ -860,15 +864,15 @@
                              而且整個儀表板 v-if="totalLoanBalance > 0" —— 沒有借款的人根本看不到，
                              即使他持有期貨或槓桿 ETF。配置與風險是兩種決策，拆開各自獨立顯示。 -->
                         <div class="mt-4 rounded-xl border border-gray-100 dark:border-gray-700 p-4">
-                            <div class="flex justify-between items-start mb-3">
+                            <div class="flex justify-between items-start gap-3 mb-3">
                                 <div>
                                     <div class="text-sm font-bold dark:text-white flex items-center gap-2">
                                         <i class="fa-solid fa-bullseye text-purple-500"></i> 持倉配置
                                     </div>
                                     <div class="text-[11px] text-gray-400 mt-0.5">手上的金融資產放大成多少市場曝險 —— 這是配置目標，與借款無關</div>
                                 </div>
-                                <div class="text-right" v-if="showPrivacy">
-                                    <div class="text-3xl font-bold" :class="positionExposureLevel.cls">{{ positionExposureMultiplier.toFixed(2) }}x</div>
+                                <div class="text-right shrink-0" v-if="showPrivacy">
+                                    <div class="text-2xl sm:text-3xl font-bold" :class="positionExposureLevel.cls">{{ positionExposureMultiplier.toFixed(2) }}x</div>
                                     <div class="text-[10px] font-bold" :class="positionExposureLevel.cls">{{ positionExposureLevel.text }}</div>
                                 </div>
                                 <div v-else class="text-2xl font-bold text-gray-300">****</div>
@@ -942,7 +946,7 @@
                                     </div>
                                 </div>
 
-                                <div v-if="exposureTrendStats.count > 0" class="grid grid-cols-4 gap-2 mt-2 text-center">
+                                <div v-if="exposureTrendStats.count > 0" class="grid grid-cols-2 sm:grid-cols-4 gap-x-2 gap-y-2 mt-2 text-center">
                                     <div>
                                         <div class="text-[9px] text-gray-400">期初</div>
                                         <div class="text-xs font-bold text-gray-600 dark:text-gray-300">{{ exposureTrendStats.first.toFixed(2) }}x</div>
@@ -953,7 +957,7 @@
                                     </div>
                                     <div>
                                         <div class="text-[9px] text-gray-400">區間</div>
-                                        <div class="text-xs font-bold text-gray-600 dark:text-gray-300">{{ exposureTrendStats.min.toFixed(2) }}–{{ exposureTrendStats.max.toFixed(2) }}x</div>
+                                        <div class="text-xs font-bold text-gray-600 dark:text-gray-300 whitespace-nowrap">{{ exposureTrendStats.min.toFixed(2) }}–{{ exposureTrendStats.max.toFixed(2) }}x</div>
                                     </div>
                                     <div>
                                         <div class="text-[9px] text-gray-400">平均</div>
@@ -1012,15 +1016,15 @@
 
                         <!-- ══ 風險：我借了多少錢來撐這些資產 ══ -->
                         <div v-if="totalLoanBalance > 0" class="mt-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-xl p-4">
-                            <div class="flex justify-between items-start mb-3">
+                            <div class="flex justify-between items-start gap-3 mb-3">
                                 <div>
                                     <div class="text-sm font-bold text-amber-800 dark:text-amber-300 flex items-center gap-2">
                                         <i class="fa-solid fa-scale-unbalanced"></i> 財務槓桿
                                     </div>
                                     <div class="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5">借款把資產撐大幾倍 —— 這是風險承受度，與配置無關</div>
                                 </div>
-                                <div class="text-right" v-if="showPrivacy">
-                                    <div class="text-3xl font-bold" :class="leverageLevel.cls">{{ leverageRatio.toFixed(2) }}x</div>
+                                <div class="text-right shrink-0" v-if="showPrivacy">
+                                    <div class="text-2xl sm:text-3xl font-bold" :class="leverageLevel.cls">{{ leverageRatio.toFixed(2) }}x</div>
                                     <div class="text-[10px] font-bold" :class="leverageLevel.cls">{{ leverageLevel.text }}</div>
                                 </div>
                                 <div v-else class="text-2xl font-bold text-gray-300">****</div>
@@ -2636,6 +2640,21 @@
                                 <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800"></div>
                                 <div class="text-xs text-gray-400 mb-1">2026-08-06</div>
                                 <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
+                                    <div class="font-bold text-gray-800 dark:text-white mb-2">v5.27.1</div>
+                                    <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                        <li>修正：新增期貨部位時自動帶入的保證金沒有乘上口數。「佔用保證金」在計算上是全部口數的合計，但帶入的是單口金額 —— 持 2 口就少算一半，維持率會顯示成實際的兩倍（實測 228% vs 實際 114%），等於抵銷掉 v5.25.0 更新保證金數字的用意。現在會自動乘上口數，改口數也會跟著調整；若已手動改過金額則不覆蓋。</li>
+                                        <li>修正：欄位標示由「單口或總額」改為明確的「全部口數合計」 —— 原本的寫法讓兩種填法看起來都可以，但只有合計是對的。</li>
+                                        <li>修正：修正紀錄視窗遇到缺少建倉價的早期資料會整頁當掉，改為顯示「-」。</li>
+                                        <li>修正：手機版持倉配置／財務槓桿的大數字與說明文字互相擠壓；曝險趨勢的統計列改為 2×2，「區間」不再折行。</li>
+                                        <li>修正：沒有大頭貼的 Google 帳號會在右上角顯示破圖，改為顯示名稱首字。</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="relative pl-6">
+                                <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-2 border-white dark:border-gray-800"></div>
+                                <div class="text-xs text-gray-400 mb-1">2026-08-14</div>
+                                <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
                                     <div class="font-bold text-gray-800 dark:text-white mb-2">v5.27.0</div>
                                     <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
                                         <li>新增：持倉配置區塊加上曝險趨勢圖，看得出配置有沒有隨時間偏離目標，可選 1 月／3 月／半年／1 年／全部，並顯示期初、期末、區間與平均。</li>
@@ -3759,7 +3778,7 @@
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 mb-1">口數</label>
-                                <input type="number" v-model="futuresForm.contracts" class="zen-input" placeholder="例如: 1">
+                                <input type="number" v-model="futuresForm.contracts" class="zen-input" placeholder="例如: 1" @input="onFuturesContractsChange">
                                 <div v-if="formErrors.contracts" class="field-error">{{ formErrors.contracts }}</div>
                             </div>
                             <div>
@@ -3786,7 +3805,7 @@
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-gray-500 mb-1">佔用保證金 (單口或總額)</label>
+                            <label class="block text-xs font-bold text-gray-500 mb-1">佔用保證金（<span class="text-amber-600 dark:text-amber-400">全部口數合計</span>）</label>
                             <input type="number" v-model="futuresForm.marginUsed" class="zen-input" placeholder="選擇商品後自動帶入原始保證金">
                             <!-- v5.25.0: 標明數字的來源與日期。期交所會不定期調整，
                                  使用者看到公告才知道要不要改，光給一個數字看不出新舊。 -->
@@ -3796,9 +3815,9 @@
                                     個股期貨的保證金是契約價值的一定比例、隨股價浮動，這裡是<strong>概估值</strong>，請依券商實際佔用金額修正。
                                 </template>
                                 <template v-else>
-                                    已帶入{{ futuresMarginInfo.name }}的<strong>原始保證金</strong>（{{ formatNumber(futuresMarginInfo.marginUsed) }}／口，
-                                    維持保證金 {{ formatNumber(futuresMarginInfo.maintenance) }}）。
-                                    資料為 {{ futuresMarginAsOf }} 的期交所公告；多口請自行乘上口數。
+                                    {{ futuresMarginInfo.name }}原始保證金 <strong>{{ formatNumber(futuresMarginInfo.marginUsed) }}／口</strong>
+                                    （維持保證金 {{ formatNumber(futuresMarginInfo.maintenance) }}／口），已自動乘上口數帶入。
+                                    資料為 {{ futuresMarginAsOf }} 的期交所公告。
                                 </template>
                             </p>
                                 <div v-if="formErrors.marginUsed" class="field-error">{{ formErrors.marginUsed }}</div>
@@ -3902,7 +3921,7 @@
                         <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg px-4 py-3 text-sm flex gap-6">
                             <div>
                                 <span class="text-gray-400 text-xs block">建倉價</span>
-                                <span class="font-mono font-bold text-gray-700 dark:text-gray-200">{{ futuresActionForm.pos.entryPrice.toLocaleString() }}</span>
+                                <span class="font-mono font-bold text-gray-700 dark:text-gray-200">{{ formatNumber(futuresActionForm.pos.entryPrice) }}</span>
                             </div>
                             <div>
                                 <span class="text-gray-400 text-xs block">乘數</span>
@@ -3978,7 +3997,7 @@
                                     <strong>已實現損益完全由這個數字決定</strong> —— 請填價差讓它自動算，或直接改成實際成交價。
                                 </p>
                                 <p v-else class="text-[11px] text-gray-400 mt-1.5 leading-relaxed">
-                                    已實現損益 =（近月平倉價 − 建倉價 {{ futuresActionForm.pos.entryPrice.toLocaleString() }}）× {{ futuresActionForm.pos.contracts }} 口 × {{ futuresActionForm.pos.multiplier }}
+                                    已實現損益 =（近月平倉價 − 建倉價 {{ formatNumber(futuresActionForm.pos.entryPrice) }}）× {{ futuresActionForm.pos.contracts }} 口 × {{ futuresActionForm.pos.multiplier }}
                                 </p>
                             </div>
                         </template>
@@ -4068,7 +4087,7 @@
                     <div class="p-6 space-y-4 overflow-y-auto">
                         <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg px-4 py-3 flex justify-between text-sm">
                             <div><span class="text-xs text-gray-400 block">建倉價</span>
-                                <span class="font-mono font-bold text-gray-700 dark:text-gray-200">{{ futuresTxEditForm.entryPrice.toLocaleString() }}</span></div>
+                                <span class="font-mono font-bold text-gray-700 dark:text-gray-200">{{ formatNumber(futuresTxEditForm.entryPrice) }}</span></div>
                             <div><span class="text-xs text-gray-400 block">乘數</span>
                                 <span class="font-mono font-bold text-gray-700 dark:text-gray-200">{{ futuresTxEditForm.multiplier }}</span></div>
                             <div><span class="text-xs text-gray-400 block">幣別</span>

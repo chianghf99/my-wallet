@@ -13,7 +13,7 @@
            - fonts.googleapis.com/css2：回應內容依瀏覽器 User-Agent 而異
            - apis.google.com/js/api.js、accounts.google.com/gsi/client：
              Google 的載入器，內容持續更新且官方不提供固定雜湊 -->
-    <title>我的投資組合 | Portfolio v5.27.1</title>
+    <title>我的投資組合 | Portfolio v5.27.2</title>
     <!-- v5.12.0: PWA。三個入口各有獨立的 manifest 與圖示，
          加到主畫面後會是三個可分辨的 App，而不是同一顆圖示。 -->
     <link rel="manifest" href="./manifest-stock.webmanifest">
@@ -367,7 +367,7 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.27.1</h1>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.27.2</h1>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -387,7 +387,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.27.1</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.27.2</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -2639,6 +2639,20 @@
                             <div class="relative pl-6">
                                 <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800"></div>
                                 <div class="text-xs text-gray-400 mb-1">2026-08-06</div>
+                                <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
+                                    <div class="font-bold text-gray-800 dark:text-white mb-2">v5.27.2</div>
+                                    <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                        <li>修正：SSO、QLD 等部分美股抓不到價格。Yahoo 會對「特定代號＋特定查詢參數」的組合固定回傳限流（實測 SSO 的 range=1d 連續四輪全部被擋，同一秒改成 range=5d 卻每次都成功，SPY 用 1d 則一直正常）—— 不是流量太大，換個查詢區間就能繞過。現在 1d 失敗會自動改用 5d 重試。</li>
+                                        <li>修正：改用 5d 重試時，Yahoo 回的「前一收盤」是五天前而不是昨天（實測差到 -3% 對 +0.45%），會讓漲跌幅整排錯掉。改為自行從每日收盤序列取倒數第二筆。</li>
+                                        <li>修正：被限流時完全不會重試。HTTP 429 是一個正常回應、不會讓 fetch 拋錯，所以原本的重試機制根本不會啟動，要等解析純文字內容失敗才發現，那時已經跳出重試了。現在會判斷狀態碼。</li>
+                                        <li>改善：更新失敗的提示會列出是哪幾支、原因是「查無此代號」「來源限流」還是「連線失敗」 —— 原本只說「失敗 N 筆」，無從判斷該改代號還是過幾分鐘再試。</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="relative pl-6">
+                                <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-2 border-white dark:border-gray-800"></div>
+                                <div class="text-xs text-gray-400 mb-1">2026-08-14</div>
                                 <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
                                     <div class="font-bold text-gray-800 dark:text-white mb-2">v5.27.1</div>
                                     <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">

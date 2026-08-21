@@ -3008,28 +3008,92 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 // 原本走 Finnhub，有三個問題：金鑰得寫在前端（這個 repo 是公開的）、
                 // 免費版限每分鐘 60 次（所以更新美股要每檔等 3 秒）、而且會封鎖資料中心 IP。
                 // Yahoo 不需金鑰、無次數限制，實測報價與 Finnhub 完全一致。
-                const fetchYahooQuote = async (yahooSymbol) => {
-                    try {
-                        const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=1d`;
-                        const resp = await fetchWithRetry(CF_PROXY + encodeURIComponent(url), 1, 8000);
-                        const json = await resp.json();
-                        const meta = json?.chart?.result?.[0]?.meta;
-                        if (meta && meta.regularMarketPrice > 0) {
-                            return {
-                                regularMarketPrice: meta.regularMarketPrice,
-                                // previousClose 實測可能是 null，少了 chartPreviousClose 退路
-                                // 昨收會等於現價，整排漲跌幅都變成 0%
-                                previousClose: meta.previousClose || meta.chartPreviousClose || meta.regularMarketPrice,
-                                name: meta.shortName || meta.longName || ''
-                            };
-                        }
-                    } catch (e) {
-                        console.warn(`[Yahoo v8] ${yahooSymbol} 失敗`, e);
+                /**
+                 * 解析 Yahoo v8 chart 回應。
+                 *
+                 * derivePrevFromSeries：range 不是 1d 時，meta.chartPreviousClose 指的是
+                 * 「整段區間起點之前」的收盤，不是昨收（實測 SSO 5d 給 72.2，昨收其實是 69.61，
+                 * 直接拿來算漲跌幅會差到 -3% 對 +0.56%）。這種情況要自己從收盤序列取倒數第二筆。
+                 */
+                const parseYahooChart = (json, derivePrevFromSeries = false) => {
+                    const r = json && json.chart && json.chart.result && json.chart.result[0];
+                    const meta = r && r.meta;
+                    if (!meta || !(meta.regularMarketPrice > 0)) return null;
+                    // previousClose 實測可能是 null，少了 chartPreviousClose 退路
+                    // 昨收會等於現價，整排漲跌幅都變成 0%
+                    let prev = meta.previousClose || meta.chartPreviousClose;
+                    if (derivePrevFromSeries) {
+                        const q = r.indicators && r.indicators.quote && r.indicators.quote[0];
+                        const closes = ((q && q.close) || []).filter(c => c !== null && c !== undefined);
+                        if (closes.length >= 2) prev = closes[closes.length - 2];
                     }
-                    return null;
+                    return {
+                        regularMarketPrice: meta.regularMarketPrice,
+                        previousClose: prev || meta.regularMarketPrice,
+                        name: meta.shortName || meta.longName || ''
+                    };
                 };
 
-                const fetchUsStockPrice = async (symbol) => fetchYahooQuote(symbol);
+                /**
+                 * 抓單一代號的即時報價。
+                 *
+                 * 為什麼要有備援 range：Yahoo 會對「特定代號 ＋ 特定查詢參數」的組合回 429，
+                 * 而且是穩定重現的 —— 實測 SSO／QLD 的 `range=1d` 連續四輪全部 429，
+                 * 同一秒改成 `range=5d` 卻每次都成功，SPY 用 1d 也一直正常。
+                 * 所以這不是流量太大，換個 range 就能繞過。
+                 *
+                 * 1d 仍然排第一，因為它的 chartPreviousClose 就是昨收、最準；
+                 * 失敗才退到 5d 並自行推算昨收。
+                 */
+                const YAHOO_RANGES = [
+                    { range: '1d', derivePrev: false },
+                    { range: '5d', derivePrev: true }
+                ];
+
+                const fetchYahooQuote = async (yahooSymbol) => {
+                    let lastReason = '';
+                    for (const { range, derivePrev } of YAHOO_RANGES) {
+                        try {
+                            const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=${range}`;
+                            const resp = await fetchWithRetry(CF_PROXY + encodeURIComponent(url), 1, 8000);
+                            // 429 是一個「正常回應」，不會讓 fetch 拋錯，所以 fetchWithRetry 不會重試；
+                            // 而且內容是純文字 "Edge: Too Many Requests"，直接 .json() 會拋在這裡。
+                            // 必須自己判斷狀態碼，否則被限流與查無代號在畫面上長得一模一樣。
+                            if (resp.status === 429) { lastReason = 'throttled'; continue; }
+                            if (!resp.ok) { lastReason = 'http-' + resp.status; continue; }
+                            const text = await resp.text();
+                            let json;
+                            try { json = JSON.parse(text); }
+                            catch (_) { lastReason = 'non-json'; continue; }
+                            if (json && json.chart && json.chart.error) {
+                                // 代號本身查不到，換 range 也沒用，直接放棄
+                                console.warn(`[Yahoo v8] ${yahooSymbol} 查無資料`, json.chart.error);
+                                return { error: 'not-found' };
+                            }
+                            const parsed = parseYahooChart(json, derivePrev);
+                            if (parsed) {
+                                if (range !== '1d') console.info(`[Yahoo v8] ${yahooSymbol} 以 range=${range} 取得（1d 被限流）`);
+                                return parsed;
+                            }
+                            lastReason = 'no-price';
+                        } catch (e) {
+                            lastReason = 'network';
+                            console.warn(`[Yahoo v8] ${yahooSymbol} range=${range} 失敗`, e);
+                        }
+                    }
+                    console.warn(`[Yahoo v8] ${yahooSymbol} 全部 range 皆失敗（${lastReason}）`);
+                    return { error: lastReason || 'failed' };
+                };
+
+                // fetchYahooQuote 失敗時回 { error: 原因 }；上層一律以 null 代表失敗，
+                // 原因另外回報，讓「被限流」與「查無代號」不再顯示成同一句話。
+                const lastQuoteErrors = new Map();
+                const fetchUsStockPrice = async (symbol) => {
+                    const q = await fetchYahooQuote(symbol);
+                    if (q && q.error) { lastQuoteErrors.set(symbol, q.error); return null; }
+                    lastQuoteErrors.delete(symbol);
+                    return q;
+                };
 
                 // 一次性偵測上市/上櫃/興櫃 (v4.4.0: 加入 esb 支援；找不到回傳 null 而非預設 tse)
                 const detectMarketType = async (stock) => {
@@ -3145,7 +3209,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     // 美股：Yahoo v8。公司名稱直接取自同一份回應的 shortName／longName，
                     // 不必再像 Finnhub 那樣為了名稱多打一次 profile2。
                     const q = await fetchYahooQuote(s);
-                    if (q) {
+                    if (q && !q.error) {
                         return {
                             symbol: s,
                             name: q.name || undefined,
@@ -3260,7 +3324,20 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
                     const typeName = marketType === 'TW' ? '台股' : (marketType === 'US' ? '美股' : '全部');
                     // 有失敗才用警示色，全部成功就低調帶過
-                    if (failCount > 0) showToast(`${typeName}更新完成：成功 ${successCount} 筆、失敗 ${failCount} 筆`, 'warning', 5000);
+                    if (failCount > 0) {
+                        // 把失敗的代號與原因講出來。原本只說「失敗 N 筆」，使用者無從判斷
+                        // 該去改代號、還是過幾分鐘再試。
+                        const failed = targetStocks
+                            .filter(st => stockStates.value[st.id] === 'error')
+                            .map(st => ({ sym: st.symbol, why: lastQuoteErrors.get(st.symbol) }));
+                        const reasonText = (w) => w === 'not-found' ? '查無此代號'
+                            : w === 'throttled' || w === 'non-json' ? '來源限流'
+                            : w === 'network' ? '連線失敗' : '取價失敗';
+                        const detail = failed.slice(0, 4)
+                            .map(f => `${f.sym}（${reasonText(f.why)}）`).join('、')
+                            + (failed.length > 4 ? ` 等 ${failed.length} 筆` : '');
+                        showToast(`${typeName}更新完成：成功 ${successCount} 筆、失敗 ${failCount} 筆 —— ${detail}`, 'warning', 8000);
+                    }
                     else toastOk(`${typeName}更新完成，共 ${successCount} 筆`);
                 };
 

@@ -1086,6 +1086,11 @@ createApp({
         ];
 
         const changelog = [
+            { version: 'v5.8.0', date: '2026-08-25', items: [
+                '新增：華南銀行帳單 PDF 解析規則（檔名 CREDITA 開頭）。已用 115 年 8 月實際帳單驗證，可正確帶入應繳 162 元、截止日 115/09/07。',
+                '說明：華南的版面有兩個坑，規則是照這兩點寫的 ——(1) 表頭「帳單結帳日／繳款截止日」與「本期應繳總額」都是標籤一整列、數字在下一行，標籤後面直接接數字的抓法在華南永遠抓不到；(2) 帳單裡的紅利點數到期日（115/12/31）比繳款截止日還晚，沿用其他銀行「取最大日期」的做法會抓成到期日。因此金額優先讀消費明細末列的「本期應繳總額： 162」、日期優先讀繳款單的「繳款期限：115/09/07」，這兩處才是標籤與數值同一行；抓不到時再退回表頭下一行按位置取值。',
+                '調整：華南若上期溢繳導致本期應繳為負數，視為本期無須繳款、記為 0，不會寫入負數金額。'
+            ] },
             { version: 'v5.7.1', date: '2026-08-11', items: [
                 '修正：中國信託應繳 0 元的帳單 PDF 一律顯示「解析失敗」。實際是兩道關卡各壞一半，缺一不可：(1) 解析成功與否判斷寫成「金額大於 0」，但 -1 才是「沒抓到」的代號，0 是合法金額，被一起判成失敗；(2) 中信 0 元的兜底判定把圖樣寫成「/ 0/ 0」「0 +0」的單一空格，而 PDF 取字是把每個 text item 用空白串起來、中信又是每個字元自成一個 item，實際長相是「/   0   /   0」，這兩個判定從來沒成立過。已用實際帳單驗證修正後可正確帶入 0 元。',
                 '說明：中信的 PDF 用自訂字型，pdf.js 抽不出任何中文，連 $ 符號都沒有，版面只剩一串裸數字，因此金額只能靠版面圖樣辨識，無法像其他銀行那樣直接讀「本期應繳總金額」欄位。'
@@ -2786,6 +2791,54 @@ createApp({
                 if (dateMatch) dueDate = cleanDate(dateMatch[1]);
                 let amtMatch = textNS.match(/本期應繳總金額(\d{1,3}(?:,\d{3})*)/);
                 if (amtMatch) amount = parseInt(amtMatch[1].replace(/,/g, ""));
+            }
+            // 12. 華南銀行 (檔名: CREDITA + 日期流水號.pdf)
+            else if (filename.includes("credita") || filename.includes("華南") || filename.includes("hncb")) {
+                bankName = "華南信用卡";
+                // 金額：華南表頭是「上期應繳總額 - 繳款金額 - 調整/退貨金額 + 本期新增款項
+                // = 本期應繳總額 本期最低應繳金額」一整列標籤，數字全在「下一行」，
+                // 所以標籤後面直接接數字的寫法在華南是抓不到的。
+                // 真正標籤與金額同一行的只有消費明細最後那列「本期應繳總額： 162」，優先用它。
+                let amtMatch = textNoSpace.match(/本期應繳總額[：:](-?\d{1,3}(?:,\d{3})*)/);
+                if (amtMatch) {
+                    amount = parseInt(amtMatch[1].replace(/,/g, ""));
+                    // 上期溢繳時本期應繳會是負數（例：-36），代表這期不用繳，記 0。
+                    if (amount < 0) amount = 0;
+                } else {
+                    // 兜底：找表頭那列標籤，取下一行的數字列。
+                    // 該列固定六個數字（上期應繳、繳款、調整/退貨、本期新增、本期應繳、最低應繳），
+                    // 本期應繳總額固定是倒數第二個。
+                    const lines = text.split('\n');
+                    for (let i = 0; i < lines.length && amount === -1; i++) {
+                        if (!lines[i].replace(/\s+/g, "").includes("本期應繳總額本期最低應繳金額")) continue;
+                        for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
+                            const nums = (lines[j].match(/-?\d[\d,]*/g) || []).map(n => parseInt(n.replace(/,/g, "")));
+                            if (nums.length >= 5) {
+                                amount = Math.max(nums[nums.length - 2], 0);
+                                break;
+                            }
+                        }
+                    }
+                }
+                // 日期：表頭的「帳單結帳日 繳款截止日 …」同樣是標籤一行、日期一行，
+                // 而且整份帳單裡「115/12/31」（紅利到期日）比截止日還晚 ——
+                // 取最大日期會抓錯，必須靠位置定位。
+                // 第 3 頁繳款單的「繳款期限：115/09/07」是標籤與日期同一行，最可靠。
+                let dueMatch = textNoSpace.match(/繳款期限[：:]?(\d{3}\/\d{2}\/\d{2})/);
+                if (dueMatch) dueDate = cleanDate(dueMatch[1]);
+                else {
+                    // 兜底（帳單頁數多到第 3 頁不是繳款單時）：表頭標籤列的下一行，
+                    // 第一個日期是結帳日、第二個才是繳款截止日。
+                    const lines = text.split('\n');
+                    for (let i = 0; i < lines.length && dueDate === "未知日期"; i++) {
+                        const ns = lines[i].replace(/\s+/g, "");
+                        if (!(ns.includes("帳單結帳日") && ns.includes("繳款截止日"))) continue;
+                        for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
+                            const dates = lines[j].match(/\d{3}\/\d{2}\/\d{2}/g);
+                            if (dates && dates.length >= 2) { dueDate = cleanDate(dates[1]); break; }
+                        }
+                    }
+                }
             }
             
             return { amount, dueDate, bankName: bankName || "未知銀行" };

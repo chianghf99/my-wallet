@@ -28,6 +28,8 @@ export const autoBackupEnabled = ref(localStorage.getItem('autoBackupEnabled') =
 export const autoBackupIntervalDays = ref(Number(localStorage.getItem('autoBackupIntervalDays')) || 7);
 export const lastBackupAt = ref(localStorage.getItem('lastBackupAt') || '');
 export const showBackupReminder = ref(false);
+// v5.28.0: 最後一次每日快照的日期，用來提示排程是不是壞掉了
+export const latestSnapshotDate = ref('');
 // v5.18.0: 槓桿儀表板的計算說明預設收起（只會看一兩次，攤開會把數字擠到很下面）
 export const showLeverageNotes = ref(false);
 // v5.27.0: 持倉曝險趨勢。與資產走勢圖分開，因為單位是倍數不是金額 ——

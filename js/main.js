@@ -8,6 +8,7 @@ import {
     monthlyProfitData, monthlyProfitRange,
     futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm, futuresLoading, futuresTransactions, showFuturesActionModal, futuresActionForm,
     futuresHistoryRange, futuresHistoryStart, futuresHistoryEnd, editingFuturesFeeId, editingFuturesFeeValue,
+    latestSnapshotDate,
     exposureTrendRange, exposureTrendStats, exposureTrendLoading,
     showFuturesTxEditModal, futuresTxEditForm,
     investmentsTab, performanceTab, overviewTab,
@@ -755,6 +756,11 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 const toggleSection = (s) => {
                     activeSection.value = s;
                 };
+
+                // v5.28.0: 三顆更新按鈕互斥。台股／美股本來就用 loadingTarget 互鎖，
+                // 但期貨走的是另一個 futuresLoading 旗標，兩邊互不知道 —— 期貨移到頂端
+                // 與它們並排後，看起來是同一組按鈕卻只有兩顆會一起變灰，而且可以同時觸發。
+                const anyPriceUpdating = computed(() => loadingTarget.value !== null || futuresLoading.value);
 
                 // --- v5.27.0: 持倉曝險趨勢 ---
                 //
@@ -2361,7 +2367,27 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     await db.collection('users').doc(user.value.uid).collection('loans').doc(loanId)
                         .update({ balance: firebase.firestore.FieldValue.increment(amount) });
                 };
-                const fetchPreviousDayData = async (uid) => { const todayStr = getLocalDate(); const snap = await db.collection('users').doc(uid).collection('history').orderBy('date', 'desc').limit(2).get(); if (snap.empty) return; const docs = snap.docs.map(d => d.data()); if (docs[0].date !== todayStr) prevDayData.value = docs[0]; else if (docs.length > 1) prevDayData.value = docs[1]; };
+                const fetchPreviousDayData = async (uid) => { const todayStr = getLocalDate(); const snap = await db.collection('users').doc(uid).collection('history').orderBy('date', 'desc').limit(2).get(); if (snap.empty) return; const docs = snap.docs.map(d => d.data()); latestSnapshotDate.value = docs[0].date || ''; if (docs[0].date !== todayStr) prevDayData.value = docs[0]; else if (docs.length > 1) prevDayData.value = docs[1]; };
+
+                // v5.28.0: 每日快照是 GitHub Actions 在背景跑的，壞掉時使用者不會知道 ——
+                // 實測曾因為測試關卡的時區 bug 連續兩個交易日沒有寫入，走勢圖只是少了兩個點，
+                // 完全看不出來。這裡直接把「最後一次快照距今幾個交易日」算出來，超過就提示。
+                // 用交易日計算，否則週末與連假一定誤報。
+                const tradingDaysSince = (yyyymmdd) => {
+                    if (!/^\d{4}-\d{2}-\d{2}$/.test(yyyymmdd || '')) return null;
+                    const from = new Date(yyyymmdd + 'T00:00:00');
+                    const today = new Date(getLocalDate() + 'T00:00:00');
+                    let n = 0;
+                    const cur = new Date(from);
+                    while (cur < today) {
+                        cur.setDate(cur.getDate() + 1);
+                        const d = cur.getDay();
+                        if (d !== 0 && d !== 6) n++;   // 只數平日；國定假日無從得知，寧可少報也不要誤報
+                    }
+                    return n;
+                };
+                const snapshotStaleDays = computed(() => tradingDaysSince(latestSnapshotDate.value));
+                const snapshotIsStale = computed(() => (snapshotStaleDays.value || 0) >= 2);
 
                 // v5.9.0: 期間損益要扣掉本金進出，否則「這個月匯 50 萬進來」會被算成賺了 50 萬。
                 // 只認銀行活存的存入/提出；期貨保證金劃轉是內部搬錢（現金↔保證金），淨資產沒變不能算。
@@ -3451,6 +3477,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     futuresRiskLabel, futuresRiskClass,
                     totalAnnualInterest, weightedInterestRate, showLeverageNotes,
                     exposureBreakdown, positionExposureLevel, leverageLevel,
+                    anyPriceUpdating, latestSnapshotDate, snapshotStaleDays, snapshotIsStale,
                     exposureTrendRange, exposureTrendStats, exposureTrendLoading, setExposureTrendRange, drawExposureTrend,
                     toasts, showToast, dismissToast, formErrors, clearFormErrors,
                     autoBackupEnabled, autoBackupIntervalDays, lastBackupAt, showBackupReminder, daysSinceBackup, dismissBackupReminder,

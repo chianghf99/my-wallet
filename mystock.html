@@ -13,7 +13,7 @@
            - fonts.googleapis.com/css2：回應內容依瀏覽器 User-Agent 而異
            - apis.google.com/js/api.js、accounts.google.com/gsi/client：
              Google 的載入器，內容持續更新且官方不提供固定雜湊 -->
-    <title>我的投資組合 | Portfolio v5.27.2</title>
+    <title>我的投資組合 | Portfolio v5.28.0</title>
     <!-- v5.12.0: PWA。三個入口各有獨立的 manifest 與圖示，
          加到主畫面後會是三個可分辨的 App，而不是同一顆圖示。 -->
     <link rel="manifest" href="./manifest-stock.webmanifest">
@@ -367,7 +367,7 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.27.2</h1>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.28.0</h1>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -387,7 +387,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.27.2</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.28.0</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -418,24 +418,32 @@
                             <span class="hidden sm:inline"> | 更新: {{ lastUpdated }}</span>
                         </div>
                         <div class="flex gap-2 items-center">
-                            <button @click="fetchPrices('TW')" :disabled="loadingTarget !== null"
-                                class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-slate-600 rounded-md shadow hover:bg-slate-500 disabled:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
-
+                            <!-- v5.28.0: 期貨更新移到這裡與台股／美股並排。nav 是 sticky，
+                                 放頂端就永遠點得到，不必先切到期貨分頁再往下捲。
+                                 三顆共用 anyPriceUpdating 互鎖，避免同時觸發。
+                                 手機上「更新」二字隱藏，只留台股／美股／期貨，否則四顆按鈕會折行。 -->
+                            <button @click="fetchPrices('TW')" :disabled="anyPriceUpdating"
+                                class="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-sm font-medium text-white bg-slate-600 rounded-md shadow hover:bg-slate-500 disabled:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
                                 <i class="fa-solid fa-rotate" :class="{'fa-spin': loadingTarget === 'TW'}"></i>
-                                <span>{{ loadingTarget === 'TW' ? '更新中...' : '更新台股' }}</span>
+                                <span class="whitespace-nowrap"><template v-if="loadingTarget === 'TW'">更新中…</template><template v-else><span class="hidden sm:inline">更新</span>台股</template></span>
                             </button>
 
-                            <button @click="fetchPrices('US')" :disabled="loadingTarget !== null"
-                                class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-slate-700 rounded-md shadow hover:bg-slate-600 disabled:bg-slate-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
-
+                            <button @click="fetchPrices('US')" :disabled="anyPriceUpdating"
+                                class="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-sm font-medium text-white bg-slate-700 rounded-md shadow hover:bg-slate-600 disabled:bg-slate-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
                                 <i class="fa-solid fa-rotate" :class="{'fa-spin': loadingTarget === 'US'}"></i>
-                                <span>{{ loadingTarget === 'US' ? '更新中...' : '更新美股' }}</span>
+                                <span class="whitespace-nowrap"><template v-if="loadingTarget === 'US'">更新中…</template><template v-else><span class="hidden sm:inline">更新</span>美股</template></span>
+                            </button>
+
+                            <button @click="fetchFuturesPricesDirect()" :disabled="anyPriceUpdating"
+                                class="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-sm font-medium text-white bg-amber-600 rounded-md shadow hover:bg-amber-500 disabled:bg-amber-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                                <i class="fa-solid fa-rotate" :class="{'fa-spin': futuresLoading}"></i>
+                                <span class="whitespace-nowrap"><template v-if="futuresLoading">更新中…</template><template v-else><span class="hidden sm:inline">更新</span>期貨</template></span>
                             </button>
 
                             <button @click="openTransModal(null)"
-                                class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-gray-800 rounded-md shadow hover:bg-gray-700 transition-all ml-auto sm:ml-0">
+                                class="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-sm font-medium text-white bg-gray-800 rounded-md shadow hover:bg-gray-700 transition-all ml-auto sm:ml-0">
                                 <i class="fa-solid fa-plus"></i>
-                                <span>新增交易</span>
+                                <span class="whitespace-nowrap">新增<span class="hidden sm:inline">交易</span></span>
                             </button>
                         </div>
                     </div>
@@ -644,6 +652,16 @@
                             <button @click="openHistoryModal"
                             class="absolute top-4 right-4 z-10 cursor-pointer text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-gray-800 dark:hover:text-white px-2 py-1 rounded transition"><i
                                 class="fa-solid fa-clock-rotate-left mr-1"></i>維護歷史資料</button>
+
+                        <!-- v5.28.0: 每日快照是背景排程寫的，壞掉時使用者不會知道 —— 走勢圖只是少幾個點，
+                             肉眼看不出來。實測曾因測試關卡的時區 bug 連續兩個交易日沒寫入。 -->
+                        <div v-if="snapshotIsStale" class="mt-8 mb-3 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 flex items-start gap-2">
+                            <i class="fa-solid fa-triangle-exclamation text-amber-500 mt-0.5"></i>
+                            <div class="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+                                最後一筆每日快照是 <strong>{{ latestSnapshotDate }}</strong>（已隔 {{ snapshotStaleDays }} 個交易日）。
+                                <span class="opacity-80">自動排程可能沒跑成功；開著這個頁面更新一次股價就會補上今天的紀錄。</span>
+                            </div>
+                        </div>
 
                         <div class="pt-2">
                             <div class="flex gap-1.5 mb-2 overflow-x-auto pb-1">
@@ -1971,11 +1989,9 @@
                             <h3 class="font-bold dark:text-white flex items-center gap-2">
                                 <i class="fa-solid fa-file-contract text-amber-600"></i> 期貨交易與部位管理
                             </h3>
+                            <!-- v5.28.0: 「更新期貨」移到頂端與更新台股／美股並排（nav 是 sticky，
+                                 不必先切分頁再往下捲）。這裡只留期貨專屬的兩個動作。 -->
                             <div class="flex gap-2">
-                                <button @click="fetchFuturesPricesDirect()"
-                                    class="bg-gray-800 text-white dark:bg-gray-700 dark:text-gray-200 px-3 py-1 text-sm rounded hover:bg-gray-700 dark:hover:bg-gray-600 transition flex items-center gap-1">
-                                    <i class="fa-solid fa-sync" :class="{'fa-spin': futuresLoading}"></i>更新期貨
-                                </button>
                                 <button @click="openFuturesMarginModal()"
                                     class="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-3 py-1 text-sm rounded border border-amber-300/40 hover:bg-amber-200 transition">
                                     <i class="fa-solid fa-scale-balanced mr-1"></i>調整保證金
@@ -2639,6 +2655,19 @@
                             <div class="relative pl-6">
                                 <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800"></div>
                                 <div class="text-xs text-gray-400 mb-1">2026-08-06</div>
+                                <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
+                                    <div class="font-bold text-gray-800 dark:text-white mb-2">v5.28.0</div>
+                                    <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                                        <li>調整：「更新期貨」移到頂端與更新台股／美股並排。頂端列是固定的，不必再先切到期貨分頁往下捲；三顆按鈕改為互鎖，不會同時觸發。手機上按鈕只顯示「台股／美股／期貨」，四顆剛好一列不折行。</li>
+                                        <li>修正：每日快照從 8/27 起連續失敗，兩個交易日沒有記錄。原因是測試關卡裡的測資用執行機器的本地日期產生，但被測的 isWithinDays 用的是台北日期 —— GitHub 排程延後到 UTC 16:00 之後觸發時（台北已跨到隔天）兩邊差一天，測試就失敗並中止寫入。同一份程式在早上跑卻正常，所以看起來像時好時壞。</li>
+                                        <li>新增：資產走勢上方會提示「最後一筆快照是哪天、已隔幾個交易日」。快照是背景排程寫的，壞掉時走勢圖只是少幾個點，肉眼看不出來。以交易日計算，週末與連假不會誤報。</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="relative pl-6">
+                                <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-2 border-white dark:border-gray-800"></div>
+                                <div class="text-xs text-gray-400 mb-1">2026-08-21</div>
                                 <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
                                     <div class="font-bold text-gray-800 dark:text-white mb-2">v5.27.2</div>
                                     <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">

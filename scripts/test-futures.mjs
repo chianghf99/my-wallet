@@ -78,9 +78,18 @@ check('取到夜盤價格 44200', freshest3 && freshest3.price, 44200);
 
 // --- 開放資料退路 ---
 // 日期改用相對於今天，否則測資一過期就會被時效檢查擋掉、測試隨時間失效
+// 必須用「台北日期」產生測資，不能用執行機器的本地日期。
+// isWithinDays 內部刻意換算成台北時間（期交所開放資料是以台北日期標記的），
+// 測試若用本地日期，在 UTC 16:00 之後（台北已跨到隔天）兩邊就差一天，
+// 「昨天在 1 天內」會變成 false。
+//
+// 實際踩過：CI 跑在 UTC，排定 06:37 的快照被 GitHub 延後到 17:52 才觸發，
+// 測試關卡因此失敗、快照連續兩天沒有寫入。同一份程式在早上跑就正常，
+// 所以看起來像「有時候會壞」。
 const ymd = (offsetDays) => {
     const d = new Date(Date.now() + offsetDays * 86400000);
-    return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+    const tp = new Date(d.getTime() + (8 * 60 + d.getTimezoneOffset()) * 60000);
+    return `${tp.getFullYear()}${String(tp.getMonth() + 1).padStart(2, '0')}${String(tp.getDate()).padStart(2, '0')}`;
 };
 const D0 = ymd(0), D1 = ymd(-1), D9 = ymd(-9);
 const openRows = [

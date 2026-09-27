@@ -1,6 +1,7 @@
 import { db, auth } from './firebase-config.js';
 import { getLocalDate, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountSign, getFuturesDisplayName } from './utils/format.js';
 import { TAIFEX_PRODUCTS, TAIFEX_MIS_URL, taifexRequestBody, contractMonthOf, pickContract, pickFreshest, pickFromOpenData, OPEN_DATA_CONTRACT, cnyesUrl, cnyesEntry, parseCnyesQuote, TAIFEX_MARGINS, futuresDefaultsFor } from './utils/futures.js';
+import { buildFlowMap, timeWeightedReturn, benchmarkReturns, buildShadowPortfolio, annualize, daysBetween } from './utils/benchmark.js';
 import { computePortfolio, calcStats, calcStockExposure, calcFundsValueTwd, calcFundsCostTwd, calcFuturesMarginCash, calcFuturesMarginUsed, calcFuturesExposure, buildExposureTrend } from './utils/valuation.js';
 
 import { 
@@ -10,11 +11,12 @@ import {
     futuresHistoryRange, futuresHistoryStart, futuresHistoryEnd, editingFuturesFeeId, editingFuturesFeeValue,
     latestSnapshotDate,
     exposureTrendRange, exposureTrendStats, exposureTrendLoading,
+    benchmarkSymbol, benchmarkRange, benchmarkLoading, benchmarkResult,
     showFuturesTxEditModal, futuresTxEditForm,
     investmentsTab, performanceTab, overviewTab,
     mutualFundList, showMutualFundModal, mutualFundForm
 } from './store/index.js';
-const { createApp, ref, computed, onMounted, watch } = Vue;
+const { createApp, ref, computed, onMounted, watch, nextTick } = Vue;
 
         createApp({
             setup() {
@@ -730,6 +732,8 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         setTimeout(() => {
                             if (newTab === 'trend') drawChart();
                             else if (newTab === 'pie') drawPieCharts();
+                            // 第一次切進來自動算一次；已經有結果就重畫圖表即可，不重打 API
+                            else if (newTab === 'benchmark') runBenchmark();
                         }, 100);
                     }
                 });
@@ -787,6 +791,170 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         case 'ALL': return { start: '1970-01-01', end: today };
                         default: return { start: back(3), end: today };
                     }
+                };
+
+                // --- v5.29.0: 與大盤對照 ---
+                //
+                // 回答「我一直來回交易，有沒有贏過單純買進大盤放著」。
+                //
+                // 比較範圍是台股帳戶（台股庫存＋台幣現金），同市場對同市場才有意義。
+                // 主指標用時間加權報酬率：入金、出金、借款、期貨保證金劃轉都在發生當天
+                // 被中和掉，所以「中途匯錢進來」不會被誤算成操作績效。
+                // 標的價格用還原價（adjclose），含息且已還原分割。
+                let benchmarkChartInstance = null;
+
+                const BENCHMARK_CHOICES = [
+                    { sym: '0050.TW',   label: '0050 元大台灣50' },
+                    { sym: '006208.TW', label: '006208 富邦台50' },
+                    { sym: '^TWII',     label: '加權指數（不含息）' }
+                ];
+
+                const benchmarkStartDate = () => {
+                    const today = getLocalDate();
+                    const back = (m) => {
+                        const d = new Date(today + 'T00:00:00');
+                        d.setMonth(d.getMonth() - m);
+                        const p = n => String(n).padStart(2, '0');
+                        return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+                    };
+                    switch (benchmarkRange.value) {
+                        case '6M': return back(6);
+                        case '1Y': return back(12);
+                        case 'ALL': return '1970-01-01';
+                        default: return today.slice(0, 4) + '-01-01';   // YTD
+                    }
+                };
+
+                /** 取標的的每日還原價；回傳 Map<yyyy-mm-dd, adjclose> */
+                const fetchBenchmarkPrices = async (symbol, fromDate) => {
+                    const years = Math.max(1, Math.ceil(daysBetween(fromDate, getLocalDate()) / 365) + 1);
+                    const range = years <= 1 ? '1y' : years <= 2 ? '2y' : years <= 5 ? '5y' : '10y';
+                    const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=${range}`;
+                    const resp = await fetchWithRetry(CF_PROXY + encodeURIComponent(url), 1, 12000);
+                    if (resp.status === 429) throw new Error('報價來源限流，請稍後再試');
+                    if (!resp.ok) throw new Error('報價來源回應 ' + resp.status);
+                    const json = JSON.parse(await resp.text());
+                    const r = json && json.chart && json.chart.result && json.chart.result[0];
+                    if (!r) throw new Error('查無此標的的歷史報價');
+                    const ts = r.timestamp || [];
+                    // 一定要用 adjclose：收盤價沒有還原配息與分割，實測 0050 兩年差 10 個百分點
+                    const adjWrap = r.indicators && r.indicators.adjclose && r.indicators.adjclose[0];
+                    const closeWrap = r.indicators && r.indicators.quote && r.indicators.quote[0];
+                    const series = (adjWrap && adjWrap.adjclose) || (closeWrap && closeWrap.close) || [];
+                    const map = new Map();
+                    for (let i = 0; i < ts.length; i++) {
+                        const v = series[i];
+                        if (v === null || v === undefined) continue;
+                        const d = new Date(ts[i] * 1000);
+                        const p = n => String(n).padStart(2, '0');
+                        map.set(`${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`, v);
+                    }
+                    if (!map.size) throw new Error('查無此標的的歷史報價');
+                    return { map, adjusted: !!(adjWrap && adjWrap.adjclose) };
+                };
+
+                const runBenchmark = async () => {
+                    if (!user.value) return;
+                    benchmarkLoading.value = true;
+                    try {
+                        const uid = user.value.uid;
+                        const from = benchmarkStartDate();
+                        const to = getLocalDate();
+
+                        const [histSnap, txSnap, priceInfo] = await Promise.all([
+                            db.collection('users').doc(uid).collection('history')
+                                .where('date', '>=', from).where('date', '<=', to).orderBy('date', 'asc').get(),
+                            db.collection('users').doc(uid).collection('transactions')
+                                .where('date', '>=', from).where('date', '<=', to).get(),
+                            fetchBenchmarkPrices(benchmarkSymbol.value, from)
+                        ]);
+
+                        // 台股帳戶淨值＝台股庫存＋台幣現金
+                        const series = histSnap.docs.map(d => d.data())
+                            .map(x => ({ date: x.date, value: (Number(x.twVal) || 0) + (Number(x.twCash) || 0) }))
+                            .filter(x => x.date);
+                        if (series.length < 2) {
+                            toastErr('這個期間的歷史快照不足兩天，無法比較');
+                            benchmarkResult.value = null;
+                            return;
+                        }
+
+                        const flowMap = buildFlowMap(txSnap.docs.map(d => d.data()), 'TWD');
+                        const dates = series.map(s => s.date);
+                        const mine = timeWeightedReturn(series, flowMap);
+                        const bench = benchmarkReturns(dates, priceInfo.map);
+                        const shadow = buildShadowPortfolio(series, priceInfo.map, flowMap);
+                        const days = daysBetween(series[0].date, series[series.length - 1].date);
+
+                        let flowIn = 0, flowOut = 0;
+                        for (const [d, v] of flowMap) {
+                            if (d < series[0].date || d > series[series.length - 1].date) continue;
+                            if (v > 0) flowIn += v; else flowOut += -v;
+                        }
+
+                        benchmarkResult.value = {
+                            start: series[0].date, end: series[series.length - 1].date, days,
+                            mineReturn: mine.totalReturn, benchReturn: bench.totalReturn,
+                            mineAnnual: annualize(mine.totalReturn, days),
+                            benchAnnual: annualize(bench.totalReturn, days),
+                            startValue: series[0].value, endValue: series[series.length - 1].value,
+                            shadowEnd: shadow.length ? shadow[shadow.length - 1].value : null,
+                            flowIn, flowOut, skipped: mine.skipped,
+                            adjusted: priceInfo.adjusted,
+                            label: (BENCHMARK_CHOICES.find(c => c.sym === benchmarkSymbol.value) || {}).label || benchmarkSymbol.value
+                        };
+
+                        await nextTick();
+                        drawBenchmarkChart(mine, bench);
+                    } catch (e) {
+                        benchmarkResult.value = null;
+                        toastErr('對比大盤失敗：' + e.message);
+                    } finally {
+                        benchmarkLoading.value = false;
+                    }
+                };
+
+                const drawBenchmarkChart = (mine, bench) => {
+                    const canvas = document.getElementById('benchmarkChart');
+                    if (!canvas) return;
+                    if (benchmarkChartInstance) benchmarkChartInstance.destroy();
+                    const isDark = document.documentElement.classList.contains('dark');
+                    const benchByDate = new Map(bench.points.map(p => [p.date, p.cum]));
+                    const labels = mine.points.map(p => p.date);
+                    benchmarkChartInstance = new Chart(canvas.getContext('2d'), {
+                        type: 'line',
+                        data: {
+                            labels,
+                            datasets: [
+                                { label: '我的台股帳戶', data: mine.points.map(p => p.cum * 100),
+                                  borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.10)',
+                                  fill: true, tension: 0.3, pointRadius: 0, pointHitRadius: 12, borderWidth: 2 },
+                                { label: '單純買大盤', data: labels.map(d => { const v = benchByDate.get(d); return v === undefined ? null : v * 100; }),
+                                  borderColor: '#f59e0b', borderDash: [5, 4], fill: false,
+                                  tension: 0.3, pointRadius: 0, pointHitRadius: 12, borderWidth: 2, spanGaps: true }
+                            ]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            interaction: { mode: 'index', intersect: false },
+                            plugins: {
+                                legend: { display: true, labels: { boxWidth: 12, font: { size: 11 }, color: isDark ? '#d1d5db' : '#4b5563' } },
+                                tooltip: { callbacks: { label: c => `${c.dataset.label}: ${Number(c.parsed.y).toFixed(2)}%` } }
+                            },
+                            scales: {
+                                x: { grid: { display: false }, ticks: { maxTicksLimit: 6, font: { size: 9 }, color: '#9ca3af' } },
+                                y: { grid: { color: isDark ? '#374151' : '#e5e7eb' },
+                                     ticks: { font: { size: 9 }, color: '#9ca3af', callback: v => Number(v).toFixed(0) + '%' } }
+                            }
+                        }
+                    });
+                };
+
+                const setBenchmarkRange = (r) => { benchmarkRange.value = r; runBenchmark(); };
+                const setBenchmarkSymbol = (s) => {
+                    benchmarkSymbol.value = s;
+                    localStorage.setItem('benchmarkSymbol', s);
+                    runBenchmark();
                 };
 
                 const drawExposureTrend = async () => {
@@ -3479,6 +3647,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     exposureBreakdown, positionExposureLevel, leverageLevel,
                     anyPriceUpdating, latestSnapshotDate, snapshotStaleDays, snapshotIsStale,
                     exposureTrendRange, exposureTrendStats, exposureTrendLoading, setExposureTrendRange, drawExposureTrend,
+                    benchmarkSymbol, benchmarkRange, benchmarkLoading, benchmarkResult, BENCHMARK_CHOICES, runBenchmark, setBenchmarkRange, setBenchmarkSymbol,
                     toasts, showToast, dismissToast, formErrors, clearFormErrors,
                     autoBackupEnabled, autoBackupIntervalDays, lastBackupAt, showBackupReminder, daysSinceBackup, dismissBackupReminder,
                     triggerImport, fileInput, handleImport,

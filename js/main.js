@@ -803,9 +803,12 @@ const { createApp, ref, computed, onMounted, watch, nextTick } = Vue;
                 // 標的價格用還原價（adjclose），含息且已還原分割。
                 let benchmarkChartInstance = null;
 
+                // leveraged 標記的是槓桿型 ETF：它每日重設倍數，長期報酬不等於指數的兩倍，
+                // 且波動與回檔都放大，拿來跟無槓桿帳戶比並非同一個風險等級 —— 介面要標示出來。
                 const BENCHMARK_CHOICES = [
                     { sym: '0050.TW',   label: '0050 元大台灣50' },
                     { sym: '006208.TW', label: '006208 富邦台50' },
+                    { sym: '00631L.TW', label: '00631L 台灣50正2（槓桿）', leveraged: true },
                     { sym: '^TWII',     label: '加權指數（不含息）' }
                 ];
 
@@ -901,6 +904,7 @@ const { createApp, ref, computed, onMounted, watch, nextTick } = Vue;
                             shadowEnd: shadow.length ? shadow[shadow.length - 1].value : null,
                             flowIn, flowOut, skipped: mine.skipped,
                             adjusted: priceInfo.adjusted,
+                            leveraged: !!(BENCHMARK_CHOICES.find(c => c.sym === benchmarkSymbol.value) || {}).leveraged,
                             label: (BENCHMARK_CHOICES.find(c => c.sym === benchmarkSymbol.value) || {}).label || benchmarkSymbol.value
                         };
 

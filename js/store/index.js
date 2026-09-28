@@ -37,13 +37,6 @@ export const showLeverageNotes = ref(false);
 export const exposureTrendRange = ref('3M');   // 1M / 3M / 6M / 1Y / ALL
 export const exposureTrendStats = ref({ count: 0, first: null, last: null, min: null, max: null, avg: null, partial: 0 });
 export const exposureTrendLoading = ref(false);
-// v5.29.0: 與大盤對照。回答「一直來回交易，有沒有贏過單純買進大盤不動」。
-// 比較範圍是台股帳戶（台股庫存＋台幣現金），標的預設 0050（含息還原價）。
-export const benchmarkSymbol = ref(localStorage.getItem('benchmarkSymbol') || '0050.TW');
-export const benchmarkRange = ref('YTD');      // 6M / YTD / 1Y / ALL
-export const benchmarkLoading = ref(false);
-export const benchmarkResult = ref(null);      // { start, end, days, mine, bench, shadow, flows, skipped }
-
 export const isDarkMode = ref(localStorage.getItem('darkMode') === 'true');
 export const activeSection = ref('overview');
 export const showChangelog = ref(false);

@@ -13,7 +13,7 @@
            - fonts.googleapis.com/css2：回應內容依瀏覽器 User-Agent 而異
            - apis.google.com/js/api.js、accounts.google.com/gsi/client：
              Google 的載入器，內容持續更新且官方不提供固定雜湊 -->
-    <title>我的投資組合 | Portfolio v5.29.1</title>
+    <title>我的投資組合 | Portfolio v5.28.0</title>
     <!-- v5.12.0: PWA。三個入口各有獨立的 manifest 與圖示，
          加到主畫面後會是三個可分辨的 App，而不是同一顆圖示。 -->
     <link rel="manifest" href="./manifest-stock.webmanifest">
@@ -367,7 +367,7 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.29.1</h1>
+                    <h1 class="text-2xl font-bold dark:text-white">資產紀錄帳本 v5.28.0</h1>
                 </div>
                 <button @click="login"
                     class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium py-2.5 rounded-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
@@ -387,7 +387,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.29.1</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">v5.28.0</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -645,126 +645,6 @@
                                 class="flex-1 py-2 text-sm rounded-lg transition duration-200">
                                 <i class="fa-solid fa-chart-pie mr-1.5"></i>持股占比
                             </button>
-                            <button @click="overviewTab = 'benchmark'"
-                                :class="overviewTab === 'benchmark' ? 'bg-indigo-600 text-white shadow font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'"
-                                class="flex-1 py-2 text-sm rounded-lg transition duration-200">
-                                <i class="fa-solid fa-scale-balanced mr-1.5"></i>對比大盤
-                            </button>
-                        </div>
-
-                        <!-- 1.3 對比大盤子面板（v5.29.0）
-                             回答「一直來回交易有沒有贏過單純買大盤放著」。
-                             主指標是時間加權報酬率 —— 入金／出金／借款／期貨保證金劃轉
-                             都在發生當天被中和，中途匯錢進來不會被誤算成績效。 -->
-                        <div v-if="overviewTab === 'benchmark'" class="zen-card p-4 md:p-6 mb-8">
-                            <div class="flex flex-wrap justify-between items-start gap-3 mb-4">
-                                <div>
-                                    <h3 class="font-bold dark:text-white flex items-center gap-2">
-                                        <i class="fa-solid fa-scale-balanced text-indigo-500"></i> 我的操作 vs 單純買大盤
-                                    </h3>
-                                    <p class="text-[11px] text-gray-400 mt-0.5">
-                                        比較範圍：台股帳戶（台股庫存＋台幣現金）。資金進出已中和，不影響報酬率。
-                                    </p>
-                                </div>
-                                <button @click="runBenchmark" :disabled="benchmarkLoading"
-                                    class="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded-md shadow hover:bg-indigo-500 disabled:opacity-50 transition">
-                                    <i class="fa-solid fa-rotate" :class="{'fa-spin': benchmarkLoading}"></i>
-                                    {{ benchmarkLoading ? ' 計算中…' : ' 重新計算' }}
-                                </button>
-                            </div>
-
-                            <div class="flex flex-wrap items-center gap-2 mb-4">
-                                <div class="flex bg-gray-100 dark:bg-gray-800 rounded p-0.5 text-[11px] font-semibold">
-                                    <button v-for="o in [{k:'6M',l:'近半年'},{k:'YTD',l:'今年'},{k:'1Y',l:'近一年'},{k:'ALL',l:'全部'}]"
-                                        :key="o.k" @click="setBenchmarkRange(o.k)"
-                                        :class="benchmarkRange === o.k ? 'bg-white dark:bg-gray-700 shadow text-indigo-600 dark:text-indigo-400' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
-                                        class="px-2.5 py-1 rounded transition">{{ o.l }}</button>
-                                </div>
-                                <select :value="benchmarkSymbol" @change="setBenchmarkSymbol($event.target.value)"
-                                    class="text-[11px] border rounded px-2 py-1 dark:bg-gray-800 dark:border-gray-600 dark:text-white">
-                                    <option v-for="c in BENCHMARK_CHOICES" :key="c.sym" :value="c.sym">{{ c.label }}</option>
-                                </select>
-                            </div>
-
-                            <div v-if="!benchmarkResult && !benchmarkLoading" class="text-center py-10 text-sm text-gray-400">
-                                點「重新計算」開始比較
-                            </div>
-
-                            <template v-if="benchmarkResult">
-                                <!-- 結論先講，不要讓使用者自己從圖上看 -->
-                                <div class="rounded-xl p-4 mb-4 border"
-                                    :class="benchmarkResult.mineReturn >= benchmarkResult.benchReturn
-                                        ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/50'
-                                        : 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800/50'">
-                                    <div class="text-sm font-bold mb-1"
-                                        :class="benchmarkResult.mineReturn >= benchmarkResult.benchReturn ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300'">
-                                        <span v-if="showPrivacy">
-                                            {{ benchmarkResult.mineReturn >= benchmarkResult.benchReturn ? '你的操作勝過大盤' : '單純買大盤比較好' }}
-                                            {{ (Math.abs(benchmarkResult.mineReturn - benchmarkResult.benchReturn) * 100).toFixed(2) }} 個百分點
-                                        </span>
-                                        <span v-else>****</span>
-                                    </div>
-                                    <div class="text-[11px] text-gray-500 dark:text-gray-400">
-                                        {{ benchmarkResult.start }} ～ {{ benchmarkResult.end }}（{{ benchmarkResult.days }} 天）・對照 {{ benchmarkResult.label }}
-                                    </div>
-                                </div>
-
-                                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4 text-center">
-                                    <div class="bg-gray-50 dark:bg-gray-800/60 rounded-lg p-2.5">
-                                        <div class="text-[10px] text-gray-400 mb-0.5">我的報酬率</div>
-                                        <div class="text-lg font-bold" :class="getPnlClass(benchmarkResult.mineReturn)">
-                                            <span v-if="showPrivacy">{{ (benchmarkResult.mineReturn * 100).toFixed(2) }}%</span><span v-else>****</span>
-                                        </div>
-                                        <div class="text-[9px] text-gray-400" v-if="showPrivacy && benchmarkResult.mineAnnual !== null">年化 {{ (benchmarkResult.mineAnnual * 100).toFixed(1) }}%</div>
-                                    </div>
-                                    <div class="bg-gray-50 dark:bg-gray-800/60 rounded-lg p-2.5">
-                                        <div class="text-[10px] text-gray-400 mb-0.5">大盤報酬率</div>
-                                        <div class="text-lg font-bold" :class="getPnlClass(benchmarkResult.benchReturn)">
-                                            <span v-if="showPrivacy">{{ (benchmarkResult.benchReturn * 100).toFixed(2) }}%</span><span v-else>****</span>
-                                        </div>
-                                        <div class="text-[9px] text-gray-400" v-if="showPrivacy && benchmarkResult.benchAnnual !== null">年化 {{ (benchmarkResult.benchAnnual * 100).toFixed(1) }}%</div>
-                                    </div>
-                                    <div class="bg-gray-50 dark:bg-gray-800/60 rounded-lg p-2.5">
-                                        <div class="text-[10px] text-gray-400 mb-0.5">目前台股帳戶</div>
-                                        <div class="text-sm font-bold pt-1 text-gray-700 dark:text-gray-200">
-                                            <span v-if="showPrivacy">{{ formatCurrency(benchmarkResult.endValue, 'TWD') }}</span><span v-else>****</span>
-                                        </div>
-                                    </div>
-                                    <div class="bg-gray-50 dark:bg-gray-800/60 rounded-lg p-2.5">
-                                        <div class="text-[10px] text-gray-400 mb-0.5">若當初買大盤</div>
-                                        <div class="text-sm font-bold pt-1" :class="benchmarkResult.shadowEnd > benchmarkResult.endValue ? 'text-rose-500' : 'text-emerald-600'">
-                                            <span v-if="showPrivacy">{{ formatCurrency(benchmarkResult.shadowEnd, 'TWD') }}</span><span v-else>****</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="h-56 relative mb-3">
-                                    <canvas id="benchmarkChart"></canvas>
-                                </div>
-
-                                <div class="text-[10px] text-gray-400 leading-relaxed space-y-1">
-                                    <div v-if="showPrivacy && (benchmarkResult.flowIn || benchmarkResult.flowOut)">
-                                        期間資金進出：入 {{ formatCurrency(benchmarkResult.flowIn, 'TWD') }}、出 {{ formatCurrency(benchmarkResult.flowOut, 'TWD') }}
-                                        —— 已在發生當天中和，不影響上面的報酬率。
-                                    </div>
-                                    <div v-if="benchmarkResult.leveraged" class="text-amber-600 dark:text-amber-400">
-                                        <i class="fa-solid fa-triangle-exclamation mr-1"></i>
-                                        槓桿型 ETF 每日重設倍數，長期報酬<strong>不等於</strong>指數的兩倍；波動與回檔也同步放大。
-                                        若你的帳戶沒有用到同等槓桿，這不是同一個風險等級的比較。
-                                    </div>
-                                    <div v-if="!benchmarkResult.adjusted" class="text-amber-600 dark:text-amber-400">
-                                        <i class="fa-solid fa-triangle-exclamation mr-1"></i>
-                                        這個標的沒有還原價，用的是收盤價（未含配息），大盤報酬會被低估。
-                                    </div>
-                                    <div v-if="benchmarkResult.skipped > 0">
-                                        有 {{ benchmarkResult.skipped }} 天的期初淨值為 0 或負數，該日報酬無從計算，已略過。
-                                    </div>
-                                    <div>
-                                        報酬率為時間加權（TWR）：每日報酬 =（當日淨值 − 當日淨流入）÷ 前一日淨值，再連乘。
-                                        「若當初買大盤」是同樣的錢、同樣的進出時點全數買進標的不動的市值。
-                                    </div>
-                                </div>
-                            </template>
                         </div>
 
                         <!-- 1.1 資產走勢子面板 -->
@@ -2774,31 +2654,6 @@
                             <!-- 最新版本節點 -->
                             <div class="relative pl-6">
                                 <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-gray-800"></div>
-                                <div class="text-xs text-gray-400 mb-1">2026-09-27</div>
-                                <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
-                                    <div class="font-bold text-gray-800 dark:text-white mb-2">v5.29.1</div>
-                                    <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
-                                        <li>對比大盤新增 00631L（台灣50正2）作為對照標的。</li>
-                                        <li>選到槓桿型 ETF 時會標示：它每日重設倍數，長期報酬並不等於指數的兩倍，波動與回檔也同步放大 —— 若自己的帳戶沒有用到同等槓桿，那不是同一個風險等級的比較。</li>
-                                    </ul>
-                                </div>
-                            </div>
-
-                            <div class="relative pl-6">
-                                <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-2 border-white dark:border-gray-800"></div>
-                                <div class="text-xs text-gray-400 mb-1">2026-09-27</div>
-                                <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
-                                    <div class="font-bold text-gray-800 dark:text-white mb-2">v5.29.0</div>
-                                    <ul class="list-disc pl-5 text-sm space-y-1 text-gray-600 dark:text-gray-400">
-                                        <li>新增「對比大盤」：拿你的台股帳戶跟「同樣的錢單純買大盤放著」比，回答一直來回交易到底有沒有加分。可選近半年／今年／近一年／全部，標的可選 0050、006208 或加權指數。</li>
-                                        <li>用時間加權報酬率（TWR）當主指標 —— 入金、出金、借款、期貨保證金劃轉都在發生當天被中和掉，所以「中途匯 50 萬進來」不會被誤算成操作績效。另外給一條「若當初買大盤」的金額曲線，直接看差多少錢。</li>
-                                        <li>大盤價格一律用還原價（含息、已還原分割）。實測 0050 近兩年未調整是 +143.0%、還原後是 +153.2% —— 用收盤價會低估大盤十個百分點，等於讓自己的操作看起來比實際好。若選到沒有還原價的標的會明確標示。</li>
-                                    </ul>
-                                </div>
-                            </div>
-
-                            <div class="relative pl-6">
-                                <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 border-2 border-white dark:border-gray-800"></div>
                                 <div class="text-xs text-gray-400 mb-1">2026-08-30</div>
                                 <div class="border-b border-gray-100 dark:border-gray-700 pb-2 mb-4">
                                     <div class="font-bold text-gray-800 dark:text-white mb-2">v5.28.0</div>

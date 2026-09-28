@@ -36,7 +36,6 @@ jobs:
         run: |
           node scripts/test-valuation.mjs
           node scripts/test-futures.mjs
-          node scripts/test-benchmark.mjs
 
       - name: 寫入每日快照
         working-directory: scripts

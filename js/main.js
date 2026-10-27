@@ -16,6 +16,27 @@ import {
 } from './store/index.js';
 const { createApp, ref, computed, onMounted, watch } = Vue;
 
+// =============================================================================
+// 資產紀錄帳本的主程式。mystock.html 只有模板（5000 多行全是 markup、零邏輯），
+// 畫面行為與資料存取都在這個檔案。
+//
+// 檔案很長，但結構固定是三層：
+//   1) 最上面的 import —— 共用邏輯一律放在外面。utils/valuation.js（估值）與
+//      utils/futures.js（期貨取價）由前端與 scripts/snapshot.mjs 共用同一份，
+//      改公式只改那裡；store/index.js 收全部的響應式狀態。
+//      所以這個檔案裡不該再出現估值公式或狀態宣告。
+//   2) createApp().setup() —— 以下所有程式碼，依編號分成 15 個區塊。
+//   3) 最後的 return {} —— 列出要給模板用的東西。
+//
+// 找路：grep '// ---' 會印出全部區塊標題。順序是
+//   1 變數定義 → 2 初始化與監聽 → 3 計算屬性 → 4 輔助函數 → 5 匯出/匯入/清除
+//   → 6 歷史紀錄 → 7 貸款與備註 → 8 交易修改與刪除 → 9 每日快照與現金
+//   → 10 圖表 → 11 股票買賣與記帳 → 12 股票主檔 CRUD → 13 報價來源
+//   → 14 批次取價與匯率 → 15 回傳給模板
+//
+// 編號只為了導覽，沒有程式意義。新增功能請併進語意最接近的區塊，不要往檔尾堆。
+// =============================================================================
+
         createApp({
             setup() {
                 // --- 1. 變數定義區 ---
@@ -869,6 +890,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     setTimeout(drawExposureTrend, 50);
                 };
                 const jumpToFundHistory = () => { setTimeout(() => { const el = document.querySelector('[data-section="fund-history"]'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }, 100); };
+                // --- 各區塊資料載入（現金、貸款、備註、房地產、基金）---
                 const loadUserData = (uid) => {
                     if (unsubscribe) unsubscribe(); unsubscribe = db.collection('users').doc(uid).collection('stocks').onSnapshot(snap => {
                         stocks.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -891,6 +913,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 const fetchRealEstate = (uid) => { if (unsubscribeRealEstate) unsubscribeRealEstate(); unsubscribeRealEstate = db.collection('users').doc(uid).collection('real_estate').onSnapshot(snap => { realEstateList.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); }); };
                 let unsubscribeMutualFunds = null;
                 const fetchMutualFunds = (uid) => { if (unsubscribeMutualFunds) unsubscribeMutualFunds(); unsubscribeMutualFunds = db.collection('users').doc(uid).collection('funds').onSnapshot(snap => { mutualFundList.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); }); };
+                // --- 共同基金 CRUD ---
                 const openMutualFundModal = (fund) => {
                     if (fund) {
                         mutualFundForm.value = { ...fund };
@@ -1028,6 +1051,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                      });
                      fetchFuturesTransactions(uid);
                  };
+                // --- 房地產 CRUD ---
                 const openRealEstateModal = (re) => {
                     if (re) {
                         // 相容舊資料（mortgageLoanId 單一 string）
@@ -1141,6 +1165,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         };
                     })
                 );
+                // --- 期貨：建倉、平倉與轉倉 ---
                 const saveFuturesPosition = async () => {
                     if (!user.value) return;
                     const f = futuresForm.value;
@@ -1587,6 +1612,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 // v5.x bug fix: 找出跟某筆期貨保證金劃轉紀錄配對的銀行現金紀錄。
                 // 優先用 linkedFuturesTxId（新資料才有）精準比對；找不到就退回用金額/幣別/日期/類型猜，
                 // 只是舊機制在同一天有兩筆金額相同紀錄時可能猜錯，所以只當作 fallback。
+                // --- 期貨交易刪除與連動的現金沖回 ---
                 const findLinkedCashTx = async (uid, tx, legacyType) => {
                     const txCol = db.collection('users').doc(uid).collection('transactions');
                     if (tx.id) {
@@ -1711,6 +1737,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                      }
                  };
 
+                // --- 期貨保證金調整 ---
                 const openFuturesMarginModal = () => {
                     futuresMarginForm.value = {
                         amount: '',
@@ -1816,6 +1843,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     toastOk('保證金調整成功');
                     setTimeout(saveDailySnapshot, 500);
                 };
+                // --- 房貸／增貸輔助 ---
                 const getLoanName = (loanId) => { const l = loanList.value.find(x => x.id === loanId); return l ? l.name : '未知帳戶'; };
                 const getReMortgageTotal = (re) => {
                     const ids = re.mortgageLoanIds || (re.mortgageLoanId ? [re.mortgageLoanId] : []);
@@ -1834,6 +1862,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     if (idx === -1) realEstateForm.value.mortgageLoanIds = [...ids, loanId];
                     else realEstateForm.value.mortgageLoanIds = ids.filter(id => id !== loanId);
                 };
+                // --- 登入與登出 ---
                 const login = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(alert);
                 const logout = () => auth.signOut();
 
@@ -2010,6 +2039,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     }
                 };
 
+                // --- 本機檔案匯出／匯入與資料清除 ---
                 const exportData = async () => { if (!user.value) return; const uid = user.value.uid; const allStocks = await db.collection('users').doc(uid).collection('stocks').get(); const allTrans = await db.collection('users').doc(uid).collection('transactions').get(); const allRealized = await db.collection('users').doc(uid).collection('realized_gains').get(); const allDividends = await db.collection('users').doc(uid).collection('dividends').get(); const allHistory = await db.collection('users').doc(uid).collection('history').orderBy('date').get(); const allNotes = await db.collection('users').doc(uid).collection('notes').get(); const allLoans = await db.collection('users').doc(uid).collection('loans').get(); const allRealEstate = await db.collection('users').doc(uid).collection('real_estate').get(); const cashDoc = await db.collection('users').doc(uid).collection('portfolio').doc('cash').get(); const allFuturesPositions = await db.collection('users').doc(uid).collection('futures_positions').get(); const allFuturesTransactions = await db.collection('users').doc(uid).collection('futures_transactions').get(); const allFunds = await db.collection('users').doc(uid).collection('funds').get(); const futuresMarginDoc = await db.collection('users').doc(uid).collection('portfolio').doc('futures_margin').get(); const obj = { stocks: allStocks.docs.map(d => ({ id: d.id, ...d.data() })), transactions: allTrans.docs.map(d => ({ id: d.id, ...d.data() })), realized: allRealized.docs.map(d => ({ id: d.id, ...d.data() })), dividends: allDividends.docs.map(d => ({ id: d.id, ...d.data() })), history: allHistory.docs.map(d => d.data()), cash: cashDoc.exists ? cashDoc.data() : { twd: 0, usd: 0, loan: 0 }, notes: allNotes.docs.map(d => ({ id: d.id, ...d.data() })), loans: allLoans.docs.map(d => ({ id: d.id, ...d.data() })), real_estate: allRealEstate.docs.map(d => ({ id: d.id, ...d.data() })), futures_positions: allFuturesPositions.docs.map(d => ({ id: d.id, ...d.data() })), futures_transactions: allFuturesTransactions.docs.map(d => ({ id: d.id, ...d.data() })), funds: allFunds.docs.map(d => ({ id: d.id, ...d.data() })), futures_margin: futuresMarginDoc.exists ? futuresMarginDoc.data() : { twd: 0, usd: 0 } }; const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(obj, null, 2)); a.download = `portfolio_FULL_BACKUP_${getLocalDate()}.json`; document.body.appendChild(a); a.click(); a.remove(); await markBackupDone(); };
 
                 const exportSimplifiedPortfolio = () => {
@@ -2071,6 +2101,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     } catch (err) { console.error(err); toastErr('刪除失敗，請稍後再試：' + err.message); } finally { isLoading.value = false; }
                 };
 
+                // --- 6. 歷史紀錄：查詢、編輯與批次補登 ---
                 const fetchRealizedGains = async () => { if (!user.value) return; sectionLoading.value = true; try { const snap = await db.collection('users').doc(user.value.uid).collection('realized_gains').where('date', '>=', realizedStartDate.value).where('date', '<=', realizedEndDate.value).orderBy('date', 'desc').get(); realizedGains.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); } finally { sectionLoading.value = false; } };
                 const fetchDividends = async () => { if (!user.value) return; sectionLoading.value = true; try { const snap = await db.collection('users').doc(user.value.uid).collection('dividends').where('date', '>=', divStartDate.value).where('date', '<=', divEndDate.value).orderBy('date', 'desc').get(); dividendRecords.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); } finally { sectionLoading.value = false; } };
                 const fetchTransactions = async () => {
@@ -2182,6 +2213,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         bulkHistoryBusy.value = false;
                     }
                 };
+                // --- 7. 貸款帳戶與備註 CRUD ---
                 const openLoanMgrModal = () => { clearFormErrors(); showLoanMgrModal.value = true; loanForm.value = { id: null, name: '', balance: 0, type: 'other', isInvestmentUse: false, monthlyPayment: 0, interestRate: 0, note: '' }; };
                 const editLoanAccount = (l) => { clearFormErrors(); loanForm.value = { type: 'other', isInvestmentUse: false, monthlyPayment: 0, interestRate: 0, note: '', ...l }; };
                 const saveLoanAccount = async () => { if (!user.value) return; if (!validateForm([['loanName', !!loanForm.value.name, '請輸入名稱']])) return; const data = { name: loanForm.value.name, balance: loanForm.value.balance || 0, currency: 'TWD', type: loanForm.value.type || 'other', isInvestmentUse: !!loanForm.value.isInvestmentUse, monthlyPayment: loanForm.value.monthlyPayment || 0, interestRate: Number(loanForm.value.interestRate) || 0, note: loanForm.value.note || '' }; if (loanForm.value.id) await db.collection('users').doc(user.value.uid).collection('loans').doc(loanForm.value.id).update(data); else await db.collection('users').doc(user.value.uid).collection('loans').add(data); loanForm.value = { id: null, name: '', balance: 0, type: 'other', isInvestmentUse: false, monthlyPayment: 0, interestRate: 0, note: '' }; };
@@ -2200,6 +2232,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 const closeNoteModal = () => showNoteModalVisible.value = false;
                 const saveNote = async () => { if (!user.value) return; if (!validateForm([['noteTitle', !!noteForm.value.title, '請輸入標題']])) return; const data = { title: noteForm.value.title, date: noteForm.value.date || getLocalDate(), content: noteForm.value.content || '', timestamp: firebase.firestore.FieldValue.serverTimestamp() }; if (noteForm.value.id) { await db.collection('users').doc(user.value.uid).collection('notes').doc(noteForm.value.id).update(data); } else { await db.collection('users').doc(user.value.uid).collection('notes').add(data); } closeNoteModal(); };
                 const deleteNote = async (id) => { if (!confirm('確定刪除此筆記？')) return; await db.collection('users').doc(user.value.uid).collection('notes').doc(id).delete(); };
+                // --- 8. 交易修改與刪除（含刪除後的持股還原）---
                 // v3.6.0: 交易編輯（僅允許修改日期、備註等非金融欄位）
                 const openEditTxModal = (tx) => {
                     editTxForm.value = { id: tx.id, date: tx.date, name: tx.name || '', memo: tx.memo || '' };
@@ -2333,6 +2366,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
                 const deleteDividend = async (rec) => { if (!confirm('刪除股息？(現金將自動扣回)')) return; const stock = stocks.value.find(s => s.symbol === rec.symbol); if (stock) { await db.collection('users').doc(user.value.uid).collection('stocks').doc(stock.id).update({ dividends: Math.max(0, (stock.dividends || 0) - rec.amount) }); } await updateCash(rec.currency, -rec.amount, 0); await db.collection('users').doc(user.value.uid).collection('dividends').doc(rec.id).delete(); fetchDividends(); setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'overview' || activeSection.value === '') drawChart(); }, 500); };
                 const deleteRealized = async (id) => { if (!confirm('刪除？')) return; await db.collection('users').doc(user.value.uid).collection('realized_gains').doc(id).delete(); fetchRealizedGains(); };
+                // --- 9. 每日快照、現金與貸款餘額 ---
                 const saveDailySnapshot = async () => { if (!user.value) return;
                     // v5.9.0: 匯率還沒確認過（線上 API 失敗，本機與雲端也都沒有上次的值）時，美股與美金會用寫死的
                     // 保底匯率計價。這種數字一旦寫進 history 就會永久留在走勢圖上，寧可這天不記錄。
@@ -2414,6 +2448,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     }
                 };
 
+                // --- 10. 圖表繪製（資產走勢與配置圓餅）---
                 const drawChart = async () => {
                     if (!user.value || !document.getElementById('assetChart')) return;
                     const snap = await db.collection('users').doc(user.value.uid).collection('history')
@@ -2533,6 +2568,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     }
                 };
 
+                // --- 11. 股票買賣、基金與貸款記帳 ---
                 const calculateNewAvg = () => { if (transForm.value.type !== 'buy' || !transForm.value.shares || !transForm.value.totalAmount) return transForm.value.currentAvg; const old = transForm.value.currentShares * transForm.value.currentAvg; return (old + transForm.value.totalAmount) / (transForm.value.currentShares + transForm.value.shares); };
                 const openTransModal = (s, type = 'buy') => { if (s) { transForm.value = { id: s.id, type: 'buy', symbol: s.symbol, name: s.name, shares: '', totalAmount: '', currentShares: s.shares, currentAvg: s.avgCost, date: getLocalDate(), memo: '' }; form.value.currency = s.currency; } else { transForm.value = { id: null, type: type, symbol: '', name: '', shares: '', totalAmount: '', currentShares: 0, currentAvg: 0, date: getLocalDate(), memo: '' }; form.value.currency = 'TWD'; } isFundMode.value = false; isLoanMode.value = false; clearFormErrors(); showTransModal.value = true; };
                 const openFundModal = () => { isFundMode.value = true; isLoanMode.value = false; transForm.value = { id: null, type: 'deposit', symbol: 'CASH', name: '', shares: 0, totalAmount: '', date: getLocalDate(), memo: '' }; form.value.currency = 'TWD'; clearFormErrors(); showTransModal.value = true; };
@@ -2698,6 +2734,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     closeTransModal();
                 };
 
+                // --- 12. 股票主檔 CRUD 與個股備註 ---
                 const openModal = () => { isEditing.value = false; form.value = { id: Date.now().toString(), symbol: '', name: '', currency: 'TWD', marketType: '', shares: 0, avgCost: 0, totalCostInput: 0, currentPrice: 0, dividends: 0, previousClose: 0, multiplier: 1, isETF: false }; clearFormErrors(); showModal.value = true; };
                 const editStock = (s) => { isEditing.value = true; form.value = { ...s, totalCostInput: parseFloat((s.shares * s.avgCost).toFixed(2)), multiplier: s.multiplier || 1, isETF: s.isETF || false }; clearFormErrors(); showModal.value = true; };
                 const closeModal = () => showModal.value = false;
@@ -2743,6 +2780,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     showStockNoteModal.value = false;
                 };
 
+                // --- 13. 報價來源：期交所、台股、美股（含重試與來源切換）---
                 // v3.3.3: 日期解析輔助
                 const parseDate = (str) => {
                     if (!str) return new Date();
@@ -2830,6 +2868,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 let _twMisCacheTs = 0;
 
                 // 從 TWSE/TPEx Open API 抓當日收盤（盤後用），透過 CF Proxy 避免 CORS
+                // --- 台股報價（OpenAPI → MIS → Yahoo 依序退回）---
                 const fetchTwSnapshotFromOpenApi = async () => {
                     const map = new Map();
                     try {
@@ -3020,6 +3059,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 };
 
                 // 判斷美股是否盤中 (簡單以時區判斷)
+                // --- 美股報價（Yahoo chart / quote）---
                 const isUsMarketOpen = () => {
                     const nyTime = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
                     const day = nyTime.getDay();
@@ -3122,6 +3162,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 };
 
                 // 一次性偵測上市/上櫃/興櫃 (v4.4.0: 加入 esb 支援；找不到回傳 null 而非預設 tse)
+                // --- 市場別判定與取價統一入口 ---
                 const detectMarketType = async (stock) => {
                     if (stock.currency === 'USD') return 'us';
                     const cleanSym = stock.symbol.replace(/\.(TW|TWO)$/i, '');
@@ -3247,6 +3288,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 };
                 const autoFetchName = async () => { const s = form.value.symbol; if (!s) return; if (/^\d/.test(s)) { form.value.currency = 'TWD'; } else if (/^[A-Za-z\.-]+$/.test(s)) { form.value.currency = 'USD'; form.value.marketType = 'us'; } if (!form.value.name) form.value.name = '查詢中...'; const d = await getYahooData(s); if (d) { if (form.value.name === '查詢中...') form.value.name = d.name || d.symbol; form.value.currentPrice = d.regularMarketPrice; form.value.previousClose = d.previousClose; } else { if (form.value.name === '查詢中...') form.value.name = ''; toastErr('查無此代號'); } };
                 const autoFetchTransName = async () => { const s = transForm.value.symbol; if (!s) return; const localStock = stocks.value.find(st => st.symbol && st.symbol.toUpperCase() === s.toUpperCase()); if (localStock) { transForm.value.name = localStock.name; form.value.currency = localStock.currency; return; } if (/^\d/.test(s)) form.value.currency = 'TWD'; else if (/^[A-Za-z\.-]+$/.test(s)) form.value.currency = 'USD'; if (!transForm.value.name) transForm.value.name = '查詢中...'; const d = await getYahooData(s); if (d) { if (transForm.value.name === '查詢中...') transForm.value.name = d.name || d.symbol; } else { if (transForm.value.name === '查詢中...') transForm.value.name = ''; } };
+                // --- 14. 批次取價、匯率套用與表格排序 ---
                 // [主程式] 批次更新股價 (支援分流 + 必定更新匯率)
                 const fetchPrices = async (marketType) => {
                     // 基本檢查
@@ -3448,6 +3490,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 // getAmountSign imported from utils
 
 
+                // --- 15. 回傳給模板 ---
                 return {
                     clearAllUserData, 
                     user, login, logout, stocks, exchangeRate, exchangeRateConfirmed, lastUpdated, isLoading, viewMode, isMobile, showPrivacy, isDarkMode, toggleDarkMode, activeSection, toggleSection, showChangelog, hideZeroShares, defaultPrivacyHidden,

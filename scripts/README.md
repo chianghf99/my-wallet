@@ -55,6 +55,11 @@ Finnhub 僅保留為退路。
 ### 注意事項
 
 - 估值邏輯（`js/utils/valuation.js`）與期貨取價邏輯（`js/utils/futures.js`）皆與前端**共用同一份**，改動只需一處；`scripts/test-valuation.mjs` 與 `test-futures.mjs` 會在寫入快照前於 CI 驗證。
+- `test-card-crypto.mjs` 是卡片管家加解密的黃金樣本測試，守的是「既有加密資料還解得開」：
+  它直接從 `mycreditcard.html` 抽出金鑰參數（固定 salt、PBKDF2 迭代次數、canary 明文）確認沒被改動，
+  再用 Node 內建 crypto 獨立重算金鑰、解開寫死的密文。改錯這些不會當場報錯，
+  而是等到換裝置登入才發現資料解不開，所以需要自動化把關。
+- 三支測試都只用 Node 內建模組（不需 `npm install`），並由 `.github/workflows/tests.yml` 在每次推上 `main` 與 PR 時執行。
 - GitHub Actions 的 cron 不保證準時（實測延遲 1～2.5 小時）；因期貨固定取日盤收盤，對快照結果沒有影響。
 - 國定假日休市時會照跑，抓到的是前一交易日收盤價，等於複製前一天的快照，走勢圖呈現持平，不影響正確性。
 - 可在 Actions 頁面用 **Run workflow** 手動觸發測試。

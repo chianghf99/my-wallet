@@ -1086,6 +1086,10 @@ createApp({
         ];
 
         const changelog = [
+            { version: 'v5.10.0', date: '2026-10-27', items: [
+                '修正：關閉安全密碼鎖時，在某些情況下會把加密欄位變成永久無法讀取。關鎖的流程是「先用金鑰把帳單通訊地址解成明文暫存，再刪掉金鑰材料」，但舊版有三條路會在一個明文都沒解出來的狀態下照樣往下刪：尚未解鎖（沒有金鑰）、本機資料解析失敗、以及解密失敗時回傳空字串被當成正常值。金鑰用的 salt 一旦被刪，殘留的密文就再也解不開 —— 使用者按的是「關閉安全鎖」，不該因此損失資料。',
+                '調整：關鎖改為與「設定加密密碼」相同的三階段流程 —— 先把所有加密欄位解開、確認每一欄都成功，才寫入並刪除金鑰材料。任何一步失敗就整個中止、不動任何資料，並說明是哪張卡出問題、該先做什麼。'
+            ] },
             { version: 'v5.9.0', date: '2026-09-05', items: [
                 '新增：第一銀行帳單 PDF 解析規則（檔名「第一銀行電子對帳單YYYY年MM月」）。已用 115 年 9 月實際帳單驗證，可正確帶入應繳 193 元、截止日 115/09/18。',
                 '說明：第一銀行的金額特地不讀「您的本期金額總計」—— 那是本期新增消費的小計，這期剛好等於應繳金額只是因為上期為 0；上期有未繳或有回饋折抵時兩者就會不一樣。改讀第 2 頁繳款聯的「應繳總額：193」，抓不到才退回計算列（上期應繳 - 已繳 + 本期新增 + 回饋調整 = 本期應繳）取等號後的值。',
@@ -1725,50 +1729,94 @@ createApp({
             } else { alert('請輸入 6 位數字'); }
         };
         const removePin = () => {
-            if (confirm('確定要關閉安全密碼鎖嗎？關閉後，帳單通訊地址將會直接顯示。')) {
-                const currentKey = _sessionKey.value;
-                // 關鎖後就沒有金鑰可加密，地址先解成 _tmp_address 暫存，setPin 時再加密回去。
-                // v5.7.0: enc_number / enc_cvv 不再解成明文暫存 —— 本 App 已不保存這兩項，
-                // 把它們攤成明文只是把「外洩即可盜刷」的資料換個地方放。到期日則轉成一般欄位。
-                if (currentKey) {
-                    const storedData = localStorage.getItem('myCreditData');
-                    if (storedData) {
-                        try {
-                            const parsed = JSON.parse(storedData);
-                            const decrypt = (ct) => {
-                                try { return CryptoJS.AES.decrypt(ct, currentKey).toString(CryptoJS.enc.Utf8) || ''; }
-                                catch (e) { return ''; }
-                            };
-                            parsed.cards = (parsed.cards || []).map(card => {
-                                if (card.enc_address) {
-                                    card._tmp_address = decrypt(card.enc_address);
-                                    card.enc_address = '';
-                                }
-                                if (card.enc_expiry) {
-                                    if (!card.expiry) card.expiry = decrypt(card.enc_expiry);
-                                    delete card.enc_expiry;
-                                }
-                                delete card.enc_number;
-                                delete card.enc_cvv;
-                                return card;
-                            });
-                            localStorage.setItem('myCreditData', JSON.stringify(parsed));
-                            cards.value = parsed.cards || [];
-                        } catch(e) {}
-                    }
+            if (!confirm('確定要關閉安全密碼鎖嗎？關閉後，帳單通訊地址將會直接顯示。')) return;
+
+            const currentKey = _sessionKey.value;
+            // 關鎖後就沒有金鑰可加密，地址先解成 _tmp_address 暫存，setPin 時再加密回去。
+            // v5.7.0: enc_number / enc_cvv 不再解成明文暫存 —— 本 App 已不保存這兩項，
+            // 把它們攤成明文只是把「外洩即可盜刷」的資料換個地方放。到期日則轉成一般欄位。
+            //
+            // v5.10.0: 改為「先全部解開、確認無誤才落地」，與 setupPassphrase 的三階段一致。
+            // 舊版有三條路會在「一個明文都沒解出來」的情況下照樣走到下面那串 removeItem：
+            //   (1) currentKey 是空字串（還沒解鎖）—— 整個解密區塊被 if 跳過；
+            //   (2) JSON.parse 失敗 —— 被 catch(e){} 吞掉；
+            //   (3) decrypt() 解不開時回傳空字串，被當成正常值寫進 _tmp_address。
+            // 這三種情況都會把 app_key_salt 與 app_master_key_cache 一併刪掉，而 salt 一旦
+            // 消失，殘留的 enc_* 就永久解不開 —— 使用者按的是「關閉安全鎖」，不該因此損失資料。
+            // 所以任何一步失敗都整個中止，不動任何東西。
+            const storedData = localStorage.getItem('myCreditData');
+            if (storedData) {
+                let parsed;
+                try {
+                    parsed = JSON.parse(storedData);
+                } catch (e) {
+                    alert('本機資料讀取失敗，為避免加密欄位永久遺失，已中止關閉安全鎖。請先匯出備份後再試一次。');
+                    return;
                 }
-                localStorage.removeItem('app_pin_hash');
-                localStorage.removeItem('app_pin_salt');
-                localStorage.removeItem('app_pin');
-                localStorage.removeItem('app_key_salt');
-                localStorage.removeItem('app_key_mode');
-                localStorage.removeItem('app_master_key_cache');
-                encryptionMode.value = 'pin';
-                _sessionKey.value = '';
-                isPinSet.value = false;
-                showToast('安全鎖已關閉');
-                if (user.value) triggerSync('upload', true);
+                const sourceCards = parsed.cards || [];
+                const encFields = ['enc_address', 'enc_expiry'];
+                const hasEncrypted = sourceCards.some(c => c && encFields.some(f => c[f]));
+                if (hasEncrypted && !currentKey) {
+                    // passphrase 模式下 PIN 過了不代表拿得到金鑰 —— 新裝置還要再輸入一次主密碼，
+                    // 提示講成「請先以 PIN 解鎖」會讓人以為已經做過了。
+                    alert(encryptionMode.value === 'passphrase'
+                        ? '目前沒有可用的解密金鑰（尚未輸入加密密碼），現在關閉安全鎖會讓已加密的欄位永久無法讀取，已中止。請先輸入加密密碼完成解鎖後再試一次。'
+                        : '目前沒有可用的解密金鑰（尚未解鎖），現在關閉安全鎖會讓已加密的欄位永久無法讀取，已中止。請先以 PIN 解鎖後再試一次。');
+                    return;
+                }
+
+                // 階段一：先把所有加密欄位解出來，任何一欄解不開就中止
+                const plainMap = [];
+                for (let i = 0; i < sourceCards.length; i++) {
+                    const card = sourceCards[i] || {};
+                    const fields = {};
+                    for (const f of encFields) {
+                        if (!card[f]) continue;
+                        const plain = decryptField(card[f], currentKey);
+                        if (!plain || plain === '解密失敗') {
+                            const how = encryptionMode.value === 'passphrase' ? '加密密碼' : 'PIN';
+                            alert(`「${card.name || card.bank || '第 ' + (i + 1) + ' 張'}」的加密欄位無法用目前的金鑰解開，已中止關閉安全鎖以免資料永久遺失。\n\n請先匯出備份，並確認目前是以正確的${how}解鎖。`);
+                            return;
+                        }
+                        fields[f] = plain;
+                    }
+                    plainMap.push(fields);
+                }
+
+                // 階段二：組出關鎖後的內容。這一步已經不需要金鑰了，所以不會再失敗。
+                const rebuilt = sourceCards.map((card, i) => {
+                    const copy = { ...card };
+                    const fields = plainMap[i];
+                    if (fields.enc_address !== undefined) {
+                        copy._tmp_address = fields.enc_address;
+                        copy.enc_address = '';
+                    }
+                    if (fields.enc_expiry !== undefined && !copy.expiry) {
+                        copy.expiry = fields.enc_expiry;
+                    }
+                    delete copy.enc_expiry;
+                    delete copy.enc_number;
+                    delete copy.enc_cvv;
+                    return copy;
+                });
+
+                // 階段三：全數通過才寫入 —— 寫完之後，刪掉金鑰材料才是安全的
+                parsed.cards = rebuilt;
+                localStorage.setItem('myCreditData', JSON.stringify(parsed));
+                cards.value = rebuilt;
             }
+
+            localStorage.removeItem('app_pin_hash');
+            localStorage.removeItem('app_pin_salt');
+            localStorage.removeItem('app_pin');
+            localStorage.removeItem('app_key_salt');
+            localStorage.removeItem('app_key_mode');
+            localStorage.removeItem('app_master_key_cache');
+            encryptionMode.value = 'pin';
+            _sessionKey.value = '';
+            isPinSet.value = false;
+            showToast('安全鎖已關閉');
+            if (user.value) triggerSync('upload', true);
         };
         const newPin = ref("");
 

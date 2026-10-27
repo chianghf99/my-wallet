@@ -160,14 +160,16 @@
                 <i class="fas fa-key fa-3x text-indigo-500"></i>
             </div>
             <h2 class="text-2xl font-extrabold text-slate-800 dark:text-slate-100">這是新裝置</h2>
-            <p class="text-slate-500 dark:text-slate-400 mt-2">請輸入你的「加密密碼」以解鎖卡片資料。這組密碼不會存在雲端，只有你自己知道。</p>
+            <p v-if="!pendingPassphraseKey" class="text-slate-500 dark:text-slate-400 mt-2">請輸入你的「加密密碼」以解鎖卡片資料。這組密碼不會存在雲端，只有你自己知道。</p>
+            <!-- v5.11.0: 這台裝置沒有任何已加密的資料可供比對，打錯也驗不出來 —— 請再打一次擋掉手誤 -->
+            <p v-else class="text-amber-600 dark:text-amber-400 mt-2">這台裝置目前沒有已加密的資料可以用來核對密碼是否正確，請「再輸入一次」以確認沒有打錯。</p>
         </div>
         <div class="w-full max-w-xs space-y-4">
             <input type="password" v-model="unlockPassphraseInput" @keyup.enter="unlockWithPassphrase"
-                   placeholder="輸入加密密碼" autofocus
+                   :placeholder="pendingPassphraseKey ? '再輸入一次加密密碼' : '輸入加密密碼'" autofocus
                    class="w-full glass px-4 py-3 rounded-xl outline-none text-center dark:text-white">
             <button @click="unlockWithPassphrase" class="w-full py-4 bg-indigo-500 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all">
-                解鎖
+                {{ pendingPassphraseKey ? '確認並解鎖' : '解鎖' }}
             </button>
         </div>
     </div>
@@ -1086,6 +1088,12 @@ createApp({
         ];
 
         const changelog = [
+            { version: 'v5.11.0', date: '2026-10-27', items: [
+                '修正：在還沒有任何卡片的裝置上，加密密碼打錯也會被放行。驗證密碼的方式是拿一筆已加密的資料來試解，沒有資料可試時就直接通過 —— 接著新增的卡片會用那組打錯的密碼加密，而你以為自己設的是另一組，回到原本的裝置才會發現解不開。',
+                '新增：設定加密密碼時會另外存一小段「驗證樣本」（一段已知內容的密文），之後不論有沒有卡片都驗得出密碼對不對。它會跟著雲端同步與備份檔一起走，新裝置才驗得了。既有使用者在下次用加密密碼解鎖成功時會自動補上。',
+                '新增：萬一連驗證樣本都還沒有（舊資料、且這台裝置一張卡都沒有），會請你把密碼輸入兩次，至少擋掉手誤。',
+                '說明：這段驗證樣本不會降低安全性 —— 有卡片時，那些加密欄位本來就能被拿來做一模一樣的離線猜測；沒有卡片時則沒有任何東西可解。'
+            ] },
             { version: 'v5.10.0', date: '2026-10-27', items: [
                 '修正：關閉安全密碼鎖時，在某些情況下會把加密欄位變成永久無法讀取。關鎖的流程是「先用金鑰把帳單通訊地址解成明文暫存，再刪掉金鑰材料」，但舊版有三條路會在一個明文都沒解出來的狀態下照樣往下刪：尚未解鎖（沒有金鑰）、本機資料解析失敗、以及解密失敗時回傳空字串被當成正常值。金鑰用的 salt 一旦被刪，殘留的密文就再也解不開 —— 使用者按的是「關閉安全鎖」，不該因此損失資料。',
                 '調整：關鎖改為與「設定加密密碼」相同的三階段流程 —— 先把所有加密欄位解開、確認每一欄都成功，才寫入並刪除金鑰材料。任何一步失敗就整個中止、不動任何資料，並說明是哪張卡出問題、該先做什麼。'
@@ -1434,6 +1442,7 @@ createApp({
                         // 跨裝置同步它只會讓那組無鹽雜湊多流通一份。
                         // Sync 主密碼 salt / 模式，讓新裝置在輸入主密碼時能算出一樣的金鑰
                         if (d.app_key_salt) localStorage.setItem('app_key_salt', d.app_key_salt);
+                        if (d.app_key_check) localStorage.setItem('app_key_check', d.app_key_check);
                         if (d.app_key_mode) {
                             localStorage.setItem('app_key_mode', d.app_key_mode);
                             encryptionMode.value = d.app_key_mode;
@@ -1454,6 +1463,7 @@ createApp({
                         // PIN 的定位是「這台裝置的快速解鎖」，本來就不該跨裝置同步。
                         app_pin_hash: firebase.firestore.FieldValue.delete(),
                         app_key_salt: localStorage.getItem('app_key_salt') || '',
+                        app_key_check: localStorage.getItem('app_key_check') || '',
                         app_key_mode: localStorage.getItem('app_key_mode') || 'pin',
                         last_sync: Date.now(),
                         updated_at: firebase.firestore.FieldValue.serverTimestamp()
@@ -1513,6 +1523,25 @@ createApp({
             return CryptoJS.PBKDF2(passphrase, salt, { keySize: 256 / 32, iterations: 210000 }).toString();
         };
         const ENC_CARD_FIELDS = ['enc_number', 'enc_expiry', 'enc_cvv', 'enc_address'];
+
+        // v5.11.0: 金鑰驗證樣本（canary）。
+        // 原本要判斷「主密碼打對了沒」，是拿任何一個已加密的欄位來試解。但卡片一張都
+        // 還沒有時就找不到樣本 —— 那時任何密碼都會被放行，接著新增的卡片就用一組打錯的
+        // 密碼加密，而使用者以為自己設的是另一組；等到回原本的裝置才會發現解不開。
+        // 這裡改成在設定主密碼時另外存一段「已知明文的密文」，任何時候都驗得起來。
+        //
+        // 它不會削弱安全性：有卡片時 enc_* 本來就能當成一模一樣的離線猜測樣本，
+        // 沒有卡片時也沒有東西可解。它跟 salt 一樣要同步到雲端，新裝置才驗得了。
+        const KEY_CHECK_PLAINTEXT = 'mywallet-key-check-v1';
+        const makeKeyCheck = (key) => CryptoJS.AES.encrypt(KEY_CHECK_PLAINTEXT, key).toString();
+        /** true = 通過；false = 密碼錯；null = 本機沒有驗證樣本，無從判斷 */
+        const verifyKeyCheck = (key) => {
+            const ct = localStorage.getItem('app_key_check');
+            if (!ct) return null;
+            return decryptField(ct, key) === KEY_CHECK_PLAINTEXT;
+        };
+        // 無驗證樣本時，暫存第一次輸入算出的金鑰，等第二次輸入比對
+        const pendingPassphraseKey = ref('');
 
         /** 找一段已加密的內容當作「金鑰對不對」的驗證樣本（欄位不拘，有就好） */
         const findEncryptedSample = (list) => {
@@ -1810,6 +1839,7 @@ createApp({
             localStorage.removeItem('app_pin_salt');
             localStorage.removeItem('app_pin');
             localStorage.removeItem('app_key_salt');
+            localStorage.removeItem('app_key_check');
             localStorage.removeItem('app_key_mode');
             localStorage.removeItem('app_master_key_cache');
             encryptionMode.value = 'pin';
@@ -1909,6 +1939,7 @@ createApp({
 
             localStorage.setItem('app_key_mode', 'passphrase');
             localStorage.setItem('app_master_key_cache', newKey);
+            localStorage.setItem('app_key_check', makeKeyCheck(newKey));
             encryptionMode.value = 'passphrase';
             _sessionKey.value = newKey;
             masterPassphrase.value = '';
@@ -1929,19 +1960,49 @@ createApp({
                 return;
             }
             const key = deriveMasterKey(unlockPassphraseInput.value, salt);
-            // v5.7.0: 原本只拿 enc_number 當驗證樣本。卡號不再保存後就找不到樣本，
-            // 密碼打錯也會被放行，接著把 enc_address 解成亂碼。改為任一加密欄位都能當樣本。
-            const sample = findEncryptedSample();
-            if (sample) {
-                const test = decryptField(sample.ciphertext, key);
-                if (!test || test === '解密失敗') {
-                    alert('加密密碼錯誤');
+
+            // (1) 先用 canary 驗 —— 最可靠，卡片一張都沒有時也驗得起來
+            let ok = verifyKeyCheck(key);
+
+            // (2) 還沒有 canary 的舊資料，退回原本做法：拿任一已加密欄位試解。
+            //     v5.7.0: 原本只拿 enc_number 當樣本，卡號不再保存後就找不到了，改為不拘欄位。
+            if (ok === null) {
+                const sample = findEncryptedSample();
+                if (sample) {
+                    const test = decryptField(sample.ciphertext, key);
+                    ok = !!test && test !== '解密失敗';
+                }
+            }
+
+            if (ok === false) {
+                alert('加密密碼錯誤');
+                unlockPassphraseInput.value = '';
+                pendingPassphraseKey.value = '';
+                return;
+            }
+
+            // (3) 兩種樣本都沒有：打錯也看不出來，而且接下來新增的資料會用這組金鑰加密、
+            //     canary 也會照這組寫下去，等於把打錯的密碼固定成「正確答案」。
+            //     這時唯一能做的檢查就是請使用者再打一次，至少擋掉手誤。
+            if (ok === null) {
+                if (!pendingPassphraseKey.value) {
+                    pendingPassphraseKey.value = key;
+                    unlockPassphraseInput.value = '';
+                    return;
+                }
+                if (pendingPassphraseKey.value !== key) {
+                    alert('兩次輸入的加密密碼不一致，請重新輸入。');
+                    pendingPassphraseKey.value = '';
                     unlockPassphraseInput.value = '';
                     return;
                 }
             }
+
             _sessionKey.value = key;
             localStorage.setItem('app_master_key_cache', key);
+            // 這組金鑰確認可用了，補寫 canary —— 之後這台裝置與其他裝置都驗得了
+            localStorage.setItem('app_key_check', makeKeyCheck(key));
+            pendingPassphraseKey.value = '';
             showUnlockPassphrase.value = false;
             unlockPassphraseInput.value = '';
             migrateCardFields(key);
@@ -1960,6 +2021,7 @@ createApp({
                 app_pin_hash: localStorage.getItem('app_pin_hash') || '',
                 app_pin_salt: localStorage.getItem('app_pin_salt') || '',
                 app_key_salt: localStorage.getItem('app_key_salt') || '',
+                app_key_check: localStorage.getItem('app_key_check') || '',
                 app_key_mode: localStorage.getItem('app_key_mode') || '',
                 theme: localStorage.getItem('theme') || 'light',
                 privacy: localStorage.getItem('privacy') || 'false'
@@ -2004,6 +2066,7 @@ createApp({
                                 localStorage.removeItem('app_pin');
                             }
                             if (data.app_key_salt) localStorage.setItem('app_key_salt', data.app_key_salt);
+                            if (data.app_key_check) localStorage.setItem('app_key_check', data.app_key_check);
                             if (data.app_key_mode) {
                                 localStorage.setItem('app_key_mode', data.app_key_mode);
                                 encryptionMode.value = data.app_key_mode;
@@ -3114,7 +3177,7 @@ createApp({
             onFileChange, parsePDF, exportToExcel, decryptField, getPinKey, groupedCards, expandedBanks, expandedCards, totalCardsCount, totalCardsLimit,
             commonBanksList, startAddBill, associatedCard, onBillNameInput, getCardOrgIcon, getBillCardInfo,
             exportBackup, importBackup, getOfficialBankName, getTicketBadgeClass, getTicketIcon, quickAddCardForBank,
-            encryptionMode, showUnlockPassphrase, unlockPassphraseInput, masterPassphrase, masterPassphraseConfirm,
+            encryptionMode, showUnlockPassphrase, unlockPassphraseInput, pendingPassphraseKey, masterPassphrase, masterPassphraseConfirm,
             setupPassphrase, unlockWithPassphrase, getCardAddress, toggleCardFlip, maskAmount, getCardExpiry
         };
     }

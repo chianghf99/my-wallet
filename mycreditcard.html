@@ -15,7 +15,7 @@
            - apis.google.com/js/api.js、accounts.google.com/gsi/client：
              Google 的載入器，內容持續更新且官方不提供固定雜湊 -->
     <title>卡片管家 Pro | Card Manager</title>
-    <!-- v5.12.0: PWA。三個入口各有獨立的 manifest 與圖示，
+    <!-- v5.3.2: PWA。三個入口各有獨立的 manifest 與圖示，
          加到主畫面後會是三個可分辨的 App，而不是同一顆圖示。 -->
     <link rel="manifest" href="./manifest-card.webmanifest">
     <meta name="theme-color" content="#1f2937">
@@ -1122,6 +1122,10 @@ createApp({
                 '安全性：設定加密密碼時的重新加密流程改為「全部驗證通過才寫入」。舊版是邊解邊寫、失敗時靜默略過，只要有任一欄位解不開，該欄位會保留舊金鑰的密文卻仍翻成新模式，導致資料永久無法解開。',
                 '提醒：目前使用 PIN 模式者，加密強度僅等同 6 位數密碼，建議至系統設定改用「加密密碼」模式。'
             ] },
+            { version: 'v5.3.2', date: '2026-07-26', items: [
+                '新增：卡片管家可單獨「加入主畫面」安裝成 App。三個入口各自有獨立的 manifest 與圖示，裝起來是三顆分得出來的 App，而不是同一顆圖示的三個分身。',
+                '新增：註冊 Service Worker，介面骨架與 CDN 函式庫會被快取，離線或網路不穩時仍可開啟（僅在 https 或 localhost 生效）。卡片與帳單資料仍來自本機與雲端，不受快取影響。'
+            ] },
             { version: 'v5.3.1', date: '2026-07-19', items: ['修正銀行名稱判定邏輯：將「台灣/台銀」關鍵字比對順序移至最後，以避免「臺灣新光商業銀行」等帶有臺灣前綴的銀行被誤判為「臺灣銀行」的 Bug'] },
             { version: 'v5.3.0', date: '2026-07-01', items: ['優化卡號複製功能：將複製按鈕移出卡片圖像以防止點按誤觸，改為整合於卡片下方的工具列，並移除冗餘的翻轉卡片按鈕', '優化版面資訊流：將「帳單通訊地址」與「結帳日/繳費截止日」一併移至銀行分組標題列旁顯示，卡片背面極簡化', '修正銀行設定修改連動機制與自動扣款帳戶(末五碼)的標示'] },
             { version: 'v5.2.0', date: '2026-06-22', items: ['新增相同銀行信用卡自動帶入功能，若新增同銀行第二張卡時會自動帶入結帳日、繳費日、扣款帳戶與帳單地址，省去重複輸入的繁瑣步驟'] },
@@ -1421,7 +1425,7 @@ createApp({
                             }
                         }
                         syncStatus.value = '同步自雲端 ' + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                        // v5.19.0: 不再從雲端還原 PIN 雜湊。
+                        // v5.4.0: 不再從雲端還原 PIN 雜湊。
                         // PIN 的定位是「這台裝置的快速解鎖」，每台裝置各自設定即可；
                         // 跨裝置同步它只會讓那組無鹽雜湊多流通一份。
                         // Sync 主密碼 salt / 模式，讓新裝置在輸入主密碼時能算出一樣的金鑰
@@ -1440,7 +1444,7 @@ createApp({
                     const dataToSave = {
                         bills: JSON.parse(JSON.stringify(bills.value)),
                         cards: JSON.parse(JSON.stringify(cards.value)),
-                        // v5.19.0: PIN 雜湊不再上雲。
+                        // v5.4.0: PIN 雜湊不再上雲。
                         // 它是無鹽 SHA-256 的 6 位數字，把它跟密文放在一起等於附上答案 ——
                         // 實測單執行緒 0.25 秒就能還原 PIN，接著解開所有卡號與 CVV。
                         // PIN 的定位是「這台裝置的快速解鎖」，本來就不該跨裝置同步。
@@ -1792,7 +1796,7 @@ createApp({
             const salt = ensureKeySalt();
             const newKey = deriveMasterKey(p1, salt);
 
-            // v5.19.0: 重新加密改為「先全部驗證、確認無誤才落地」。
+            // v5.4.0: 重新加密改為「先全部驗證、確認無誤才落地」。
             // 舊版是邊解邊寫、失敗時 catch(e){} 直接吞掉：只要有任一欄位解不開，
             // 該欄位會保留舊金鑰的密文，但模式仍然翻成 passphrase —— 舊金鑰從此消失，
             // 那格資料就永久解不開了。這裡改成三階段，任何一步失敗就整個中止、不改動任何東西。
@@ -3069,7 +3073,7 @@ createApp({
 }).mount('#app');
 </script>
 
-    <!-- v5.11.0: 註冊 Service Worker（僅在 https 或 localhost 生效） -->
+    <!-- v5.3.2: 註冊 Service Worker（僅在 https 或 localhost 生效） -->
     <script>
         if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
             window.addEventListener('load', () => {

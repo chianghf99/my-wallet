@@ -1,0 +1,36 @@
+name: 測試
+
+# 每次推上 main 就跑。
+#
+# 為什麼不塞進 daily-snapshot.yml：那支是排程工作，平日 06:37 UTC 才跑一次。
+# 回歸測試要在「改壞的當下」就紅，不是等隔天排程；而且卡片管家的加解密跟每日
+# 快照毫無關係，讓它去擋快照寫入也不合理。
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: {}
+
+permissions: {}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      # 三支測試都只用 Node 內建模組，不需要 npm install。
+      - name: 估值與期貨取價邏輯
+        run: |
+          node scripts/test-valuation.mjs
+          node scripts/test-futures.mjs
+
+      # 守住「既有加密資料還解得開」這條底線：金鑰參數被改動、或密文格式變了，
+      # 這裡就會紅。詳見 scripts/test-card-crypto.mjs 的檔頭說明。
+      - name: 卡片管家加解密黃金樣本
+        run: node scripts/test-card-crypto.mjs

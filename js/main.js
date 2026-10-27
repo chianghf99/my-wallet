@@ -2,6 +2,7 @@ import { db, auth } from './firebase-config.js';
 import { getLocalDate, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountSign, getFuturesDisplayName } from './utils/format.js';
 import { TAIFEX_PRODUCTS, TAIFEX_MIS_URL, taifexRequestBody, contractMonthOf, pickContract, pickFreshest, pickFromOpenData, OPEN_DATA_CONTRACT, cnyesUrl, cnyesEntry, parseCnyesQuote, TAIFEX_MARGINS, futuresDefaultsFor } from './utils/futures.js';
 import { computePortfolio, calcStats, calcStockExposure, calcFundsValueTwd, calcFundsCostTwd, calcFuturesMarginCash, calcFuturesMarginUsed, calcFuturesExposure, buildExposureTrend } from './utils/valuation.js';
+import { stockChangelog } from './changelog.js';
 
 import { 
     user, stocks, exchangeRate, exchangeRateConfirmed, lastUpdated, loadingTarget, isLoading, viewMode, isMobile, showPrivacy, defaultPrivacyHidden, hideZeroShares, showSettingsModal, isDarkMode, activeSection, showChangelog, toasts, formErrors, showLeverageNotes, autoBackupEnabled, autoBackupIntervalDays, lastBackupAt, showBackupReminder, stockStates, sectionLoading, showStockNoteModal, stockNoteForm, showHistoryModal, historyRecords, historyFilterYear, availableYears, historyFilterMonth, historyOnlyEdited, showDeleteModal, pendingDeleteTx, showEditTxModal, editTxForm, showHistoryEditModalVisible, historyEditForm, showBulkHistoryModal, bulkHistoryForm, bulkHistoryBusy, notes, showNoteModalVisible, noteForm, loanList, showLoanMgrModal, inlineNewLoan, inlineLoanName, loanForm, cashData, prevDayData, realEstateList, showRealEstateModal, realEstateForm, chartStartDate, chartEndDate, chartPnl, currentRange, divRange, divSearchQuery, divStartDate, divEndDate, realizedStartDate, realizedEndDate, transStartDate, transEndDate, transFilterType, transSearchQuery, sortKeyTrans, sortOrderTrans, sortKeyDiv, sortOrderDiv, realizedGains, realizedSearchQuery, sortKeyRealized, sortOrderRealized, realizedRange, dividendRecords, transactionHistory, showModal, isEditing, form, showTransModal, isFundMode, isLoanMode, loanCashMode, transForm,
@@ -3492,6 +3493,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
                 // --- 15. 回傳給模板 ---
                 return {
+                    stockChangelog,
                     clearAllUserData, 
                     user, login, logout, stocks, exchangeRate, exchangeRateConfirmed, lastUpdated, isLoading, viewMode, isMobile, showPrivacy, isDarkMode, toggleDarkMode, activeSection, toggleSection, showChangelog, hideZeroShares, defaultPrivacyHidden,
                     twStats, usStats, grandTotalValue, grandTotalAssets, grandTotalExposure, grandTotalPnL, twPieRatios, usPieRatios, twStockList, usStockList, leverageRatio, exposureRatio,

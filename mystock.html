@@ -13,7 +13,7 @@
            - fonts.googleapis.com/css2：回應內容依瀏覽器 User-Agent 而異
            - apis.google.com/js/api.js、accounts.google.com/gsi/client：
              Google 的載入器，內容持續更新且官方不提供固定雜湊 -->
-    <title>我的投資組合 | Portfolio v5.29.2</title>
+    <title>我的投資組合 | Portfolio v5.29.3</title>
     <!-- v5.12.0: PWA。三個入口各有獨立的 manifest 與圖示，
          加到主畫面後會是三個可分辨的 App，而不是同一顆圖示。 -->
     <link rel="manifest" href="./manifest-stock.webmanifest">
@@ -1042,7 +1042,9 @@
                                     <div class="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5">借款把資產撐大幾倍 —— 這是風險承受度，與配置無關</div>
                                 </div>
                                 <div class="text-right shrink-0" v-if="showPrivacy">
-                                    <div class="text-2xl sm:text-3xl font-bold" :class="leverageLevel.cls">{{ leverageRatio.toFixed(2) }}x</div>
+                                    <!-- 淨資產 <= 0 時倍率沒有意義（程式回傳中性值 1），直接顯示那個 1.00x
+                                         會在資不抵債時誤報成「無借款槓桿」的安全綠色 -->
+                                    <div class="text-2xl sm:text-3xl font-bold" :class="leverageLevel.cls">{{ financialInsolvent ? '—' : leverageRatio.toFixed(2) + 'x' }}</div>
                                     <div class="text-[10px] font-bold" :class="leverageLevel.cls">{{ leverageLevel.text }}</div>
                                 </div>
                                 <div v-else class="text-2xl font-bold text-gray-300">****</div>
@@ -1051,7 +1053,7 @@
                             <div class="mb-3" v-if="showPrivacy">
                                 <div class="h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                                     <div class="h-full rounded-full transition-all duration-500" :class="leverageLevel.bar"
-                                        :style="{ width: Math.min(((leverageRatio - 1) / 1.5) * 100, 100) + '%' }"></div>
+                                        :style="{ width: financialInsolvent ? '100%' : Math.min(((leverageRatio - 1) / 1.5) * 100, 100) + '%' }"></div>
                                 </div>
                                 <div class="flex justify-between text-[10px] text-gray-400 mt-1">
                                     <span>1x 無借款</span><span>1.5x</span><span>2x</span><span>2.5x+</span>
@@ -1073,6 +1075,10 @@
                                 </div>
                             </div>
 
+                            <div v-if="showPrivacy && financialInsolvent" class="mt-2 text-[11px] text-red-600 dark:text-red-400 text-center leading-relaxed">
+                                <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+                                金融負債已超過金融資產，淨資產為負數，槓桿比在這個狀態下算不出有意義的倍數。
+                            </div>
                             <div v-if="showPrivacy && totalAnnualInterest > 0" class="mt-2 text-[11px] text-amber-700/80 dark:text-amber-400/80 text-center">
                                 這些借款每年的利息成本約 <strong>{{ formatCurrency(totalAnnualInterest, 'TWD') }}</strong><span v-if="weightedInterestRate !== null">（加權 {{ weightedInterestRate.toFixed(2) }}%）</span>
                             </div>
@@ -1081,7 +1087,7 @@
                         <!-- ══ 兩者相乘＝實際承受的市場曝險 ══
                              持倉曝險 (E/A) × 財務槓桿 (A/N) = 曝險比 (E/N)，數學上完全相等。
                              把它寫出來，使用者才知道上面兩塊不是兩個並列的指標，而是相乘的關係。 -->
-                        <div v-if="showPrivacy && leverageRatio > 1.01 && positionExposureMultiplier > 1.01"
+                        <div v-if="showPrivacy && !financialInsolvent && leverageRatio > 1.01 && positionExposureMultiplier > 1.01"
                             class="mt-4 rounded-xl border p-4"
                             :class="exposureRatio >= 2 ? 'border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-900/20' : 'border-gray-100 dark:border-gray-700'">
                             <div class="flex items-center justify-center gap-2 sm:gap-4 flex-wrap text-center">

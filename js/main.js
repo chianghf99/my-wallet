@@ -550,7 +550,20 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 });
 
                 /** 風險面的分級：只看借款造成的財務槓桿 */
+                /**
+                 * 金融淨資產 <= 0（資不抵債）。
+                 *
+                 * 這種狀態下「資產 ÷ 淨資產」沒有意義，computePortfolio 會回傳中性值 1 當保護。
+                 * 問題是介面會把那個佔位值當成真實讀數畫出來 —— 實測負債 500 萬、資產 10 萬時
+                 * 顯示「1.00x 無借款槓桿」而且是綠色，等於在資不抵債時告訴使用者一切安全。
+                 * 所以要能分辨「真的沒有槓桿」與「算不出來」。
+                 */
+                const financialInsolvent = computed(() => financialNetWorth.value <= 0);
+
                 const leverageLevel = computed(() => {
+                    if (financialInsolvent.value) {
+                        return { text: '資不抵債', cls: 'text-red-600 dark:text-red-400', bar: 'bg-red-600' };
+                    }
                     const m = leverageRatio.value;
                     if (m >= 2.5) return { text: '偏高', cls: 'text-red-500 dark:text-red-400', bar: 'bg-red-500' };
                     if (m >= 1.5) return { text: '中等', cls: 'text-orange-500 dark:text-orange-400', bar: 'bg-orange-400' };
@@ -3522,7 +3535,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     futuresRiskLabel, futuresRiskClass,
                     totalAnnualInterest, weightedInterestRate, showLeverageNotes,
                     exposureBreakdown, positionExposureLevel, leverageLevel,
-                    anyPriceUpdating, latestSnapshotDate, snapshotStaleDays, snapshotIsStale,
+                    anyPriceUpdating, latestSnapshotDate, snapshotStaleDays, snapshotIsStale, financialInsolvent,
                     exposureTrendRange, exposureTrendStats, exposureTrendLoading, setExposureTrendRange, drawExposureTrend,
                     toasts, showToast, dismissToast, formErrors, clearFormErrors,
                     autoBackupEnabled, autoBackupIntervalDays, lastBackupAt, showBackupReminder, daysSinceBackup, dismissBackupReminder,

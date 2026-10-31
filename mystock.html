@@ -13,7 +13,7 @@
            - fonts.googleapis.com/css2：回應內容依瀏覽器 User-Agent 而異
            - apis.google.com/js/api.js、accounts.google.com/gsi/client：
              Google 的載入器，內容持續更新且官方不提供固定雜湊 -->
-    <title>我的投資組合 | Portfolio v5.29.4</title>
+    <title>我的投資組合 | Portfolio v5.29.5</title>
     <!-- v5.12.0: PWA。三個入口各有獨立的 manifest 與圖示，
          加到主畫面後會是三個可分辨的 App，而不是同一顆圖示。 -->
     <link rel="manifest" href="./manifest-stock.webmanifest">
@@ -387,7 +387,7 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             <span class="hidden sm:inline">我的資產帳本</span>
                             <span @click="showChangelog=true"
-                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-500 hover:bg-gray-200 transition">{{ stockChangelog[0].version }}</span>
+                                class="cursor-pointer bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-600 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition">{{ stockChangelog[0].version }}</span>
                         </h1>
                     </div>
                     <div class="flex items-center gap-3">
@@ -423,19 +423,19 @@
                                  三顆共用 anyPriceUpdating 互鎖，避免同時觸發。
                                  手機上「更新」二字隱藏，只留台股／美股／期貨，否則四顆按鈕會折行。 -->
                             <button @click="fetchPrices('TW')" :disabled="anyPriceUpdating"
-                                class="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-sm font-medium text-white bg-slate-600 rounded-md shadow hover:bg-slate-500 disabled:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                                class="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-sm font-medium text-white bg-slate-700 rounded-md shadow hover:bg-slate-600 disabled:bg-slate-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
                                 <i class="fa-solid fa-rotate" :class="{'fa-spin': loadingTarget === 'TW'}"></i>
                                 <span class="whitespace-nowrap"><template v-if="loadingTarget === 'TW'">更新中…</template><template v-else><span class="hidden sm:inline">更新</span>台股</template></span>
                             </button>
 
                             <button @click="fetchPrices('US')" :disabled="anyPriceUpdating"
-                                class="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-sm font-medium text-white bg-slate-700 rounded-md shadow hover:bg-slate-600 disabled:bg-slate-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                                class="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-sm font-medium text-white bg-slate-800 rounded-md shadow hover:bg-slate-700 disabled:bg-slate-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
                                 <i class="fa-solid fa-rotate" :class="{'fa-spin': loadingTarget === 'US'}"></i>
                                 <span class="whitespace-nowrap"><template v-if="loadingTarget === 'US'">更新中…</template><template v-else><span class="hidden sm:inline">更新</span>美股</template></span>
                             </button>
 
                             <button @click="fetchFuturesPricesDirect()" :disabled="anyPriceUpdating"
-                                class="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-sm font-medium text-white bg-amber-600 rounded-md shadow hover:bg-amber-500 disabled:bg-amber-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                                class="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-sm font-medium text-white bg-amber-700 rounded-md shadow hover:bg-amber-600 disabled:bg-amber-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
                                 <i class="fa-solid fa-rotate" :class="{'fa-spin': futuresLoading}"></i>
                                 <span class="whitespace-nowrap"><template v-if="futuresLoading">更新中…</template><template v-else><span class="hidden sm:inline">更新</span>期貨</template></span>
                             </button>
@@ -549,7 +549,7 @@
                                 formatCurrency(usStats.value + (cashData.usd || 0), 'USD') }}</span><span
                                 v-else>****</span></div>
                         <!-- v5.18.0: 補上台幣對照，淨資產是台幣計價的，不用再自己乘匯率 -->
-                        <div class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                        <div class="text-xs text-gray-400 dark:text-gray-400 mt-0.5">
                             <span v-if="showPrivacy">≈ {{ formatCurrency((usStats.value + (cashData.usd || 0)) *
                                 exchangeRate, 'TWD') }}</span>
                             <span v-else>****</span>
@@ -650,7 +650,7 @@
                         <!-- 1.1 資產走勢子面板 -->
                         <div v-if="overviewTab === 'trend'" class="zen-card p-4 md:p-6 mb-8 relative">
                             <button @click="openHistoryModal"
-                            class="absolute top-4 right-4 z-10 cursor-pointer text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-gray-800 dark:hover:text-white px-2 py-1 rounded transition"><i
+                            class="absolute top-4 right-4 z-10 cursor-pointer text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white px-2 py-1 rounded transition"><i
                                 class="fa-solid fa-clock-rotate-left mr-1"></i>維護歷史資料</button>
 
                         <!-- v5.28.0: 每日快照是背景排程寫的，壞掉時使用者不會知道 —— 走勢圖只是少幾個點，
@@ -679,9 +679,9 @@
 
                             <div
                                 class="flex flex-wrap gap-3 items-end mb-4 pb-4 border-b border-gray-100 dark:border-gray-700">
-                                <div><label class="block text-xs font-bold text-gray-500 mb-1">開始</label><input
+                                <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">開始</label><input
                                         type="date" v-model="chartStartDate" class="zen-input text-sm py-1.5"></div>
-                                <div><label class="block text-xs font-bold text-gray-500 mb-1">結束</label><input
+                                <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">結束</label><input
                                         type="date" v-model="chartEndDate" class="zen-input text-sm py-1.5"></div>
                                 <button @click="drawChart"
                                     class="bg-gray-800 text-white px-4 py-1.5 rounded text-sm hover:bg-gray-700 h-9 mb-[1px]">查詢</button>
@@ -693,8 +693,8 @@
                         <!-- 期間損益 -->
                         <div v-if="chartPnl.amount !== null" class="mt-4 flex flex-wrap items-center gap-3 px-1">
                             <div class="flex flex-col">
-                                <span class="text-xs text-gray-400 dark:text-gray-500 font-medium">期間淨資產損益
-                                    <span class="text-[10px] text-gray-400 dark:text-gray-500">(已扣除本金進出)</span>
+                                <span class="text-xs text-gray-400 dark:text-gray-400 font-medium">期間淨資產損益
+                                    <span class="text-[10px] text-gray-400 dark:text-gray-400">(已扣除本金進出)</span>
                                 </span>
                                 <div class="flex items-baseline gap-2 mt-0.5">
                                     <span class="text-lg font-bold" :class="chartPnl.amount >= 0 ? 'text-up' : 'text-down'">
@@ -706,7 +706,7 @@
                                     </span>
                                 </div>
                             </div>
-                            <div class="flex gap-4 ml-auto text-xs text-gray-400 dark:text-gray-500">
+                            <div class="flex gap-4 ml-auto text-xs text-gray-400 dark:text-gray-400">
                                 <div class="text-right">
                                     <div>起始</div>
                                     <div class="font-medium text-gray-600 dark:text-gray-300">{{ formatCurrency(chartPnl.startVal, 'TWD') }}</div>
@@ -743,17 +743,17 @@
                             <div>
                                 <div class="text-[10px] font-bold text-gray-400 mb-1 uppercase tracking-wide">台股配置占比</div>
                                 <div class="flex flex-wrap justify-center gap-x-3 gap-y-1">
-                                    <span class="flex items-center gap-1 text-xs text-gray-500"><span class="w-3 h-3 rounded-sm inline-block" style="background:#60a5fa"></span>台股 ETF ({{ twPieRatios.etf }}%)</span>
-                                    <span class="flex items-center gap-1 text-xs text-gray-500"><span class="w-3 h-3 rounded-sm inline-block" style="background:#1d4ed8"></span>台股個股 ({{ twPieRatios.ind }}%)</span>
-                                    <span class="flex items-center gap-1 text-xs text-gray-500"><span class="w-3 h-3 rounded-sm inline-block" style="background:#9ca3af"></span>現金 ({{ twPieRatios.cash }}%)</span>
+                                    <span class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400"><span class="w-3 h-3 rounded-sm inline-block" style="background:#60a5fa"></span>台股 ETF ({{ twPieRatios.etf }}%)</span>
+                                    <span class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400"><span class="w-3 h-3 rounded-sm inline-block" style="background:#1d4ed8"></span>台股個股 ({{ twPieRatios.ind }}%)</span>
+                                    <span class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400"><span class="w-3 h-3 rounded-sm inline-block" style="background:#9ca3af"></span>現金 ({{ twPieRatios.cash }}%)</span>
                                 </div>
                             </div>
                             <div>
                                 <div class="text-[10px] font-bold text-gray-400 mb-1 uppercase tracking-wide">美股配置占比</div>
                                 <div class="flex flex-wrap justify-center gap-x-3 gap-y-1">
-                                    <span class="flex items-center gap-1 text-xs text-gray-500"><span class="w-3 h-3 rounded-sm inline-block" style="background:#34d399"></span>美股 ETF ({{ usPieRatios.etf }}%)</span>
-                                    <span class="flex items-center gap-1 text-xs text-gray-500"><span class="w-3 h-3 rounded-sm inline-block" style="background:#059669"></span>美股個股 ({{ usPieRatios.ind }}%)</span>
-                                    <span class="flex items-center gap-1 text-xs text-gray-500"><span class="w-3 h-3 rounded-sm inline-block" style="background:#9ca3af"></span>現金 ({{ usPieRatios.cash }}%)</span>
+                                    <span class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400"><span class="w-3 h-3 rounded-sm inline-block" style="background:#34d399"></span>美股 ETF ({{ usPieRatios.etf }}%)</span>
+                                    <span class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400"><span class="w-3 h-3 rounded-sm inline-block" style="background:#059669"></span>美股個股 ({{ usPieRatios.ind }}%)</span>
+                                    <span class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400"><span class="w-3 h-3 rounded-sm inline-block" style="background:#9ca3af"></span>現金 ({{ usPieRatios.cash }}%)</span>
                                 </div>
                             </div>
                             <div class="col-span-2 text-[10px] text-gray-400 mt-1">各片 = 個別持股，灰片 = 同幣別現金，分母 = 股票現值 + 同幣別現金</div>
@@ -861,7 +861,7 @@
                                         <div class="flex justify-between text-xs">
                                             <span class="text-purple-800 dark:text-purple-200">
                                                 {{ l.name }}
-                                                <span v-if="l.note" class="text-[10px] text-gray-400 dark:text-gray-500 ml-1">({{ l.note }})</span>
+                                                <span v-if="l.note" class="text-[10px] text-gray-400 dark:text-gray-400 ml-1">({{ l.note }})</span>
                                             </span>
                                             <span class="font-bold text-purple-700 dark:text-purple-300">
                                                 <span v-if="l.interestRate > 0" class="text-[10px] font-normal opacity-70 mr-1">{{ l.interestRate }}%</span>
@@ -1119,7 +1119,7 @@
                              說明卻是任何情況都該查得到的。 -->
                         <div v-if="showPrivacy" class="mt-4">
                             <button @click="showLeverageNotes = !showLeverageNotes"
-                            class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 w-full flex items-center justify-center gap-1.5 text-[11px] text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition">
+                            class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 w-full flex items-center justify-center gap-1.5 text-[11px] text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition">
                             <i class="fa-solid fa-circle-question"></i>
                             <span>{{ showLeverageNotes ? '收起計算說明' : '這些數字怎麼算的？' }}</span>
                             <i class="fa-solid text-[9px]" :class="showLeverageNotes ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
@@ -1211,12 +1211,12 @@
 
                         <div class="grid grid-cols-2 gap-4 mb-4">
                             <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-center">
-                                <div class="text-xs text-gray-500">台股總損益</div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400">台股總損益</div>
                                 <div class="text-lg font-bold" :class="getPnlClass(realizedTotalTw)">{{
                                     formatCurrency(realizedTotalTw, 'TWD') }}</div>
                             </div>
                             <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-center">
-                                <div class="text-xs text-gray-500">美股總損益</div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400">美股總損益</div>
                                 <div class="text-lg font-bold" :class="getPnlClass(realizedTotalUs)">{{
                                     formatCurrency(realizedTotalUs, 'USD') }}</div>
                             </div>
@@ -1239,13 +1239,13 @@
                         <div
                             class="flex flex-wrap gap-3 items-end mb-4 pb-4 border-b border-gray-100 dark:border-gray-700">
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 mb-1">搜尋代號/名稱</label>
+                                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">搜尋代號/名稱</label>
                                 <input type="text" v-model="realizedSearchQuery" placeholder="如: 2330"
                                     class="zen-input text-sm py-1.5 uppercase">
                             </div>
-                            <div><label class="block text-xs font-bold text-gray-500 mb-1">開始</label><input type="date"
+                            <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">開始</label><input type="date"
                                     v-model="realizedStartDate" class="zen-input text-sm py-1.5"></div>
-                            <div><label class="block text-xs font-bold text-gray-500 mb-1">結束</label><input type="date"
+                            <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">結束</label><input type="date"
                                     v-model="realizedEndDate" class="zen-input text-sm py-1.5"></div>
                             <button @click="fetchRealizedGains"
                                 class="bg-gray-800 text-white px-4 py-1.5 rounded text-sm hover:bg-gray-700 h-9 mb-[1px]">查詢</button>
@@ -1254,7 +1254,7 @@
                         <div class="overflow-x-auto max-h-[460px] overflow-y-auto">
                             <table class="w-full text-sm text-left hidden md:table">
                                 <thead
-                                    class="bg-gray-100 dark:bg-gray-800 text-gray-500 uppercase font-medium sticky top-0">
+                                    class="bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase font-medium sticky top-0">
                                     <tr>
                                         <th class="px-4 py-2 sort-header" @click="sortRealized('date')">日期 <i
                                                 class="fa-solid fa-sort ml-1 text-xs"></i></th>
@@ -1343,13 +1343,13 @@
                         <div
                             class="flex flex-wrap gap-3 items-end mb-4 pb-4 border-b border-gray-100 dark:border-gray-700">
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 mb-1">搜尋代號/名稱</label>
+                                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">搜尋代號/名稱</label>
                                 <input type="text" v-model="divSearchQuery" placeholder="如: 2330"
                                     class="zen-input text-sm py-1.5 uppercase">
                             </div>
-                            <div><label class="block text-xs font-bold text-gray-500 mb-1">開始</label><input type="date"
+                            <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">開始</label><input type="date"
                                     v-model="divStartDate" class="zen-input text-sm py-1.5"></div>
-                            <div><label class="block text-xs font-bold text-gray-500 mb-1">結束</label><input type="date"
+                            <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">結束</label><input type="date"
                                     v-model="divEndDate" class="zen-input text-sm py-1.5"></div>
                             <button @click="fetchDividends"
                                 class="bg-gray-800 text-white px-4 py-1.5 rounded text-sm hover:bg-gray-700 h-9 mb-[1px]">查詢</button>
@@ -1357,7 +1357,7 @@
 
                         <div class="overflow-x-auto max-h-[460px] overflow-y-auto">
                             <table class="w-full text-sm text-left hidden md:table">
-                                <thead class="bg-gray-100 dark:bg-gray-800 text-gray-500 uppercase font-medium">
+                                <thead class="bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase font-medium">
                                     <tr>
                                         <th class="px-4 py-2 sort-header" @click="sortDividend('date')">入帳日 <i
                                                 class="fa-solid fa-sort ml-1 text-xs"></i></th>
@@ -1424,7 +1424,7 @@
 
                         <div class="overflow-x-auto">
                             <table class="w-full text-sm text-left">
-                                <thead class="text-xs text-gray-500 uppercase bg-gray-50 dark:bg-gray-800/50">
+                                <thead class="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-50 dark:bg-gray-800/50">
                                     <tr>
                                         <th class="px-4 py-2">月份</th>
                                         <th class="px-4 py-2 text-right">股息</th>
@@ -1472,7 +1472,7 @@
                         <div
                             class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-4 pb-4 border-b border-gray-100 dark:border-gray-700 items-end">
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 mb-1">篩選類別</label>
+                                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">篩選類別</label>
                                 <select v-model="transFilterType" class="zen-input text-sm py-1.5">
                                     <option value="all">全部顯示</option>
                                     <option value="trade">股票交易 (買/賣)</option>
@@ -1482,15 +1482,15 @@
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 mb-1">搜尋代號/名稱</label>
+                                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">搜尋代號/名稱</label>
                                 <input type="text" v-model="transSearchQuery" placeholder="如: 2330"
                                     class="zen-input text-sm py-1.5 uppercase">
                             </div>
-                            <div><label class="block text-xs font-bold text-gray-500 mb-1">開始日期</label><input
+                            <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">開始日期</label><input
                                     type="date" v-model="transStartDate" class="zen-input text-sm py-1.5"></div>
                             <div class="flex gap-2">
                                 <div class="flex-grow"><label
-                                        class="block text-xs font-bold text-gray-500 mb-1">結束日期</label><input
+                                        class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">結束日期</label><input
                                         type="date" v-model="transEndDate" class="zen-input text-sm py-1.5"></div>
                                 <button @click="fetchTransactions"
                                     class="bg-gray-800 text-white px-3 py-1.5 rounded text-sm hover:bg-gray-700 h-[34px] self-end mb-[1px]">查詢</button>
@@ -1500,7 +1500,7 @@
                         <div class="overflow-x-auto max-h-[500px] overflow-y-auto">
                             <table class="w-full text-sm text-left hidden md:table">
                                 <thead
-                                    class="bg-gray-100 dark:bg-gray-800 text-gray-500 uppercase font-medium sticky top-0">
+                                    class="bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase font-medium sticky top-0">
                                     <tr>
                                         <th class="px-4 py-2 sort-header" @click="sortTransaction('date')">日期 <i
                                                 class="fa-solid fa-sort ml-1 text-xs"></i></th>
@@ -1517,18 +1517,18 @@
                                 <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                                     <tr v-for="tx in sortedTransactions" :key="tx.id"
                                         class="hover:bg-gray-50 dark:hover:bg-gray-800">
-                                        <td class="px-4 py-3 whitespace-nowrap text-gray-500">{{ tx.date }}</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-gray-500 dark:text-gray-400">{{ tx.date }}</td>
                                         <td class="px-4 py-3"><span class="tag"
                                                 :class="{'tag-buy': tx.type==='buy', 'tag-sell': tx.type==='sell', 'tag-div': tx.type==='dividend', 'tag-fund': tx.type==='deposit'||tx.type==='withdraw', 'tag-loan': tx.type==='borrow'||tx.type==='repay'}">{{
                                                 getTypeName(tx.type) }}</span></td>
                                         <td class="px-4 py-3 font-bold">
                                             <div>{{ tx.name || tx.symbol }}</div>
-                                            <div v-if="tx.memo" class="text-xs font-normal text-gray-500 dark:text-gray-400 mt-0.5"><i class="fa-solid fa-note-sticky text-gray-400 dark:text-gray-500 mr-1"></i>{{ tx.memo }}</div>
+                                            <div v-if="tx.memo" class="text-xs font-normal text-gray-500 dark:text-gray-400 mt-0.5"><i class="fa-solid fa-note-sticky text-gray-400 dark:text-gray-400 mr-1"></i>{{ tx.memo }}</div>
                                         </td>
                                         <td class="px-4 py-3 text-right">{{
                                             (['dividend','deposit','withdraw','borrow','repay'].includes(tx.type)) ? '-'
                                             : formatNumber(tx.shares) }}</td>
-                                        <td class="px-4 py-3 text-right text-gray-500">{{
+                                        <td class="px-4 py-3 text-right text-gray-500 dark:text-gray-400">{{
                                             (['dividend','deposit','withdraw','borrow','repay'].includes(tx.type)) ? '-'
                                             : formatCurrency(tx.price, tx.currency) }}</td>
                                         <td class="px-4 py-3 text-right font-bold" :class="getAmountClass(tx)">{{
@@ -1556,7 +1556,7 @@
                                                 getTypeName(tx.type) }}</span>
                                         </div>
                                         <div class="text-xs text-gray-400">{{ tx.date }}</div>
-                                        <div v-if="tx.memo" class="text-xs text-gray-500 dark:text-gray-400 mt-1"><i class="fa-solid fa-note-sticky text-gray-400 dark:text-gray-500 mr-1"></i>{{ tx.memo }}</div>
+                                        <div v-if="tx.memo" class="text-xs text-gray-500 dark:text-gray-400 mt-1"><i class="fa-solid fa-note-sticky text-gray-400 dark:text-gray-400 mr-1"></i>{{ tx.memo }}</div>
                                     </div>
                                     <div class="text-right">
                                         <div class="font-bold" :class="getAmountClass(tx)">{{ getAmountSign(tx) }}{{
@@ -1653,7 +1653,7 @@
                                         <td class="px-6 py-4">
                                             <div class="font-bold text-gray-900 dark:text-gray-200">{{ stock.name }}
                                             </div>
-                                            <div class="text-xs text-gray-500">{{ stock.symbol }}</div>
+                                            <div class="text-xs text-gray-500 dark:text-gray-400">{{ stock.symbol }}</div>
                                         </td>
                                         <td class="px-6 py-4 text-right font-medium dark:text-gray-300">
                                             <div>{{ formatCurrency(stock.currentPrice, 'TWD') }}</div>
@@ -1669,7 +1669,7 @@
                                                 <div class="font-medium">{{ formatCurrency(stock.avgCost, 'TWD') }}
                                                 </div>
                                                 <div class="text-xs">x {{ formatNumber(stock.shares) }}</div>
-                                                <div class="text-xs text-gray-400 mt-1 dark:text-gray-500">總: {{
+                                                <div class="text-xs text-gray-400 mt-1 dark:text-gray-400">總: {{
                                                     formatCurrency(stock.avgCost * stock.shares, 'TWD') }}</div>
                                             </div>
                                             <div v-else>****</div>
@@ -1736,7 +1736,7 @@
                                 <div>
                                     <span class="text-lg font-bold text-gray-800 dark:text-gray-200">{{ stock.name
                                         }}</span>
-                                    <div class="text-xs text-gray-500">{{ stock.symbol }}</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">{{ stock.symbol }}</div>
                                 </div>
                                 <div class="text-right">
                                     <div class="text-lg font-bold dark:text-gray-200">{{
@@ -1771,7 +1771,7 @@
                             </div>
                             <div
                                 class="flex justify-between items-center mt-2 pt-2 border-t border-gray-50 dark:border-gray-700">
-                                <div class="text-xs text-gray-500">
+                                <div class="text-xs text-gray-500 dark:text-gray-400">
                                     <span v-if="showPrivacy">持倉 {{ formatNumber(stock.shares) }} | 均價 {{
                                         formatCurrency(stock.avgCost, 'TWD') }}</span>
                                     <span v-else>持倉 **** | 均價 ****</span>
@@ -1797,7 +1797,7 @@
                                         class="hover:text-yellow-600"><i class="fa-solid fa-note-sticky"></i></button>
 
                                     <button @click.stop="openTransModal(stock)"
-                                        class="text-gray-500 hover:text-gray-900 dark:hover:text-white"><i
+                                        class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"><i
                                             class="fa-solid fa-calculator"></i> 補登</button>
                                 </div>
                             </div>
@@ -1832,7 +1832,7 @@
                                         <td class="px-6 py-4">
                                             <div class="font-bold text-gray-900 dark:text-gray-200">{{ stock.name }}
                                             </div>
-                                            <div class="text-xs text-gray-500">{{ stock.symbol }}</div>
+                                            <div class="text-xs text-gray-500 dark:text-gray-400">{{ stock.symbol }}</div>
                                         </td>
                                         <td class="px-6 py-4 text-right font-medium dark:text-gray-300">
                                             <div>{{ formatCurrency(stock.currentPrice, 'USD') }}</div>
@@ -1848,7 +1848,7 @@
                                                 <div class="font-medium">{{ formatCurrency(stock.avgCost, 'USD') }}
                                                 </div>
                                                 <div class="text-xs">x {{ formatNumber(stock.shares) }}</div>
-                                                <div class="text-xs text-gray-400 mt-1 dark:text-gray-500">總: {{
+                                                <div class="text-xs text-gray-400 mt-1 dark:text-gray-400">總: {{
                                                     formatCurrency(stock.avgCost * stock.shares, 'USD') }}</div>
                                             </div>
                                             <div v-else>****</div>
@@ -1915,7 +1915,7 @@
                                 <div>
                                     <span class="text-lg font-bold text-gray-800 dark:text-gray-200">{{ stock.name
                                         }}</span>
-                                    <div class="text-xs text-gray-500">{{ stock.symbol }}</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">{{ stock.symbol }}</div>
                                 </div>
                                 <div class="text-right">
                                     <div class="text-lg font-bold dark:text-gray-200">{{
@@ -1950,7 +1950,7 @@
                             </div>
                             <div
                                 class="flex justify-between items-center mt-2 pt-2 border-t border-gray-50 dark:border-gray-700">
-                                <div class="text-xs text-gray-500">
+                                <div class="text-xs text-gray-500 dark:text-gray-400">
                                     <span v-if="showPrivacy">持倉 {{ formatNumber(stock.shares) }} | 均價 {{
                                         formatCurrency(stock.avgCost, 'USD') }}</span>
                                     <span v-else>持倉 **** | 均價 ****</span>
@@ -1976,7 +1976,7 @@
                                         class="hover:text-yellow-600"><i class="fa-solid fa-note-sticky"></i></button>
 
                                     <button @click.stop="openTransModal(stock)"
-                                        class="text-gray-500 hover:text-gray-900 dark:hover:text-white"><i
+                                        class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"><i
                                             class="fa-solid fa-calculator"></i> 補登</button>
                                 </div>
                             </div>
@@ -1985,7 +1985,7 @@
                 </div>
 
                 <div v-if="stocks.length === 0 && !isLoading"
-                    class="text-center py-10 text-gray-400 zen-card dark:text-gray-500">目前沒有任何持股資料，請點擊上方「新增」按鈕。</div>
+                    class="text-center py-10 text-gray-400 zen-card dark:text-gray-400">目前沒有任何持股資料，請點擊上方「新增」按鈕。</div>
                         </div>
 
                         <!-- 2.2 期貨部位子面板 -->
@@ -2264,7 +2264,7 @@
                                     </thead>
                                     <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                                         <tr v-for="tx in futuresCloseRecords" :key="tx.id" class="hover:bg-gray-50 dark:hover:bg-gray-800 transition">
-                                            <td class="px-4 py-3 text-gray-500">{{ tx.date }}</td>
+                                            <td class="px-4 py-3 text-gray-500 dark:text-gray-400">{{ tx.date }}</td>
                                             <td class="px-4 py-3 font-bold dark:text-white">
                                                 {{ getFuturesDisplayName(tx.symbol) }} <span class="text-[10px] font-normal text-gray-400" v-if="tx.expiry">{{ tx.expiry }}</span>
                                             </td>
@@ -2343,7 +2343,7 @@
                                         <tbody class="divide-y divide-amber-100 dark:divide-amber-900/30">
                                             <tr v-for="tx in futuresRolloverRecords" :key="tx.id"
                                                 class="hover:bg-amber-50/50 dark:hover:bg-amber-900/10 transition">
-                                                <td class="px-4 py-2 text-gray-500">{{ tx.date }}</td>
+                                                <td class="px-4 py-2 text-gray-500 dark:text-gray-400">{{ tx.date }}</td>
                                                 <td class="px-4 py-2 font-bold dark:text-white">{{ getFuturesDisplayName(tx.symbol) }}</td>
                                                 <td class="px-4 py-2 text-center font-semibold">
                                                     <span :class="tx.direction === 'long' ? 'text-red-500' : 'text-emerald-500'">
@@ -2407,7 +2407,7 @@
                                     </thead>
                                     <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                                         <tr v-for="tx in futuresHistoryFiltered" :key="tx.id" class="hover:bg-gray-50 dark:hover:bg-gray-800 transition">
-                                            <td class="px-4 py-3 text-gray-500">{{ tx.date }}</td>
+                                            <td class="px-4 py-3 text-gray-500 dark:text-gray-400">{{ tx.date }}</td>
                                             <td class="px-4 py-3 font-semibold">
                                                 <span v-if="tx.type === 'deposit'" class="text-emerald-600"><i class="fa-solid fa-arrow-right-to-bracket mr-1"></i>保證金存入</span>
                                                 <span v-else-if="tx.type === 'withdraw'" class="text-red-500"><i class="fa-solid fa-arrow-right-from-bracket mr-1"></i>保證金提出</span>
@@ -2467,7 +2467,7 @@
                                 <div class="text-lg font-bold text-red-700 dark:text-red-300"><span v-if="showPrivacy">{{ formatCurrency(realEstateTotalMortgage, 'TWD') }}</span><span v-else>****</span></div>
                             </div>
                             <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-700 text-center">
-                                <div class="text-xs text-gray-500 mb-1">不動產淨值</div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">不動產淨值</div>
                                 <div class="text-lg font-bold" :class="getPnlClass(realEstateNetValue)"><span v-if="showPrivacy">{{ formatCurrency(realEstateNetValue, 'TWD') }}</span><span v-else>****</span></div>
                             </div>
                         </div>
@@ -2515,7 +2515,7 @@
                                         <span class="text-red-500 dark:text-red-400 font-medium">{{ formatCurrency(loan.balance, 'TWD') }}</span>
                                     </div>
                                     <div class="flex justify-between items-center text-xs pl-4 pt-1 border-t border-gray-100 dark:border-gray-700 font-bold">
-                                        <span class="text-gray-500">房貸小計</span>
+                                        <span class="text-gray-500 dark:text-gray-400">房貸小計</span>
                                         <span class="text-red-600 dark:text-red-400">{{ formatCurrency(getReMortgageTotal(re), 'TWD') }}</span>
                                     </div>
                                 </div>
@@ -2545,7 +2545,7 @@
                                         <div class="text-lg font-bold text-blue-700 dark:text-blue-300"><span v-if="showPrivacy">{{ formatCurrency(mutualFundTotalValue, 'TWD') }}</span><span v-else>****</span></div>
                                     </div>
                                     <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-700 text-center">
-                                        <div class="text-xs text-gray-500 mb-1">未實現損益</div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">未實現損益</div>
                                         <div class="text-lg font-bold" :class="getPnlClass(mutualFundTotalPnL)"><span v-if="showPrivacy">{{ formatCurrency(mutualFundTotalPnL, 'TWD') }}</span><span v-else>****</span></div>
                                     </div>
                                 </div>
@@ -2593,45 +2593,45 @@
                         </div>
                         <div class="p-6 space-y-4">
                             <div>
-                                <label class="block text-xs text-gray-500 mb-1">基金名稱 *</label>
+                                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">基金名稱 *</label>
                                 <input v-model="mutualFundForm.name" type="text" placeholder="例：富蘭克林科技基金"
                                     class="w-full border rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-400">
                                 <div v-if="formErrors.name" class="field-error">{{ formErrors.name }}</div>
                             </div>
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label class="block text-xs text-gray-500 mb-1">幣別</label>
+                                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">幣別</label>
                                     <select v-model="mutualFundForm.currency" class="w-full border rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                                         <option value="TWD">台幣 TWD</option>
                                         <option value="USD">美金 USD</option>
                                     </select>
                                 </div>
                                 <div>
-                                    <label class="block text-xs text-gray-500 mb-1">申購日期</label>
+                                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">申購日期</label>
                                     <input v-model="mutualFundForm.purchaseDate" type="date"
                                         class="w-full border rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-400">
                                 </div>
                             </div>
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label class="block text-xs text-gray-500 mb-1">投入成本</label>
+                                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">投入成本</label>
                                     <input v-model="mutualFundForm.costBasis" type="number" placeholder="0"
                                         class="w-full border rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-400">
                                 </div>
                                 <div>
-                                    <label class="block text-xs text-gray-500 mb-1">目前市值</label>
+                                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">目前市值</label>
                                     <input v-model="mutualFundForm.currentValue" type="number" placeholder="0"
                                         class="w-full border rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-400">
                                 </div>
                             </div>
                             <div>
-                                <label class="block text-xs text-gray-500 mb-1">備註</label>
+                                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">備註</label>
                                 <input v-model="mutualFundForm.note" type="text" placeholder="（選填）"
                                     class="w-full border rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-400">
                             </div>
                         </div>
                         <div class="px-6 pb-6 flex gap-3 justify-end">
-                            <button @click="showMutualFundModal=false" class="px-4 py-2 rounded-lg text-sm border text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition">取消</button>
+                            <button @click="showMutualFundModal=false" class="px-4 py-2 rounded-lg text-sm border text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition">取消</button>
                             <button @click="saveMutualFund" class="px-5 py-2 rounded-lg text-sm bg-green-600 text-white hover:bg-green-500 transition font-bold">儲存</button>
                         </div>
                     </div>
@@ -2688,7 +2688,7 @@
                             <div class="flex items-center justify-between">
                                 <div>
                                     <div class="font-bold dark:text-white text-sm">預設隱藏金額</div>
-                                    <div class="text-xs text-gray-500">每次進入網頁時自動遮蔽金額</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">每次進入網頁時自動遮蔽金額</div>
                                 </div>
                                 <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox"
                                         v-model="defaultPrivacyHidden" class="sr-only peer" @change="saveSettings">
@@ -2700,7 +2700,7 @@
                             <div class="flex items-center justify-between">
                                 <div>
                                     <div class="font-bold dark:text-white text-sm">隱藏已清空庫存</div>
-                                    <div class="text-xs text-gray-500">在清單中隱藏股數為 0 的股票</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">在清單中隱藏股數為 0 的股票</div>
                                 </div>
                                 <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox"
                                         v-model="hideZeroShares" class="sr-only peer" @change="saveSettings">
@@ -2713,7 +2713,7 @@
                             <div class="flex items-center justify-between">
                                 <div>
                                     <div class="font-bold dark:text-white text-sm">自動備份提醒</div>
-                                    <div class="text-xs text-gray-500">超過設定天數未備份時，首頁會跳出提醒</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">超過設定天數未備份時，首頁會跳出提醒</div>
                                 </div>
                                 <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox"
                                         v-model="autoBackupEnabled" class="sr-only peer" @change="saveSettings">
@@ -2724,7 +2724,7 @@
                             </div>
                             <div v-if="autoBackupEnabled" class="pl-3 border-l-2 border-amber-200 dark:border-amber-800 space-y-2">
                                 <div class="flex items-center justify-between">
-                                    <div class="text-xs text-gray-500">提醒間隔</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">提醒間隔</div>
                                     <select v-model.number="autoBackupIntervalDays" @change="saveSettings"
                                         class="zen-input text-xs py-1 w-28">
                                         <option :value="7">每 7 天</option>
@@ -2748,7 +2748,7 @@
                             <div class="flex items-center justify-between">
                                 <div>
                                     <div class="font-bold dark:text-white text-sm">深色模式</div>
-                                    <div class="text-xs text-gray-500">切換深色/淺色介面風格</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">切換深色/淺色介面風格</div>
                                 </div>
                                 <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox"
                                         :checked="isDarkMode" @change="toggleDarkMode" class="sr-only peer">
@@ -2842,18 +2842,18 @@
                         <button @click="showRealEstateModal=false" class="text-white hover:text-gray-200"><i class="fa-solid fa-times"></i></button>
                     </div>
                     <div class="p-6 space-y-3">
-                        <div><label class="block text-xs font-bold text-gray-500 mb-1">房產名稱 *</label><input type="text" v-model="realEstateForm.name" class="zen-input" placeholder="如：台北信義區自住">
+                        <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">房產名稱 *</label><input type="text" v-model="realEstateForm.name" class="zen-input" placeholder="如：台北信義區自住">
                                 <div v-if="formErrors.name" class="field-error">{{ formErrors.name }}</div></div>
-                        <div><label class="block text-xs font-bold text-gray-500 mb-1">地址（選填）</label><input type="text" v-model="realEstateForm.address" class="zen-input" placeholder="如：台北市信義區...."></div>
+                        <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">地址（選填）</label><input type="text" v-model="realEstateForm.address" class="zen-input" placeholder="如：台北市信義區...."></div>
                         <div class="grid grid-cols-2 gap-3">
-                            <div><label class="block text-xs font-bold text-gray-500 mb-1">購入日期</label><input type="date" v-model="realEstateForm.purchaseDate" class="zen-input"></div>
-                            <div><label class="block text-xs font-bold text-gray-500 mb-1">購入總成本 (TWD)</label><input type="number" step="any" v-model.number="realEstateForm.purchaseCost" class="zen-input"></div>
+                            <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">購入日期</label><input type="date" v-model="realEstateForm.purchaseDate" class="zen-input"></div>
+                            <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">購入總成本 (TWD)</label><input type="number" step="any" v-model.number="realEstateForm.purchaseCost" class="zen-input"></div>
                         </div>
-                        <div><label class="block text-xs font-bold text-gray-500 mb-1">估計市值 (TWD) *</label><input type="number" step="any" v-model.number="realEstateForm.marketValue" class="zen-input" placeholder="手動輸入估計市值">
+                        <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">估計市值 (TWD) *</label><input type="number" step="any" v-model.number="realEstateForm.marketValue" class="zen-input" placeholder="手動輸入估計市值">
                                 <div v-if="formErrors.marketValue" class="field-error">{{ formErrors.marketValue }}</div></div>
                         <div v-if="realEstateForm.purchaseCost > 0 && realEstateForm.marketValue > 0" class="text-xs text-right" :class="getPnlClass(realEstateForm.marketValue - realEstateForm.purchaseCost)">帳面損益：{{ formatCurrency(realEstateForm.marketValue - realEstateForm.purchaseCost, 'TWD') }}</div>
                         <div>
-                            <label class="block text-xs font-bold text-gray-500 mb-1">連結房貸帳戶（可多選）</label>
+                            <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">連結房貸帳戶（可多選）</label>
                             <div v-if="activeLoans.length === 0" class="text-xs text-gray-400 py-2">尚未建立任何借款帳戶</div>
                             <div v-else class="space-y-1 max-h-28 overflow-y-auto border border-gray-200 dark:border-gray-600 rounded p-2">
                                 <label v-for="l in activeLoans" :key="l.id"
@@ -2870,10 +2870,10 @@
                             </div>
                             <p class="text-[11px] text-gray-400 mt-1">完全選取後，對應房貸餘額將納入不動產淨值計算。</p>
                         </div>
-                        <div><label class="block text-xs font-bold text-gray-500 mb-1">備註（選填）</label><input type="text" v-model="realEstateForm.note" class="zen-input" placeholder="如：待出售、出租中..."></div>
+                        <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">備註（選填）</label><input type="text" v-model="realEstateForm.note" class="zen-input" placeholder="如：待出售、出租中..."></div>
                     </div>
                     <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex justify-end gap-3">
-                        <button @click="showRealEstateModal=false" class="px-4 py-2 rounded text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button>
+                        <button @click="showRealEstateModal=false" class="px-4 py-2 rounded text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button>
                         <button @click="saveRealEstate" class="px-6 py-2 rounded bg-emerald-700 text-white font-medium hover:bg-emerald-600 transition">儲存</button>
                     </div>
                 </div>
@@ -2892,7 +2892,7 @@
                     <div class="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 mb-1">商品代號</label>
+                                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">商品代號</label>
                                 <select v-model="futuresForm.symbol" @change="onFuturesSymbolChange" class="zen-input">
                                     <option value="">請選擇</option>
                                     <option value="TX">大台指 (TX)</option>
@@ -2904,21 +2904,21 @@
                                 <div v-if="formErrors.symbol" class="field-error">{{ formErrors.symbol }}</div>
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 mb-1">結算日</label>
+                                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">結算日</label>
                                 <input type="date" v-model="futuresForm.expiry" class="zen-input">
                             </div>
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 mb-1">多空方向</label>
+                                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">多空方向</label>
                                 <select v-model="futuresForm.direction" class="zen-input">
                                     <option value="long">多單 (Long)</option>
                                     <option value="short">空單 (Short)</option>
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 mb-1">幣別</label>
+                                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">幣別</label>
                                 <select v-model="futuresForm.currency" class="zen-input">
                                     <option value="TWD">台幣 (TWD)</option>
                                     <option value="USD">美金 (USD)</option>
@@ -2928,12 +2928,12 @@
 
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 mb-1">口數</label>
+                                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">口數</label>
                                 <input type="number" v-model="futuresForm.contracts" class="zen-input" placeholder="例如: 1" @input="onFuturesContractsChange">
                                 <div v-if="formErrors.contracts" class="field-error">{{ formErrors.contracts }}</div>
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 mb-1">合約乘數 (每點金額)</label>
+                                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">合約乘數 (每點金額)</label>
                                 <input type="number" v-model="futuresForm.multiplier" class="zen-input" placeholder="小台填 50 / 大台填 200">
                                 <div v-if="formErrors.multiplier" class="field-error">{{ formErrors.multiplier }}</div>
                             </div>
@@ -2941,12 +2941,12 @@
 
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 mb-1">建倉價格 / 點數</label>
+                                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">建倉價格 / 點數</label>
                                 <input type="number" v-model="futuresForm.entryPrice" class="zen-input" placeholder="例如: 20000">
                                 <div v-if="formErrors.entryPrice" class="field-error">{{ formErrors.entryPrice }}</div>
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 mb-1 flex justify-between items-center">
+                                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1 flex justify-between items-center">
                                     <span>目前價格 / 點數</span>
                                     <button type="button" @click="autoFetchTaiexIndexPrice" class="text-amber-600 hover:text-amber-500 text-[10px] font-bold"><i class="fa-solid fa-sync mr-0.5"></i>代入期貨現價</button>
                                 </label>
@@ -2956,7 +2956,7 @@
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-gray-500 mb-1">佔用保證金（<span class="text-amber-600 dark:text-amber-400">全部口數合計</span>）</label>
+                            <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">佔用保證金（<span class="text-amber-600 dark:text-amber-400">全部口數合計</span>）</label>
                             <input type="number" v-model="futuresForm.marginUsed" class="zen-input" placeholder="選擇商品後自動帶入原始保證金">
                             <!-- v5.25.0: 標明數字的來源與日期。期交所會不定期調整，
                                  使用者看到公告才知道要不要改，光給一個數字看不出新舊。 -->
@@ -2975,12 +2975,12 @@
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-gray-500 mb-1">備註 (選填)</label>
+                            <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">備註 (選填)</label>
                             <input type="text" v-model="futuresForm.note" class="zen-input" placeholder="其他備註事項">
                         </div>
                     </div>
                     <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex justify-end gap-3">
-                        <button @click="showFuturesModal=false" class="px-4 py-2 rounded text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button>
+                        <button @click="showFuturesModal=false" class="px-4 py-2 rounded text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button>
                         <button @click="saveFuturesPosition" class="px-6 py-2 rounded bg-amber-600 text-white font-medium hover:bg-amber-500 transition">儲存</button>
                     </div>
                 </div>
@@ -2999,14 +2999,14 @@
                     <div class="p-6 space-y-4">
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 mb-1">調整類型</label>
+                                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">調整類型</label>
                                 <select v-model="futuresMarginForm.type" class="zen-input">
                                     <option value="deposit">入金 (Deposit)</option>
                                     <option value="withdraw">出金 (Withdraw)</option>
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 mb-1">幣別</label>
+                                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">幣別</label>
                                 <select v-model="futuresMarginForm.currency" class="zen-input">
                                     <option value="TWD">台幣 (TWD)</option>
                                     <option value="USD">美金 (USD)</option>
@@ -3015,14 +3015,14 @@
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-gray-500 mb-1">金額</label>
+                            <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">金額</label>
                             <input type="number" v-model="futuresMarginForm.amount" class="zen-input" placeholder="請輸入金額">
                                 <div v-if="formErrors.marginAmount" class="field-error">{{ formErrors.marginAmount }}</div>
                         </div>
 
                         <div class="flex items-center gap-2 py-1">
                             <input type="checkbox" v-model="futuresMarginForm.syncCash" id="syncCashCheckbox" class="rounded text-amber-600 focus:ring-amber-500">
-                            <label for="syncCashCheckbox" class="text-xs font-bold text-gray-500 cursor-pointer">
+                            <label for="syncCashCheckbox" class="text-xs font-bold text-gray-500 dark:text-gray-400 cursor-pointer">
                                 與銀行活存現金餘額連動增減
                             </label>
                         </div>
@@ -3031,12 +3031,12 @@
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-gray-500 mb-1">備註說明 (選填)</label>
+                            <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">備註說明 (選填)</label>
                             <input type="text" v-model="futuresMarginForm.note" class="zen-input" placeholder="如：轉入保證金、獲利出金">
                         </div>
                     </div>
                     <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex justify-end gap-3">
-                        <button @click="showFuturesMarginModal=false" class="px-4 py-2 rounded text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button>
+                        <button @click="showFuturesMarginModal=false" class="px-4 py-2 rounded text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button>
                         <button @click="adjustFuturesMargin" class="px-6 py-2 rounded bg-amber-700 text-white font-medium hover:bg-amber-600 transition">確認送出</button>
                     </div>
                 </div>
@@ -3086,7 +3086,7 @@
 
                         <!-- 平倉：唯一要填的價格 -->
                         <div v-if="futuresActionForm.mode === 'close'">
-                            <label class="block text-xs font-bold text-gray-500 mb-1">
+                            <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">
                                 平倉價格 / 點數 <span class="text-red-500">*</span>
                             </label>
                             <input type="number" v-model="futuresActionForm.closePrice"
@@ -3100,13 +3100,13 @@
                         <template v-if="futuresActionForm.mode === 'rollover'">
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label class="block text-xs font-bold text-gray-500 mb-1">遠月結算日 <span class="text-red-500">*</span></label>
+                                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">遠月結算日 <span class="text-red-500">*</span></label>
                                     <input type="date" v-model="futuresActionForm.newExpiry"
                                         class="zen-input font-mono">
                                     <div v-if="formErrors.newExpiry" class="field-error">{{ formErrors.newExpiry }}</div>
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-bold text-gray-500 mb-1">遠月建倉價格 <span class="text-red-500">*</span></label>
+                                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">遠月建倉價格 <span class="text-red-500">*</span></label>
                                     <input type="number" v-model="futuresActionForm.newOpenPrice"
                                         class="zen-input font-mono text-lg" placeholder="輸入點數"
                                         @input="applyRollSpread">
@@ -3155,7 +3155,7 @@
 
                         <!-- 手續費 + 稅 -->
                         <div>
-                            <label class="block text-xs font-bold text-gray-500 mb-1">
+                            <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">
                                 手續費 + 交易稅（選填）
                                 <span v-if="futuresActionForm.mode === 'rollover'" class="text-gray-400 font-normal">兩腿合計</span>
                             </label>
@@ -3172,7 +3172,7 @@
                             </div>
                             <div class="px-4 py-3 space-y-2">
                                 <div class="flex justify-between">
-                                    <span class="text-gray-500">毛損益</span>
+                                    <span class="text-gray-500 dark:text-gray-400">毛損益</span>
                                     <span :class="((futuresActionForm.pos.direction==='long' ? Number(futuresActionForm.closePrice)-futuresActionForm.pos.entryPrice : futuresActionForm.pos.entryPrice-Number(futuresActionForm.closePrice)) * futuresActionForm.pos.contracts * futuresActionForm.pos.multiplier) >= 0 ? 'text-emerald-600 font-bold' : 'text-red-500 font-bold'">
                                         {{ futuresActionForm.pos.currency === 'USD' ? '$' : 'NT$' }}
                                         {{ formatNumber((futuresActionForm.pos.direction==='long' ? Number(futuresActionForm.closePrice)-futuresActionForm.pos.entryPrice : futuresActionForm.pos.entryPrice-Number(futuresActionForm.closePrice)) * futuresActionForm.pos.contracts * futuresActionForm.pos.multiplier) }}
@@ -3206,7 +3206,7 @@
                     <!-- Footer -->
                     <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex justify-end gap-3">
                         <button @click="showFuturesActionModal=false"
-                            class="px-4 py-2 rounded text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+                            class="px-4 py-2 rounded text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition">
                             取消
                         </button>
                         <button @click="submitFuturesAction"
@@ -3247,7 +3247,7 @@
 
                         <template v-if="futuresTxEditForm.type === 'rollover'">
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 mb-1">遠月建倉價 <span class="text-red-500">*</span></label>
+                                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">遠月建倉價 <span class="text-red-500">*</span></label>
                                 <input type="number" v-model="futuresTxEditForm.openPrice" class="zen-input font-mono text-lg"
                                     placeholder="輸入點數" @input="applyTxEditSpread">
                                 <div v-if="formErrors.openPrice" class="field-error">{{ formErrors.openPrice }}</div>
@@ -3263,7 +3263,7 @@
                         </template>
 
                         <div>
-                            <label class="block text-xs font-bold text-gray-500 mb-1">
+                            <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">
                                 {{ futuresTxEditForm.type === 'rollover' ? '近月平倉價' : '平倉價' }} <span class="text-red-500">*</span>
                             </label>
                             <input type="number" v-model="futuresTxEditForm.closePrice" class="zen-input font-mono text-lg"
@@ -3273,7 +3273,7 @@
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-gray-500 mb-1">手續費 + 交易稅</label>
+                            <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">手續費 + 交易稅</label>
                             <input type="number" min="0" v-model="futuresTxEditForm.fee" class="zen-input font-mono" placeholder="0">
                         </div>
 
@@ -3306,7 +3306,7 @@
                             這次展期建立的遠月部位還開著，儲存時它的建倉價會一併改成上面的「遠月建倉價」。
                         </p>
                         <p v-else-if="futuresTxEditForm.type === 'rollover' && futuresTxEditForm.newPositionId"
-                            class="text-xs text-gray-500 bg-gray-100 dark:bg-gray-700/50 rounded-lg px-3 py-2">
+                            class="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700/50 rounded-lg px-3 py-2">
                             <i class="fa-solid fa-circle-info mr-1"></i>
                             這次展期建立的遠月部位已經不在了（可能已再展期或平倉），只會修正這筆紀錄本身。
                         </p>
@@ -3319,7 +3319,7 @@
 
                     <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex justify-end gap-3">
                         <button @click="showFuturesTxEditModal=false"
-                            class="px-4 py-2 rounded text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button>
+                            class="px-4 py-2 rounded text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button>
                         <button @click="saveFuturesTxEdit"
                             class="px-6 py-2 rounded text-white font-semibold bg-amber-600 hover:bg-amber-500 transition">儲存修正</button>
                     </div>
@@ -3335,13 +3335,13 @@
                     </div>
                     <div class="p-6 space-y-4">
                         <div class="space-y-2">
-                            <label class="block text-xs font-bold text-gray-500">帳戶名稱</label>
+                            <label class="block text-xs font-bold text-gray-500 dark:text-gray-400">帳戶名稱</label>
                             <input type="text" v-model="loanForm.name" class="zen-input" placeholder="例如: 股票質押">
                                 <div v-if="formErrors.loanName" class="field-error">{{ formErrors.loanName }}</div>
                             
                             <div class="grid grid-cols-2 gap-2 mt-2">
                                 <div>
-                                    <label class="block text-xs font-bold text-gray-500">帳戶種類</label>
+                                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400">帳戶種類</label>
                                     <select v-model="loanForm.type" class="zen-input mt-1">
                                         <option value="other">其他 / 一般</option>
                                         <option value="realestate">房屋貸款 / 增貸</option>
@@ -3350,23 +3350,23 @@
                                     </select>
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-bold text-gray-500">目前餘額 (TWD)</label>
+                                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400">目前餘額 (TWD)</label>
                                     <input type="number" v-model.number="loanForm.balance" class="zen-input mt-1" placeholder="0">
                                 </div>
                             </div>
                             
                             <div class="grid grid-cols-2 gap-2 mt-2">
                                 <div>
-                                    <label class="block text-xs font-bold text-gray-500">每月還款金額 (TWD)</label>
+                                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400">每月還款金額 (TWD)</label>
                                     <input type="number" v-model.number="loanForm.monthlyPayment" class="zen-input mt-1" placeholder="0">
                                 </div>
                                 <div>
                                     <!-- v5.18.0: 月繳含本金攤還，不等於利息成本；要判斷「借錢投資划不划算」需要利率 -->
-                                    <label class="block text-xs font-bold text-gray-500">年利率 (%)</label>
+                                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400">年利率 (%)</label>
                                     <input type="number" step="0.01" v-model.number="loanForm.interestRate" class="zen-input mt-1" placeholder="如：2.5（選填）">
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-bold text-gray-500">借款備註</label>
+                                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400">借款備註</label>
                                     <input type="text" v-model="loanForm.note" class="zen-input mt-1" placeholder="如：寬限期中、信貸">
                                 </div>
                             </div>
@@ -3398,7 +3398,7 @@
                                             餘額: {{ formatCurrency(l.balance, 'TWD') }}
                                             <span v-if="l.monthlyPayment > 0" class="ml-2 text-gray-500 dark:text-gray-400">月還: {{ formatCurrency(l.monthlyPayment, 'TWD') }}</span>
                                         </div>
-                                        <div v-if="l.note" class="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 italic">
+                                        <div v-if="l.note" class="text-[10px] text-gray-400 dark:text-gray-400 mt-0.5 italic">
                                             備註: {{ l.note }}
                                         </div>
                                     </div>
@@ -3432,7 +3432,7 @@
                                         <div class="flex items-center gap-1.5 flex-wrap">
                                             <span class="text-sm dark:text-gray-300 font-medium line-through">{{ l.name }}</span>
                                         </div>
-                                        <div v-if="l.note" class="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 italic">備註: {{ l.note }}</div>
+                                        <div v-if="l.note" class="text-[10px] text-gray-400 dark:text-gray-400 mt-0.5 italic">備註: {{ l.note }}</div>
                                     </div>
                                     <div class="flex gap-2">
                                         <button @click="toggleArchiveLoan(l)" title="重新啟用"
@@ -3465,7 +3465,7 @@
                     <div class="p-6"><textarea v-model="stockNoteForm.content" class="zen-input h-40 resize-none mb-4"
                             placeholder="記錄買入理由、停損點、目標價或觀察重點..."></textarea>
                         <div class="flex justify-end gap-3"><button @click="showStockNoteModal=false"
-                                class="px-4 py-2 rounded text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button><button
+                                class="px-4 py-2 rounded text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button><button
                                 @click="saveStockNote"
                                 class="px-6 py-2 rounded bg-yellow-500 text-white font-medium hover:bg-yellow-600 transition">儲存筆記</button>
                         </div>
@@ -3487,16 +3487,16 @@
                                 class="font-bold">日期與備註</span>，如需更改金額/股數，請刪除後重新新增。</div>
                     </div>
                     <div class="p-6 space-y-4">
-                        <div><label class="block text-xs font-bold text-gray-500 mb-1">日期</label><input type="date"
+                        <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">日期</label><input type="date"
                                 v-model="editTxForm.date" class="zen-input"></div>
-                        <div><label class="block text-xs font-bold text-gray-500 mb-1">名稱/標的</label><input type="text"
+                        <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">名稱/標的</label><input type="text"
                                 v-model="editTxForm.name" class="zen-input" placeholder="如: 台積電"></div>
-                        <div><label class="block text-xs font-bold text-gray-500 mb-1">備註</label><input type="text"
+                        <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">備註</label><input type="text"
                                 v-model="editTxForm.memo" class="zen-input" placeholder="如: 加碼"></div>
                     </div>
                     <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex justify-end gap-3">
                         <button @click="showEditTxModal=false"
-                            class="px-4 py-2 rounded text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button>
+                            class="px-4 py-2 rounded text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button>
                         <button @click="saveEditTx"
                             class="px-6 py-2 rounded bg-blue-600 text-white font-medium hover:bg-blue-700 transition">儲存修改</button>
                     </div>
@@ -3534,18 +3534,18 @@
                             class="text-gray-300 hover:text-white"><i class="fa-solid fa-times"></i></button>
                     </div>
                     <div class="p-6 space-y-4">
-                        <div><label class="block text-xs font-bold text-gray-500 mb-1">標題</label><input type="text"
+                        <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">標題</label><input type="text"
                                 v-model="noteForm.title" class="zen-input" placeholder="例如：台積電法說會心得">
                                 <div v-if="formErrors.noteTitle" class="field-error">{{ formErrors.noteTitle }}</div></div>
-                        <div><label class="block text-xs font-bold text-gray-500 mb-1">日期</label><input type="date"
+                        <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">日期</label><input type="date"
                                 v-model="noteForm.date" class="zen-input"></div>
-                        <div><label class="block text-xs font-bold text-gray-500 mb-1">內容</label><textarea
+                        <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">內容</label><textarea
                                 v-model="noteForm.content" class="zen-input h-32 resize-none"
                                 placeholder="寫下你的投資想法..."></textarea></div>
                     </div>
                     <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex justify-end gap-3"><button
                             @click="closeNoteModal"
-                            class="px-4 py-2 rounded text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button><button
+                            class="px-4 py-2 rounded text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button><button
                             @click="saveNote"
                             class="px-6 py-2 rounded bg-gray-800 text-white font-medium hover:bg-gray-700 transition">儲存</button>
                     </div>
@@ -3591,7 +3591,7 @@
                         </div>
                         <table class="w-full text-sm text-left">
                             <thead
-                                class="bg-gray-100 dark:bg-gray-700 text-gray-500 uppercase font-medium sticky top-0">
+                                class="bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 uppercase font-medium sticky top-0">
                                 <tr>
                                     <th class="px-6 py-3">日期</th>
                                     <th class="px-6 py-3 text-right">淨資產</th>
@@ -3634,17 +3634,17 @@
                             只會套用你勾選的欄位，其餘保持原狀。適合修正早期房地產／房貸處理方式不同的紀錄。
                         </p>
                         <div class="grid grid-cols-2 gap-3">
-                            <div><label class="block text-xs font-bold text-gray-500 mb-1">開始日期</label>
+                            <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">開始日期</label>
                                 <input type="date" v-model="bulkHistoryForm.start" class="zen-input">
                                 <div v-if="formErrors.bulkStart" class="field-error">{{ formErrors.bulkStart }}</div>
                             </div>
-                            <div><label class="block text-xs font-bold text-gray-500 mb-1">結束日期</label>
+                            <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">結束日期</label>
                                 <input type="date" v-model="bulkHistoryForm.end" class="zen-input">
                                 <div v-if="formErrors.bulkEnd" class="field-error">{{ formErrors.bulkEnd }}</div>
                             </div>
                         </div>
                         <div class="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-                            <div class="text-xs font-bold text-gray-500">要修正哪些欄位</div>
+                            <div class="text-xs font-bold text-gray-500 dark:text-gray-400">要修正哪些欄位</div>
                             <div v-for="f in [
                                     { k: 'realestate', label: '不動產市值' },
                                     { k: 'loan', label: '貸款總額' },
@@ -3667,7 +3667,7 @@
                         </div>
                     </div>
                     <div class="px-6 pb-6 flex gap-3 justify-end">
-                        <button @click="showBulkHistoryModal=false" class="px-4 py-2 rounded-lg text-sm border text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700">取消</button>
+                        <button @click="showBulkHistoryModal=false" class="px-4 py-2 rounded-lg text-sm border text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">取消</button>
                         <button @click="applyBulkHistory" :disabled="bulkHistoryBusy"
                             class="px-5 py-2 rounded-lg text-sm bg-gray-800 text-white hover:bg-gray-700 font-bold disabled:opacity-50">
                             <i v-if="bulkHistoryBusy" class="fa-solid fa-circle-notch fa-spin mr-1"></i>套用修正
@@ -3684,38 +3684,38 @@
                             class="text-gray-300 hover:text-white"><i class="fa-solid fa-times"></i></button>
                     </div>
                     <div class="p-6 space-y-3">
-                        <div class="text-center text-sm text-gray-500 mb-2">日期：{{ historyEditForm.date }}</div>
+                        <div class="text-center text-sm text-gray-500 dark:text-gray-400 mb-2">日期：{{ historyEditForm.date }}</div>
                         <div class="grid grid-cols-2 gap-3">
-                            <div><label class="block text-xs font-bold text-gray-500 mb-1">台股股票</label><input
+                            <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">台股股票</label><input
                                     type="number" v-model.number="historyEditForm.twVal" class="zen-input text-right">
                             </div>
-                            <div><label class="block text-xs font-bold text-gray-500 mb-1">美股股票 (USD)</label><input
+                            <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">美股股票 (USD)</label><input
                                     type="number" v-model.number="historyEditForm.usVal" class="zen-input text-right">
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-3">
-                            <div><label class="block text-xs font-bold text-gray-500 mb-1">台幣現金</label><input
+                            <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">台幣現金</label><input
                                     type="number" v-model.number="historyEditForm.twCash" class="zen-input text-right">
                             </div>
-                            <div><label class="block text-xs font-bold text-gray-500 mb-1">美金現金</label><input
+                            <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">美金現金</label><input
                                     type="number" v-model.number="historyEditForm.usCash" class="zen-input text-right">
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-3">
-                            <div><label class="block text-xs font-bold text-gray-500 mb-1">不動產市值 (台幣)</label><input
+                            <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">不動產市值 (台幣)</label><input
                                     type="number" v-model.number="historyEditForm.realestate" class="zen-input text-right text-emerald-600 dark:text-emerald-400">
                             </div>
-                            <div><label class="block text-xs font-bold text-gray-500 mb-1">貸款總額 (台幣)</label><input
+                            <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">貸款總額 (台幣)</label><input
                                     type="number" v-model.number="historyEditForm.loan"
                                     class="zen-input text-right text-red-500">
                             </div>
                         </div>
                         <!-- v5.20.0: 補上期貨與基金。舊版沒有這兩格，一旦編輯就會把它們從淨資產裡抹掉。 -->
                         <div class="grid grid-cols-2 gap-3 mt-3">
-                            <div><label class="block text-xs font-bold text-gray-500 mb-1">期貨權益 (台幣)</label><input
+                            <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">期貨權益 (台幣)</label><input
                                     type="number" v-model.number="historyEditForm.futures" class="zen-input text-right text-orange-600 dark:text-orange-400">
                             </div>
-                            <div><label class="block text-xs font-bold text-gray-500 mb-1">基金現值 (台幣)</label><input
+                            <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">基金現值 (台幣)</label><input
                                     type="number" v-model.number="historyEditForm.funds" class="zen-input text-right text-teal-600 dark:text-teal-400">
                             </div>
                         </div>
@@ -3727,7 +3727,7 @@
                     </div>
                     <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex justify-end gap-3"><button
                             @click="showHistoryEditModalVisible=false"
-                            class="px-4 py-2 rounded text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button><button
+                            class="px-4 py-2 rounded text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button><button
                             @click="saveHistoryRecord"
                             class="px-6 py-2 rounded bg-gray-800 text-white font-medium hover:bg-gray-700 transition">儲存修正</button>
                     </div>
@@ -3749,10 +3749,10 @@
                     </div>
                     <div class="p-6 space-y-4">
                         <div class="grid grid-cols-2 gap-4">
-                            <div><label class="block text-xs font-bold text-gray-500 mb-1">代號</label><input
+                            <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">代號</label><input
                                     v-model="form.symbol" @change="autoFetchName" class="zen-input uppercase"
                                     placeholder="如 2330"></div>
-                            <div><label class="block text-xs font-bold text-gray-500 mb-1">幣別</label><select
+                            <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">幣別</label><select
                                     v-model="form.currency"
                                     @change="form.currency==='USD' ? form.marketType='us' : null" class="zen-input">
                                     <option value="TWD">TWD</option>
@@ -3760,7 +3760,7 @@
                                 </select></div>
                         </div>
                         <div v-if="form.currency==='TWD'">
-                            <label class="block text-xs font-bold text-gray-500 mb-1">市場類型</label>
+                            <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">市場類型</label>
                             <div class="flex gap-2">
                                 <button type="button" @click="form.marketType='tse'"
                                     class="flex-1 py-1.5 rounded text-xs font-medium border transition"
@@ -3777,12 +3777,12 @@
                             </div>
                             <p class="text-[11px] text-gray-400 mt-1">不確定時選「自動」，首次更新股價時會自動偵測。</p>
                         </div>
-                        <div><label class="block text-xs font-bold text-gray-500 mb-1">名稱</label><input type="text"
+                        <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">名稱</label><input type="text"
                                 v-model="form.name" class="zen-input"></div>
                         <div class="grid grid-cols-2 gap-4">
-                            <div><label class="block text-xs font-bold text-gray-500 mb-1">股數</label><input
+                            <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">股數</label><input
                                     type="number" step="any" v-model.number="form.shares" class="zen-input"></div>
-                            <div><label class="block text-xs font-bold text-gray-500 mb-1">總成本</label><input
+                            <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">總成本</label><input
                                     type="number" step="any" v-model.number="form.totalCostInput" class="zen-input"
                                     placeholder="股數 × 個股成本"></div>
                         </div>
@@ -3792,10 +3792,10 @@
                                 'NT$ ' : '$ ' }}{{ (form.totalCostInput / form.shares).toFixed(4) }}</span>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
-                            <div><label class="block text-xs font-bold text-gray-500 mb-1">現價</label><input
+                            <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">現價</label><input
                                     type="number" step="any" v-model.number="form.currentPrice"
                                     class="zen-input bg-gray-50 dark:bg-gray-700/50"></div>
-                            <div><label class="block text-xs font-bold text-gray-500 mb-1">槓桿倍數 (如正2填2)</label>
+                            <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">槓桿倍數 (如正2填2)</label>
                                 <div class="relative">
                                     <input type="number" step="0.1" v-model.number="form.multiplier" class="zen-input pr-10">
                                     <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">x</span>
@@ -3803,7 +3803,7 @@
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
-                            <div><label class="block text-xs font-bold text-gray-500 mb-1">已領股息</label><input
+                            <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">已領股息</label><input
                                     type="number" step="any" v-model.number="form.dividends" class="zen-input"></div>
                             <!-- v4.8.0: ETF 標記 -->
                             <div class="flex items-end pb-1">
@@ -3813,14 +3813,14 @@
                                         <div class="w-9 h-5 bg-gray-200 dark:bg-gray-600 peer-checked:bg-blue-500 rounded-full transition-colors duration-200"></div>
                                         <div class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 peer-checked:translate-x-4"></div>
                                     </div>
-                                    <span class="text-xs font-bold text-gray-500">是 ETF</span>
+                                    <span class="text-xs font-bold text-gray-500 dark:text-gray-400">是 ETF</span>
                                 </label>
                             </div>
                         </div>
                     </div>
                     <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex justify-end gap-3"><button
                             @click="closeModal"
-                            class="px-4 py-2 rounded text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button><button
+                            class="px-4 py-2 rounded text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button><button
                             @click="saveStock"
                             class="px-6 py-2 rounded bg-gray-800 text-white font-medium hover:bg-gray-700 transition">儲存修正</button>
                     </div>
@@ -3892,7 +3892,7 @@
                         <div v-if="isLoanMode">
                             <div>
                                 <div class="flex items-center justify-between mb-1">
-                                    <label class="text-xs font-bold text-gray-500">借款帳戶</label>
+                                    <label class="text-xs font-bold text-gray-500 dark:text-gray-400">借款帳戶</label>
                                     <button v-if="activeLoans.length > 0 && !inlineNewLoan"
                                         @click="inlineNewLoan = true"
                                         class="text-xs text-purple-500 hover:text-purple-700 flex items-center gap-1">
@@ -3929,17 +3929,17 @@
                                 </div>
                             </div>
                             <div class="mt-2">
-                                <label class="block text-xs font-bold text-gray-500 mb-1">日期</label>
+                                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">日期</label>
                                 <input type="date" v-model="transForm.date" class="zen-input">
                             </div>
                             <div class="mt-2">
-                                <label class="block text-xs font-bold text-gray-500 mb-1">金額</label>
+                                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">金額</label>
                                 <input type="number" step="any" v-model.number="transForm.totalAmount" class="zen-input"
                                     placeholder="輸入金額">
                                 <div v-if="formErrors.totalAmount" class="field-error">{{ formErrors.totalAmount }}</div>
                             </div>
                             <div class="mt-2">
-                                <label class="block text-xs font-bold text-gray-500 mb-1">備註 (選填)</label>
+                                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">備註 (選填)</label>
                                 <input type="text" v-model="transForm.name" class="zen-input" placeholder="如: 年終還款">
                             </div>
                             <!-- v3.7.3: 防呆 radio 取代 checkbox -->
@@ -3984,23 +3984,23 @@
 
                         <div v-else-if="isFundMode">
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 mb-1">幣別</label>
+                                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">幣別</label>
                                 <select v-model="form.currency" class="zen-input">
                                     <option value="TWD">TWD</option>
                                     <option value="USD">USD</option>
                                 </select>
                             </div>
                             <div class="mt-2">
-                                <label class="block text-xs font-bold text-gray-500 mb-1">日期</label>
+                                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">日期</label>
                                 <input type="date" v-model="transForm.date" class="zen-input">
                             </div>
                             <div class="mt-2">
-                                <label class="block text-xs font-bold text-gray-500 mb-1">金額</label>
+                                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">金額</label>
                                 <input type="number" step="any" v-model.number="transForm.totalAmount" class="zen-input"
                                     placeholder="輸入金額">
                             </div>
                             <div class="mt-2">
-                                <label class="block text-xs font-bold text-gray-500 mb-1">備註 (選填)</label>
+                                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">備註 (選填)</label>
                                 <input type="text" v-model="transForm.name" class="zen-input" placeholder="如: 薪水轉入">
                             </div>
                         </div>
@@ -4008,7 +4008,7 @@
                         <div v-else>
                             <div v-if="!transForm.id">
                                 <div>
-                                    <label class="block text-xs font-bold text-gray-500 mb-1">代號</label>
+                                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">代號</label>
                                     <div class="flex gap-2">
                                         <input type="text" v-model="transForm.symbol" @change="autoFetchTransName"
                                             class="zen-input uppercase" placeholder="輸入代號">
@@ -4018,11 +4018,11 @@
                                     </div>
                                 </div>
                                 <div class="mt-2">
-                                    <label class="block text-xs font-bold text-gray-500 mb-1">名稱</label>
+                                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">名稱</label>
                                     <input type="text" v-model="transForm.name" class="zen-input">
                                 </div>
                                 <div class="mt-2">
-                                    <label class="block text-xs font-bold text-gray-500 mb-1">幣別</label>
+                                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">幣別</label>
                                     <select v-model="form.currency" class="zen-input">
                                         <option value="TWD">TWD</option>
                                         <option value="USD">USD</option>
@@ -4030,13 +4030,13 @@
                                 </div>
                             </div>
                             <div v-if="transForm.type !== 'dividend'" class="mt-2">
-                                <label class="block text-xs font-bold text-gray-500 mb-1">股數</label>
+                                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">股數</label>
                                 <input type="number" step="any" v-model.number="transForm.shares" class="zen-input"
                                     placeholder="0">
                                 <div v-if="formErrors.shares" class="field-error">{{ formErrors.shares }}</div>
                             </div>
                             <div v-if="transForm.type !== 'dividend'" class="mt-2">
-                                <label class="block text-xs font-bold text-gray-500 mb-1">總金額
+                                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">總金額
                                     ({{form.currency}})</label>
                                 <input type="number" step="any" v-model.number="transForm.totalAmount" class="zen-input"
                                     placeholder="含手續費/稅">
@@ -4045,25 +4045,25 @@
                                     formatCurrency(transForm.totalAmount / transForm.shares, form.currency) }}</div>
                             </div>
                             <div v-if="transForm.type === 'dividend'" class="mt-2">
-                                <label class="block text-xs font-bold text-gray-500 mb-1">入帳日期</label>
+                                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">入帳日期</label>
                                 <input type="date" v-model="transForm.date" class="zen-input">
                             </div>
                             <div v-if="transForm.type === 'dividend'" class="mt-2">
-                                <label class="block text-xs font-bold text-gray-500 mb-1">股息金額
+                                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">股息金額
                                     ({{form.currency}})</label>
                                 <input type="number" step="any" v-model.number="transForm.totalAmount" class="zen-input"
                                     placeholder="輸入金額">
                             </div>
 
                             <div class="mt-2">
-                                <label class="block text-xs font-bold text-gray-500 mb-1">備註 (選填)</label>
+                                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">備註 (選填)</label>
                                 <input type="text" v-model="transForm.memo" class="zen-input" placeholder="如: 加碼">
                             </div>
                         </div>
 
                         <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex justify-end gap-3 -mx-6 -mb-4 mt-4">
                             <button @click="closeTransModal"
-                                class="px-4 py-2 rounded text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button>
+                                class="px-4 py-2 rounded text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition">取消</button>
                             <button @click="submitTransaction"
                                 :class="{'bg-purple-600 hover:bg-purple-700': isLoanMode, 'bg-blue-600 hover:bg-blue-700': isFundMode, 'bg-red-600 hover:bg-red-700': transForm.type==='buy' || transForm.type==='borrow', 'bg-green-600 hover:bg-green-700': transForm.type==='sell' || transForm.type==='repay', 'bg-yellow-500 hover:bg-yellow-600': transForm.type==='dividend'}"
                                 class="px-6 py-2 rounded text-white font-medium transition">確認</button>

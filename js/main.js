@@ -2420,22 +2420,19 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 // v5.28.0: 每日快照是 GitHub Actions 在背景跑的，壞掉時使用者不會知道 ——
                 // 實測曾因為測試關卡的時區 bug 連續兩個交易日沒有寫入，走勢圖只是少了兩個點，
                 // 完全看不出來。這裡直接把「最後一次快照距今幾個交易日」算出來，超過就提示。
-                // 用交易日計算，否則週末與連假一定誤報。
-                const tradingDaysSince = (yyyymmdd) => {
+                // v5.29.4: 排程改為每天都跑之後，改數日曆天。
+                // 先前數「交易日」是為了避免週末誤報，但那也代表週末兩天都漏跑時
+                // 會被算成 0 天而完全不提醒 —— 現在週末本來就該有快照，不能再忽略。
+                // 門檻放到 3 天：GitHub 排程本身就不準（實測曾延遲數小時到隔天），
+                // 偶爾漏跑一次不該跳警告，連續兩天以上沒寫入才是真的有問題。
+                const daysSinceSnapshot = (yyyymmdd) => {
                     if (!/^\d{4}-\d{2}-\d{2}$/.test(yyyymmdd || '')) return null;
                     const from = new Date(yyyymmdd + 'T00:00:00');
                     const today = new Date(getLocalDate() + 'T00:00:00');
-                    let n = 0;
-                    const cur = new Date(from);
-                    while (cur < today) {
-                        cur.setDate(cur.getDate() + 1);
-                        const d = cur.getDay();
-                        if (d !== 0 && d !== 6) n++;   // 只數平日；國定假日無從得知，寧可少報也不要誤報
-                    }
-                    return n;
+                    return Math.max(0, Math.round((today - from) / 86400000));
                 };
-                const snapshotStaleDays = computed(() => tradingDaysSince(latestSnapshotDate.value));
-                const snapshotIsStale = computed(() => (snapshotStaleDays.value || 0) >= 2);
+                const snapshotStaleDays = computed(() => daysSinceSnapshot(latestSnapshotDate.value));
+                const snapshotIsStale = computed(() => (snapshotStaleDays.value || 0) >= 3);
 
                 // v5.9.0: 期間損益要扣掉本金進出，否則「這個月匯 50 萬進來」會被算成賺了 50 萬。
                 // 只認銀行活存的存入/提出；期貨保證金劃轉是內部搬錢（現金↔保證金），淨資產沒變不能算。

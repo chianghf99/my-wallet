@@ -13,7 +13,7 @@
            - fonts.googleapis.com/css2：回應內容依瀏覽器 User-Agent 而異
            - apis.google.com/js/api.js、accounts.google.com/gsi/client：
              Google 的載入器，內容持續更新且官方不提供固定雜湊 -->
-    <title>我的投資組合 | Portfolio v5.29.3</title>
+    <title>我的投資組合 | Portfolio v5.29.4</title>
     <!-- v5.12.0: PWA。三個入口各有獨立的 manifest 與圖示，
          加到主畫面後會是三個可分辨的 App，而不是同一顆圖示。 -->
     <link rel="manifest" href="./manifest-stock.webmanifest">
@@ -658,7 +658,7 @@
                         <div v-if="snapshotIsStale" class="mt-8 mb-3 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 flex items-start gap-2">
                             <i class="fa-solid fa-triangle-exclamation text-amber-500 mt-0.5"></i>
                             <div class="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
-                                最後一筆每日快照是 <strong>{{ latestSnapshotDate }}</strong>（已隔 {{ snapshotStaleDays }} 個交易日）。
+                                最後一筆每日快照是 <strong>{{ latestSnapshotDate }}</strong>（已隔 {{ snapshotStaleDays }} 天）。
                                 <span class="opacity-80">自動排程可能沒跑成功；開著這個頁面更新一次股價就會補上今天的紀錄。</span>
                             </div>
                         </div>

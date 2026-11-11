@@ -34,3 +34,8 @@ jobs:
       # 這裡就會紅。詳見 scripts/test-card-crypto.mjs 的檔頭說明。
       - name: 卡片管家加解密黃金樣本
         run: node scripts/test-card-crypto.mjs
+
+      # 上傳前合併雲端帳單的判斷。這段有兩個反方向的失敗模式（漏接別處新增的帳單／
+      # 讓刪除失效），兩者都不會當場報錯，所以釘在 CI 上。
+      - name: 卡片管家雲端同步合併
+        run: node scripts/test-bill-sync.mjs

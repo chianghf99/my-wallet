@@ -358,6 +358,69 @@ def save_ledger(ledger):
                            encoding='utf-8')
 
 
+def cleanup_action(cfg):
+    """處理完的 PDF 要怎麼辦：keep（留著）／move（搬到子夾）／trash（丟垃圾桶）。"""
+    act = str(cfg.get('processed_action', '') or '').lower()
+    if act in ('keep', 'move', 'trash'):
+        return act
+    return 'move' if cfg.get('move_processed') else 'keep'   # 舊設定檔的相容
+
+
+def move_to_trash(path):
+    """把檔案搬進 ~/.Trash。
+
+    不用 AppleScript 叫 Finder 刪：背景執行的程式要控制 Finder 需要「自動化」權限，
+    而背景程式無法跳出詢問框，只會無聲失敗。直接搬進 ~/.Trash 不需要任何額外權限，
+    檔案一樣在垃圾桶裡、一樣救得回來（只是沒有「放回原處」的來源資訊）。
+
+    這個資料夾是 OneDrive 同步的，所以檔案離開資料夾等於在雲端也刪除 ——
+    OneDrive 自己的資源回收筒會再留一份一段時間。
+    """
+    trash = Path.home() / '.Trash'
+    trash.mkdir(exist_ok=True)
+    dest = trash / path.name
+    if dest.exists():          # 同名時加時間戳，不要覆蓋垃圾桶裡既有的檔案
+        dest = trash / f"{path.stem}_{datetime.now():%Y%m%d-%H%M%S}{path.suffix}"
+    path.rename(dest)
+    return dest
+
+
+def cleanup_processed(items, cfg, watch_dir):
+    """把已經確定入帳（或雲端已有）的 PDF 依設定搬走或丟掉。
+
+    只在「資料已經安全落地」之後才呼叫 —— 寫雲端失敗時絕對不能動使用者的檔案。
+    """
+    act = cleanup_action(cfg)
+    if act == 'keep' or not items:
+        return
+    if DRY_RUN:        # --dry-run 絕對不能動使用者的檔案
+        log(f"--dry-run：{len(items)} 個檔案「會」被"
+            f"{'搬走' if act == 'move' else '丟進垃圾桶'}，這次沒有動")
+        return
+    dest_dir = watch_dir / cfg.get('processed_dir', '已處理帳單')
+    if act == 'move':
+        dest_dir.mkdir(exist_ok=True)
+    done = 0
+    for it in items:
+        p = it['path']
+        if not p.exists():
+            continue
+        try:
+            if act == 'move':
+                target = dest_dir / p.name
+                if target.exists():
+                    target = dest_dir / f"{p.stem}_{datetime.now():%Y%m%d-%H%M%S}{p.suffix}"
+                p.rename(target)
+            else:
+                move_to_trash(p)
+            done += 1
+        except OSError as e:
+            # 搬不動不影響已經上傳的資料，記下來就好
+            log(f"{'搬移' if act == 'move' else '丟垃圾桶'}失敗（檔案留在原處）：{it['file']}：{e}", 'WARN')
+    if done:
+        log(f"已{'搬到「' + dest_dir.name + '」' if act == 'move' else '丟進垃圾桶'}：{done} 個檔案")
+
+
 def sha256_of(path):
     h = hashlib.sha256()
     with open(path, 'rb') as f:
@@ -505,7 +568,7 @@ def main():
                     if str(b.get('name', '')) == item['name']
                     and str(b.get('date', '')) == item['date']), None)
         if hit:
-            dupes.append((item, hit))
+            dupes.append(item)
             log(f"已存在，不重複新增：{item['name']} {item['date']}"
                 + ('' if int(hit.get('amount', 0)) == item['amount']
                    else f"（雲端 ${hit.get('amount')}、這份帳單 ${item['amount']}，金額不一樣，請自己看一下）"))
@@ -540,6 +603,8 @@ def main():
     if not added:
         log(f"沒有要新增的帳單（{len(dupes)} 筆已存在）")
         save_ledger(ledger)
+        # 雲端已經有這幾筆了，檔案該清掉的照清 —— 不然重複下載的帳單會永遠留在資料夾裡
+        cleanup_processed(dupes, cfg, watch_dir)
         notify('帳單機器人', f"{len(dupes)} 筆帳單雲端已有，沒有新增")
         return
 
@@ -560,15 +625,10 @@ def main():
                                   'at': datetime.now().isoformat(timespec='seconds')}
     save_ledger(ledger)
 
-    # 搬移已處理的帳單（預設關閉：那個資料夾裡還有工作文件，不主動動使用者的檔案）
-    if cfg.get('move_processed'):
-        dest = watch_dir / cfg.get('processed_dir', '已處理帳單')
-        dest.mkdir(exist_ok=True)
-        for item, _bill in added:
-            try:
-                item['path'].rename(dest / item['path'].name)
-            except OSError as e:
-                log(f"搬移失敗（檔案留在原處，不影響已上傳的資料）：{item['file']}：{e}", 'WARN')
+    # 處理完的 PDF 要搬走還是丟掉（processed_action）。
+    # 一定要在 patch_bills 成功、ledger 也寫完之後才做 —— 資料還沒安全落地就動
+    # 使用者的檔案，萬一寫入失敗就兩頭空。
+    cleanup_processed([it for it, _b in added] + dupes, cfg, watch_dir)
 
     total = sum(b['amount'] for _i, b in added)
     log(f"✅ 已寫入雲端：新增 {len(added)} 筆，bills {before} → {len(bills)} 筆")

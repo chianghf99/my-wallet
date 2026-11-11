@@ -485,11 +485,17 @@ def main():
 
     # 先把所有 PDF 解析完，再一次寫雲端（少一次登入、也少一次覆寫風險）
     parsed, failed, skipped = [], [], 0
+    stale = []          # 帳本說早就入帳了，但檔案還在資料夾裡（見下方）
     for pdf in pdfs:
         digest = sha256_of(pdf)
         if digest in ledger and ledger[digest].get('status') == 'added':
             skipped += 1
             vlog(f"跳過（已處理過）：{pdf.name}")
+            # 已入帳卻還留著的檔案，照 processed_action 清掉。
+            # 會有這種檔案的兩個原因：①在開啟自動清檔之前就處理過了
+            # ②上次清理失敗（例如檔案被佔用）。不補這段的話它們會永遠留在資料夾裡，
+            # 因為每次都在這裡就被 continue 掉、走不到後面的清理。
+            stale.append({'path': pdf, 'file': pdf.name})
             continue
 
         code = bank_code_for(pdf.name)
@@ -539,6 +545,7 @@ def main():
         if failed:
             notify('帳單機器人', f"{len(failed)} 個檔案處理失敗，請看記錄檔")
         save_ledger(ledger)
+        cleanup_processed(stale, cfg, watch_dir)
         return
 
     token, doc = None, None
@@ -604,7 +611,7 @@ def main():
         log(f"沒有要新增的帳單（{len(dupes)} 筆已存在）")
         save_ledger(ledger)
         # 雲端已經有這幾筆了，檔案該清掉的照清 —— 不然重複下載的帳單會永遠留在資料夾裡
-        cleanup_processed(dupes, cfg, watch_dir)
+        cleanup_processed(dupes + stale, cfg, watch_dir)
         notify('帳單機器人', f"{len(dupes)} 筆帳單雲端已有，沒有新增")
         return
 
@@ -628,7 +635,7 @@ def main():
     # 處理完的 PDF 要搬走還是丟掉（processed_action）。
     # 一定要在 patch_bills 成功、ledger 也寫完之後才做 —— 資料還沒安全落地就動
     # 使用者的檔案，萬一寫入失敗就兩頭空。
-    cleanup_processed([it for it, _b in added] + dupes, cfg, watch_dir)
+    cleanup_processed([it for it, _b in added] + dupes + stale, cfg, watch_dir)
 
     total = sum(b['amount'] for _i, b in added)
     log(f"✅ 已寫入雲端：新增 {len(added)} 筆，bills {before} → {len(bills)} 筆")

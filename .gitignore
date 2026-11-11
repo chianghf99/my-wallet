@@ -1,12 +1,11 @@
+# macOS（不帶斜線的規則會比對所有層級的目錄，不必為 js/ 等子目錄各寫一條）
 .DS_Store
-js/.DS_Store
-js/store/.DS_Store
-Build_Bot_in_windows/
-esun_pypdf.txt
-esun_text.txt
-*_backup.html
+
+# 舊版備份檔。整份 HTML 的歷史都在 git 裡，備份檔只會讓人誤改到錯的那一份
 *backup*.html
-test_pdfjs.js
+
+# 舊的 Windows 帳單機器人（功能已由 scripts/billbot 取代，留著僅供查閱）
+Build_Bot_in_windows/
 
 # 憑證類檔案一律不進版控（Firebase 服務帳戶金鑰等）
 *firebase-adminsdk*.json

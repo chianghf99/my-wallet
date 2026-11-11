@@ -1,0 +1,13 @@
+{
+  "_說明": "複製這份到 ~/.config/mywallet/billbot.json 再填值。刻意放在 repo 外面，避免 uid 被 commit 進 public repo。這裡面不放任何密碼。",
+
+  "watch_dir": "/Users/chiang/Library/CloudStorage/OneDrive-個人/09_其他/電子郵件附件",
+  "owner_uid": "填你自己的 Firebase uid（Console → Authentication → 你的 Google 帳號那一列的 User UID）",
+  "bot_email": "billbot@mywallet.local",
+  "project_id": "stock-portfolio-df6dd",
+  "api_key": "AIzaSyAh94_Z-wA_riNIXmn_btCXbTtaZny1CQg",
+
+  "_move_processed_說明": "true 時會把已寫入雲端的帳單 PDF 搬到 watch_dir 底下的「已處理帳單」子夾。預設 false，因為那個資料夾裡還有工作文件，不主動動你的檔案。",
+  "move_processed": false,
+  "processed_dir": "已處理帳單"
+}

@@ -11,7 +11,7 @@
 
 const KILL_SWITCH = false;
 
-const VERSION = 'v1';
+const VERSION = 'v2';   // v2：新增 js/utils/bill-parse.js，舊快取沒有它，必須換版重建
 const SHELL_CACHE = `mywallet-shell-${VERSION}`;
 const CDN_CACHE = `mywallet-cdn-${VERSION}`;
 
@@ -27,6 +27,7 @@ const SHELL_ASSETS = [
     './js/utils/format.js',
     './js/utils/valuation.js',
     './js/utils/futures.js',
+    './js/utils/bill-parse.js',
     './js/firebase-config.js',
     './manifest.webmanifest',
     './manifest-stock.webmanifest',

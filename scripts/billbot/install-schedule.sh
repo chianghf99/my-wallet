@@ -54,6 +54,16 @@ fi
 
 [[ -f "$BOT" ]] || { echo "❌ 找不到 $BOT"; exit 1; }
 
+# plist 裡刻意寫「python3 實際的那支執行檔」，不寫 /usr/bin/python3。
+#
+# 原因：/usr/bin/python3 只是個轉接點（本身不是 symlink，而是會再去執行
+# CommandLineTools 底下那支的 shim），而 macOS 的隱私權保護（TCC）認的是
+# **實際執行的執行檔**。寫 /usr/bin/python3 的話，使用者在「完全取硬碟存取權」
+# 裡加的是轉接點、真正讀檔的卻是另一支，於是照樣 Operation not permitted，
+# 而且錯誤訊息完全看不出原因。兩邊指同一支就不會有這個歧義。
+PY="$(/usr/bin/python3 -c 'import sys; print(sys.executable)' 2>/dev/null)"
+[[ -x "$PY" ]] || PY=/usr/bin/python3
+
 if [[ "$MODE" == "weekly" ]]; then
   INTERVAL="        <key>Weekday</key><integer>$WEEKDAY</integer>
         <key>Hour</key><integer>$HOUR</integer>
@@ -75,10 +85,12 @@ cat > "$PLIST" <<PLIST_EOF
     <key>Label</key>
     <string>$LABEL</string>
 
-    <!-- 系統內建的 python3（這台機器沒有 node，也刻意不依賴 Homebrew） -->
+    <!-- 系統內建的 python3（這台機器沒有 node，也刻意不依賴 Homebrew）。
+         這裡是實際執行檔的路徑，不是 /usr/bin/python3 —— 見上方關於 TCC 的說明。
+         這個路徑也就是要加進「完全取硬碟存取權」的那一個。 -->
     <key>ProgramArguments</key>
     <array>
-        <string>/usr/bin/python3</string>
+        <string>$PY</string>
         <string>$BOT</string>
     </array>
 
@@ -112,6 +124,9 @@ launchctl bootstrap "gui/$UID_NUM" "$PLIST"
 
 echo "✅ 排程已安裝：$WHEN"
 echo "   設定檔：$PLIST"
+echo "   執行用的 python3：$PY"
+echo "   ↑ 這個路徑必須在「系統設定 → 隱私權與安全性 → 完全取硬碟存取權」清單裡並開啟，"
+echo "     否則背景執行讀不到桌面與 OneDrive 的檔案（錯誤訊息是 Operation not permitted）"
 echo "   立刻測跑：$0 --run-now"
 echo "   看狀態：  $0 --status"
 echo "   改時間：  $0 <星期幾0-6> <時> <分>　或　$0 --daily <時> <分>"

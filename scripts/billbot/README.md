@@ -128,6 +128,32 @@ scripts/billbot/install-schedule.sh 0 12 0
 
 每次執行結束會跳 macOS 通知（新增了幾筆、共多少錢；失敗時也會通知）。
 
+## 想改設定的時候看這裡
+
+| 想改什麼 | 怎麼改 | 何時生效 |
+|---|---|---|
+| **執行時間** | 重跑安裝腳本：`install-schedule.sh 3 22 30`（週三 22:30）或 `--daily 9 0`（每天 09:00） | 立刻 |
+| **監看的資料夾** | 編輯 `~/.config/mywallet/billbot.json` 的 `watch_dir` | 下次執行 |
+| **處理完要不要刪檔** | 同上，改 `processed_action`（`keep`／`move`／`trash`） | 下次執行 |
+| **某家銀行的 PDF 密碼變了** | `security add-generic-password -s mywallet-bill-pdf -a <代號> -U -T /usr/bin/security -w` | 下次執行 |
+| **機器人帳號密碼變了** | 同上，`-s mywallet-billbot-firebase -a <那個 email>` | 下次執行 |
+| **某家銀行金額或日期抓錯** | 改 `js/utils/bill-parse.js` 的 `processBankRules`。**網頁與排程共用這一份** | 排程立刻；網頁要 commit + push |
+| **新增一家銀行** | ①`bill-parse.js` 加一條解析規則 ②`bill_bot.py` 的 `BANK_CODE_RULES` 加檔名對應 ③把該行的 PDF 密碼存進 Keychain | 同上 |
+| **暫時停用排程** | `install-schedule.sh --uninstall`（程式與設定都留著，重裝即可） | 立刻 |
+| **搬動整個專案資料夾** | 重跑 `build-app.sh`，並把新的 `.app` 重新加進「完全取硬碟存取權」 | 立刻 |
+
+改完設定檔之後跑這個確認沒打壞（JSON 多一個逗號就會整支停掉）：
+
+```bash
+python3 scripts/billbot/bill_bot.py --setup-check
+```
+
+改動解析規則之後，用 `--dry-run` 看抓到的金額對不對，再讓它真的寫入：
+
+```bash
+python3 scripts/billbot/bill_bot.py --dry-run --verbose
+```
+
 ## 處理完的 PDF 要怎麼辦
 
 設定檔的 `processed_action`（三選一）：

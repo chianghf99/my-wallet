@@ -63,3 +63,102 @@ Finnhub 僅保留為退路。
 - GitHub Actions 的 cron 不保證準時（實測延遲 1～2.5 小時）；因期貨固定取日盤收盤，對快照結果沒有影響。
 - 國定假日休市時會照跑，抓到的是前一交易日收盤價，等於複製前一天的快照，走勢圖呈現持平，不影響正確性。
 - 可在 Actions 頁面用 **Run workflow** 手動觸發測試。
+
+---
+
+## 帳單到期提醒
+
+`bill-reminder.mjs` 由 [`.github/workflows/bill-reminder.yml`](../.github/workflows/bill-reminder.yml)
+每天 **07:47（台北）** 觸發，讀雲端的未繳帳單，**只有在有東西快到期時**才推一則
+Telegram 訊息。沒事就安靜，不會每天都來。
+
+提醒時機：
+
+| 狀況 | 會不會提醒 |
+|---|---|
+| 繳款日前 3 天、前 1 天 | ✅ 各一次（`REMIND_DAYS` 可改） |
+| 繳款日當天 | ✅ 一定提醒，不受設定影響 |
+| 已逾期 | ✅ 每天，直到逾期滿 60 天為止 |
+| 繳款日不明（PDF 沒解析出日期） | ✅ 每天，直到你補上日期或標為已繳 |
+| 已繳 / 跳過 / 金額為 0 | ❌ |
+
+### 設定步驟（約五分鐘）
+
+**1. 建 bot，拿 token**
+
+在 Telegram 找 [@BotFather](https://t.me/BotFather) → `/newbot` → 照著取名字 →
+它會回一串 `123456789:AAE...` 的 token。
+
+**2. 跟你的 bot 講一句話**
+
+搜尋剛才取的 bot 名稱，點進去按「開始」隨便傳一個字。
+**不傳這一句，bot 不能主動發訊息給你**（Telegram 的規則）。
+
+**3. 查你的 chat id**
+
+瀏覽器打開（把 `<TOKEN>` 換成第 1 步那串）：
+
+```
+https://api.telegram.org/bot<TOKEN>/getUpdates
+```
+
+回應裡 `"chat":{"id":123456789,...}` 的那個數字就是 `TELEGRAM_CHAT_ID`。
+
+**4. 填進 GitHub Secrets**
+
+repo → Settings → Secrets and variables → Actions → New repository secret：
+
+| 名稱 | 內容 |
+|---|---|
+| `TELEGRAM_BOT_TOKEN` | 第 1 步那串 token |
+| `TELEGRAM_CHAT_ID` | 第 3 步那個數字 |
+
+`FIREBASE_SERVICE_ACCOUNT` 與 `APP_UID` 沿用每日快照的那兩個，不必重設。
+
+**5. 試跑**
+
+Actions → 帳單到期提醒 → Run workflow。
+第一次建議把 **只檢查不送出** 打勾（`dry_run`），日誌會印出有幾筆符合條件但不會送出訊息；
+確認數字合理再跑一次不打勾的。
+
+### 想改設定看這裡
+
+全部是選填的環境變數，加在 `bill-reminder.yml` 最後一步的 `env:` 底下。
+
+| 想做的事 | 設定 |
+|---|---|
+| 改提醒時機（例如提前一週） | `REMIND_DAYS: '7,3,1'` |
+| 逾期多久就別再吵 | `OVERDUE_MAX_DAYS: '30'` |
+| 關掉「繳款日不明」的提醒 | `REMIND_UNKNOWN_DATE: 'false'` |
+| 訊息不要有金額與銀行名稱 | `REMINDER_DETAIL: 'counts'` |
+| 改訊息末尾的連結 | `CARD_URL: 'https://...'` |
+| 改推播時間 | 改 workflow 裡的 `cron`（UTC，台北要減 8 小時） |
+
+### ⚠️ 推播內容會經過 Telegram 的伺服器
+
+預設的 `full` 模式會送出**銀行名稱、金額、繳款日**。這是你自己跟自己 bot 的私人對話，
+但訊息確實會經過 Telegram。不想送出這些就設 `REMINDER_DETAIL: 'counts'`，
+訊息會變成「你有 3 筆未繳帳單需要注意：已逾期 1 筆、今天最後一天 1 筆……」，
+金額與銀行完全不出境。
+
+**自動扣款帳戶末五碼（`card.autopayFrom`）在任何模式下都不會進訊息** ——
+訊息只會標一個「🏦 自動扣繳」。這條有測試釘住（`test-bill-reminder.mjs`）。
+
+同樣地，Actions 日誌只會印筆數與狀態，不印訊息內容、金額、銀行或 uid；
+`DRY_RUN` 也只印「本來會送出幾行」，不印內容。
+
+### 為什麼 `APP_UID` 只能填一組
+
+每日快照可以一次處理多個帳號，因為它是各寫各的資料庫。提醒不行 ——
+它只有一個 Telegram 收件人，多組 uid 會把**別人的帳單金額推到你的手機上**。
+所以 `bill-reminder.mjs` 偵測到逗號就直接中止。
+
+### 為什麼挑選邏輯要獨立成一個檔案
+
+`bill-reminder-core.mjs` 是純函式、不碰網路也不碰 Firestore，由
+`test-bill-reminder.mjs` 覆蓋。原因是這個功能的失敗模式是**安靜的**：
+提醒不會噴錯，它只是沒出現，或是把天數算錯一天，等到發現時帳單已經逾期了。
+
+天數算法的坑特別值得記一筆：`new Date('2026-11-12')` 會被解讀成 **UTC 午夜**，
+拿它減「本地午夜」在台北（UTC+8）會差 8 小時，`Math.ceil` 之後整個倒數多出一天。
+網頁的「剩 N 天」原本就是這樣算的（v5.15.0 已修，兩邊現在用同一套算法）。

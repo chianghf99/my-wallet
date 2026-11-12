@@ -39,3 +39,8 @@ jobs:
       # 讓刪除失效），兩者都不會當場報錯，所以釘在 CI 上。
       - name: 卡片管家雲端同步合併
         run: node scripts/test-bill-sync.mjs
+
+      # 帳單到期提醒的挑選邏輯。失敗模式同樣是安靜的：提醒不會噴錯，只是不出現
+      # 或是把天數算錯一天（時區），要等到帳單逾期才會發現。
+      - name: 帳單到期提醒挑選邏輯
+        run: node scripts/test-bill-reminder.mjs

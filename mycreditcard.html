@@ -1113,6 +1113,13 @@ createApp({
         ];
 
         const changelog = [
+            { version: 'v5.15.0', date: '2026-11-12', items: [
+                '新增：帳單到期提醒。繳款日前 3 天與前 1 天、以及到期當天，會各推一則 Telegram 訊息給你，逾期未繳的也會每天提醒（預設到逾期 60 天為止）。訊息裡會標出哪幾張是自動扣繳 —— 那幾筆不用去繳，但要確認扣款帳戶裡有錢。設定方式見 scripts/README.md。',
+                '說明：提醒跑在 GitHub Actions 上，每天早上一次，不需要開著電腦，也不需要你的加密密碼（帳單的金額與繳款日本來就是不加密的欄位，加密的只有卡片地址）。自動扣款帳戶末五碼是個資，刻意不會出現在推播訊息裡。',
+                '說明：不想把金額與銀行名稱送進 Telegram 的伺服器的話，可以切成精簡模式，訊息只會講「你有 3 筆未繳帳單需要注意」。',
+                '修正：「剩 N 天」整個倒數在台北時區會多算一天 —— 當天到期顯示「剩 1 天」、逾期一天才顯示「今天到期」、真正的「已過期」要等到第二天才出現。原因是拿「UTC 午夜」去減「本地午夜」，兩者差 8 小時，無條件進位後就多出一天。繳款日差一天就是差在有沒有被扣違約金。',
+                '修正：繳款日格式壞掉時，狀態標籤會顯示「剩 NaN 天」；現在一律顯示「請確認」。'
+            ] },
             { version: 'v5.14.0', date: '2026-11-12', items: [
                 '安全性：Tailwind 改為自己放一份（vendor/tailwind-3.4.17.js），不再從 cdn.tailwindcss.com 載入。它原本是全站七支外部腳本裡**唯一沒有 integrity 的一支** —— 那代表該 CDN 若被入侵或連線遭劫持，對方的 JavaScript 會跟本頁程式碼平起平坐，讀得到已解密的主金鑰、帳單與卡片地址。自己放一份就完全不依賴對方，也不會有 SRI 雜湊對不上就整頁沒樣式的風險。',
                 '修正：順帶補掉一個離線的洞 —— cdn.tailwindcss.com 不在 Service Worker 的快取名單裡，所以「可離線使用」的 PWA 一離線其實是沒有樣式的。改成自家檔案並放進 shell 快取後才真的能離線開。',
@@ -2717,9 +2724,30 @@ createApp({
             return 'fas fa-money-bill-wave';
         };
 
+        // 距離繳款日還有幾天。今天到期回 0，昨天到期回 -1，算不出來回 null。
+        //
+        // 為什麼不是 new Date(bill.date) 減本地午夜（v5.15.0 之前的寫法）：
+        // new Date('2026-11-12') 會被解讀成「UTC 午夜」，拿它減「台北的本地午夜」
+        // 會多出 8 小時，Math.ceil 之後整個倒數就往後偏一天 —— 當天到期顯示
+        // 「剩 1 天」、逾期一天才顯示「今天到期」、真正的「已過期」要等到第二天。
+        // 繳款日這種東西差一天就是差在有沒有被扣違約金，所以改成兩邊都拆成
+        // 年／月／日 再用 Date.UTC 相減，與時區完全無關。
+        //
+        // 排程提醒用的是同一套算法（scripts/bill-reminder-core.mjs 的 daysUntil，
+        // 有回歸測試）。兩邊若不一致，Telegram 說「還有 3 天」而網頁說「剩 4 天」。
+        const daysUntilDue = (dateStr) => {
+            const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(dateStr || '').trim());
+            if (!m) return null;
+            const due = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+            const now = new Date();
+            const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+            return Math.round((due - today) / 86400000);
+        };
+
         const getBillStatusClass = (bill) => {
-            if (!bill.date || bill.date === '未知日期') return { badge: 'bg-rose-500/10 text-rose-500', iconBg: 'bg-rose-500/10 text-rose-500', text: '請確認' };
-            const d = Math.ceil((new Date(bill.date) - new Date().setHours(0,0,0,0)) / 86400000);
+            // 日期格式壞掉時也走這條（以前會算出 NaN，一路掉到最後顯示「剩 NaN 天」）
+            const d = daysUntilDue(bill.date);
+            if (d === null) return { badge: 'bg-rose-500/10 text-rose-500', iconBg: 'bg-rose-500/10 text-rose-500', text: '請確認' };
             if (d < 0) return { badge: 'bg-rose-500 text-white', iconBg: 'bg-rose-500/20 text-rose-500', text: '已過期' };
             if (d === 0) return { badge: 'bg-rose-500 animate-pulse text-white', iconBg: 'bg-rose-500/20 text-rose-500', text: '今天到期' };
             if (d <= 3) return { badge: 'bg-amber-500 text-white', iconBg: 'bg-amber-500/20 text-amber-500', text: `剩 ${d} 天` };
@@ -2733,8 +2761,8 @@ createApp({
         };
 
         const getUrgencyBar = (bill) => {
-            if (!bill.date || bill.date === '\u672a\u77e5\u65e5\u671f') return { width: '100%', color: 'bg-rose-500' };
-            const d = Math.ceil((new Date(bill.date) - new Date().setHours(0,0,0,0)) / 86400000);
+            const d = daysUntilDue(bill.date);
+            if (d === null) return { width: '100%', color: 'bg-rose-500' };
             if (d < 0)  return { width: '100%', color: 'bg-rose-600' };
             if (d === 0) return { width: '100%', color: 'bg-rose-500 animate-pulse' };
             if (d <= 3)  return { width: `${100 - d * 5}%`, color: 'bg-amber-500' };

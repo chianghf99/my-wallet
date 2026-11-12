@@ -3,6 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- Content-Security-Policy（v5.14.0）。
+         重點不在 script-src —— 頁面本來就要跑 Vue 與一堆 inline script，擋不了多少。
+         **真正有用的是 connect-src**：萬一哪個 CDN 被換掉、惡意程式碼真的跑起來了，
+         它也只能連下面列出的這幾個位址，沒有地方可以把你的帳單與金鑰送出去。
+         object-src / base-uri / form-action 則是堵住幾種常見的轉址與夾帶手法。
+
+         要加新的外部來源時：先在瀏覽器 Console 看被擋下的那一行（會明講缺哪個指令與網域），
+         再把該網域補進對應的指令，不要整條拿掉。 -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://www.gstatic.com https://apis.google.com;
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com;
+        font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com;
+        img-src 'self' data: blob: https://www.svgrepo.com https://lh3.googleusercontent.com;
+        connect-src 'self' https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com https://www.googleapis.com;
+        frame-src https://stock-portfolio-df6dd.firebaseapp.com https://accounts.google.com https://apis.google.com;
+        worker-src 'self' blob:;
+        manifest-src 'self';
+        object-src 'none';
+        base-uri 'self';
+        form-action 'none'
+    ">
+    <!-- 這裡刻意沒有 frame-ancestors：它只在 HTTP 標頭有效，寫進 <meta> 會被瀏覽器
+         忽略，還會每次載入都在 Console 留一條錯誤訊息，看起來像壞掉。
+         GitHub Pages 不能自訂回應標頭，所以「禁止被別人 iframe 嵌入」目前做不到；
+         真的需要就得換到設得了標頭的主機（例如 Cloudflare Pages）。 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#6366f1">
     <!-- 外部資源皆已鎖定版本並加上 SRI（Subresource Integrity）。
@@ -31,7 +57,9 @@
     <!-- Tailwind 的 CDN 不回傳 CORS 標頭，而 SRI 必須搭配 crossorigin，
          兩者並用會讓瀏覽器直接拒絕載入。因此這支僅鎖定版本、不加 SRI。
          鎖版本仍有意義：bare URL 會 302 導向最新版，改版可能帶來破壞性變更。 -->
-    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <!-- Tailwind 自己放一份（vendor/），不走 CDN —— 它原本是全站唯一沒有 integrity 的
+         外部腳本，被換掉就等於有人能在這一頁執行任意程式碼。見 vendor/README.md -->
+    <script src="vendor/tailwind-3.4.17.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"
         integrity="sha384-S3wQ/l0OsbJoFeJC81UIr3JOlx/OzNJpRt1bV+yhpWQxPAahfpQtpxBSfn+Isslc" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script>
@@ -1085,6 +1113,14 @@ createApp({
         ];
 
         const changelog = [
+            { version: 'v5.14.0', date: '2026-11-12', items: [
+                '安全性：Tailwind 改為自己放一份（vendor/tailwind-3.4.17.js），不再從 cdn.tailwindcss.com 載入。它原本是全站七支外部腳本裡**唯一沒有 integrity 的一支** —— 那代表該 CDN 若被入侵或連線遭劫持，對方的 JavaScript 會跟本頁程式碼平起平坐，讀得到已解密的主金鑰、帳單與卡片地址。自己放一份就完全不依賴對方，也不會有 SRI 雜湊對不上就整頁沒樣式的風險。',
+                '修正：順帶補掉一個離線的洞 —— cdn.tailwindcss.com 不在 Service Worker 的快取名單裡，所以「可離線使用」的 PWA 一離線其實是沒有樣式的。改成自家檔案並放進 shell 快取後才真的能離線開。',
+                '安全性：新增 Content-Security-Policy。重點是 connect-src —— 萬一仍有惡意程式碼在這一頁跑起來，它也只能連 Firebase 那幾個位址，沒有地方可以把你的帳單與金鑰送出去。',
+                '安全性：主密碼算出的 AES 金鑰改存 sessionStorage，不再寫進 localStorage。原本它會一直留在硬碟上，於是 PIN 鎖其實擋不住任何人 —— 拿到這台電腦的人開 DevTools 複製那個值就能解開所有加密欄位，不需要 PIN 也不需要主密碼。匯出備份檔早就因為同一個理由刻意不收這把金鑰（「備份檔外洩就等於金鑰外洩」），但同一把金鑰卻躺在 localStorage 裡，等於門鎖好了、旁邊窗戶開著。',
+                '影響：升級後第一次開啟會請你重新輸入一次「加密密碼」（舊版留在硬碟上的那份會被主動清掉）。之後的規則是：重新整理仍記得，關掉分頁就要再輸入一次。覺得太頻繁的話，把 writeMasterKeyCache 改回 localStorage 即可，但就會退回原本的狀態。',
+                '說明：這一版沒有改動任何帳單或卡片資料的格式，雲端那份文件一個欄位都沒動。'
+            ] },
             { version: 'v5.13.0', date: '2026-11-11', items: [
                 '修正：在舊的分頁上改任何東西，會把排程機器人（或另一台裝置）新增的帳單蓋掉。雲端同步的上傳是「整包覆寫帳單清單」，所以一個開著好幾天沒重新整理的分頁，手上那份清單是舊的 —— 只要在它上面標記已繳、新增或刪除任何一筆，上傳就會把這段期間別處新增的帳單抹掉，而且畫面上不會有任何徵兆。',
                 '調整：上傳前會先讀一次雲端，把「雲端有、這台裝置沒有」且是在本機與雲端對齊之後才新增的帳單併回來，再一起上傳，並顯示補回了幾筆。',
@@ -1552,6 +1588,33 @@ createApp({
         const masterPassphrase = ref('');
         const masterPassphraseConfirm = ref('');
 
+        // --- v5.14.0: 主金鑰快取改存 sessionStorage ---
+        // 這是用主密碼算出來的「實際 AES 金鑰」。放 localStorage 的話它會一直留在硬碟上，
+        // 於是 PIN 鎖其實擋不住任何人 —— 拿到這台電腦的人開 DevTools 複製這個值就能解開
+        // 所有加密欄位，不需要 PIN、也不需要主密碼。
+        //
+        // exportBackup() 早就因為同一個理由刻意不把它寫進備份檔
+        //（「備份檔外洩就等於金鑰外洩」），但同一把金鑰卻躺在 localStorage 裡，
+        // 等於備份檔那道門鎖好了、旁邊的窗戶開著。
+        //
+        // 改用 sessionStorage：重新整理仍在（不會一直打斷你），關掉分頁就消失。
+        // 代價是每開一次新分頁要重打一次主密碼 —— 這正是這個機制該有的樣子。
+        const MASTER_KEY_CACHE = 'app_master_key_cache';
+        const readMasterKeyCache = () => {
+            try { return sessionStorage.getItem(MASTER_KEY_CACHE); } catch (e) { return null; }
+        };
+        const writeMasterKeyCache = (k) => {
+            try { sessionStorage.setItem(MASTER_KEY_CACHE, k); } catch (e) { /* 無痕模式等情況：不快取就是了 */ }
+        };
+        // 兩邊都清。localStorage 那份是 v5.14.0 之前留下的，必須一併清掉才有意義。
+        const clearMasterKeyCache = () => {
+            try { sessionStorage.removeItem(MASTER_KEY_CACHE); } catch (e) {}
+            try { localStorage.removeItem(MASTER_KEY_CACHE); } catch (e) {}
+        };
+        // 升級後第一次開啟：把舊版留在硬碟上的金鑰刪掉。
+        // 這會讓你這次需要重新輸入一次主密碼，是預期行為。
+        try { localStorage.removeItem(MASTER_KEY_CACHE); } catch (e) {}
+
         const getKeySalt = () => localStorage.getItem('app_key_salt') || '';
         const ensureKeySalt = () => {
             let salt = getKeySalt();
@@ -1620,7 +1683,7 @@ createApp({
 
                         // --- passphrase \u6a21\u5f0f\uff1aPIN \u53ea\u8ca0\u8cac\u89e3\u9396\u756b\u9762\uff0c\u771f\u6b63\u7684\u52a0\u5bc6\u91d1\u9470\u8981\u53e6\u5916\u7528\u4e3b\u5bc6\u78bc\u7b97 ---
                         if (encryptionMode.value === 'passphrase') {
-                            const cachedKey = localStorage.getItem('app_master_key_cache');
+                            const cachedKey = readMasterKeyCache();
                             if (cachedKey) {
                                 _sessionKey.value = cachedKey;
                                 isLocked.value = false;
@@ -1884,7 +1947,7 @@ createApp({
             localStorage.removeItem('app_key_salt');
             localStorage.removeItem('app_key_check');
             localStorage.removeItem('app_key_mode');
-            localStorage.removeItem('app_master_key_cache');
+            clearMasterKeyCache();
             encryptionMode.value = 'pin';
             _sessionKey.value = '';
             isPinSet.value = false;
@@ -1981,7 +2044,7 @@ createApp({
             }
 
             localStorage.setItem('app_key_mode', 'passphrase');
-            localStorage.setItem('app_master_key_cache', newKey);
+            writeMasterKeyCache(newKey);
             localStorage.setItem('app_key_check', makeKeyCheck(newKey));
             encryptionMode.value = 'passphrase';
             _sessionKey.value = newKey;
@@ -2042,7 +2105,7 @@ createApp({
             }
 
             _sessionKey.value = key;
-            localStorage.setItem('app_master_key_cache', key);
+            writeMasterKeyCache(key);
             // 這組金鑰確認可用了，補寫 canary —— 之後這台裝置與其他裝置都驗得了
             localStorage.setItem('app_key_check', makeKeyCheck(key));
             pendingPassphraseKey.value = '';
@@ -2057,8 +2120,9 @@ createApp({
             const myCreditDataStr = localStorage.getItem('myCreditData') || '{"bills":[],"cards":[]}';
             // Include hash & salt so encrypted card fields can be decrypted on other devices
             // with the correct PIN/主密碼。原始 PIN 跟主密碼本身都不會被儲存或匯出——
-            // app_master_key_cache（本機快取的實際金鑰）故意不放進備份檔，
+            // app_master_key_cache（算出來的實際金鑰）故意不放進備份檔，
             // 否則備份檔外洩就等於金鑰外洩，主密碼機制會形同虛設。
+            // v5.14.0 起它只存在 sessionStorage，連硬碟上都不會留。
             const backupData = {
                 myCreditData: myCreditDataStr,
                 app_pin_hash: localStorage.getItem('app_pin_hash') || '',
@@ -2115,7 +2179,7 @@ createApp({
                                 encryptionMode.value = data.app_key_mode;
                             }
                             // 這台裝置還沒有主密碼算出的金鑰快取，還原後需要重新輸入一次主密碼
-                            localStorage.removeItem('app_master_key_cache');
+                            clearMasterKeyCache();
                             if (data.theme) localStorage.setItem('theme', data.theme);
                             if (data.privacy) localStorage.setItem('privacy', data.privacy);
 

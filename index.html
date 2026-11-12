@@ -3,6 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Content-Security-Policy（v5.14.0）。入口頁不碰 Firebase、也沒有任何資料，
+         所以這裡可以鎖得比另外兩頁緊 —— connect-src 只留 'self'。 -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self' 'unsafe-inline';
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com;
+        font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com;
+        img-src 'self' data:;
+        connect-src 'self';
+        worker-src 'self';
+        manifest-src 'self';
+        object-src 'none';
+        base-uri 'self';
+        form-action 'none'
+    ">
+    <!-- 這裡刻意沒有 frame-ancestors：它只在 HTTP 標頭有效，寫進 <meta> 會被瀏覽器
+         忽略，還會每次載入都在 Console 留一條錯誤訊息，看起來像壞掉。
+         GitHub Pages 不能自訂回應標頭，所以「禁止被別人 iframe 嵌入」目前做不到；
+         真的需要就得換到設得了標頭的主機（例如 Cloudflare Pages）。 -->
     <!-- 外部資源皆已鎖定版本並加上 SRI（Subresource Integrity）。
          瀏覽器會比對下載內容的雜湊，不符即拒絕執行 —— 即使 CDN 被入侵或連線遭劫持，
          也無法把函式庫換成惡意版本。注意：升級版本時 integrity 雜湊必須同步更新，

@@ -11,7 +11,7 @@
 
 const KILL_SWITCH = false;
 
-const VERSION = 'v2';   // v2：新增 js/utils/bill-parse.js，舊快取沒有它，必須換版重建
+const VERSION = 'v3';   // v3：Tailwind 改為自己放一份（vendor/），舊快取沒有它，必須換版重建
 const SHELL_CACHE = `mywallet-shell-${VERSION}`;
 const CDN_CACHE = `mywallet-cdn-${VERSION}`;
 
@@ -29,6 +29,10 @@ const SHELL_ASSETS = [
     './js/utils/futures.js',
     './js/utils/bill-parse.js',
     './js/firebase-config.js',
+    // Tailwind 自己放一份。放進 shell 才真的能離線 —— 它原本走 CDN，
+    // 而 cdn.tailwindcss.com 不在下面的 CDN_HOSTS 裡，從來沒被快取過，
+    // 等於「離線可用」的 PWA 一離線就沒有樣式。
+    './vendor/tailwind-3.4.17.js',
     './manifest.webmanifest',
     './manifest-stock.webmanifest',
     './manifest-card.webmanifest',

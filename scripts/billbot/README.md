@@ -92,7 +92,25 @@ python3 scripts/billbot/import_pdf_passwords.py --verify
 security add-generic-password -s mywallet-bill-pdf -a <代號> -U -T /usr/bin/security -w
 ```
 
-### 5. 檢查是否就緒
+### 5. 建立專用 app（決定硬碟存取權給誰）
+
+```bash
+scripts/billbot/build-app.sh
+```
+
+排程要讀桌面與 OneDrive 底下的檔案，macOS 要求「完全取硬碟存取權」。而這個權限**綁的是
+實際執行的那支執行檔** —— 直接授權 `python3`，等於讓這台機器上任何 Python 腳本都能讀你
+所有檔案。`build-app.sh` 產生一個只會做這件事的 `帳單機器人.app`（專案路徑編譯進去、
+ad-hoc 簽章、固定 bundle id），把權限收斂到它一個。
+
+建好之後到 **系統設定 → 隱私權與安全性 → 完全取硬碟存取權**，按 `+`、用 ⌘⇧G 貼上
+`scripts/billbot/帳單機器人.app` 的完整路徑，加入並開啟。安裝排程時腳本也會再印一次
+「需要授權」的路徑。
+
+`.app` 是建置產物，不進版控。**搬動專案資料夾之後要重跑 `build-app.sh`**，
+並把新的 `.app` 重新加進權限清單（路徑是編譯進去的）。
+
+### 6. 檢查是否就緒
 
 ```bash
 python3 scripts/billbot/bill_bot.py --setup-check
@@ -100,7 +118,7 @@ python3 scripts/billbot/bill_bot.py --setup-check
 
 會逐項確認設定檔、Keychain、機器人登入、雲端讀取、以及哪幾家銀行已有 PDF 密碼。
 
-### 6. 先試跑，再裝排程
+### 7. 先試跑，再裝排程
 
 ```bash
 python3 scripts/billbot/bill_bot.py --dry-run --verbose
@@ -141,6 +159,7 @@ scripts/billbot/install-schedule.sh 0 12 0
 | **新增一家銀行** | ①`bill-parse.js` 加一條解析規則 ②`bill_bot.py` 的 `BANK_CODE_RULES` 加檔名對應 ③把該行的 PDF 密碼存進 Keychain | 同上 |
 | **暫時停用排程** | `install-schedule.sh --uninstall`（程式與設定都留著，重裝即可） | 立刻 |
 | **搬動整個專案資料夾** | 重跑 `build-app.sh`，並把新的 `.app` 重新加進「完全取硬碟存取權」 | 立刻 |
+| **換到別台電腦跑** | 見下面「換到別台電腦，或從這台清掉」 | — |
 
 改完設定檔之後跑這個確認沒打壞（JSON 多一個逗號就會整支停掉）：
 
@@ -176,6 +195,55 @@ python3 scripts/billbot/bill_bot.py --dry-run --verbose
 不用 AppleScript 叫 Finder 刪檔 —— 背景執行的程式要控制 Finder 需要「自動化」權限，
 而背景程式無法跳出詢問框，只會無聲失敗。直接搬進 `~/.Trash` 不需要額外權限。
 
+## 換到別台電腦，或從這台清掉
+
+**雲端那一半跟機器無關，換機器完全不用重做**：機器人帳號、Firestore 規則、
+已經寫進去的帳單、程式碼（在 GitHub，`git clone` 就有）、OneDrive 的帳單資料夾。
+
+> 清理舊機器時**不要刪掉機器人帳號或 Firestore 規則**。那兩個是共用的，
+> 刪了新機器也連不上 —— 這是唯一容易搞錯的地方。
+
+綁在特定機器上的只有六處：
+
+| 東西 | 位置 | 清除 |
+|---|---|---|
+| 排程 | `~/Library/LaunchAgents/com.mywallet.billbot.plist` | `install-schedule.sh --uninstall` |
+| 專用 app | `scripts/billbot/帳單機器人.app` | 直接刪（建置產物，`build-app.sh` 重建） |
+| 硬碟存取權 | 系統設定 → 隱私權與安全性 → 完全取硬碟存取權 | 移除「帳單機器人」那一列 |
+| 設定檔 | `~/.config/mywallet/billbot.json` | 刪（內有 uid 與路徑，沒有密碼） |
+| 密碼 | Keychain，服務名稱 `mywallet-billbot-firebase` 與 `mywallet-bill-pdf` | 鑰匙圈存取搜 `mywallet` 刪 |
+| 帳本與記錄 | `~/.local/state/mywallet/billbot-ledger.json`、`~/Library/Logs/mywallet-billbot*.log` | 刪 |
+
+### 順序
+
+1. **先把新機器裝好、試跑成功**（見下一小節），再回來清舊的。
+   反過來做的話，中間卡住就兩邊都沒有。
+2. 新機器 `--dry-run` 看起來對，再真的寫入一次，確認網頁上看得到。
+3. 舊機器 `install-schedule.sh --uninstall`，然後按上表清掉其餘五處。
+
+**不要讓兩台同時跑排程。** 帳本（ledger）是每台機器各自一份，但雲端那層有
+「同名稱＋同截止日」的重複判斷，所以不會產生重複帳單；只是兩台都設 `trash` 的時候，
+誰先跑誰把 PDF 丟進垃圾桶，另一台空跑。新機器驗證完就把舊的排程卸掉。
+
+### 新機器要做的事
+
+就是「一次性設定」的第 3 步起 —— 前兩步是雲端設定，已經做過了：
+clone → 設定檔 → 密碼進 Keychain → `build-app.sh` ＋ 給權限 → `--setup-check` →
+`--dry-run` → 裝排程。
+
+兩個跟第一次不同的地方：
+
+- **PDF 密碼要手動一家一家加。** 第 4 步的 `import_pdf_passwords.py` 讀的是舊 Windows
+  機器人的設定檔，那份不在版控裡，新機器 clone 之後沒有。先在舊機器跑
+  `--setup-check` 把「已有密碼的銀行代號」列出來，再到新機器用
+  `security add-generic-password -s mywallet-bill-pdf -a <代號> -U -T /usr/bin/security -w`
+  逐一加入。
+- **先確認 OneDrive 已經把帳單資料夾同步到本機**，而且不是「僅線上」的佔位檔。
+
+`processed_action` 設 `trash` 讓搬移單純不少：資料夾裡不會留舊帳單，新機器那本空帳本
+就不會把舊檔案重新認一遍。若設的是 `keep`，換機器前先把資料夾清空 —— 否則新機器第一次
+跑會把留著的 PDF 全部當成新的（雲端的重複判斷會接住，不會真的重複新增，但記錄會很吵）。
+
 ## 重複與遺失的防線
 
 - **同一個檔案不會被處理兩次**：`~/.local/state/mywallet/billbot-ledger.json` 記著已處理檔案的 SHA-256。
@@ -185,23 +253,28 @@ python3 scripts/billbot/bill_bot.py --dry-run --verbose
 
 ## 已知限制與風險
 
-1. **網頁的雲端同步是「整包覆寫」的。**
+1. **網頁的雲端同步是「整包覆寫」的** —— 已加上合併防線。
    卡片管家在你改任何東西時，會把**本機整份 `bills` 陣列**上傳覆蓋雲端
-   （`mycreditcard.html` 的 `triggerSync('upload')`）。
-   登入時雖然會先下載一次，但如果你有一個**開著好幾天沒重新整理**的分頁，
-   在機器人寫入之後才在那個分頁上改東西，機器人加的那筆就會被覆蓋掉。
-   目前的解法是：**用之前先重新整理一次頁面**。
-   根治的做法是讓上傳前先合併雲端的 `bills`（還沒做）。
+   （`mycreditcard.html` 的 `triggerSync('upload')`）。原本的後果是：有個
+   **開著好幾天沒重新整理**的分頁，在機器人寫入之後才在那個分頁上改東西，
+   機器人加的那筆就會被覆蓋掉。
+   v5.13.0 起上傳前會先讀雲端，把「本機沒有、而且是上次同步之後才新增」的帳單補回來
+   （`BillParse.rescuableBills`：用帳單 id 當建立時間戳，比對 `card_last_cloud_sync` 水位）。
+   **刻意不救回水位之前的帳單** —— 否則你刪掉的帳單會一直復活。
+   `scripts/test-bill-sync.mjs` 守著這個行為，CI 會跑。
 
 2. **13 家銀行的規則，目前只有聯邦銀行用真實帳單實測過這條排程路徑。**
    規則本身與網頁共用、網頁那邊都驗過，但排程端的取字是 pdfplumber、網頁端是 pdf.js。
    兩邊都用「Y 座標 3pt 一桶」重建行結構，理論上一致，但**第一次收到某家銀行的帳單時，
    建議先 `--dry-run` 看一下金額對不對**，再讓它自動寫入。
 
-3. **Full Disk Access。**
-   排程讀的是 `~/Library/CloudStorage/OneDrive-個人/…`。
-   如果 `--run-now` 的記錄出現 `Operation not permitted`，到
-   系統設定 → 隱私權與安全性 → 完全取硬碟存取權，按 `+`、用 ⌘⇧G 輸入 `/usr/bin/python3` 加入。
+3. **完全取硬碟存取權綁的是「實際執行的執行檔」。**
+   排程讀的是 `~/Library/CloudStorage/OneDrive-個人/…`，沒這個權限會失敗，
+   記錄裡的徵兆是 `Operation not permitted`。
+   要授權的是 `scripts/billbot/帳單機器人.app`（見「一次性設定」第 5 步）。
+   **不要加 `/usr/bin/python3`** —— 它只是個轉接點（不是 symlink，會再去執行
+   CommandLineTools 底下那支），TCC 不認，加了完全沒有作用；
+   而且失敗訊息與「根本沒授權」一字不差，看不出是加錯了對象。
 
 4. **OneDrive 必須已經把檔案下載到本機**（不是「僅線上」的佔位檔）。
    讀取時通常會自動觸發下載，但離線時會失敗。
@@ -215,6 +288,7 @@ python3 scripts/billbot/bill_bot.py --dry-run --verbose
 | `bill_bot.py` | 主程式 |
 | `parse_bridge.js` | 用 jsc 呼叫網頁那份解析規則的橋接 |
 | `install-schedule.sh` | 安裝／修改／移除 launchd 排程 |
+| `build-app.sh` | 產生 `帳單機器人.app`，讓硬碟存取權只授權給它一個 |
 | `import_pdf_passwords.py` | 把舊 Windows 機器人的明文密碼搬進 Keychain |
 | `billbot.example.json` | 設定檔範本（實際設定在 `~/.config/mywallet/billbot.json`） |
 | `../../js/utils/bill-parse.js` | **13 家銀行的解析規則，與網頁共用的唯一一份** |

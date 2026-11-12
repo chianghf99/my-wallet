@@ -20,6 +20,8 @@
 //   REMINDER_DETAIL      "full"（預設，含金額與銀行）或 "counts"（只講筆數）
 //   CARD_URL             訊息末尾附的卡片管家連結。預設為 GitHub Pages 上的網址
 //   DRY_RUN              設 "true" 只檢查、不送出，日誌會多印「本來會送出幾行」
+//   TEST_SEND            設 "true" 即使沒有帳單快到期也送一則測試訊息，用來確認
+//                        token 與 chat id 真的通（平常沒事不送，否則無從驗證）
 //
 // ⚠️ 這個 repo 是公開的，GitHub Actions 的執行日誌任何人都看得到（不需登入）。
 //    日誌只能印筆數與狀態 —— 推播訊息的內容、金額、銀行名稱、uid 一律不可以印。
@@ -73,6 +75,7 @@ const main = async () => {
     const token = process.env.TELEGRAM_BOT_TOKEN;
     const chatId = process.env.TELEGRAM_CHAT_ID;
     const dryRun = process.env.DRY_RUN === 'true';
+    const testSend = process.env.TEST_SEND === 'true';
     if (!dryRun && (!token || !chatId)) {
         throw new Error('缺少 TELEGRAM_BOT_TOKEN 或 TELEGRAM_CHAT_ID');
     }
@@ -102,7 +105,7 @@ const main = async () => {
     console.log(`逾期 ${groups.overdue.length}、今天到期 ${groups.dueToday.length}、`
         + `即將到期 ${groups.dueSoon.length}、繳款日不明 ${groups.unknownDate.length}`);
 
-    if (totalCount(groups) === 0) {
+    if (totalCount(groups) === 0 && !testSend) {
         console.log('今天沒有需要提醒的帳單，不送出');
         return;
     }
@@ -110,6 +113,7 @@ const main = async () => {
     const text = buildMessage(groups, {
         detail: process.env.REMINDER_DETAIL === 'counts' ? 'counts' : 'full',
         url: process.env.CARD_URL || DEFAULT_CARD_URL,
+        test: testSend,
     });
 
     if (dryRun) {

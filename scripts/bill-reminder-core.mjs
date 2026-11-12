@@ -121,6 +121,34 @@ export const selectBills = (bills, opts = {}) => {
     return out;
 };
 
+// 決定要提醒哪一組 uid。挑不出唯一一組就丟例外（寧可整支失敗，也不要送錯人）。
+//
+// 為什麼要有 REMINDER_UID 這個獨立的 secret：
+// APP_UID 是給每日快照用的，它可以放多組 —— 快照是各寫各的資料庫，多跑幾個帳號
+// 沒有壞處。提醒不一樣，它只有一個 Telegram 收件人，多組 uid 會把別人的帳單金額
+// 推到你的手機上。所以提醒優先讀 REMINDER_UID；只有在 APP_UID 剛好只有一組、
+// 不會有歧義時，才直接沿用它（這樣單一帳號的人不必多設一個 secret）。
+export const pickUid = (reminderUid, appUid) => {
+    const dedicated = String(reminderUid || '').trim();
+    if (dedicated) {
+        if (dedicated.includes(',')) {
+            throw new Error('REMINDER_UID 只能填一組 uid（提醒只有一個 Telegram 收件人）');
+        }
+        return dedicated;
+    }
+
+    const uids = String(appUid || '').split(',').map(s => s.trim()).filter(Boolean);
+    if (uids.length === 0) {
+        throw new Error('缺少 REMINDER_UID：請設定要收提醒的那一組帳號 uid');
+    }
+    if (uids.length > 1) {
+        throw new Error(`APP_UID 有 ${uids.length} 組 uid，無法判斷要提醒哪一個。`
+            + '請另外設一個 REMINDER_UID secret，只放要收提醒的那一組（APP_UID 不用動，'
+            + '每日快照仍會處理全部）。');
+    }
+    return uids[0];
+};
+
 export const totalCount = (g) =>
     g.overdue.length + g.dueToday.length + g.dueSoon.length + g.unknownDate.length;
 

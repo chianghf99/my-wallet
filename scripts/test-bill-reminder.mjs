@@ -20,7 +20,7 @@
 //     EOF
 //     /System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc -m /tmp/run.mjs
 
-import { parseYMD, daysUntil, hasAutopay, selectBills, buildMessage, totalCount,
+import { parseYMD, daysUntil, hasAutopay, selectBills, buildMessage, totalCount, pickUid,
          DEFAULT_REMIND_DAYS, DEFAULT_OVERDUE_MAX_DAYS } from './bill-reminder-core.mjs';
 
 let failures = 0;
@@ -153,6 +153,34 @@ expect('同一天到期只開一個標題', sameDay.split('還有 3 天').length
 // Telegram 用 parse_mode: HTML，銀行名稱裡的角括號會讓整則訊息送不出去
 const escaped = buildMessage(pick([bill({ name: '<b>假銀行</b>', amount: 1, date: TODAY })]), { detail: 'full' });
 expectTrue('名稱裡的 HTML 要跳脫掉', escaped.includes('&lt;b&gt;假銀行&lt;/b&gt;'));
+
+
+// --- pickUid：要提醒哪一組帳號 ----------------------------------------
+//
+// 這一段是實際踩過的坑：APP_UID 裡放了多組 uid（每日快照會處理多個帳號），
+// 提醒卻只有一個 Telegram 收件人，第一次試跑就是在這裡中止的。擋對了 ——
+// 沒擋的話會把別人的帳單金額推到使用者手機上 —— 但也因此需要一條指名的路。
+
+const throws = (name, fn, expectInMessage) => {
+    let msg = null;
+    try { fn(); } catch (e) { msg = e.message; }
+    if (msg === null) { failures++; console.log(`❌ ${name}\n   沒有丟例外`); }
+    else if (expectInMessage && !msg.includes(expectInMessage)) {
+        failures++; console.log(`❌ ${name}\n   訊息是「${msg}」，沒提到「${expectInMessage}」`);
+    } else console.log(`✅ ${name}`);
+};
+
+expect('APP_UID 只有一組就直接沿用（單一帳號不必多設 secret）', pickUid(undefined, 'uid-a'), 'uid-a');
+expect('APP_UID 前後有空白也要修掉', pickUid(undefined, '  uid-a  '), 'uid-a');
+expect('REMINDER_UID 優先於 APP_UID', pickUid('uid-b', 'uid-a,uid-c'), 'uid-b');
+expect('REMINDER_UID 是空字串時視同沒設', pickUid('   ', 'uid-a'), 'uid-a');
+
+throws('APP_UID 有多組就中止，且訊息要教人怎麼修',
+    () => pickUid(undefined, 'uid-a,uid-c'), 'REMINDER_UID');
+throws('REMINDER_UID 自己有逗號也要中止',
+    () => pickUid('uid-a,uid-b', undefined), 'REMINDER_UID');
+throws('兩個都沒設就中止', () => pickUid(undefined, undefined), 'REMINDER_UID');
+throws('APP_UID 只有逗號與空白時當成沒設', () => pickUid('', ' , '), 'REMINDER_UID');
 
 console.log(failures === 0
     ? '\n✅ 全部通過'

@@ -45,7 +45,10 @@ jobs:
         working-directory: scripts
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          # APP_UID 是每日快照用的，可以有多組；提醒只有一個收件人，所以多組時
+          # 必須另外用 REMINDER_UID 指名要提醒誰。APP_UID 只有一組時可以不設。
           APP_UID: ${{ secrets.APP_UID }}
+          REMINDER_UID: ${{ secrets.REMINDER_UID }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           DRY_RUN: ${{ inputs.dry_run }}

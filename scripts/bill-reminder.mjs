@@ -8,7 +8,8 @@
 //
 // 需要的環境變數：
 //   FIREBASE_SERVICE_ACCOUNT  Firebase 服務帳戶金鑰 JSON（整份貼上）—— 與每日快照共用
-//   APP_UID                   要提醒的帳號 uid（必填，只能一組，理由見下方 resolveUid）
+//   REMINDER_UID              要提醒的帳號 uid（只能一組）。APP_UID 只有一組時可以省略，
+//                             會自動沿用；APP_UID 有多組時這個就是必填（理由見 core 的 pickUid）
 //   TELEGRAM_BOT_TOKEN        跟 @BotFather 申請的 bot token
 //   TELEGRAM_CHAT_ID          要推給誰（你自己跟 bot 說一句話之後就能查到）
 //
@@ -25,7 +26,7 @@
 //    DRY_RUN 也只印行數，不印內容。
 
 import admin from 'firebase-admin';
-import { selectBills, buildMessage, totalCount, DEFAULT_REMIND_DAYS,
+import { selectBills, buildMessage, totalCount, pickUid, DEFAULT_REMIND_DAYS,
          DEFAULT_OVERDUE_MAX_DAYS } from './bill-reminder-core.mjs';
 
 const TZ = 'Asia/Taipei';
@@ -34,23 +35,6 @@ const DEFAULT_CARD_URL = 'https://chianghf99.github.io/my-wallet/mycreditcard.ht
 const getTaipeiDate = () => new Intl.DateTimeFormat('en-CA', {
     timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit'
 }).format(new Date());
-
-// 只處理一組 uid。
-//
-// 每日快照可以一次跑多個帳號，因為它是各寫各的資料庫。提醒不行 —— 它只有一個
-// Telegram 收件人，多組 uid 會把別人的帳單金額推到你的手機上。這個 Firebase 專案
-// 確實有其他人的帳號，所以這裡寧可直接中止，也不要默默送錯人。
-const resolveUid = () => {
-    const raw = process.env.APP_UID;
-    if (!raw) throw new Error('缺少 APP_UID：請設定要提醒的帳號 uid');
-    const uids = raw.split(',').map(s => s.trim()).filter(Boolean);
-    if (uids.length === 0) throw new Error('APP_UID 是空的');
-    if (uids.length > 1) {
-        throw new Error('APP_UID 有多組，但提醒只有一個 Telegram 收件人。'
-            + '若要提醒多個帳號，請為每個帳號各設一組 secret 與一個 workflow。');
-    }
-    return uids[0];
-};
 
 const parseDays = (raw, fallback) => {
     if (!raw) return fallback;
@@ -93,7 +77,7 @@ const main = async () => {
         throw new Error('缺少 TELEGRAM_BOT_TOKEN 或 TELEGRAM_CHAT_ID');
     }
 
-    const uid = resolveUid();
+    const uid = pickUid(process.env.REMINDER_UID, process.env.APP_UID);
     admin.initializeApp({ credential: admin.credential.cert(JSON.parse(raw)) });
     const db = admin.firestore();
 

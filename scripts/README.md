@@ -115,6 +115,19 @@ repo → Settings → Secrets and variables → Actions → New repository secre
 
 `FIREBASE_SERVICE_ACCOUNT` 與 `APP_UID` 沿用每日快照的那兩個，不必重設。
 
+**如果 `APP_UID` 裡有多組 uid**（逗號分隔，每日快照會處理多個帳號），還要再加一個：
+
+| 名稱 | 內容 |
+|---|---|
+| `REMINDER_UID` | **要收提醒的那一組** uid，只能一組 |
+
+沒設的話排程會直接中止並說明原因 —— 它不會替你猜要提醒誰（理由見下面那節）。
+`APP_UID` 不用動，每日快照仍然照舊處理全部帳號。
+
+查自己的 uid：[Firebase Console](https://console.firebase.google.com/) → 選這個專案 →
+左邊 **Authentication** → **Users** 分頁 → 找到自己的 email，那一列的
+**User UID** 就是。用 email 對照才不會挑錯人。
+
 **5. 試跑**
 
 Actions → 帳單到期提醒 → Run workflow。
@@ -147,11 +160,18 @@ Actions → 帳單到期提醒 → Run workflow。
 同樣地，Actions 日誌只會印筆數與狀態，不印訊息內容、金額、銀行或 uid；
 `DRY_RUN` 也只印「本來會送出幾行」，不印內容。
 
-### 為什麼 `APP_UID` 只能填一組
+### 為什麼提醒只收一組 uid
 
 每日快照可以一次處理多個帳號，因為它是各寫各的資料庫。提醒不行 ——
 它只有一個 Telegram 收件人，多組 uid 會把**別人的帳單金額推到你的手機上**。
-所以 `bill-reminder.mjs` 偵測到逗號就直接中止。
+
+所以取 uid 的順序是：先看 `REMINDER_UID`；沒設的話，只有在 `APP_UID` 剛好只有
+一組、不會有歧義時才沿用它。`APP_UID` 有多組而 `REMINDER_UID` 沒設就直接中止，
+**不猜**。
+
+這條在第一次試跑時就擋下來過一次（`APP_UID` 本來就有多組），所以 `pickUid`
+放在 core 裡並有測試覆蓋，包含「錯誤訊息必須提到 `REMINDER_UID`」這一條 ——
+失敗訊息不告訴人怎麼修，等於沒擋。
 
 ### 為什麼挑選邏輯要獨立成一個檔案
 

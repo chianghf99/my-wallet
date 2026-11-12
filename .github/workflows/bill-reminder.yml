@@ -17,6 +17,10 @@ on:
         description: '只檢查不送出（日誌只會印筆數，不印內容）'
         type: boolean
         default: false
+      test_send:
+        description: '測試送出：就算沒有帳單快到期也發一則，用來確認 Telegram 真的通'
+        type: boolean
+        default: false
 
 # 預設沒有任何權限，這個工作只需要讀 Firestore 與打 Telegram API
 permissions: {}
@@ -52,6 +56,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           DRY_RUN: ${{ inputs.dry_run }}
+          TEST_SEND: ${{ inputs.test_send }}
           # 想改提醒時機或訊息詳細程度，在這裡加環境變數即可，
           # 可用的選項見 scripts/bill-reminder.mjs 的檔頭。
         run: node bill-reminder.mjs

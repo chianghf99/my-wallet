@@ -185,12 +185,29 @@ const groupByDay = (list) => {
  * @param {object} [opts]
  * @param {'full'|'counts'} [opts.detail]  'counts' 只講筆數，金額與銀行不出境
  * @param {string} [opts.url]              訊息末尾附的卡片管家連結
+ * @param {boolean} [opts.test]            測試模式：沒東西要提醒時也回一則訊息
  */
 export const buildMessage = (groups, opts = {}) => {
-    const { detail = 'full', url = '' } = opts;
-    if (totalCount(groups) === 0) return null;
+    const { detail = 'full', url = '', test = false } = opts;
 
-    const parts = ['💳 <b>帳單提醒</b>'];
+    // 測試模式存在的理由：平常沒帳單快到期時這支腳本什麼都不送，於是「token 與
+    // chat id 到底對不對」要等到真的有帳單快到期那天才知道。更糟的是 chat id 若
+    // 指向另一個對話，Telegram 會回 200、Actions 會綠、訊息卻送到你看不到的地方
+    // —— 那是這個功能唯一一種安靜的失敗。測試模式就是為了把它變成吵的。
+    if (totalCount(groups) === 0) {
+        if (!test) return null;
+        return [
+            '✅ <b>測試訊息</b>',
+            '',
+            '設定正確，Telegram 這條路是通的。',
+            '目前沒有接近到期的帳單，所以平常不會收到訊息 —— 這是正常的。',
+            ...(url ? ['', esc(url)] : []),
+        ].join('\n');
+    }
+
+    const parts = [test
+        ? '✅ <b>測試訊息</b>（設定正確。以下是現在真的該提醒的內容）'
+        : '💳 <b>帳單提醒</b>'];
 
     if (detail === 'counts') {
         // 隱私模式：訊息會經過 Telegram 的伺服器，這個模式下金額與銀行名稱都不送出去

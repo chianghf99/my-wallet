@@ -182,6 +182,27 @@ throws('REMINDER_UID 自己有逗號也要中止',
 throws('兩個都沒設就中止', () => pickUid(undefined, undefined), 'REMINDER_UID');
 throws('APP_UID 只有逗號與空白時當成沒設', () => pickUid('', ' , '), 'REMINDER_UID');
 
+
+// --- 測試模式 --------------------------------------------------------
+//
+// 為什麼需要它：平常沒帳單快到期時這支腳本什麼都不送，於是「token 與 chat id
+// 對不對」要等到真有帳單快到期那天才知道。而且 chat id 若指向另一個對話，
+// Telegram 會回 200、Actions 會綠、訊息卻送到看不到的地方 —— 這個功能唯一一種
+// 安靜的失敗。測試模式把它變成吵的。
+
+const empty = pick([]);
+expect('沒事時非測試模式回 null', buildMessage(empty, { detail: 'full' }), null);
+
+const testEmpty2 = buildMessage(empty, { detail: 'full', test: true, url: 'https://example.invalid/x' });
+expectTrue('測試訊息要說自己是測試', testEmpty2.includes('測試訊息'));
+expectTrue('測試訊息要說明「平常沒事不會收到」是正常的', testEmpty2.includes('正常'));
+expectTrue('測試訊息也附連結', testEmpty2.includes('https://example.invalid/x'));
+
+const testWithBills = buildMessage(pick([bill({ name: '富邦銀行', amount: 999, date: TODAY })]), { test: true });
+expectTrue('有帳單時測試模式仍要列出內容', testWithBills.includes('$999'));
+expectTrue('有帳單時測試模式也要標明是測試', testWithBills.includes('測試訊息'));
+expect('有帳單時測試模式不應該還掛著平常的標題', testWithBills.includes('💳'), false);
+
 console.log(failures === 0
     ? '\n✅ 全部通過'
     : `\n❌ 有 ${failures} 項失敗`);

@@ -13,6 +13,15 @@
 // 都是手寫的靜態內容，不含任何使用者輸入或雲端資料。
 export const stockChangelog = [
     {
+        version: "v5.29.6", date: "2026-11-12",
+        items: [
+            "安全性：Tailwind 改為自己放一份（<code>vendor/tailwind-3.4.17.js</code>），不再從 cdn.tailwindcss.com 載入。它原本是全站外部腳本裡唯一沒有 integrity 的一支，該 CDN 被入侵就等於有人能在這一頁執行任意程式碼、讀走持股與資產數字。",
+            "安全性：新增 Content-Security-Policy。最重要的是 connect-src —— 就算真有惡意程式碼跑起來，它也只能連白名單上的位址（Firebase、Google Drive、自家報價 Worker，以及證交所／櫃買／期交所／Yahoo／鉅亨／匯率這些報價來源），沒有地方可以把資料送出去。",
+            "說明：原本想先用 Report-Only 模式試跑幾天再正式啟用，實測發現瀏覽器完全不接受用 &lt;meta&gt; 送 Report-Only（而 GitHub Pages 設不了 HTTP 標頭），只好直接啟用。Google Drive 備份與 Picker 需要登入才測得到，是唯一沒有實測過的路徑 —— 若有功能異常，Console 會明講缺哪個網域，補進對應指令即可。",
+            "修正：順帶補掉離線的洞 —— Tailwind 原本不在 Service Worker 的快取名單裡，離線時其實沒有樣式。"
+        ]
+    },
+    {
         version: "v5.29.5", date: "2026-10-31",
         items: [
             "修正深色模式的文字對比。實測有 13 處低於無障礙標準（WCAG AA 要求小字 4.5:1），最嚴重的是右上角版本徽章只有 2.13。原因是 <code>text-gray-500</code> 多半沒有加深色模式的變體，而既有的 <code>dark:text-gray-500</code> 在深色底上又太暗。現已全數通過。",

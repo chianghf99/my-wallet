@@ -4,6 +4,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Content-Security-Policy（v5.29.6）。
+         重點不在 script-src —— 頁面本來就要跑 Vue 與一堆 inline script，擋不了多少。
+         **真正有用的是 connect-src**：萬一哪個 CDN 被換掉、惡意程式碼真的跑起來了，
+         它也只能連下面列出的位址，沒有地方可以把你的持股與資產數字送出去。
+
+         這一頁的白名單特別長，因為它要連：Firebase、Google Drive 備份與 Picker、
+         自家的報價 Worker，以及證交所／櫃買／期交所／Yahoo／鉅亨／匯率這些報價來源。
+         每一個都是從程式碼裡實際出現的網址逐一列出來的，不是抄範本。
+
+         原本想先用 Content-Security-Policy-Report-Only（只回報不攔截）試跑幾天，
+         實測發現**瀏覽器完全不接受用 <meta> 送 Report-Only**（Console 會說
+         "was delivered via a <meta> element, which is disallowed. The policy has been
+         ignored."），那等於沒有保護。Report-Only 只能走 HTTP 標頭，而 GitHub Pages
+         設不了標頭，所以只能直接啟用。
+
+         **如果哪個功能壞了**：開 Console，被擋下的那一行會明講缺哪個指令與網域，
+         把該網域補進對應指令即可。不要整條 <meta> 刪掉。
+         Google Drive 備份與 Picker 這條路徑需要登入才測得到，是唯一沒有實測過的部分。 -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://www.gstatic.com https://ssl.gstatic.com https://apis.google.com https://accounts.google.com;
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://www.gstatic.com;
+        font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com;
+        img-src 'self' data: blob: https://flagcdn.com https://www.svgrepo.com https://*.googleusercontent.com https://*.gstatic.com https://*.google.com;
+        connect-src 'self' https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com https://www.googleapis.com https://content.googleapis.com https://accounts.google.com https://stock-proxy.chicken7999.workers.dev https://ws.api.cnyes.com wss://ws.api.cnyes.com https://openapi.taifex.com.tw https://mis.taifex.com.tw https://openapi.twse.com.tw https://mis.twse.com.tw https://www.tpex.org.tw https://query1.finance.yahoo.com https://query2.finance.yahoo.com https://api.exchangerate-api.com;
+        frame-src https://stock-portfolio-df6dd.firebaseapp.com https://accounts.google.com https://apis.google.com https://content.googleapis.com https://docs.google.com https://drive.google.com;
+        worker-src 'self' blob:;
+        manifest-src 'self';
+        object-src 'none';
+        base-uri 'self';
+        form-action 'none'
+    ">
+    <!-- 這裡刻意沒有 frame-ancestors：它只在 HTTP 標頭有效，寫進 <meta> 會被瀏覽器
+         忽略，還會每次載入都在 Console 留一條錯誤訊息，看起來像壞掉。
+         GitHub Pages 不能自訂回應標頭，所以「禁止被別人 iframe 嵌入」目前做不到；
+         真的需要就得換到設得了標頭的主機（例如 Cloudflare Pages）。 -->
     <!-- 外部資源皆已鎖定版本並加上 SRI（Subresource Integrity）。
          瀏覽器會比對下載內容的雜湊，不符即拒絕執行 —— 即使 CDN 被入侵或連線遭劫持，
          也無法把函式庫換成惡意版本。注意：升級版本時 integrity 雜湊必須同步更新，
@@ -13,7 +49,7 @@
            - fonts.googleapis.com/css2：回應內容依瀏覽器 User-Agent 而異
            - apis.google.com/js/api.js、accounts.google.com/gsi/client：
              Google 的載入器，內容持續更新且官方不提供固定雜湊 -->
-    <title>我的投資組合 | Portfolio v5.29.5</title>
+    <title>我的投資組合 | Portfolio v5.29.6</title>
     <!-- v5.12.0: PWA。三個入口各有獨立的 manifest 與圖示，
          加到主畫面後會是三個可分辨的 App，而不是同一顆圖示。 -->
     <link rel="manifest" href="./manifest-stock.webmanifest">
@@ -28,7 +64,9 @@
     <!-- Tailwind 的 CDN 不回傳 CORS 標頭，而 SRI 必須搭配 crossorigin，
          兩者並用會讓瀏覽器直接拒絕載入。因此這支僅鎖定版本、不加 SRI。
          鎖版本仍有意義：bare URL 會 302 導向最新版，改版可能帶來破壞性變更。 -->
-    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <!-- Tailwind 自己放一份（vendor/），不走 CDN —— 它原本是全站唯一沒有 integrity 的
+         外部腳本，被換掉就等於有人能在這一頁執行任意程式碼。見 vendor/README.md -->
+    <script src="vendor/tailwind-3.4.17.js"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
         integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous" referrerpolicy="no-referrer">
@@ -83,7 +121,7 @@
             border: 1px solid #374151;
         }
 
-        /* v5.15.0: toast 進出場動畫 */
+        /* v5.29.6: toast 進出場動畫 */
         .toast-enter-active,
         .toast-leave-active {
             transition: all 0.28s cubic-bezier(0.22, 1, 0.36, 1);
@@ -109,7 +147,7 @@
             }
         }
 
-        /* v5.15.0: 表單行內驗證 */
+        /* v5.29.6: 表單行內驗證 */
         .field-error {
             color: #dc2626;
             font-size: 0.75rem;
@@ -4072,7 +4110,7 @@
                 </div>
             </div>
 
-            <!-- v5.15.0: 非阻斷式提示。z-index 高於 modal(z-50)，
+            <!-- v5.29.6: 非阻斷式提示。z-index 高於 modal(z-50)，
                  才不會在對話框開著時被蓋住。 -->
             <div class="fixed z-[60] inset-x-0 bottom-4 sm:bottom-auto sm:top-4 sm:inset-x-auto sm:right-4 px-3 sm:px-0 flex flex-col gap-2 pointer-events-none items-center sm:items-end">
                 <transition-group name="toast">

@@ -142,6 +142,34 @@ export const isWithinDays = (yyyymmdd, days, now = new Date()) => {
 // 本專案不內建假日表，因此這裡算出來的是「預設值」而非保證值，欄位仍可改。
 // ---------------------------------------------------------------------------
 
+/**
+ * 把一個部位拆成「這次要動的口數」與「留下來的口數」，並按比例分攤保證金。
+ *
+ * 為什麼要有部分出場：平倉與轉倉原本都是整筆結算（直接吃 pos.contracts），
+ * 所以想分批出場只能在建倉時就拆成好幾筆部位 —— 那又讓每月轉倉要重複操作好幾次。
+ *
+ * 保證金刻意先算「釋放」再用相減得到「剩餘」，不是兩邊各乘比例：
+ * 3 口拆 1 口時 100 ÷ 3 除不盡，各自四捨五入會變成 33 + 33 = 66，
+ * 憑空少掉 1 元，而維持率＝期貨權益 ÷ 佔用保證金，分母會一直慢慢飄掉。
+ *
+ * 回傳 null 代表口數不合法（非整數、小於 1、或超過持有口數）。
+ */
+export const splitPosition = (totalContracts, lots, marginUsed = 0) => {
+    const total = Number(totalContracts);
+    const n = Number(lots);
+    if (!Number.isInteger(total) || total < 1) return null;
+    if (!Number.isInteger(n) || n < 1 || n > total) return null;
+    const margin = Number(marginUsed) || 0;
+    const released = n === total ? margin : Math.round(margin * n / total);
+    return {
+        lots: n,
+        remaining: total - n,
+        releasedMargin: released,
+        remainingMargin: margin - released,
+        isPartial: n < total
+    };
+};
+
 /** 某年某月（month 為 1~12）的第三個星期三，回傳 'YYYY-MM-DD' */
 export const thirdWednesday = (year, month) => {
     const firstDow = new Date(Date.UTC(year, month - 1, 1)).getUTCDay(); // 0=日

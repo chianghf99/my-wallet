@@ -49,7 +49,7 @@
            - fonts.googleapis.com/css2：回應內容依瀏覽器 User-Agent 而異
            - apis.google.com/js/api.js、accounts.google.com/gsi/client：
              Google 的載入器，內容持續更新且官方不提供固定雜湊 -->
-    <title>我的投資組合 | Portfolio v5.30.0</title>
+    <title>我的投資組合 | Portfolio v5.31.0</title>
     <!-- v5.12.0: PWA。三個入口各有獨立的 manifest 與圖示，
          加到主畫面後會是三個可分辨的 App，而不是同一顆圖示。 -->
     <link rel="manifest" href="./manifest-stock.webmanifest">
@@ -3191,6 +3191,34 @@
                             </div>
                         </div>
 
+                        <!-- v5.31.0: 出場口數。
+                             平倉與轉倉原本都是整筆結算（直接吃 pos.contracts），想分批出場
+                             只能在建倉當下就拆成好幾筆部位 —— 代價是每個月轉倉要對同一個契約
+                             重複操作好幾次。預設帶全部口數，不動它的話行為與以前完全相同。
+                             只持有 1 口時沒得選，整塊不顯示。 -->
+                        <div v-if="futuresActionForm.pos.contracts > 1">
+                            <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">
+                                {{ futuresActionForm.mode === 'close' ? '平倉' : '轉倉' }}口數 <span class="text-red-500">*</span>
+                                <span class="font-normal text-gray-500 dark:text-gray-400">／持有 {{ futuresActionForm.pos.contracts }} 口</span>
+                            </label>
+                            <div class="flex items-center gap-2">
+                                <input type="number" min="1" step="1" :max="futuresActionForm.pos.contracts"
+                                    v-model.number="futuresActionForm.lots" class="zen-input font-mono text-lg">
+                                <button type="button" @click="futuresActionForm.lots = futuresActionForm.pos.contracts"
+                                    class="shrink-0 px-3 py-2 rounded-lg text-xs font-bold bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+                                    全部
+                                </button>
+                            </div>
+                            <div v-if="formErrors.lots" class="field-error">{{ formErrors.lots }}</div>
+                            <p v-else-if="futuresActionPreview && futuresActionPreview.isPartial"
+                               class="text-[11px] text-amber-700 dark:text-amber-400 mt-1 leading-relaxed">
+                                部分{{ futuresActionForm.mode === 'close' ? '平倉' : '轉倉' }}：剩餘
+                                <strong>{{ futuresActionPreview.remaining }} 口</strong>
+                                會留在原部位，佔用保證金按比例保留
+                                <span class="font-mono">{{ formatNumber(futuresActionPreview.remainingMargin) }}</span>。
+                            </p>
+                        </div>
+
                         <!-- 平倉：唯一要填的價格 -->
                         <div v-if="futuresActionForm.mode === 'close'">
                             <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">
@@ -3257,7 +3285,7 @@
                                     <strong>已實現損益完全由這個數字決定</strong> —— 請填價差讓它自動算，或直接改成實際成交價。
                                 </p>
                                 <p v-else class="text-[11px] text-gray-400 mt-1.5 leading-relaxed">
-                                    已實現損益 =（近月平倉價 − 建倉價 {{ formatNumber(futuresActionForm.pos.entryPrice) }}）× {{ futuresActionForm.pos.contracts }} 口 × {{ futuresActionForm.pos.multiplier }}
+                                    已實現損益 =（近月平倉價 − 建倉價 {{ formatNumber(futuresActionForm.pos.entryPrice) }}）× {{ futuresActionPreview ? futuresActionPreview.lots : futuresActionForm.pos.contracts }} 口 × {{ futuresActionForm.pos.multiplier }}
                                 </p>
                             </div>
                         </template>
@@ -3274,33 +3302,35 @@
                         </div>
 
                         <!-- 即時損益預覽 -->
-                        <div v-if="futuresActionForm.closePrice && futuresActionForm.pos"
+                        <!-- v5.31.0: 改用 futuresActionPreview。原本同一段算式在這裡重複四次
+                             且寫死 pos.contracts，加入部分出場後只要漏改一處，
+                             預覽就會與實際入帳金額不符。 -->
+                        <div v-if="futuresActionPreview"
                             class="rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden text-sm">
-                            <div class="bg-gray-50 dark:bg-gray-700/50 px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                                損益預覽
+                            <div class="bg-gray-50 dark:bg-gray-700/50 px-4 py-2 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex justify-between">
+                                <span>損益預覽</span>
+                                <span class="normal-case tracking-normal">{{ futuresActionPreview.lots }} 口</span>
                             </div>
                             <div class="px-4 py-3 space-y-2">
                                 <div class="flex justify-between">
                                     <span class="text-gray-500 dark:text-gray-400">毛損益</span>
-                                    <span :class="((futuresActionForm.pos.direction==='long' ? Number(futuresActionForm.closePrice)-futuresActionForm.pos.entryPrice : futuresActionForm.pos.entryPrice-Number(futuresActionForm.closePrice)) * futuresActionForm.pos.contracts * futuresActionForm.pos.multiplier) >= 0 ? 'text-emerald-600 font-bold' : 'text-red-500 font-bold'">
-                                        {{ futuresActionForm.pos.currency === 'USD' ? '$' : 'NT$' }}
-                                        {{ formatNumber((futuresActionForm.pos.direction==='long' ? Number(futuresActionForm.closePrice)-futuresActionForm.pos.entryPrice : futuresActionForm.pos.entryPrice-Number(futuresActionForm.closePrice)) * futuresActionForm.pos.contracts * futuresActionForm.pos.multiplier) }}
+                                    <span :class="futuresActionPreview.gross >= 0 ? 'text-emerald-600 font-bold' : 'text-red-500 font-bold'">
+                                        {{ futuresActionPreview.symbol }} {{ formatNumber(futuresActionPreview.gross) }}
                                     </span>
                                 </div>
-                                <div v-if="Number(futuresActionForm.fee) > 0" class="flex justify-between text-gray-400">
+                                <div v-if="futuresActionPreview.fee > 0" class="flex justify-between text-gray-500 dark:text-gray-400">
                                     <span>手續費/稅</span>
-                                    <span>− {{ futuresActionForm.pos.currency === 'USD' ? '$' : 'NT$' }} {{ formatNumber(Number(futuresActionForm.fee)) }}</span>
+                                    <span>− {{ futuresActionPreview.symbol }} {{ formatNumber(futuresActionPreview.fee) }}</span>
                                 </div>
                                 <div class="flex justify-between border-t border-gray-100 dark:border-gray-600 pt-2">
                                     <span class="font-bold text-gray-600 dark:text-gray-300">{{ futuresActionForm.mode === 'close' ? '淨損益（入帳）' : '保證金調整' }}</span>
-                                    <span :class="((futuresActionForm.pos.direction==='long' ? Number(futuresActionForm.closePrice)-futuresActionForm.pos.entryPrice : futuresActionForm.pos.entryPrice-Number(futuresActionForm.closePrice)) * futuresActionForm.pos.contracts * futuresActionForm.pos.multiplier - (Number(futuresActionForm.fee)||0)) >= 0 ? 'text-emerald-600 font-bold' : 'text-red-500 font-bold'">
-                                        {{ futuresActionForm.pos.currency === 'USD' ? '$' : 'NT$' }}
-                                        {{ formatNumber((futuresActionForm.pos.direction==='long' ? Number(futuresActionForm.closePrice)-futuresActionForm.pos.entryPrice : futuresActionForm.pos.entryPrice-Number(futuresActionForm.closePrice)) * futuresActionForm.pos.contracts * futuresActionForm.pos.multiplier - (Number(futuresActionForm.fee)||0)) }}
+                                    <span :class="futuresActionPreview.net >= 0 ? 'text-emerald-600 font-bold' : 'text-red-500 font-bold'">
+                                        {{ futuresActionPreview.symbol }} {{ formatNumber(futuresActionPreview.net) }}
                                     </span>
                                 </div>
-                                <div v-if="futuresActionForm.mode === 'rollover' && futuresActionForm.newOpenPrice" class="flex justify-between text-gray-400 text-xs">
+                                <div v-if="futuresActionForm.mode === 'rollover' && futuresActionForm.newOpenPrice" class="flex justify-between text-gray-500 dark:text-gray-400 text-xs">
                                     <span>展期價差成本</span>
-                                    <span>{{ formatNumber((futuresActionForm.pos.direction==='long' ? Number(futuresActionForm.newOpenPrice)-Number(futuresActionForm.closePrice) : Number(futuresActionForm.closePrice)-Number(futuresActionForm.newOpenPrice)) * futuresActionForm.pos.contracts * futuresActionForm.pos.multiplier) }}</span>
+                                    <span>{{ formatNumber((futuresActionForm.pos.direction==='long' ? Number(futuresActionForm.newOpenPrice)-Number(futuresActionForm.closePrice) : Number(futuresActionForm.closePrice)-Number(futuresActionForm.newOpenPrice)) * futuresActionPreview.lots * futuresActionForm.pos.multiplier) }}</span>
                                 </div>
                             </div>
                         </div>

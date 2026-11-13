@@ -1,6 +1,6 @@
 import { db, auth } from './firebase-config.js';
 import { getLocalDate, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountSign, getFuturesDisplayName } from './utils/format.js';
-import { TAIFEX_PRODUCTS, TAIFEX_MIS_URL, taifexRequestBody, contractMonthOf, pickContract, pickFreshest, pickFromOpenData, OPEN_DATA_CONTRACT, cnyesUrl, cnyesEntry, parseCnyesQuote, TAIFEX_MARGINS, futuresDefaultsFor, nextSettlementDate, settlementAfter, settlementStatusOf, splitPosition } from './utils/futures.js';
+import { TAIFEX_PRODUCTS, TAIFEX_MIS_URL, taifexRequestBody, contractMonthOf, pickContract, pickFreshest, pickFromOpenData, OPEN_DATA_CONTRACT, cnyesUrl, cnyesEntry, parseCnyesQuote, TAIFEX_MARGINS, futuresDefaultsFor, nextSettlementDate, settlementAfter, settlementStatusOf, splitPosition, mergePositions } from './utils/futures.js';
 import { computePortfolio, calcStats, calcStockExposure, calcFundsValueTwd, calcFundsCostTwd, calcFuturesMarginCash, calcFuturesMarginUsed, calcFuturesExposure, buildExposureTrend } from './utils/valuation.js';
 import { stockChangelog } from './changelog.js';
 
@@ -1250,6 +1250,47 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     void todayKey.value;
                     return nextSettlementDate();
                 });
+                /**
+                 * 找出可以併入的既有部位：同商品、同結算日、同方向、同幣別、同乘數。
+                 *
+                 * 反方向刻意不併 —— 同一個契約一多一空在券商早就互相軋掉了，
+                 * 會同時出現在這裡幾乎確定是記錯。併成淨額等於把錯誤藏起來，
+                 * 不如讓它留著被看見。
+                 *
+                 * 用本地清單比對是安全的：futures_positions 是 onSnapshot 即時同步的。
+                 */
+                const findMergeTarget = (data) => futuresPositions.value.find(p =>
+                    p.symbol === data.symbol &&
+                    (p.expiry || '') === (data.expiry || '') &&
+                    p.direction === data.direction &&
+                    (p.currency || 'TWD') === (data.currency || 'TWD') &&
+                    Number(p.multiplier) === Number(data.multiplier)
+                ) || null;
+
+                /**
+                 * 新增部位表單若會併入既有部位，先把結果算出來顯示。
+                 * 合併會改掉既有部位的均價，不能等按下去才讓人發現。
+                 */
+                const futuresMergePreview = computed(() => {
+                    const f = futuresForm.value;
+                    if (!f || f.id) return null;            // 編輯既有部位時不適用
+                    const contracts = Number(f.contracts), entryPrice = Number(f.entryPrice);
+                    if (!(contracts > 0) || !(entryPrice > 0)) return null;
+                    const data = {
+                        symbol: String(f.symbol || '').toUpperCase(),
+                        expiry: f.expiry || '',
+                        direction: f.direction,
+                        currency: f.currency || 'TWD',
+                        multiplier: Number(f.multiplier),
+                        contracts, entryPrice,
+                        marginUsed: Number(f.marginUsed) || 0
+                    };
+                    const target = findMergeTarget(data);
+                    if (!target) return null;
+                    const merged = mergePositions(target, data);
+                    return merged ? { target, merged } : null;
+                });
+
                 // --- 期貨：建倉、平倉與轉倉 ---
                 const saveFuturesPosition = async () => {
                     if (!user.value) return;
@@ -1280,11 +1321,55 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     };
 
                     const col = db.collection('users').doc(user.value.uid).collection('futures_positions');
+                    const txCol = db.collection('users').doc(user.value.uid).collection('futures_transactions');
                     if (f.id) {
                         await col.doc(f.id).update(data);
                     } else {
+                        // v5.32.0: 加碼時併入既有部位。
+                        // 同一個契約在券商那邊本來就是一筆淨部位、一個均價；分批進場若在這裡
+                        // 留成好幾列，每個月轉倉就要對同一個契約重複操作好幾次。
+                        const target = findMergeTarget(data);
+                        const merged = target ? mergePositions(target, data) : null;
+                        if (merged) {
+                            await txCol.add({
+                                type: 'open',
+                                symbol: data.symbol,
+                                expiry: data.expiry,
+                                direction: data.direction,
+                                contracts: data.contracts,
+                                price: data.entryPrice,
+                                multiplier: data.multiplier,
+                                marginUsed: data.marginUsed,
+                                currency: data.currency,
+                                date: getLocalDate(),
+                                note: data.note || '期貨加碼',
+                                positionId: target.id,
+                                // 併入既有部位時，刪除這筆紀錄不能把整個部位刪掉（裡面還有別次建的口數）。
+                                // 記下併入前的樣子，復原時才回得去。
+                                mergedIntoExisting: true,
+                                previousState: {
+                                    contracts: Number(target.contracts) || 0,
+                                    entryPrice: Number(target.entryPrice) || 0,
+                                    marginUsed: Number(target.marginUsed) || 0
+                                },
+                                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                            await col.doc(target.id).set({
+                                contracts: merged.contracts,
+                                entryPrice: merged.entryPrice,
+                                marginUsed: merged.marginUsed,
+                                // 同一個契約的報價一樣，取比較新的那個
+                                currentPrice: data.currentPrice || target.currentPrice,
+                                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                            }, { merge: true });
+                            showFuturesModal.value = false;
+                            clearFormErrors();
+                            setTimeout(saveDailySnapshot, 500);
+                            toastOk(`已併入現有部位：${target.contracts} + ${data.contracts} = ${merged.contracts} 口，均價 ${formatNumber(merged.entryPrice)}`);
+                            return;
+                        }
                         const newPosRef = col.doc();
-                        await db.collection('users').doc(user.value.uid).collection('futures_transactions').add({
+                        await txCol.add({
                             type: 'open',
                             symbol: data.symbol,
                             expiry: data.expiry,
@@ -1785,7 +1870,9 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 const deleteFuturesTransaction = async (tx) => {
 
                     if (!confirm(`確定要刪除此筆交易紀錄？\n(這將撤銷此動作對應的資金或部位狀態！)`)) return;
-                    
+
+                    // 無法完整復原時要講清楚哪裡沒還原，不能默默吞掉
+                    const restoreNotes = [];
                     const uid = user.value.uid;
                     const batch = db.batch();
                     const txRef = db.collection('users').doc(uid).collection('futures_transactions').doc(tx.id);
@@ -1827,7 +1914,36 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         else if (tx.type === 'open') {
                             if (tx.positionId) {
                                 const posRef = db.collection('users').doc(uid).collection('futures_positions').doc(tx.positionId);
-                                batch.delete(posRef);
+                                // v5.32.0: 這筆建倉若是併入既有部位的加碼，整個刪掉會連同
+                                // 其他次建的口數一起消失。改為還原成併入前的樣子。
+                                if (tx.mergedIntoExisting && tx.previousState) {
+                                    const cur = await posRef.get();
+                                    if (!cur.exists) {
+                                        restoreNotes.push('該部位已不存在，未還原加碼');
+                                    } else {
+                                        const d = cur.data() || {};
+                                        const untouched = (Number(d.contracts) || 0) ===
+                                            (Number(tx.previousState.contracts) || 0) + (Number(tx.contracts) || 0);
+                                        if (untouched) {
+                                            batch.set(posRef, {
+                                                ...tx.previousState,
+                                                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                                            }, { merge: true });
+                                        } else {
+                                            // 併入之後又平倉或再加碼過，回不到當時的狀態。
+                                            // 至少把這次加的口數與保證金扣掉、均價還原，並告知使用者。
+                                            batch.set(posRef, {
+                                                contracts: inc(-(Number(tx.contracts) || 0)),
+                                                marginUsed: inc(-(Number(tx.marginUsed) || 0)),
+                                                entryPrice: Number(tx.previousState.entryPrice) || 0,
+                                                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                                            }, { merge: true });
+                                            restoreNotes.push('該部位在加碼後已變動過，已盡可能還原，請確認口數與均價');
+                                        }
+                                    }
+                                } else {
+                                    batch.delete(posRef);
+                                }
                             }
                         }
                         else if (tx.type === 'close') {
@@ -1914,7 +2030,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                          
                          await batch.commit();
                          setTimeout(saveDailySnapshot, 500);
-                         toastOk('已刪除交易紀錄，相關狀態同步復原');
+                         toastOk('已刪除交易紀錄，相關狀態同步復原' + (restoreNotes.length ? '：' + restoreNotes.join('；') : ''));
                      } catch (err) {
                          console.error('Error deleting transaction:', err);
                          toastErr('刪除失敗：' + err.message);
@@ -3733,7 +3849,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     editingFuturesFeeId, editingFuturesFeeValue, startEditFuturesFee, cancelEditFuturesFee, saveFuturesFee,
                     futuresMarginInfo, futuresMarginAsOf, futuresStaleMarginPositions,
                     settlementOf, futuresRollPending, futuresRollSummary, nextSettlementHint,
-                    futuresActionPreview,
+                    futuresActionPreview, futuresMergePreview,
                     showFuturesTxEditModal, futuresTxEditForm, openFuturesTxEdit, applyTxEditSpread, onTxEditClosePriceInput, futuresTxEditPreview, saveFuturesTxEdit,
                     investmentsTab, performanceTab, overviewTab,
                     mutualFundList, showMutualFundModal, mutualFundForm, mutualFundTotalCost, mutualFundTotalValue, mutualFundTotalPnL, openMutualFundModal, saveMutualFund, deleteMutualFund

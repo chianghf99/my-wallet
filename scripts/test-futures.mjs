@@ -9,7 +9,7 @@ import {
     parseSymbolId, pickContract, pickFreshest, contractMonthOf,
     pickFromOpenData, TAIFEX_PRODUCTS, effectiveStamp, pickDaySessionFirst, isWithinDays, cnyesEntry, cnyesUrl, parseCnyesQuote,
     thirdWednesday, nextSettlementDate, settlementAfter, daysUntilSettlement, settlementStatusOf,
-    splitPosition
+    splitPosition, mergePositions
 } from '../js/utils/futures.js';
 
 let fail = 0;
@@ -230,6 +230,31 @@ check('口數空白不合法', splitPosition(3, '', 100), null);
 check('持有口數為 0 不合法', splitPosition(0, 1, 100), null);
 check('口數為數字字串仍可用', splitPosition(3, '2', 300).lots, 2);
 check('未填保證金視為 0', splitPosition(3, 1).releasedMargin, 0);
+
+// --- 加碼併入既有部位（加權平均）---
+check('1 口 23000 併入 2 口 23300 → 3 口 23200',
+    mergePositions({ contracts: 2, entryPrice: 23300, marginUsed: 350500 },
+                   { contracts: 1, entryPrice: 23000, marginUsed: 175250 }),
+    { contracts: 3, entryPrice: 23200, marginUsed: 525750 });
+check('均價落在兩個價格之間', (() => {
+    const m = mergePositions({ contracts: 1, entryPrice: 23000 }, { contracts: 3, entryPrice: 24000 });
+    return m.entryPrice > 23000 && m.entryPrice < 24000;
+})(), true);
+check('口數多的那邊把均價拉得比較近', mergePositions({ contracts: 1, entryPrice: 23000 }, { contracts: 3, entryPrice: 24000 }).entryPrice, 23750);
+check('保證金相加', mergePositions({ contracts: 1, entryPrice: 1, marginUsed: 35050 }, { contracts: 1, entryPrice: 1, marginUsed: 35050 }).marginUsed, 70100);
+check('同價加碼不改變均價', mergePositions({ contracts: 2, entryPrice: 23150 }, { contracts: 3, entryPrice: 23150 }).entryPrice, 23150);
+// 關鍵性質：合併後整筆平倉的損益，必須等於分別持有時各自平倉的損益總和
+const merged = mergePositions({ contracts: 2, entryPrice: 23300 }, { contracts: 1, entryPrice: 23000 });
+const closeAt = 23500, mult = 50;
+check('合併後平倉損益 = 分開平倉損益總和',
+    (closeAt - merged.entryPrice) * merged.contracts * mult,
+    (closeAt - 23300) * 2 * mult + (closeAt - 23000) * 1 * mult);
+// 連續加碼不該累積浮點誤差
+let acc = { contracts: 1, entryPrice: 23000, marginUsed: 0 };
+for (let i = 0; i < 20; i++) acc = mergePositions(acc, { contracts: 1, entryPrice: 23000, marginUsed: 0 });
+check('連續加碼 20 次，均價仍精確', [acc.contracts, acc.entryPrice], [21, 23000]);
+check('口數為 0 不合法', mergePositions({ contracts: 0, entryPrice: 1 }, { contracts: 1, entryPrice: 1 }), null);
+check('缺少參數不合法', mergePositions(null, { contracts: 1, entryPrice: 1 }), null);
 
 // --- 商品對應 ---
 check('微台有獨立契約', TAIFEX_PRODUCTS.TMF.cid, 'TMF');

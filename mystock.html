@@ -49,7 +49,7 @@
            - fonts.googleapis.com/css2：回應內容依瀏覽器 User-Agent 而異
            - apis.google.com/js/api.js、accounts.google.com/gsi/client：
              Google 的載入器，內容持續更新且官方不提供固定雜湊 -->
-    <title>我的投資組合 | Portfolio v5.31.0</title>
+    <title>我的投資組合 | Portfolio v5.32.0</title>
     <!-- v5.12.0: PWA。三個入口各有獨立的 manifest 與圖示，
          加到主畫面後會是三個可分辨的 App，而不是同一顆圖示。 -->
     <link rel="manifest" href="./manifest-stock.webmanifest">
@@ -3014,6 +3014,40 @@
                                     </template>
                                 </p>
                             </div>
+                        </div>
+
+                        <!-- v5.32.0: 同契約加碼會併入既有部位。合併會改掉既有部位的均價，
+                             不能等按下去才讓人發現，所以在這裡先把結果算出來。 -->
+                        <div v-if="futuresMergePreview"
+                             class="rounded-lg border border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20 px-4 py-3">
+                            <div class="font-bold text-sm text-blue-800 dark:text-blue-300 flex items-center gap-2">
+                                <i class="fa-solid fa-code-merge"></i>
+                                會併入現有部位
+                            </div>
+                            <p class="text-xs text-blue-700 dark:text-blue-400 mt-1.5 leading-relaxed">
+                                已持有同商品、同結算日、同方向的部位，這次會加進去而不是另開一筆 ——
+                                券商那邊本來就是一筆淨部位，這樣每個月轉倉才不用對同一個契約做兩次。
+                            </p>
+                            <div class="text-xs font-mono mt-2 text-blue-900 dark:text-blue-200 space-y-0.5">
+                                <div>
+                                    口數 {{ futuresMergePreview.target.contracts }} + {{ futuresForm.contracts }}
+                                    <i class="fa-solid fa-arrow-right mx-1 text-[9px]"></i>
+                                    <strong>{{ futuresMergePreview.merged.contracts }} 口</strong>
+                                </div>
+                                <div>
+                                    均價 {{ formatNumber(futuresMergePreview.target.entryPrice) }}
+                                    <i class="fa-solid fa-arrow-right mx-1 text-[9px]"></i>
+                                    <strong>{{ formatNumber(futuresMergePreview.merged.entryPrice) }}</strong>
+                                </div>
+                                <div>
+                                    保證金 {{ formatNumber(futuresMergePreview.target.marginUsed) }}
+                                    <i class="fa-solid fa-arrow-right mx-1 text-[9px]"></i>
+                                    <strong>{{ formatNumber(futuresMergePreview.merged.marginUsed) }}</strong>
+                                </div>
+                            </div>
+                            <p class="text-[10px] text-blue-700 dark:text-blue-400 mt-2 leading-relaxed">
+                                這次建倉仍會單獨記成一筆交易紀錄，明細不會不見。
+                            </p>
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">

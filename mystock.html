@@ -49,7 +49,7 @@
            - fonts.googleapis.com/css2：回應內容依瀏覽器 User-Agent 而異
            - apis.google.com/js/api.js、accounts.google.com/gsi/client：
              Google 的載入器，內容持續更新且官方不提供固定雜湊 -->
-    <title>我的投資組合 | Portfolio v5.32.0</title>
+    <title>我的投資組合 | Portfolio v5.33.0</title>
     <!-- v5.12.0: PWA。三個入口各有獨立的 manifest 與圖示，
          加到主畫面後會是三個可分辨的 App，而不是同一顆圖示。 -->
     <link rel="manifest" href="./manifest-stock.webmanifest">
@@ -2134,6 +2134,43 @@
                                     <span class="line-through opacity-60">{{ formatNumber(p.current) }}</span>
                                     <i class="fa-solid fa-arrow-right mx-1 text-[9px]"></i>
                                     <strong>{{ formatNumber(p.expected) }}</strong>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <!-- v5.33.0: 可合併的重複部位。
+                             v5.32.0 的自動併入只在「新增部位」時生效，之前分批進場留下來的多筆
+                             不會自己合併；而轉倉是每一筆各自產生一筆遠月部位，重複會一路延續下去。
+                             沒有重複時整塊不顯示。 -->
+                        <div v-if="futuresDuplicateGroups.length"
+                             class="mb-5 rounded-lg border border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20 px-4 py-3">
+                            <div class="font-bold text-sm text-blue-800 dark:text-blue-300 flex items-center gap-2">
+                                <i class="fa-solid fa-code-merge"></i>
+                                有 {{ futuresDuplicateGroups.length }} 個契約在列表上是分開的多筆
+                            </div>
+                            <p class="text-xs text-blue-700 dark:text-blue-400 mt-1.5 leading-relaxed">
+                                同一個契約在券商那邊本來就是一筆淨部位、一個均價。合併之後轉倉只要按一次，
+                                <strong>未實現損益總額不變</strong>，每一次建倉的明細仍保留在交易紀錄裡。
+                            </p>
+                            <ul class="mt-2.5 space-y-1.5">
+                                <li v-for="g in futuresDuplicateGroups" :key="g.key"
+                                    class="flex items-center justify-between gap-3 text-xs rounded-md bg-white/70 dark:bg-gray-900/40 px-3 py-2">
+                                    <span class="font-medium dark:text-gray-200">
+                                        {{ getFuturesDisplayName(g.list[0].symbol) }}
+                                        <span class="font-mono text-gray-600 dark:text-gray-400 font-normal ml-1">{{ g.list[0].expiry }}</span>
+                                        <span class="font-normal" :class="g.list[0].direction === 'long' ? 'text-red-500' : 'text-emerald-500'">
+                                            {{ g.list[0].direction === 'long' ? '多' : '空' }}
+                                        </span>
+                                        <span class="text-gray-600 dark:text-gray-400 font-normal ml-1 font-mono">
+                                            {{ g.list.map(p => p.contracts + ' 口').join(' + ') }}
+                                            <i class="fa-solid fa-arrow-right mx-1 text-[9px]"></i>
+                                            <strong class="dark:text-gray-200">{{ g.merged.contracts }} 口 @{{ formatNumber(g.merged.entryPrice) }}</strong>
+                                        </span>
+                                    </span>
+                                    <button @click="mergeFuturesGroup(g)"
+                                            class="shrink-0 px-2.5 py-1 rounded-md bg-blue-700 text-white font-bold hover:bg-blue-800 transition">
+                                        合併
+                                    </button>
                                 </li>
                             </ul>
                         </div>

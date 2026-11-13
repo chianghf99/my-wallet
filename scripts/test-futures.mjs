@@ -9,7 +9,7 @@ import {
     parseSymbolId, pickContract, pickFreshest, contractMonthOf,
     pickFromOpenData, TAIFEX_PRODUCTS, effectiveStamp, pickDaySessionFirst, isWithinDays, cnyesEntry, cnyesUrl, parseCnyesQuote,
     thirdWednesday, nextSettlementDate, settlementAfter, daysUntilSettlement, settlementStatusOf,
-    splitPosition, mergePositions
+    splitPosition, mergePositions, mergeAllPositions
 } from '../js/utils/futures.js';
 
 let fail = 0;
@@ -255,6 +255,32 @@ for (let i = 0; i < 20; i++) acc = mergePositions(acc, { contracts: 1, entryPric
 check('連續加碼 20 次，均價仍精確', [acc.contracts, acc.entryPrice], [21, 23000]);
 check('口數為 0 不合法', mergePositions({ contracts: 0, entryPrice: 1 }, { contracts: 1, entryPrice: 1 }), null);
 check('缺少參數不合法', mergePositions(null, { contracts: 1, entryPrice: 1 }), null);
+
+// --- 整理既有的重複部位（一次合併多筆）---
+check('兩筆合併結果與 mergePositions 相同',
+    mergeAllPositions([{ contracts: 2, entryPrice: 23300, marginUsed: 350500 },
+                       { contracts: 1, entryPrice: 23000, marginUsed: 175250 }]),
+    { contracts: 3, entryPrice: 23200, marginUsed: 525750 });
+check('三筆一次合併',
+    mergeAllPositions([{ contracts: 1, entryPrice: 23000, marginUsed: 175250 },
+                       { contracts: 1, entryPrice: 23200, marginUsed: 175250 },
+                       { contracts: 2, entryPrice: 23400, marginUsed: 350500 }]),
+    { contracts: 4, entryPrice: 23250, marginUsed: 701000 });
+check('不足兩筆回傳 null', mergeAllPositions([{ contracts: 1, entryPrice: 1 }]), null);
+check('空陣列回傳 null', mergeAllPositions([]), null);
+check('含不合法口數回傳 null',
+    mergeAllPositions([{ contracts: 1, entryPrice: 1 }, { contracts: 0, entryPrice: 1 }]), null);
+// 合併後整筆平倉的損益，必須等於各筆分別平倉的總和
+const grp = [{ contracts: 1, entryPrice: 23000 }, { contracts: 1, entryPrice: 23200 }, { contracts: 2, entryPrice: 23400 }];
+const all = mergeAllPositions(grp);
+const CL = 23500, MU = 50;
+check('三筆合併後平倉損益 = 分別平倉總和',
+    (CL - all.entryPrice) * all.contracts * MU,
+    grp.reduce((sum, p) => sum + (CL - p.entryPrice) * p.contracts * MU, 0));
+// 一次算完不可以比兩兩折疊差（除不盡時折疊會疊加四捨五入誤差）
+const odd = [{ contracts: 1, entryPrice: 23000.01 }, { contracts: 1, entryPrice: 23000.02 }, { contracts: 1, entryPrice: 23000.03 }];
+check('除不盡時：一次算完等於真正的加權平均',
+    mergeAllPositions(odd).entryPrice, 23000.02);
 
 // --- 商品對應 ---
 check('微台有獨立契約', TAIFEX_PRODUCTS.TMF.cid, 'TMF');

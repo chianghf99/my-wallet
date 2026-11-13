@@ -199,6 +199,35 @@ export const mergePositions = (existing, added) => {
     };
 };
 
+/**
+ * 把同一個契約的多筆既有部位合成一筆。
+ *
+ * 用途是整理 v5.32.0 以前留下來的重複部位 —— 自動併入只在「新增」時生效，
+ * 之前分批進場留下的多筆不會自己合併，而且轉倉時每一筆各自產生一筆遠月部位，
+ * 重複會一路延續下去。
+ *
+ * 刻意一次算完而不是兩兩相加：mergePositions 每併一次就四捨五入一次，
+ * 三筆以上連續折疊會把誤差疊起來。這裡直接用總和去除，只四捨五入一次。
+ *
+ * 回傳 null 代表不足兩筆或有口數不合法的項目。
+ */
+export const mergeAllPositions = (list = []) => {
+    if (!Array.isArray(list) || list.length < 2) return null;
+    let lots = 0, notional = 0, margin = 0;
+    for (const p of list) {
+        const c = Number(p && p.contracts);
+        if (!(c > 0)) return null;
+        lots += c;
+        notional += (Number(p.entryPrice) || 0) * c;
+        margin += Number(p.marginUsed) || 0;
+    }
+    return {
+        contracts: lots,
+        entryPrice: Number((notional / lots).toFixed(4)),
+        marginUsed: margin
+    };
+};
+
 /** 某年某月（month 為 1~12）的第三個星期三，回傳 'YYYY-MM-DD' */
 export const thirdWednesday = (year, month) => {
     const firstDow = new Date(Date.UTC(year, month - 1, 1)).getUTCDay(); // 0=日

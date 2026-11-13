@@ -1,6 +1,6 @@
 import { db, auth } from './firebase-config.js';
 import { getLocalDate, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountSign, getFuturesDisplayName } from './utils/format.js';
-import { TAIFEX_PRODUCTS, TAIFEX_MIS_URL, taifexRequestBody, contractMonthOf, pickContract, pickFreshest, pickFromOpenData, OPEN_DATA_CONTRACT, cnyesUrl, cnyesEntry, parseCnyesQuote, TAIFEX_MARGINS, futuresDefaultsFor, nextSettlementDate, settlementAfter, settlementStatusOf, splitPosition, mergePositions } from './utils/futures.js';
+import { TAIFEX_PRODUCTS, TAIFEX_MIS_URL, taifexRequestBody, contractMonthOf, pickContract, pickFreshest, pickFromOpenData, OPEN_DATA_CONTRACT, cnyesUrl, cnyesEntry, parseCnyesQuote, TAIFEX_MARGINS, futuresDefaultsFor, nextSettlementDate, settlementAfter, settlementStatusOf, splitPosition, mergePositions, mergeAllPositions } from './utils/futures.js';
 import { computePortfolio, calcStats, calcStockExposure, calcFundsValueTwd, calcFundsCostTwd, calcFuturesMarginCash, calcFuturesMarginUsed, calcFuturesExposure, buildExposureTrend } from './utils/valuation.js';
 import { stockChangelog } from './changelog.js';
 
@@ -1290,6 +1290,72 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     const merged = mergePositions(target, data);
                     return merged ? { target, merged } : null;
                 });
+
+                /** 合併判定用的分組鍵：同商品、同結算日、同方向、同幣別、同乘數才算同一個契約 */
+                const futuresGroupKey = (p) => [
+                    p.symbol, p.expiry || '', p.direction, p.currency || 'TWD', Number(p.multiplier)
+                ].join('|');
+
+                /**
+                 * 還沒合併的重複部位。
+                 *
+                 * v5.32.0 的自動併入只在「新增部位」時生效，之前分批進場留下來的多筆
+                 * 不會自己合併；而轉倉是每一筆各自產生一筆遠月部位，所以重複會一路延續下去。
+                 * 另外部分轉倉若分兩次轉到同一個月份，也會再長出第二筆。
+                 * 這裡把它們找出來，讓使用者一鍵整理掉。
+                 */
+                const futuresDuplicateGroups = computed(() => {
+                    const groups = new Map();
+                    for (const p of futuresPositions.value) {
+                        const k = futuresGroupKey(p);
+                        if (!groups.has(k)) groups.set(k, []);
+                        groups.get(k).push(p);
+                    }
+                    const out = [];
+                    for (const [key, list] of groups) {
+                        if (list.length < 2) continue;
+                        const merged = mergeAllPositions(list);
+                        if (merged) out.push({ key, list, merged });
+                    }
+                    return out;
+                });
+
+                /**
+                 * 把一組同契約的部位合成一筆。
+                 *
+                 * 保留第一筆的 doc（連帶保留它的 id，轉倉紀錄若指向它才不會斷），其餘刪除。
+                 * 不寫交易紀錄 —— 合併沒有任何資金進出，只是把同一個契約的帳面整理成
+                 * 券商本來就在顯示的樣子；每一次建倉的明細仍完整留在交易紀錄裡。
+                 */
+                const mergeFuturesGroup = async (group) => {
+                    if (!user.value || !group || group.list.length < 2) return;
+                    const { list, merged } = group;
+                    const head = list[0];
+                    const detail = list.map(p => `  ${p.contracts} 口 @${formatNumber(p.entryPrice)}`).join('\n');
+                    if (!confirm(
+                        `將這 ${list.length} 筆合併成一筆：\n${detail}\n\n` +
+                        `合併後：${merged.contracts} 口 @${formatNumber(merged.entryPrice)}（加權平均）\n` +
+                        `佔用保證金：${formatNumber(merged.marginUsed)}\n\n` +
+                        `未實現損益總額不變，建倉明細仍保留在交易紀錄裡。\n` +
+                        `此動作無法從畫面上復原。`
+                    )) return;
+
+                    const col = db.collection('users').doc(user.value.uid).collection('futures_positions');
+                    const batch = db.batch();
+                    batch.set(col.doc(head.id), {
+                        contracts: merged.contracts,
+                        entryPrice: merged.entryPrice,
+                        marginUsed: merged.marginUsed,
+                        // 同一個契約報價相同，取第一個有值的
+                        currentPrice: list.map(p => p.currentPrice).find(v => Number(v) > 0) || head.currentPrice || '',
+                        note: [...new Set(list.map(p => (p.note || '').trim()).filter(Boolean))].join('、'),
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+                    for (const p of list.slice(1)) batch.delete(col.doc(p.id));
+                    await batch.commit();
+                    setTimeout(saveDailySnapshot, 500);
+                    toastOk(`已合併 ${list.length} 筆為 ${merged.contracts} 口，均價 ${formatNumber(merged.entryPrice)}`);
+                };
 
                 // --- 期貨：建倉、平倉與轉倉 ---
                 const saveFuturesPosition = async () => {
@@ -3850,6 +3916,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     futuresMarginInfo, futuresMarginAsOf, futuresStaleMarginPositions,
                     settlementOf, futuresRollPending, futuresRollSummary, nextSettlementHint,
                     futuresActionPreview, futuresMergePreview,
+                    futuresDuplicateGroups, mergeFuturesGroup, futuresGroupKey,
                     showFuturesTxEditModal, futuresTxEditForm, openFuturesTxEdit, applyTxEditSpread, onTxEditClosePriceInput, futuresTxEditPreview, saveFuturesTxEdit,
                     investmentsTab, performanceTab, overviewTab,
                     mutualFundList, showMutualFundModal, mutualFundForm, mutualFundTotalCost, mutualFundTotalValue, mutualFundTotalPnL, openMutualFundModal, saveMutualFund, deleteMutualFund

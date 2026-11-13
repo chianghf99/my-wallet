@@ -7,7 +7,8 @@
 
 import {
     parseSymbolId, pickContract, pickFreshest, contractMonthOf,
-    pickFromOpenData, TAIFEX_PRODUCTS, effectiveStamp, pickDaySessionFirst, isWithinDays, cnyesEntry, cnyesUrl, parseCnyesQuote
+    pickFromOpenData, TAIFEX_PRODUCTS, effectiveStamp, pickDaySessionFirst, isWithinDays, cnyesEntry, cnyesUrl, parseCnyesQuote,
+    thirdWednesday, nextSettlementDate, settlementAfter, daysUntilSettlement, settlementStatusOf
 } from '../js/utils/futures.js';
 
 let fail = 0;
@@ -153,6 +154,51 @@ check('鉅亨解析：成交價', cn.price, 40203);
 check('鉅亨解析：昨收 = 成交 - 漲跌', cn.prevClose, 40366);
 check('鉅亨解析：帶回 approx 標記', cn.approx, true);
 check('鉅亨解析：無成交價回傳 null', parseCnyesQuote({ data: [{}] }), null);
+
+// --- 結算日（交割月份第三個星期三）---
+// 期望值以萬年曆逐月核對過，涵蓋 1 號就是星期三、1 號是星期四（第一個星期三落在 7 號）
+// 這兩種邊界，以及跨年。
+check('2026-11 第三個星期三', thirdWednesday(2026, 11), '2026-11-18');
+check('2026-12 第三個星期三', thirdWednesday(2026, 12), '2026-12-16');
+check('2027-01 第三個星期三', thirdWednesday(2027, 1), '2027-01-20');
+check('2026-04 第三個星期三', thirdWednesday(2026, 4), '2026-04-15');
+check('2026-07 第三個星期三（1 號為三）', thirdWednesday(2026, 7), '2026-07-15');
+check('2026-10 第三個星期三（1 號為四）', thirdWednesday(2026, 10), '2026-10-21');
+// 算出來的日期一定是星期三
+for (let m = 1; m <= 12; m++) {
+    const d = thirdWednesday(2027, m);
+    const dow = new Date(d + 'T00:00:00Z').getUTCDay();
+    check(`2027-${String(m).padStart(2, '0')} 落在星期三且為第 3 個`, [dow, Math.floor((+d.slice(8) - 1) / 7) + 1], [3, 3]);
+}
+
+// --- 下一個結算日：本月已過就跳下個月 ---
+const at = s => new Date(s);   // 以 UTC 指定時刻，再由函式換算台北日期
+check('結算日前一天 → 仍是本月', nextSettlementDate(at('2026-11-17T01:00:00Z')), '2026-11-18');
+check('結算日當天 → 仍是本月（當天還能交易）', nextSettlementDate(at('2026-11-18T01:00:00Z')), '2026-11-18');
+check('結算日隔天 → 跳下個月', nextSettlementDate(at('2026-11-19T01:00:00Z')), '2026-12-16');
+check('12 月已過 → 跨年到隔年 1 月', nextSettlementDate(at('2026-12-20T01:00:00Z')), '2027-01-20');
+// UTC 16:00 後台北已是隔天：這一刻台北是 11-19，不該還回 11-18
+check('UTC 傍晚仍用台北日期判斷', nextSettlementDate(at('2026-11-18T17:00:00Z')), '2026-12-16');
+
+// --- 轉倉：下一個月契約 ---
+check('11 月轉倉 → 12 月結算日', settlementAfter('2026-11-18'), '2026-12-16');
+check('12 月轉倉 → 跨年', settlementAfter('2026-12-16'), '2027-01-20');
+check('結算日空白 → 退回下一個結算日', settlementAfter('', at('2026-11-17T01:00:00Z')), '2026-11-18');
+
+// --- 倒數與轉倉狀態 ---
+check('倒數：隔天為 1', daysUntilSettlement('2026-11-18', at('2026-11-17T01:00:00Z')), 1);
+check('倒數：當天為 0', daysUntilSettlement('2026-11-18', at('2026-11-18T01:00:00Z')), 0);
+check('倒數：已過為負', daysUntilSettlement('2026-11-18', at('2026-11-20T01:00:00Z')), -2);
+check('倒數：格式錯誤回傳 null', daysUntilSettlement('2026-11'), null);
+const st = (e, n) => { const s = settlementStatusOf(e, at(n)); return [s.level, s.needsRoll]; };
+check('狀態：剩 1 天 → urgent 且需轉倉', st('2026-11-18', '2026-11-17T01:00:00Z'), ['urgent', true]);
+check('狀態：當天 → urgent', st('2026-11-18', '2026-11-18T01:00:00Z'), ['urgent', true]);
+check('狀態：剩 5 天 → soon 且需轉倉', st('2026-11-18', '2026-11-13T01:00:00Z'), ['soon', true]);
+check('狀態：剩 8 天 → ok', st('2026-11-18', '2026-11-10T01:00:00Z'), ['ok', false]);
+check('狀態：轉倉後剩 33 天 → ok', st('2026-12-16', '2026-11-13T01:00:00Z'), ['ok', false]);
+check('狀態：已過期 → 需轉倉', st('2026-11-18', '2026-11-20T01:00:00Z'), ['expired', true]);
+check('狀態：未填結算日 → none 不催', st('', '2026-11-13T01:00:00Z'), ['none', false]);
+check('狀態：今日結算的文字', settlementStatusOf('2026-11-18', at('2026-11-18T01:00:00Z')).label, '今日結算');
 
 // --- 商品對應 ---
 check('微台有獨立契約', TAIFEX_PRODUCTS.TMF.cid, 'TMF');

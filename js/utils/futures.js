@@ -109,15 +109,94 @@ export const parseSymbolId = (symbolId) => {
     };
 };
 
+/**
+ * 「今天」的台北日期，回傳 UTC epoch（毫秒）以便做整日數相減。
+ *
+ * 為什麼不能直接用本機日期：這份檔案前端與排程共用，排程跑在 UTC 的 runner 上。
+ * UTC 16:00 之後台北已經是隔天，用本機日期算會整天差一天 ——
+ * 曾經因此讓 test-futures 在台灣傍晚之後必定失敗，連帶擋掉兩個交易日的快照。
+ */
+const taipeiTodayUTC = (now = new Date()) => {
+    const tp = new Date(now.getTime() + (8 * 60 + now.getTimezoneOffset()) * 60000);
+    return Date.UTC(tp.getFullYear(), tp.getMonth(), tp.getDate());
+};
+
 /** 判斷 YYYYMMDD 是否在今天往前 days 天之內（用台北時間比較） */
 export const isWithinDays = (yyyymmdd, days, now = new Date()) => {
     if (!/^\d{8}$/.test(String(yyyymmdd || ''))) return false;
-    const tp = new Date(now.getTime() + (8 * 60 + now.getTimezoneOffset()) * 60000);
-    const today = Date.UTC(tp.getFullYear(), tp.getMonth(), tp.getDate());
+    const today = taipeiTodayUTC(now);
     const d = String(yyyymmdd);
     const that = Date.UTC(+d.slice(0, 4), +d.slice(4, 6) - 1, +d.slice(6, 8));
     const diff = (today - that) / 86400000;
     return diff >= 0 && diff <= days;
+};
+
+// ---------------------------------------------------------------------------
+// 結算日（契約行事曆）
+//
+// 臺指期與個股期貨的最後交易日都是「交割月份第三個星期三」，隔日為最後結算日。
+// 使用者實際上只交易流動性最好的月契約，所以結算日永遠落在這一天 ——
+// 以前是一個空白的 date 欄位要自己翻日曆填，這是最容易填錯也最煩的一步。
+//
+// 注意：期交所遇國定假日會提前最後交易日（例如第三個星期三恰為假日），
+// 本專案不內建假日表，因此這裡算出來的是「預設值」而非保證值，欄位仍可改。
+// ---------------------------------------------------------------------------
+
+/** 某年某月（month 為 1~12）的第三個星期三，回傳 'YYYY-MM-DD' */
+export const thirdWednesday = (year, month) => {
+    const firstDow = new Date(Date.UTC(year, month - 1, 1)).getUTCDay(); // 0=日
+    const firstWed = 1 + ((3 - firstDow) + 7) % 7;
+    return `${year}-${String(month).padStart(2, '0')}-${String(firstWed + 14).padStart(2, '0')}`;
+};
+
+/**
+ * 下一個還沒過的結算日（含今天）。
+ * 本月的第三個星期三若已過，就跳到下個月。
+ */
+export const nextSettlementDate = (now = new Date()) => {
+    const today = taipeiTodayUTC(now);
+    const y = new Date(today).getUTCFullYear();
+    const m = new Date(today).getUTCMonth() + 1;
+    const thisMonth = thirdWednesday(y, m);
+    if (Date.parse(thisMonth + 'T00:00:00Z') >= today) return thisMonth;
+    return m === 12 ? thirdWednesday(y + 1, 1) : thirdWednesday(y, m + 1);
+};
+
+/**
+ * 某個結算日的「下一個月契約」結算日，給轉倉用。
+ * expiry 格式不符時退回 nextSettlementDate()，不會回傳空字串卡住表單。
+ */
+export const settlementAfter = (expiry, now = new Date()) => {
+    const m = String(expiry || '').match(/^(\d{4})-(\d{2})/);
+    if (!m) return nextSettlementDate(now);
+    const y = +m[1], mo = +m[2];
+    return mo === 12 ? thirdWednesday(y + 1, 1) : thirdWednesday(y, mo + 1);
+};
+
+/** 距結算日還有幾天（台北時間，今天=0，已過為負）；格式不符回傳 null */
+export const daysUntilSettlement = (expiry, now = new Date()) => {
+    const m = String(expiry || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return null;
+    return (Date.UTC(+m[1], +m[2] - 1, +m[3]) - taipeiTodayUTC(now)) / 86400000;
+};
+
+/**
+ * 部位的轉倉狀態，給介面直接用。
+ *
+ * 解決的問題：每月轉倉時要一筆一筆核對「這口轉過了沒」。
+ * 轉過的部位結算日會跳到下個月，剩餘天數自然拉開（通常 >21 天），
+ * 所以只要把天數算出來標上顏色，轉完與沒轉完一眼就分得出來，不必記。
+ *
+ * level: none（沒填結算日）/ ok / soon（7 天內）/ urgent（2 天內）/ expired（已過）
+ */
+export const settlementStatusOf = (expiry, now = new Date()) => {
+    const days = daysUntilSettlement(expiry, now);
+    if (days === null) return { days: null, level: 'none', label: '未設結算日', needsRoll: false };
+    if (days < 0) return { days, level: 'expired', label: `已過期 ${-days} 天`, needsRoll: true };
+    if (days === 0) return { days, level: 'urgent', label: '今日結算', needsRoll: true };
+    if (days <= 2) return { days, level: 'urgent', label: `剩 ${days} 天`, needsRoll: true };
+    if (days <= 7) return { days, level: 'soon', label: `剩 ${days} 天`, needsRoll: true };
+    return { days, level: 'ok', label: `剩 ${days} 天`, needsRoll: false };
 };
 
 const toNumber = v => {

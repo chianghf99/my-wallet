@@ -170,6 +170,35 @@ export const splitPosition = (totalContracts, lots, marginUsed = 0) => {
     };
 };
 
+/**
+ * 把新建的口數併入既有部位，算出合併後的口數、加權平均建倉價與佔用保證金。
+ *
+ * 為什麼要併：期貨同一個契約在券商那邊本來就是一筆淨部位、一個均價。
+ * 分批進場若在這裡留成好幾列，每個月轉倉就要對同一個契約重複操作好幾次。
+ *
+ * 為什麼可以併：券商之所以能合併又不必問你平的是哪一口，是因為期貨每日結算 ——
+ * 所有未平倉口數的帳面成本每天都被重設成同一個結算價，先買後買根本沒有差別。
+ * 本專案不做每日結算（一路用建倉價扛到出場），所以這裡改用加權平均；
+ * 它與 FIFO 的「累計損益」完全相同，差別只在損益落在哪一期。
+ *
+ * 建倉明細不會因此消失 —— 每次建倉都另外寫了一筆 type:'open' 交易紀錄。
+ *
+ * 回傳 null 代表參數不合法（口數非正數）。
+ */
+export const mergePositions = (existing, added) => {
+    const c1 = Number(existing && existing.contracts), c2 = Number(added && added.contracts);
+    if (!(c1 > 0) || !(c2 > 0)) return null;
+    const p1 = Number(existing.entryPrice) || 0, p2 = Number(added.entryPrice) || 0;
+    const total = c1 + c2;
+    return {
+        contracts: total,
+        // 四捨五入到小數第 4 位：期貨報價最細到小數點後 2 位，留兩位緩衝即可，
+        // 不留的話連續加碼會累積浮點誤差。
+        entryPrice: Number(((p1 * c1 + p2 * c2) / total).toFixed(4)),
+        marginUsed: (Number(existing.marginUsed) || 0) + (Number(added.marginUsed) || 0)
+    };
+};
+
 /** 某年某月（month 為 1~12）的第三個星期三，回傳 'YYYY-MM-DD' */
 export const thirdWednesday = (year, month) => {
     const firstDow = new Date(Date.UTC(year, month - 1, 1)).getUTCDay(); // 0=日

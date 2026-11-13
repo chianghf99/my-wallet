@@ -1,6 +1,6 @@
 import { db, auth } from './firebase-config.js';
 import { getLocalDate, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountSign, getFuturesDisplayName } from './utils/format.js';
-import { TAIFEX_PRODUCTS, TAIFEX_MIS_URL, taifexRequestBody, contractMonthOf, pickContract, pickFreshest, pickFromOpenData, OPEN_DATA_CONTRACT, cnyesUrl, cnyesEntry, parseCnyesQuote, TAIFEX_MARGINS, futuresDefaultsFor } from './utils/futures.js';
+import { TAIFEX_PRODUCTS, TAIFEX_MIS_URL, taifexRequestBody, contractMonthOf, pickContract, pickFreshest, pickFromOpenData, OPEN_DATA_CONTRACT, cnyesUrl, cnyesEntry, parseCnyesQuote, TAIFEX_MARGINS, futuresDefaultsFor, nextSettlementDate, settlementAfter, settlementStatusOf } from './utils/futures.js';
 import { computePortfolio, calcStats, calcStockExposure, calcFundsValueTwd, calcFundsCostTwd, calcFuturesMarginCash, calcFuturesMarginUsed, calcFuturesExposure, buildExposureTrend } from './utils/valuation.js';
 import { stockChangelog } from './changelog.js';
 
@@ -1112,7 +1112,12 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         futuresForm.value = {
                             id: null,
                             symbol: '',
-                            expiry: '',
+                            // 結算日預設帶入下一個「第三個星期三」。
+                            // 臺指期與個股期貨的最後交易日都是交割月份的第三個星期三，
+                            // 而本人只交易流動性最好的月契約，所以這個預設值幾乎永遠是對的；
+                            // 以前是空欄位要自己翻日曆，是新增部位最煩也最容易填錯的一步。
+                            // 遇國定假日期交所會提前，欄位仍可改。
+                            expiry: nextSettlementDate(),
                             direction: 'long',
                             contracts: '',
                             entryPrice: '',
@@ -1179,6 +1184,72 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         };
                     })
                 );
+
+                // --- 期貨：轉倉進度 ---
+                //
+                // 使用者回報的痛點：「每個月轉倉的時候還要注意哪一筆轉完」。
+                // 根本原因是列表上只印結算日的純文字（2026-11-18），要自己換算剩幾天、
+                // 自己比對哪幾口還停在近月。轉倉本身是逐筆操作，中途被打斷就會漏。
+                //
+                // 做法：把「距結算日剩幾天」算出來當成狀態。轉過的部位結算日會跳到下個月，
+                // 倒數自然拉開到 21 天以上，和還沒轉的（7 天內）在視覺上分得很開，
+                // 不需要額外記一個「已轉倉」旗標去跟實際資料不同步。
+
+                /** 頁面隔夜沒關時，日期不會自己變、倒數會停在昨天。每 10 分鐘對一次，變了才重算。 */
+                const todayKey = ref(getLocalDate());
+                setInterval(() => {
+                    const k = getLocalDate();
+                    if (k !== todayKey.value) todayKey.value = k;
+                }, 600000);
+
+                /**
+                 * 單一部位的結算倒數，供列表內的徽章直接呼叫。
+                 *
+                 * 刻意做成函式而不是把狀態併進部位物件：部位物件會被 openFuturesModal
+                 * 原樣展開進表單（`{ ...pos }`）、也會被平倉／轉倉流程拿去寫 Firestore，
+                 * 多掛一個衍生欄位遲早會跟著寫進資料庫。
+                 */
+                const settlementOf = (pos) => {
+                    void todayKey.value;   // 跨日時要重算
+                    return settlementStatusOf(pos && pos.expiry);
+                };
+
+                /** 還沒轉倉的部位（越快結算的排越前面），每筆保留原物件供按鈕使用 */
+                const futuresRollPending = computed(() => {
+                    void todayKey.value;
+                    return futuresPositions.value
+                        .map(pos => ({ pos, settlement: settlementStatusOf(pos.expiry) }))
+                        .filter(x => x.settlement.needsRoll)
+                        .sort((a, b) => a.settlement.days - b.settlement.days);
+                });
+
+                /**
+                 * 轉倉提示列的資料。只在真的有部位快結算時才顯示，
+                 * 平常（都在 7 天以上）整條提示不出現，避免變成每天都在叫的雜訊。
+                 */
+                const futuresRollSummary = computed(() => {
+                    const pending = futuresRollPending.value;
+                    if (!pending.length) return null;
+                    return {
+                        count: pending.length,
+                        lots: pending.reduce((s, x) => s + (Number(x.pos.contracts) || 0), 0),
+                        level: pending.some(x => x.settlement.level === 'expired') ? 'expired'
+                             : pending.some(x => x.settlement.level === 'urgent') ? 'urgent' : 'soon',
+                        soonestDate: pending[0].pos.expiry,
+                        soonestLabel: pending[0].settlement.label,
+                        // 已經轉到下個月的（倒數還很長）也報一下，讓「轉了幾筆／還剩幾筆」一次看完。
+                        // 只算 level === 'ok'：沒填結算日的部位（'none'）不在轉倉流程裡，
+                        // 用「總數 − 待轉」會把它們誤報成「已轉」。
+                        done: futuresPositions.value
+                            .filter(p => settlementStatusOf(p.expiry).level === 'ok').length
+                    };
+                });
+
+                /** 新增部位時顯示在結算日欄位旁的說明 */
+                const nextSettlementHint = computed(() => {
+                    void todayKey.value;
+                    return nextSettlementDate();
+                });
                 // --- 期貨：建倉、平倉與轉倉 ---
                 const saveFuturesPosition = async () => {
                     if (!user.value) return;
@@ -1315,7 +1386,11 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     futuresActionForm.value = {
                         mode: 'rollover', pos,
                         closePrice: pos.currentPrice || '', fee: '',
-                        newExpiry: '', newOpenPrice: '', spreadInput: '',
+                        // 轉倉幾乎都是轉到「下一個月契約」，所以直接帶入該月的第三個星期三。
+                        // 這同時讓轉完的部位倒數天數立刻拉開（21 天以上），
+                        // 列表上就能一眼分辨哪幾口已經轉過，不必自己記。
+                        newExpiry: settlementAfter(pos.expiry),
+                        newOpenPrice: '', spreadInput: '',
                         closePriceFromQuote: !!pos.currentPrice   // 還沒被人改過 → 提醒使用者確認
                     };
                     clearFormErrors(); showFuturesActionModal.value = true;
@@ -3557,6 +3632,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     futuresHistoryRange, futuresHistoryStart, futuresHistoryEnd, futuresHistoryBounds, futuresHistoryFiltered, futuresCloseRecords, futuresRolloverRecords, futuresRealizedSummary,
                     editingFuturesFeeId, editingFuturesFeeValue, startEditFuturesFee, cancelEditFuturesFee, saveFuturesFee,
                     futuresMarginInfo, futuresMarginAsOf, futuresStaleMarginPositions,
+                    settlementOf, futuresRollPending, futuresRollSummary, nextSettlementHint,
                     showFuturesTxEditModal, futuresTxEditForm, openFuturesTxEdit, applyTxEditSpread, onTxEditClosePriceInput, futuresTxEditPreview, saveFuturesTxEdit,
                     investmentsTab, performanceTab, overviewTab,
                     mutualFundList, showMutualFundModal, mutualFundForm, mutualFundTotalCost, mutualFundTotalValue, mutualFundTotalPnL, openMutualFundModal, saveMutualFund, deleteMutualFund

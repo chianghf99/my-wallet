@@ -49,7 +49,7 @@
            - fonts.googleapis.com/css2：回應內容依瀏覽器 User-Agent 而異
            - apis.google.com/js/api.js、accounts.google.com/gsi/client：
              Google 的載入器，內容持續更新且官方不提供固定雜湊 -->
-    <title>我的投資組合 | Portfolio v5.29.6</title>
+    <title>我的投資組合 | Portfolio v5.30.0</title>
     <!-- v5.12.0: PWA。三個入口各有獨立的 manifest 與圖示，
          加到主畫面後會是三個可分辨的 App，而不是同一顆圖示。 -->
     <link rel="manifest" href="./manifest-stock.webmanifest">
@@ -2138,6 +2138,50 @@
                             </ul>
                         </div>
 
+                        <!-- v5.30.0: 轉倉待辦清單
+                             使用者回報「每個月轉倉的時候還要注意哪一筆轉完」。原因是列表上只有
+                             結算日的純文字，要自己換算剩幾天、自己比對哪幾口還停在近月，
+                             逐筆操作中途被打斷就會漏。這裡把「還沒轉的」獨立列成清單並各自給轉倉按鈕，
+                             轉完一筆就從清單消失 —— 清單空了就代表全部轉完，不必自己記。
+                             都在 7 天以上時整塊不顯示，避免變成每天都在叫的雜訊。 -->
+                        <div v-if="futuresRollSummary"
+                             class="mb-5 rounded-lg border px-4 py-3"
+                             :class="futuresRollSummary.level === 'soon'
+                                 ? 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20'
+                                 : 'border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20'">
+                            <div class="font-bold text-sm flex items-center gap-2"
+                                 :class="futuresRollSummary.level === 'soon' ? 'text-amber-800 dark:text-amber-300' : 'text-red-800 dark:text-red-300'">
+                                <i class="fa-solid fa-rotate"></i>
+                                轉倉提醒：還有 {{ futuresRollSummary.count }} 筆（{{ futuresRollSummary.lots }} 口）停在近月
+                                <span class="font-normal text-xs" v-if="futuresRollSummary.done > 0">
+                                    · 已轉 {{ futuresRollSummary.done }} 筆
+                                </span>
+                            </div>
+                            <p class="text-xs mt-1.5 leading-relaxed"
+                               :class="futuresRollSummary.level === 'soon' ? 'text-amber-700 dark:text-amber-400' : 'text-red-700 dark:text-red-400'">
+                                最近的結算日是 <strong>{{ futuresRollSummary.soonestDate }}</strong>（{{ futuresRollSummary.soonestLabel }}）。
+                                轉完的部位會從這張清單消失。
+                            </p>
+                            <ul class="mt-2.5 space-y-1.5">
+                                <li v-for="x in futuresRollPending" :key="'roll-' + x.pos.id"
+                                    class="flex items-center justify-between gap-3 text-xs rounded-md bg-white/70 dark:bg-gray-900/40 px-3 py-2">
+                                    <span class="font-medium dark:text-gray-200">
+                                        {{ getFuturesDisplayName(x.pos.symbol) }}
+                                        <span class="text-gray-600 dark:text-gray-400 font-normal">{{ x.pos.contracts }} 口</span>
+                                        <span class="font-mono text-gray-600 dark:text-gray-400 font-normal ml-1">{{ x.pos.expiry }}</span>
+                                        <span class="ml-1.5 font-bold"
+                                              :class="x.settlement.level === 'soon' ? 'text-amber-700 dark:text-amber-300' : 'text-red-700 dark:text-red-300'">
+                                            {{ x.settlement.label }}
+                                        </span>
+                                    </span>
+                                    <button @click="rollFuturesPosition(x.pos)"
+                                            class="shrink-0 px-2.5 py-1 rounded-md bg-amber-700 text-white font-bold hover:bg-amber-800 transition">
+                                        轉倉
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+
                         <!-- 未平倉部位清單 -->
                         <div class="overflow-x-auto">
                             <table class="w-full text-xs text-left">
@@ -2157,7 +2201,20 @@
                                 <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                                     <tr v-for="pos in futuresPositions" :key="pos.id" class="hover:bg-gray-50 dark:hover:bg-gray-800 transition">
                                         <td class="px-4 py-3 font-bold dark:text-white">
-                                            {{ getFuturesDisplayName(pos.symbol) }} <span class="text-[10px] font-normal text-gray-400" v-if="pos.expiry">{{ pos.expiry }}</span>
+                                            {{ getFuturesDisplayName(pos.symbol) }}
+                                            <span class="text-[10px] font-normal text-gray-500 dark:text-gray-400" v-if="pos.expiry">{{ pos.expiry }}</span>
+                                            <!-- v5.30.0: 結算倒數徽章。純日期要自己換算剩幾天，
+                                                 轉倉時最花精神的就是逐筆核對。轉過的部位結算日會跳到下個月、
+                                                 倒數拉開到 21 天以上，和還停在近月的（7 天內、黃或紅）一眼就分得出來。 -->
+                                            <span v-if="pos.expiry"
+                                                  class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold align-middle whitespace-nowrap"
+                                                  :class="settlementOf(pos).level === 'ok'
+                                                      ? 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+                                                      : settlementOf(pos).level === 'soon'
+                                                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                                                      : 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300'">
+                                                {{ settlementOf(pos).label }}
+                                            </span>
                                             <div class="text-[10px] text-gray-400 font-normal" v-if="pos.note">{{ pos.note }}</div>
                                         </td>
                                         <td class="px-4 py-3 text-center font-bold">
@@ -2944,6 +3001,18 @@
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">結算日</label>
                                 <input type="date" v-model="futuresForm.expiry" class="zen-input">
+                                <!-- v5.30.0: 預設已帶入下一個「第三個星期三」（臺指期與個股期貨的最後交易日）。
+                                     被改過時提供一鍵改回，省得去翻日曆。遇國定假日期交所會提前，所以仍可自行調整。 -->
+                                <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+                                    <span v-if="futuresForm.expiry === nextSettlementHint">
+                                        已帶入近月結算日（每月第三個星期三）
+                                    </span>
+                                    <template v-else>
+                                        近月結算日為 {{ nextSettlementHint }}
+                                        <button type="button" @click="futuresForm.expiry = nextSettlementHint"
+                                                class="ml-1 underline font-bold text-blue-600 dark:text-blue-400">帶入</button>
+                                    </template>
+                                </p>
                             </div>
                         </div>
 
@@ -3141,6 +3210,8 @@
                                     <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">遠月結算日 <span class="text-red-500">*</span></label>
                                     <input type="date" v-model="futuresActionForm.newExpiry"
                                         class="zen-input font-mono">
+                                    <!-- v5.30.0: 已預設為「下一個月契約」的第三個星期三，不必翻日曆。 -->
+                                    <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-1">已帶入下個月契約的結算日</p>
                                     <div v-if="formErrors.newExpiry" class="field-error">{{ formErrors.newExpiry }}</div>
                                 </div>
                                 <div>

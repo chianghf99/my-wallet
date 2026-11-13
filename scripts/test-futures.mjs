@@ -8,7 +8,8 @@
 import {
     parseSymbolId, pickContract, pickFreshest, contractMonthOf,
     pickFromOpenData, TAIFEX_PRODUCTS, effectiveStamp, pickDaySessionFirst, isWithinDays, cnyesEntry, cnyesUrl, parseCnyesQuote,
-    thirdWednesday, nextSettlementDate, settlementAfter, daysUntilSettlement, settlementStatusOf
+    thirdWednesday, nextSettlementDate, settlementAfter, daysUntilSettlement, settlementStatusOf,
+    splitPosition
 } from '../js/utils/futures.js';
 
 let fail = 0;
@@ -199,6 +200,36 @@ check('狀態：轉倉後剩 33 天 → ok', st('2026-12-16', '2026-11-13T01:00:
 check('狀態：已過期 → 需轉倉', st('2026-11-18', '2026-11-20T01:00:00Z'), ['expired', true]);
 check('狀態：未填結算日 → none 不催', st('', '2026-11-13T01:00:00Z'), ['none', false]);
 check('狀態：今日結算的文字', settlementStatusOf('2026-11-18', at('2026-11-18T01:00:00Z')).label, '今日結算');
+
+// --- 部分出場：口數與保證金拆分 ---
+check('3 口平 1 口', splitPosition(3, 1, 525750),
+    { lots: 1, remaining: 2, releasedMargin: 175250, remainingMargin: 350500, isPartial: true });
+check('3 口全平', splitPosition(3, 3, 525750),
+    { lots: 3, remaining: 0, releasedMargin: 525750, remainingMargin: 0, isPartial: false });
+check('1 口全平', splitPosition(1, 1, 175250).isPartial, false);
+// 除不盡時：釋放與剩餘相加必須等於原值，不能各自四捨五入而憑空蒸發
+const s1 = splitPosition(3, 1, 100), s2 = splitPosition(3, 2, 100);
+check('除不盡：1/3 釋放 33', [s1.releasedMargin, s1.remainingMargin], [33, 67]);
+check('除不盡：2/3 釋放 67', [s2.releasedMargin, s2.remainingMargin], [67, 33]);
+check('除不盡：兩段相加仍為原值', [s1.releasedMargin + s1.remainingMargin, s2.releasedMargin + s2.remainingMargin], [100, 100]);
+// 任何拆法都不該讓保證金總額改變
+let drift = 0;
+for (let total = 1; total <= 12; total++)
+    for (let n = 1; n <= total; n++) {
+        const s = splitPosition(total, n, 525750);
+        if (s.releasedMargin + s.remainingMargin !== 525750) drift++;
+        if (s.lots + s.remaining !== total) drift++;
+    }
+check('所有拆法：口數與保證金皆不漏不溢', drift, 0);
+// 不合法的口數
+check('口數 0 不合法', splitPosition(3, 0, 100), null);
+check('口數超過持有不合法', splitPosition(3, 4, 100), null);
+check('口數為負不合法', splitPosition(3, -1, 100), null);
+check('口數非整數不合法', splitPosition(3, 1.5, 100), null);
+check('口數空白不合法', splitPosition(3, '', 100), null);
+check('持有口數為 0 不合法', splitPosition(0, 1, 100), null);
+check('口數為數字字串仍可用', splitPosition(3, '2', 300).lots, 2);
+check('未填保證金視為 0', splitPosition(3, 1).releasedMargin, 0);
 
 // --- 商品對應 ---
 check('微台有獨立契約', TAIFEX_PRODUCTS.TMF.cid, 'TMF');

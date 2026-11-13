@@ -1,6 +1,6 @@
 import { db, auth } from './firebase-config.js';
 import { getLocalDate, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountSign, getFuturesDisplayName } from './utils/format.js';
-import { TAIFEX_PRODUCTS, TAIFEX_MIS_URL, taifexRequestBody, contractMonthOf, pickContract, pickFreshest, pickFromOpenData, OPEN_DATA_CONTRACT, cnyesUrl, cnyesEntry, parseCnyesQuote, TAIFEX_MARGINS, futuresDefaultsFor, nextSettlementDate, settlementAfter, settlementStatusOf } from './utils/futures.js';
+import { TAIFEX_PRODUCTS, TAIFEX_MIS_URL, taifexRequestBody, contractMonthOf, pickContract, pickFreshest, pickFromOpenData, OPEN_DATA_CONTRACT, cnyesUrl, cnyesEntry, parseCnyesQuote, TAIFEX_MARGINS, futuresDefaultsFor, nextSettlementDate, settlementAfter, settlementStatusOf, splitPosition } from './utils/futures.js';
 import { computePortfolio, calcStats, calcStockExposure, calcFundsValueTwd, calcFundsCostTwd, calcFuturesMarginCash, calcFuturesMarginUsed, calcFuturesExposure, buildExposureTrend } from './utils/valuation.js';
 import { stockChangelog } from './changelog.js';
 
@@ -1312,25 +1312,30 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 };
 
                 const closeFuturesPosition = (pos) => {
-                    futuresActionForm.value = { mode: 'close', pos, closePrice: pos.currentPrice || '', fee: '', newExpiry: '', newOpenPrice: '' };
+                    // lots 預設為全部口數 —— 不填就是整筆平倉，與 v5.30.0 以前的行為一致
+                    futuresActionForm.value = { mode: 'close', pos, lots: pos.contracts, closePrice: pos.currentPrice || '', fee: '', newExpiry: '', newOpenPrice: '' };
                     clearFormErrors(); showFuturesActionModal.value = true;
                 };
 
-                const _executeClose = async (pos, closePrice, fee) => {
+                // split 由 splitPosition() 產生，帶著這次要平的口數與按比例分攤的保證金。
+                // v5.31.0 以前是整筆平倉（直接吃 pos.contracts）；現在未填口數時 split.lots
+                // 仍等於全部口數，行為完全相同。
+                const _executeClose = async (pos, closePrice, fee, split) => {
                     // 修正：原本只算了 netPnl，但下面 futures_transactions 紀錄還需要沒扣手續費的毛損益 pnl，
                     // 少了這行會在按下「確認平倉」時直接噴 ReferenceError，平倉功能完全用不了。
-                    const pnl = (pos.direction === 'long' ? (closePrice - pos.entryPrice) : (pos.entryPrice - closePrice)) * pos.contracts * pos.multiplier;
+                    const pnl = (pos.direction === 'long' ? (closePrice - pos.entryPrice) : (pos.entryPrice - closePrice)) * split.lots * pos.multiplier;
                     const netPnl = pnl - fee;
+                    const lotsLabel = split.isPartial ? `${split.lots}/${pos.contracts} 口` : `${split.lots} 口`;
 
                     // 1. 寫入已實現損益 (產生 doc ID 並設定)
                     const realizedRef = db.collection('users').doc(user.value.uid).collection('realized_gains').doc();
                     await realizedRef.set({
                         symbol: pos.symbol,
-                        name: `${pos.symbol}${pos.expiry ? ' ' + pos.expiry : ''} (${pos.direction === 'long' ? '多' : '空'}平)`,
+                        name: `${pos.symbol}${pos.expiry ? ' ' + pos.expiry : ''} (${pos.direction === 'long' ? '多' : '空'}平${split.isPartial ? ' 部分' : ''} ${lotsLabel})`,
                         pnl: netPnl,
                         date: getLocalDate(),
                         currency: pos.currency || 'TWD',
-                        shares: pos.contracts,
+                        shares: split.lots,
                         buyPrice: pos.entryPrice,
                         sellPrice: closePrice,
                         memo: pos.note || '期貨平倉'
@@ -1342,11 +1347,16 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         symbol: pos.symbol,
                         expiry: pos.expiry || '',
                         direction: pos.direction,
-                        contracts: pos.contracts,
+                        contracts: split.lots,
                         entryPrice: pos.entryPrice,
                         closePrice: closePrice,
                         multiplier: pos.multiplier,
-                        marginUsed: pos.marginUsed || 0,
+                        // 這筆交易釋放掉的保證金（部分平倉時只佔原部位的一部分）。
+                        // 刪除這筆紀錄要靠它把保證金加回去，所以存的是「這次動掉的」而非部位總額。
+                        marginUsed: split.releasedMargin,
+                        partial: split.isPartial,
+                        remainingContracts: split.remaining,
+                        oldPositionId: pos.id,
                         pnl: pnl,
                         fee: fee,
                         netPnl: netPnl,
@@ -1362,11 +1372,22 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     await db.collection('users').doc(user.value.uid).collection('portfolio').doc('futures_margin')
                         .set({ [pos.currency === 'USD' ? 'usd' : 'twd']: firebase.firestore.FieldValue.increment(netPnl) }, { merge: true });
 
-                    // 3. 刪除該部位
-                    await db.collection('users').doc(user.value.uid).collection('futures_positions').doc(pos.id).delete();
+                    // 3. 部位：全平就刪掉，部分平倉則扣掉已平的口數與對應保證金
+                    const posRef = db.collection('users').doc(user.value.uid).collection('futures_positions').doc(pos.id);
+                    if (split.isPartial) {
+                        await posRef.set({
+                            contracts: split.remaining,
+                            marginUsed: split.remainingMargin,
+                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        }, { merge: true });
+                    } else {
+                        await posRef.delete();
+                    }
 
                     setTimeout(saveDailySnapshot, 500);
-                    toastOk('平倉成功，損益已歸檔並調整保證金餘額');
+                    toastOk(split.isPartial
+                        ? `已平倉 ${lotsLabel}，剩餘 ${split.remaining} 口；損益已歸檔並調整保證金餘額`
+                        : '平倉成功，損益已歸檔並調整保證金餘額');
                 };
 
                 // 展期的輸入設計（v5.23.1 修正 v5.23.0 的方向）
@@ -1385,6 +1406,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 const rollFuturesPosition = (pos) => {
                     futuresActionForm.value = {
                         mode: 'rollover', pos,
+                        lots: pos.contracts,            // 預設整筆轉倉
                         closePrice: pos.currentPrice || '', fee: '',
                         // 轉倉幾乎都是轉到「下一個月契約」，所以直接帶入該月的第三個星期三。
                         // 這同時讓轉完的部位倒數天數立刻拉開（21 天以上），
@@ -1395,6 +1417,31 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     };
                     clearFormErrors(); showFuturesActionModal.value = true;
                 };
+
+                /**
+                 * 平倉／轉倉視窗的損益預覽。
+                 *
+                 * 抽成 computed 的原因：原本這段算式在樣板裡重複了四次（毛損益的值、毛損益的顏色、
+                 * 淨損益的值、淨損益的顏色），而且寫死 pos.contracts。加入部分出場之後，
+                 * 只要有一處沒跟著改成實際口數，預覽就會與真正入帳的金額不一致。
+                 */
+                const futuresActionPreview = computed(() => {
+                    const f = futuresActionForm.value;
+                    const pos = f && f.pos;
+                    if (!pos) return null;
+                    const close = Number(f.closePrice);
+                    if (!(close > 0)) return null;
+                    const split = splitPosition(pos.contracts, f.lots, pos.marginUsed);
+                    if (!split) return null;
+                    const gross = (pos.direction === 'long' ? close - pos.entryPrice : pos.entryPrice - close)
+                        * split.lots * pos.multiplier;
+                    const fee = Math.max(0, Number(f.fee) || 0);
+                    return {
+                        ...split,
+                        gross, fee, net: gross - fee,
+                        symbol: pos.currency === 'USD' ? '$' : 'NT$'
+                    };
+                });
 
                 /** 價差或遠月價變動時，反推近月平倉價（兩者都要有值才算） */
                 const applyRollSpread = () => {
@@ -1414,9 +1461,10 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     if (near > 0 && far > 0) f.spreadInput = Number((far - near).toFixed(4));
                 };
 
-                const _executeRollover = async (pos, closePrice, newExpiry, newOpenPrice, fee) => {
-                    const nearPnL = (pos.direction === 'long' ? (closePrice - pos.entryPrice) : (pos.entryPrice - closePrice)) * pos.contracts * pos.multiplier;
-                    const rollSpread = (pos.direction === 'long' ? (newOpenPrice - closePrice) : (closePrice - newOpenPrice)) * pos.contracts * pos.multiplier;
+                const _executeRollover = async (pos, closePrice, newExpiry, newOpenPrice, fee, split) => {
+                    const nearPnL = (pos.direction === 'long' ? (closePrice - pos.entryPrice) : (pos.entryPrice - closePrice)) * split.lots * pos.multiplier;
+                    const rollSpread = (pos.direction === 'long' ? (newOpenPrice - closePrice) : (closePrice - newOpenPrice)) * split.lots * pos.multiplier;
+                    const lotsLabel = split.isPartial ? `${split.lots}/${pos.contracts} 口` : `${split.lots} 口`;
                     const netPnl = nearPnL - fee;
                     const marginAdjustment = netPnl;
                     const currency = pos.currency || 'TWD';
@@ -1428,11 +1476,11 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     const realizedRef = db.collection('users').doc(uid).collection('realized_gains').doc();
                     await realizedRef.set({
                         symbol: pos.symbol,
-                        name: `${pos.symbol}${pos.expiry ? ' ' + pos.expiry : ''} (${pos.direction === 'long' ? '多' : '空'}展期)`,
+                        name: `${pos.symbol}${pos.expiry ? ' ' + pos.expiry : ''} (${pos.direction === 'long' ? '多' : '空'}展期${split.isPartial ? ' 部分' : ''} ${lotsLabel})`,
                         pnl: netPnl,
                         date: getLocalDate(),
                         currency: currency,
-                        shares: pos.contracts,
+                        shares: split.lots,
                         buyPrice: pos.entryPrice,
                         sellPrice: closePrice,
                         memo: pos.note || `展期 ${pos.expiry || ''}→${newExpiry.trim()}`
@@ -1445,7 +1493,12 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         fromExpiry: pos.expiry || '',
                         toExpiry: newExpiry.trim(),
                         direction: pos.direction,
-                        contracts: pos.contracts,
+                        contracts: split.lots,
+                        partial: split.isPartial,
+                        remainingContracts: split.remaining,
+                        // 這次轉走的保證金。刪除這筆紀錄時要靠它把近月部位的保證金加回去，
+                        // oldPositionSnapshot.marginUsed 記的是轉倉前的總額，不能拿來做加法。
+                        marginUsed: split.releasedMargin,
                         multiplier: pos.multiplier,
                         entryPrice: pos.entryPrice,
                         closePrice: closePrice,
@@ -1475,16 +1528,16 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         timestamp: firebase.firestore.FieldValue.serverTimestamp()
                     });
 
-                    // 3. 建立遠月部位
+                    // 3. 建立遠月部位（只帶走這次轉掉的口數與對應保證金）
                     await newPosRef.set({
                         symbol: pos.symbol,
                         expiry: newExpiry.trim(),
                         direction: pos.direction,
-                        contracts: pos.contracts,
+                        contracts: split.lots,
                         entryPrice: newOpenPrice,
                         currentPrice: newOpenPrice,
                         multiplier: pos.multiplier,
-                        marginUsed: pos.marginUsed || 0,
+                        marginUsed: split.releasedMargin,
                         currency: pos.currency,
                         note: pos.note || '',
                         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -1494,11 +1547,22 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     await db.collection('users').doc(uid).collection('portfolio').doc('futures_margin')
                         .set({ [currency === 'USD' ? 'usd' : 'twd']: firebase.firestore.FieldValue.increment(marginAdjustment) }, { merge: true });
 
-                    // 5. 刪除近月部位
-                    await db.collection('users').doc(uid).collection('futures_positions').doc(pos.id).delete();
+                    // 5. 近月部位：全轉就刪掉，部分轉倉則扣掉已轉的口數與對應保證金
+                    const oldRef = db.collection('users').doc(uid).collection('futures_positions').doc(pos.id);
+                    if (split.isPartial) {
+                        await oldRef.set({
+                            contracts: split.remaining,
+                            marginUsed: split.remainingMargin,
+                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        }, { merge: true });
+                    } else {
+                        await oldRef.delete();
+                    }
 
                     setTimeout(saveDailySnapshot, 500);
-                    toastOk('展期成功，近月損益已計入已實現、遠月部位已建立');
+                    toastOk(split.isPartial
+                        ? `已轉倉 ${lotsLabel}，近月尚餘 ${split.remaining} 口；損益已計入已實現、遠月部位已建立`
+                        : '展期成功，近月損益已計入已實現、遠月部位已建立');
                 };
 
                 // --- v5.23.0: 手續費事後補填 ---
@@ -1779,19 +1843,33 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                             const posRefToRestore = tx.oldPositionId
                                 ? db.collection('users').doc(uid).collection('futures_positions').doc(tx.oldPositionId)
                                 : db.collection('users').doc(uid).collection('futures_positions').doc();
-                            batch.set(posRefToRestore, {
-                                symbol: tx.symbol,
-                                expiry: tx.expiry || '',
-                                direction: tx.direction,
-                                contracts: tx.contracts,
-                                entryPrice: tx.entryPrice,
-                                currentPrice: tx.entryPrice,
-                                multiplier: tx.multiplier,
-                                marginUsed: tx.marginUsed || 0,
-                                currency: tx.currency,
-                                note: tx.note || '',
-                                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                             });
+
+                            // v5.31.0: 部分平倉的原部位通常還在（只少了幾口）。
+                            // 這時若照舊整包 set，會把它覆寫成平倉當下的樣子 ——
+                            // 之後對同一個部位做的加碼、再平倉、轉倉全部被蓋掉。
+                            // 所以部位還在就用加法把口數與保證金加回去，不在才重建。
+                            const closeSurvivor = tx.partial ? await posRefToRestore.get() : null;
+                            if (closeSurvivor && closeSurvivor.exists) {
+                                batch.set(posRefToRestore, {
+                                    contracts: inc(tx.contracts),
+                                    marginUsed: inc(tx.marginUsed || 0),
+                                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                                }, { merge: true });
+                            } else {
+                                batch.set(posRefToRestore, {
+                                    symbol: tx.symbol,
+                                    expiry: tx.expiry || '',
+                                    direction: tx.direction,
+                                    contracts: tx.contracts,
+                                    entryPrice: tx.entryPrice,
+                                    currentPrice: tx.entryPrice,
+                                    multiplier: tx.multiplier,
+                                    marginUsed: tx.marginUsed || 0,
+                                    currency: tx.currency,
+                                    note: tx.note || '',
+                                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                                });
+                            }
                          }
                          else if (tx.type === 'rollover') {
                             // 反轉保證金調整
@@ -1813,7 +1891,24 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                                 const restoreRef = tx.oldPositionId
                                     ? db.collection('users').doc(uid).collection('futures_positions').doc(tx.oldPositionId)
                                     : db.collection('users').doc(uid).collection('futures_positions').doc();
-                                batch.set(restoreRef, { ...snap, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+                                // 與部分平倉同理：部分轉倉的近月部位還在，只能把轉走的口數加回去。
+                                // 舊資料沒有 partial 欄位，必定是整筆轉倉，走原本的整包還原。
+                                const rollSurvivor = tx.partial ? await restoreRef.get() : null;
+                                if (rollSurvivor && rollSurvivor.exists) {
+                                    batch.set(restoreRef, {
+                                        contracts: inc(tx.contracts),
+                                        marginUsed: inc(tx.marginUsed || 0),
+                                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                                    }, { merge: true });
+                                } else {
+                                    batch.set(restoreRef, {
+                                        ...snap,
+                                        // 部分轉倉時 snapshot 記的是轉倉前的「全部」口數，
+                                        // 但這筆紀錄只動了其中幾口，重建時只能還原這幾口。
+                                        ...(tx.partial ? { contracts: tx.contracts, marginUsed: tx.marginUsed || 0 } : {}),
+                                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                                    });
+                                }
                             }
                          }
                          
@@ -1843,12 +1938,17 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     const pos = f.pos;
                     if (!pos) return;
                     const closePrice = Number(f.closePrice);
-                    if (!validateForm([['closePrice', closePrice > 0,
-                        f.mode === 'close' ? '請輸入有效平倉價格' : '近月平倉價無效，請確認已更新期貨報價或手動填入']])) return;
+                    // 口數先驗證：splitPosition 會擋掉非整數、0、負數與超過持有口數
+                    const split = splitPosition(pos.contracts, f.lots, pos.marginUsed);
+                    if (!validateForm([
+                        ['lots', !!split, `請輸入 1 ~ ${pos.contracts} 之間的整數口數`],
+                        ['closePrice', closePrice > 0,
+                            f.mode === 'close' ? '請輸入有效平倉價格' : '近月平倉價無效，請確認已更新期貨報價或手動填入']
+                    ])) return;
                     const fee = Math.max(0, Number(f.fee) || 0);
                     if (f.mode === 'close') {
                         showFuturesActionModal.value = false;
-                        await _executeClose(pos, closePrice, fee);
+                        await _executeClose(pos, closePrice, fee, split);
                     } else {
                         const newExpiry = (f.newExpiry || '').trim();
                         const newOpenPrice = Number(f.newOpenPrice);
@@ -1857,7 +1957,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                             ['newOpenPrice', newOpenPrice > 0, '請輸入有效遠月建倉價格']
                         ])) return;
                         showFuturesActionModal.value = false;
-                        await _executeRollover(pos, closePrice, newExpiry, newOpenPrice, fee);
+                        await _executeRollover(pos, closePrice, newExpiry, newOpenPrice, fee, split);
                     }
                 };
 
@@ -3633,6 +3733,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     editingFuturesFeeId, editingFuturesFeeValue, startEditFuturesFee, cancelEditFuturesFee, saveFuturesFee,
                     futuresMarginInfo, futuresMarginAsOf, futuresStaleMarginPositions,
                     settlementOf, futuresRollPending, futuresRollSummary, nextSettlementHint,
+                    futuresActionPreview,
                     showFuturesTxEditModal, futuresTxEditForm, openFuturesTxEdit, applyTxEditSpread, onTxEditClosePriceInput, futuresTxEditPreview, saveFuturesTxEdit,
                     investmentsTab, performanceTab, overviewTab,
                     mutualFundList, showMutualFundModal, mutualFundForm, mutualFundTotalCost, mutualFundTotalValue, mutualFundTotalPnL, openMutualFundModal, saveMutualFund, deleteMutualFund

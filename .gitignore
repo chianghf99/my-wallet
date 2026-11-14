@@ -24,5 +24,9 @@ CLAUDE.md
 AGENTS.md
 .agents/
 
+# commit-msg hook 的敏感字詞清單：銀行名與持股代號本身就不該進 public repo，
+# 寫進會被推上去的檔案等於 hook 自己洩漏要保護的東西。範本為 *.example.txt。
+.githooks/blocklist.local.txt
+
 # 帳單機器人的 .app 是建置產物（含編譯出來的執行檔與簽章），用 build-app.sh 重建
 scripts/billbot/*.app/

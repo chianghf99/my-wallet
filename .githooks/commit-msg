@@ -1,0 +1,68 @@
+#!/bin/sh
+# commit-msg hook：擋掉會把個資寫進 public repo 的 commit 訊息
+#
+# 為什麼需要這一道：
+# my-wallet 是 public repo，commit 訊息跟 Actions 日誌一樣任何人都看得到。
+# 而專案慣例又要求「附上實測數據」—— 這兩條湊在一起，正是 2026-11-11 把真實
+# 帳單金額寫進 3d505d4 與 dd1d8fe 的原因。規則已經寫在 CLAUDE.md／AGENTS.md，
+# 但人跟 AI 在貼實測結果時都會忘，所以在送出前機械式地擋一次。
+#
+# 啟用（**每台機器各做一次**，.git/hooks 不會跟著 clone 過來）：
+#   git config core.hooksPath .githooks
+#
+# 確定是誤判時：git commit --no-verify
+#
+# ⚠ 銀行名、持股代號這類字詞**絕對不能寫在這個檔案裡** ——
+#   它會被推上 public repo，等於 hook 自己洩漏了它要保護的東西。
+#   那些放在 .githooks/blocklist.local.txt（已 gitignore，不進版控）。
+
+MSG_FILE="$1"
+[ -f "$MSG_FILE" ] || exit 0
+
+# 去掉 git 自動附加的註解行，只檢查真正會留在訊息裡的內容
+BODY=$(grep -v '^#' "$MSG_FILE")
+
+fail() {
+    printf '\n✘ commit 被擋下：%s\n\n' "$1"
+    printf '%s\n' "$2" | sed 's/^/    /'
+    cat <<'TIP'
+
+  my-wallet 是 public repo，commit 訊息任何人都看得到。
+  實測數據請改寫成筆數、狀態、比例或相對關係，例如：
+    「新增 1 筆，bills 134 → 135」「較小者恰為較大者的 10.2%」「56 項測試全過」
+
+  確定是誤判：git commit --no-verify
+TIP
+    printf '\n'
+    exit 1
+}
+
+check() {   # check <正則> <說明>
+    hit=$(printf '%s\n' "$BODY" | grep -nE "$1")
+    [ -n "$hit" ] && fail "$2" "$hit"
+}
+
+# 1) 貨幣金額。刻意綁貨幣符號／單位，不擋裸數字 ——
+#    歷史上就有「720,763 bytes」這種無害的檔案大小，全擋會一直誤報。
+check '(NT\$|US\$|TWD|USD|\$|＄)[[:space:]]*[0-9]' '訊息含貨幣金額'
+#    開頭排除 0：「應繳 0 元」這種零金額不構成個資，歷史上誤擋過一筆。
+check '[1-9][0-9,]*[[:space:]]*元'                  '訊息含以「元」計的金額'
+
+# 2) Firebase uid 是 28 碼英數。長度抓死，避免誤傷一般英文長字。
+check '[A-Za-z0-9]{28}' '訊息含疑似 Firebase uid 的 28 碼字串'
+
+# 3) 帳單檔名。CLAUDE.md 明列「帳單檔名」不得寫入；
+#    這個 repo 的 commit 訊息幾乎不會有正當理由提到某個 .pdf 檔名。
+check '[A-Za-z0-9_-]+\.pdf' '訊息含 PDF 檔名'
+
+# 4) 本機敏感字詞清單（銀行名、持股代號等，不進版控）
+LOCAL="$(dirname "$0")/blocklist.local.txt"
+if [ -f "$LOCAL" ]; then
+    while IFS= read -r term; do
+        case "$term" in ''|'#'*) continue ;; esac
+        hit=$(printf '%s\n' "$BODY" | grep -inF -- "$term")
+        [ -n "$hit" ] && fail "訊息含本機敏感字詞清單裡的「$term」" "$hit"
+    done < "$LOCAL"
+fi
+
+exit 0

@@ -18,8 +18,11 @@ Build_Bot_in_windows/
 .env.*
 
 # 給 AI 助理讀的本機筆記，不進版控（repo 為 public）
+# AGENTS.md 是同一類東西，只是給 Antigravity／Gemini 讀的入口
 .claude/
 CLAUDE.md
+AGENTS.md
+.agents/
 
 # 帳單機器人的 .app 是建置產物（含編譯出來的執行檔與簽章），用 build-app.sh 重建
 scripts/billbot/*.app/

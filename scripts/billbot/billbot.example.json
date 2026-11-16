@@ -1,6 +1,7 @@
 {
   "_說明": "複製這份到 ~/.config/mywallet/billbot.json 再填值。刻意放在 repo 外面，避免 uid 被 commit 進 public repo。這裡面不放任何密碼。",
-  "watch_dir": "/Users/chiang/Library/CloudStorage/OneDrive-個人/09_其他/電子郵件附件",
+  "_watch_dir_說明": "放帳單 PDF 的資料夾（絕對路徑）。範例是 OneDrive 同步下來的信件附件夾，換成你自己的。排程要讀這個資料夾，所以 macOS 會要求「完全取硬碟存取權」，見 README 的一次性設定第 5 步。",
+  "watch_dir": "/Users/<你的帳號>/Library/CloudStorage/OneDrive-個人/<放帳單的資料夾>",
   "owner_uid": "填你自己的 Firebase uid（Console → Authentication → 你的 Google 帳號那一列的 User UID）",
   "bot_email": "billbot@mywallet.local",
   "project_id": "stock-portfolio-df6dd",

@@ -17,9 +17,9 @@
 // 執行：
 //   node scripts/test-bill-sync.mjs
 //   本機沒有 node，改用 jsc（它有 readFile，下面的 import('node:fs') 不會被走到）：
-//     cat > /tmp/run.mjs <<'EOF'
+//     cat > /tmp/run.mjs <<EOF
 //     globalThis.console = { log: (...a) => print(a.join(' ')), warn: () => {}, error: (...a) => print(a.join(' ')) };
-//     await import('/Users/chiang/Desktop/Mywallet/scripts/test-bill-sync.mjs');
+//     await import('$PWD/scripts/test-bill-sync.mjs');
 //     EOF
 //     /System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc -m /tmp/run.mjs
 

@@ -61,9 +61,14 @@ Firestore 的規則是「有任一條放行就通過」，加這段不會影響�
 mkdir -p ~/.config/mywallet && cp scripts/billbot/billbot.example.json ~/.config/mywallet/billbot.json
 ```
 
-打開 `~/.config/mywallet/billbot.json` 把 `owner_uid` 填成你自己的 UID。
-其餘欄位已經填好（監看資料夾、專案 ID、網頁用的公開 apiKey）。
-**這個檔案裡不放任何密碼。**
+打開 `~/.config/mywallet/billbot.json` 填兩個欄位：
+
+- `owner_uid` —— 你自己的 Firebase UID（上一步記下來的）
+- `watch_dir` —— 放帳單 PDF 的資料夾絕對路徑（範本裡是佔位字串）
+
+`project_id` 與 `api_key`（網頁用的公開金鑰）已經填好，不用動。
+**這個檔案裡不放任何密碼**，而且它刻意放在 repo 外面 —— `my-wallet` 是 public repo，
+uid 與個人資料夾路徑都不該進版控（範本因此只放佔位字串）。
 
 ### 4. 密碼進 Keychain
 

@@ -15,9 +15,9 @@
 // 執行：
 //   node scripts/test-bill-reminder.mjs
 //   本機沒有 node，改用 jsc：
-//     cat > /tmp/run.mjs <<'EOF'
+//     cat > /tmp/run.mjs <<EOF
 //     globalThis.console = { log: (...a) => print(a.join(' ')), warn: () => {}, error: (...a) => print(a.join(' ')) };
-//     await import('/Users/chiang/Desktop/Mywallet/scripts/test-bill-reminder.mjs');
+//     await import('$PWD/scripts/test-bill-reminder.mjs');
 //     EOF
 //     /System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc -m /tmp/run.mjs
 

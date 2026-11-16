@@ -1,6 +1,6 @@
 import { db, auth } from './firebase-config.js';
 import { getLocalDate, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountSign, getFuturesDisplayName } from './utils/format.js';
-import { TAIFEX_PRODUCTS, TAIFEX_MIS_URL, taifexRequestBody, contractMonthOf, pickContract, pickFreshest, pickFromOpenData, OPEN_DATA_CONTRACT, cnyesUrl, cnyesEntry, parseCnyesQuote, TAIFEX_MARGINS, futuresDefaultsFor, nextSettlementDate, settlementAfter, settlementStatusOf, splitPosition, mergePositions, mergeAllPositions } from './utils/futures.js';
+import { TAIFEX_PRODUCTS, TAIFEX_MIS_URL, taifexRequestBody, contractMonthOf, pickContract, pickFreshest, pickFromOpenData, OPEN_DATA_CONTRACT, cnyesUrl, cnyesEntry, parseCnyesQuote, TAIFEX_MARGINS, futuresDefaultsFor, nextSettlementDate, settlementAfter, settlementStatusOf, splitPosition, mergePositions, mergeAllPositions, undoOpenPlan } from './utils/futures.js';
 import { computePortfolio, calcStats, calcStockExposure, calcFundsValueTwd, calcFundsCostTwd, calcFuturesMarginCash, calcFuturesMarginUsed, calcFuturesExposure, buildExposureTrend } from './utils/valuation.js';
 import { stockChangelog } from './changelog.js';
 
@@ -1995,6 +1995,14 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                                                 ...tx.previousState,
                                                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                                             }, { merge: true });
+                                        } else if (undoOpenPlan({
+                                            currentContracts: d.contracts, txContracts: tx.contracts
+                                        }).action === 'delete') {
+                                            // v5.33.1: 扣完會變成 0 口（或更少），就把部位刪掉。
+                                            // 會走到這裡的是「先刪既有部位的建倉紀錄、再刪加碼那筆」這個順序：
+                                            // 第一步已經把既有的口數扣掉，剩下的正好全是這筆加碼的量。
+                                            // 若照舊只做 inc 相減，會留下一筆 0 口的幽靈部位。
+                                            batch.delete(posRef);
                                         } else {
                                             // 併入之後又平倉或再加碼過，回不到當時的狀態。
                                             // 至少把這次加的口數與保證金扣掉、均價還原，並告知使用者。
@@ -2008,7 +2016,35 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                                         }
                                     }
                                 } else {
-                                    batch.delete(posRef);
+                                    // v5.33.1: 不能無條件整筆刪除。沒有 mergedIntoExisting 註記
+                                    // 並不代表這個部位只含這一筆建倉的口數 ——「整理重複部位」
+                                    // 保留下來的那一筆、以及被加碼併入的那個既有部位，它們自己的
+                                    // 建倉 tx 都沒有註記，整包刪掉會把別次建的口數一起清掉。
+                                    // 判斷邏輯抽成 undoOpenPlan（可單獨測試），理由寫在那裡。
+                                    const cur = await posRef.get();
+                                    const plan = undoOpenPlan({
+                                        exists: cur.exists,
+                                        currentContracts: cur.exists ? (cur.data() || {}).contracts : 0,
+                                        txContracts: tx.contracts
+                                    });
+                                    if (plan.action === 'missing') {
+                                        restoreNotes.push(
+                                            '這筆建倉原本的部位已不在列表上（很可能被「整理重複部位」併進另一筆），' +
+                                            '只刪除了紀錄、沒有調整任何部位的口數，請到合併後的那筆確認'
+                                        );
+                                    } else if (plan.action === 'subtract') {
+                                        batch.set(posRef, {
+                                            contracts: inc(-plan.lots),
+                                            marginUsed: inc(-(Number(tx.marginUsed) || 0)),
+                                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                                        }, { merge: true });
+                                        restoreNotes.push(
+                                            `該部位含有多次建倉的口數，只扣掉這筆的 ${plan.lots} 口與保證金；` +
+                                            '均價仍是合併後的加權平均，請自行核對'
+                                        );
+                                    } else {
+                                        batch.delete(posRef);
+                                    }
                                 }
                             }
                         }

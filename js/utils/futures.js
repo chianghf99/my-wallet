@@ -228,6 +228,41 @@ export const mergeAllPositions = (list = []) => {
     };
 };
 
+/**
+ * 刪除一筆「建倉」交易紀錄時，該怎麼處理它指向的部位。
+ *
+ * 為什麼需要這個判斷：建倉紀錄原本的復原方式是把整個部位刪掉，這在「一筆建倉對一個部位」
+ * 的年代是對的。但 v5.32.0 的自動併入與 v5.33.0 的整理重複部位都會讓**一個部位裡含有
+ * 多次建倉的口數**，這時整包刪掉會把別次建的口數一起帶走。
+ *
+ * v5.32.0 的做法是在加碼那筆 tx 上寫 mergedIntoExisting + previousState，由 tx 自己
+ * 宣告「我是併進去的」。問題是這要求每一個會產生合併部位的地方都記得加註記：
+ *   - 被併入的那個「既有部位」，它自己原本的建倉 tx 沒有註記；
+ *   - 「整理重複部位」保留下來的那一筆，它的建倉 tx 也沒有註記。
+ * 兩者刪掉時都會走到「整包刪除」，把合併後的全部口數清掉。漏一個就破功。
+ *
+ * 所以改成在真正會造成損失的這一步做檢查，而不是依賴上游的記性：
+ * 部位現在的口數若多於這筆紀錄的量，就不刪，只扣掉這筆的份。
+ * 任何日後新增的合併功能都自動受這道防線保護。
+ *
+ * 刻意不動 entryPrice：少掉一次建倉，正確的均價是其餘各筆的加權平均，而這裡拿不到
+ * 其餘各筆。寧可留著舊均價並明確告知使用者，也不要寫進一個算錯的值。
+ *
+ * @returns {{action: 'delete'|'subtract'|'missing', lots: number}}
+ *   delete   — 這個部位就是這筆建倉的，整筆刪除（與舊版行為相同）
+ *   subtract — 部位還含有別次建倉的口數，只扣掉這筆的 lots
+ *   missing  — 部位已不存在（Firestore 對不存在的文件 delete 是 no-op，但要講出來）
+ */
+export const undoOpenPlan = ({ exists = true, currentContracts = 0, txContracts = 0 } = {}) => {
+    if (!exists) return { action: 'missing', lots: 0 };
+    const cur = Number(currentContracts) || 0;
+    const mine = Number(txContracts) || 0;
+    // mine <= 0 代表舊資料沒記口數，無從比較，維持舊版行為整筆刪除。
+    // cur < mine 代表建倉後已部分平倉過 —— 這也是舊版行為，不在這道防線的守備範圍。
+    if (mine > 0 && cur > mine) return { action: 'subtract', lots: mine };
+    return { action: 'delete', lots: cur };
+};
+
 /** 某年某月（month 為 1~12）的第三個星期三，回傳 'YYYY-MM-DD' */
 export const thirdWednesday = (year, month) => {
     const firstDow = new Date(Date.UTC(year, month - 1, 1)).getUTCDay(); // 0=日

@@ -9,7 +9,7 @@ import {
     parseSymbolId, pickContract, pickFreshest, contractMonthOf,
     pickFromOpenData, TAIFEX_PRODUCTS, effectiveStamp, pickDaySessionFirst, isWithinDays, cnyesEntry, cnyesUrl, parseCnyesQuote,
     thirdWednesday, nextSettlementDate, settlementAfter, daysUntilSettlement, settlementStatusOf,
-    splitPosition, mergePositions, mergeAllPositions
+    splitPosition, mergePositions, mergeAllPositions, undoOpenPlan
 } from '../js/utils/futures.js';
 
 let fail = 0;
@@ -281,6 +281,64 @@ check('三筆合併後平倉損益 = 分別平倉總和',
 const odd = [{ contracts: 1, entryPrice: 23000.01 }, { contracts: 1, entryPrice: 23000.02 }, { contracts: 1, entryPrice: 23000.03 }];
 check('除不盡時：一次算完等於真正的加權平均',
     mergeAllPositions(odd).entryPrice, 23000.02);
+
+// --- 刪除建倉紀錄時的部位處理（v5.33.1 的防線）---
+// 這道防線存在的理由：合併過的部位裡含有多次建倉的口數，而那些建倉 tx 不一定帶著
+// mergedIntoExisting 註記（「整理重複部位」保留的那筆、被加碼併入的既有部位都沒有）。
+// 整筆刪除會把別次建的口數一起清掉，是真的會弄丟資料的路徑。
+check('一筆建倉對一個部位 → 整筆刪除',
+    undoOpenPlan({ exists: true, currentContracts: 2, txContracts: 2 }), { action: 'delete', lots: 2 });
+check('部位含多次建倉的口數 → 只扣這筆的份，不刪',
+    undoOpenPlan({ exists: true, currentContracts: 5, txContracts: 2 }), { action: 'subtract', lots: 2 });
+check('部位已不存在 → 回報而不是默默略過',
+    undoOpenPlan({ exists: false, currentContracts: 0, txContracts: 2 }), { action: 'missing', lots: 0 });
+check('建倉後已部分平倉（現有少於這筆）→ 維持舊版的整筆刪除',
+    undoOpenPlan({ exists: true, currentContracts: 1, txContracts: 3 }), { action: 'delete', lots: 1 });
+check('舊資料沒記口數 → 無從比較，維持舊版行為',
+    undoOpenPlan({ exists: true, currentContracts: 4, txContracts: 0 }), { action: 'delete', lots: 4 });
+check('口數是字串也要能比（Firestore 可能存成字串）',
+    undoOpenPlan({ exists: true, currentContracts: '5', txContracts: '2' }), { action: 'subtract', lots: 2 });
+check('沒有任何參數時不當掉，也不選擇刪除以外的動作',
+    undoOpenPlan(), { action: 'delete', lots: 0 });
+
+// 回歸測試 1：「整理重複部位」把三筆合成一筆之後，逐一刪除三筆建倉紀錄。
+// 真實情況是只有保留下來那一筆（head）的 tx 指向倖存的部位，另外兩筆指向已被刪掉的文件
+// —— 因為 mergeFuturesGroup 還沒有把它們改指向 head（尚未實作）。
+// 舊版的問題：刪 head 的 tx 會走「整包刪除」，把合併後的 4 口全部清掉。
+{
+    let remaining = 4;              // 1 + 1 + 2 合併後的部位
+    const steps = [];
+    // head 的 tx：指向倖存的部位，帶 1 口
+    let plan = undoOpenPlan({ exists: true, currentContracts: remaining, txContracts: 1 });
+    if (plan.action === 'subtract') remaining -= plan.lots;
+    else if (plan.action === 'delete') remaining = 0;
+    steps.push(`${plan.action}:${remaining}`);
+    // 另外兩筆：指向已被 batch.delete 的文件
+    for (const mine of [1, 2]) {
+        plan = undoOpenPlan({ exists: false, currentContracts: 0, txContracts: mine });
+        steps.push(`${plan.action}:${remaining}`);
+    }
+    check('整理重複後刪 head 的建倉紀錄：只少掉它自己的量，其餘口數保住',
+        steps, ['subtract:3', 'missing:3', 'missing:3']);
+}
+
+// 回歸測試 2：自動併入後「反序」刪除 —— 先刪既有部位的建倉紀錄，再刪加碼那筆。
+// 這個順序在加上防線之後才走得到，必須不留下 0 口的幽靈部位。
+{
+    let contracts = 3;              // 既有 1 口 + 加碼 2 口
+    const steps = [];
+    // 第一步：既有部位自己的建倉 tx（純建倉，沒有併入註記）
+    const first = undoOpenPlan({ exists: true, currentContracts: contracts, txContracts: 1 });
+    contracts = first.action === 'subtract' ? contracts - first.lots : 0;
+    steps.push(`${first.action}:${contracts}`);
+    // 第二步：加碼那筆（帶 previousState.contracts = 1）。untouched 檢查會失敗，
+    // 落到 fallback；此時要由 undoOpenPlan 判斷「扣完是 0 口」而改成刪除文件。
+    const untouched = contracts === 1 + 2;
+    const second = undoOpenPlan({ currentContracts: contracts, txContracts: 2 });
+    steps.push(`untouched:${untouched}`, `${second.action}`);
+    check('自動併入後反序撤銷：不留下 0 口的幽靈部位',
+        steps, ['subtract:2', 'untouched:false', 'delete']);
+}
 
 // --- 商品對應 ---
 check('微台有獨立契約', TAIFEX_PRODUCTS.TMF.cid, 'TMF');

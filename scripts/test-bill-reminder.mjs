@@ -10,6 +10,7 @@
 //   2. 該提醒的不可以漏掉（未繳的判定、逾期、繳款日不明）。
 //   3. 不該外送的個資不可以混進訊息 —— 自動扣款帳戶末五碼永遠不能出現在推播裡，
 //      訊息會經過 Telegram 的伺服器。
+//   4. 看門狗不可以在「還沒設定好」的時候每天亂叫，也不可以在機器人真的死掉時沉默。
 //
 // 執行：
 //   node scripts/test-bill-reminder.mjs
@@ -21,7 +22,8 @@
 //     /System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc -m /tmp/run.mjs
 
 import { parseYMD, daysUntil, hasAutopay, selectBills, buildMessage, totalCount, pickUid,
-         DEFAULT_REMIND_DAYS, DEFAULT_OVERDUE_MAX_DAYS } from './bill-reminder-core.mjs';
+         DEFAULT_REMIND_DAYS, DEFAULT_OVERDUE_MAX_DAYS,
+         billbotStatus, buildBillbotAlert } from './bill-reminder-core.mjs';
 
 let failures = 0;
 const expect = (name, got, want) => {
@@ -202,6 +204,45 @@ const testWithBills = buildMessage(pick([bill({ name: '富邦銀行', amount: 99
 expectTrue('有帳單時測試模式仍要列出內容', testWithBills.includes('$999'));
 expectTrue('有帳單時測試模式也要標明是測試', testWithBills.includes('測試訊息'));
 expect('有帳單時測試模式不應該還掛著平常的標題', testWithBills.includes('💳'), false);
+
+// --- 帳單機器人看門狗 -----------------------------------------------------
+//
+// 守的是兩個方向的錯：
+//   叫錯 —— 還沒設定好就每天警告，使用者會直接把提醒整個關掉，比漏報更糟
+//   不叫 —— 機器人真的沒跑卻沉默，那就等於沒有這層防線
+
+const NOW = Date.UTC(2026, 10, 16);
+const daysAgo = (n) => NOW - n * 86400000;
+
+expect('雲端還沒有心跳欄位時不下結論', billbotStatus(undefined, NOW).state, 'unknown');
+expect('心跳是 null 時不下結論', billbotStatus(null, NOW).state, 'unknown');
+expect('心跳是垃圾字串時不下結論', billbotStatus('壞掉的值', NOW).state, 'unknown');
+expect('心跳是 0 時不下結論', billbotStatus(0, NOW).state, 'unknown');
+expect('剛跑過就是正常', billbotStatus(daysAgo(0), NOW).state, 'ok');
+expect('跑完 7 天（週排程剛好一輪）還算正常', billbotStatus(daysAgo(7), NOW).state, 'ok');
+expect('8 天還在寬限內', billbotStatus(daysAgo(8), NOW).state, 'ok');
+expect('9 天就該叫了', billbotStatus(daysAgo(9), NOW).state, 'stale');
+expect('9 天的天數要算對', billbotStatus(daysAgo(9), NOW).days, 9);
+expect('30 天還是要叫', billbotStatus(daysAgo(30), NOW).state, 'stale');
+expect('60 天是上限內的最後一天', billbotStatus(daysAgo(60), NOW).state, 'stale');
+expect('61 天就不再每天吵', billbotStatus(daysAgo(61), NOW).state, 'given-up');
+// Firestore 的 integerValue 在某些讀法下會是字串，不可以因此變成 unknown
+expect('心跳是數字字串也要認得', billbotStatus(String(daysAgo(10)), NOW).state, 'stale');
+// 兩邊時鐘沒對齊時心跳會比現在新，那不是異常
+expect('心跳比現在新不算異常', billbotStatus(NOW + 3600000, NOW).state, 'ok');
+expect('門檻可以自己調', billbotStatus(daysAgo(4), NOW, { staleDays: 3 }).state, 'stale');
+
+const noAlert = (s) => expect(`${s.state} 不送警告`, buildBillbotAlert(s), null);
+noAlert(billbotStatus(undefined, NOW));
+noAlert(billbotStatus(daysAgo(1), NOW));
+noAlert(billbotStatus(daysAgo(90), NOW));
+noAlert({ state: 'off', days: null });
+
+const alert = buildBillbotAlert(billbotStatus(daysAgo(12), NOW), { url: 'https://example.com/card' });
+expectTrue('警告要講幾天沒動作', alert.includes('12 天前'));
+expectTrue('警告要告訴人怎麼查排程', alert.includes('--status'));
+expectTrue('警告要說清楚「不是沒帳單，是沒跑」', alert.includes('不是沒帳單'));
+expectTrue('警告要附上卡片管家連結', alert.includes('https://example.com/card'));
 
 console.log(failures === 0
     ? '\n✅ 全部通過'

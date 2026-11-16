@@ -60,3 +60,20 @@ jobs:
           # 想改提醒時機或訊息詳細程度，在這裡加環境變數即可，
           # 可用的選項見 scripts/bill-reminder.mjs 的檔頭。
         run: node bill-reminder.mjs
+
+      # 這個 job 自己掛掉的時候（secret 沒設、Firestore 讀不到、npm install 失敗、
+      # 測試紅了），上面那一步根本沒機會送出任何東西 —— 預設只有 GitHub 寄的那封信，
+      # 而信很容易被當成雜訊漏掉。這一步補上 Telegram。
+      #
+      # 刻意只送固定字串：這是 public repo，日誌任何人都看得到，而把執行結果塞進
+      # 這裡等於多開一條「內容外流到日誌」的路。要知道細節就去看 Actions 頁面。
+      - name: 失敗時也推一則 Telegram
+        if: failure()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          curl -sS -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
+            --data-urlencode "chat_id=$TELEGRAM_CHAT_ID" \
+            --data-urlencode "text=❌ 帳單提醒排程失敗了（GitHub Actions）。今天的提醒沒有送出，請到 repo 的 Actions 頁面看哪一步紅了。這則是固定訊息，不含執行內容。" \
+            -o /dev/null

@@ -19,6 +19,9 @@
 //   REMIND_UNKNOWN_DATE  設 "false" 可關掉「繳款日不明」的提醒。預設開啟
 //   REMINDER_DETAIL      "full"（預設，含金額與銀行）或 "counts"（只講筆數）
 //   CARD_URL             訊息末尾附的卡片管家連結。預設為 GitHub Pages 上的網址
+//   BILLBOT_WATCHDOG     設 "false" 關掉「帳單機器人沒在跑」的警告。預設開啟
+//   BILLBOT_STALE_DAYS   機器人幾天沒動作就警告。預設 9（週排程 7 天 + 2 天寬限）
+//   BILLBOT_MAX_DAYS     超過幾天就停止每天警告（可能是故意不用了）。預設 60
 //   DRY_RUN              設 "true" 只檢查、不送出，日誌會多印「本來會送出幾行」
 //   TEST_SEND            設 "true" 即使沒有帳單快到期也送一則測試訊息，用來確認
 //                        token 與 chat id 真的通（平常沒事不送，否則無從驗證）
@@ -29,7 +32,8 @@
 
 import admin from 'firebase-admin';
 import { selectBills, buildMessage, totalCount, pickUid, DEFAULT_REMIND_DAYS,
-         DEFAULT_OVERDUE_MAX_DAYS } from './bill-reminder-core.mjs';
+         DEFAULT_OVERDUE_MAX_DAYS, billbotStatus, buildBillbotAlert,
+         DEFAULT_BILLBOT_STALE_DAYS, DEFAULT_BILLBOT_MAX_DAYS } from './bill-reminder-core.mjs';
 
 const TZ = 'Asia/Taipei';
 const DEFAULT_CARD_URL = 'https://chianghf99.github.io/my-wallet/mycreditcard.html';
@@ -90,6 +94,7 @@ const main = async () => {
     const data = snap.data() || {};
     const bills = Array.isArray(data.bills) ? data.bills : [];
     const cards = Array.isArray(data.cards) ? data.cards : [];
+    const cardUrl = process.env.CARD_URL || DEFAULT_CARD_URL;
     const today = getTaipeiDate();
     console.log(`讀到 ${bills.length} 筆帳單、${cards.length} 張卡片`);
 
@@ -105,24 +110,48 @@ const main = async () => {
     console.log(`逾期 ${groups.overdue.length}、今天到期 ${groups.dueToday.length}、`
         + `即將到期 ${groups.dueSoon.length}、繳款日不明 ${groups.unknownDate.length}`);
 
-    if (totalCount(groups) === 0 && !testSend) {
-        console.log('今天沒有需要提醒的帳單，不送出');
+    // 帳單機器人還活著嗎。這是獨立的一件事，所以也獨立成一則訊息 ——
+    // 併進提醒裡的話，沒有帳單快到期的日子看門狗就跟著啞了，而那正是最需要它的時候。
+    const watchdogOn = process.env.BILLBOT_WATCHDOG !== 'false';
+    const bot = watchdogOn
+        ? billbotStatus(data.billbot_heartbeat, Date.now(), {
+            staleDays: Number(process.env.BILLBOT_STALE_DAYS) || DEFAULT_BILLBOT_STALE_DAYS,
+            maxDays: Number(process.env.BILLBOT_MAX_DAYS) || DEFAULT_BILLBOT_MAX_DAYS,
+        })
+        : { state: 'off', days: null };
+    console.log(`帳單機器人心跳：${bot.state}`
+        + (bot.days === null ? '（雲端還沒有心跳欄位，看門狗尚未生效）' : `（${bot.days} 天前）`));
+
+    const alert = buildBillbotAlert(bot, { url: cardUrl });
+    const hasBills = totalCount(groups) > 0;
+
+    if (!hasBills && !alert && !testSend) {
+        console.log('今天沒有需要提醒的帳單，機器人也正常，不送出');
         return;
     }
 
-    const text = buildMessage(groups, {
-        detail: process.env.REMINDER_DETAIL === 'counts' ? 'counts' : 'full',
-        url: process.env.CARD_URL || DEFAULT_CARD_URL,
-        test: testSend,
-    });
-
-    if (dryRun) {
-        console.log(`DRY_RUN：本來會送出一則 ${text.split('\n').length} 行的訊息（內容不印）`);
-        return;
+    if (hasBills || testSend) {
+        const text = buildMessage(groups, {
+            detail: process.env.REMINDER_DETAIL === 'counts' ? 'counts' : 'full',
+            url: cardUrl,
+            test: testSend,
+        });
+        if (dryRun) {
+            console.log(`DRY_RUN：本來會送出一則 ${text.split('\n').length} 行的提醒（內容不印）`);
+        } else {
+            await sendTelegram(token, chatId, text);
+            console.log('已送出提醒');
+        }
     }
 
-    await sendTelegram(token, chatId, text);
-    console.log('已送出提醒');
+    if (alert) {
+        if (dryRun) {
+            console.log(`DRY_RUN：本來會送出一則看門狗警告（機器人 ${bot.days} 天沒動作）`);
+        } else {
+            await sendTelegram(token, chatId, alert);
+            console.log('已送出看門狗警告');
+        }
+    }
 };
 
 main().catch(err => {

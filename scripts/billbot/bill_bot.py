@@ -28,7 +28,8 @@
    既不會進版控，也不會出現在設定檔或 shell 歷史裡。
 
 5. 只動 bills 欄位。
-   寫入用 Firestore REST 的 updateMask，只碰 bills（與 billbot_last_run）。
+   寫入用 Firestore REST 的 updateMask，只碰 bills（與 billbot_last_run、
+   billbot_heartbeat 這兩個自己的欄位）。
    cards、app_key_salt、app_key_check 這些加密材料一個字都不會被動到 ——
    那些欄位一旦被覆蓋，既有加密資料就永久解不開（見 .claude/progress.md）。
 
@@ -43,6 +44,7 @@
     python3 bill_bot.py --dry-run    # 全程照跑但不寫雲端，先看會新增什麼
     python3 bill_bot.py --verbose    # 連「跳過了哪些檔案、為什麼」都印出來
     python3 bill_bot.py --setup-check # 只檢查設定、Keychain、雲端連線是否就緒
+    python3 bill_bot.py --telegram-test # 只推一則測試訊息，確認 Telegram 真的通
 
 設定檔：~/.config/mywallet/billbot.json（刻意放在 repo 外，避免誤 commit）
 記錄檔：~/Library/Logs/mywallet-billbot.log
@@ -56,6 +58,7 @@ import subprocess
 import sys
 import time
 import hashlib
+import html
 import urllib.request
 import urllib.error
 import urllib.parse
@@ -73,6 +76,9 @@ LOG_PATH = Path.home() / 'Library' / 'Logs' / 'mywallet-billbot.log'
 
 KEYCHAIN_PDF_SERVICE = 'mywallet-bill-pdf'
 KEYCHAIN_BOT_SERVICE = 'mywallet-billbot-firebase'
+# Telegram 的 token 與 chat id（帳號名固定為 bot_token / chat_id）。
+# 與密碼一樣放 Keychain，不進設定檔、不進版控。
+KEYCHAIN_TG_SERVICE = 'mywallet-telegram'
 
 # 檔名 → 銀行代號（決定去 Keychain 拿哪一組 PDF 密碼）。
 # 這裡的關鍵字刻意與 js/utils/bill-parse.js 的 processBankRules 判斷一致，
@@ -95,6 +101,8 @@ BANK_CODE_RULES = [
 
 VERBOSE = False
 DRY_RUN = False
+# 已經為某個失敗推過 Telegram 了，收尾的那層就不要再推一則通用的
+TG_FAILED_SENT = False
 
 
 # --- 記錄 ---------------------------------------------------------------
@@ -163,6 +171,69 @@ def bank_code_for(filename):
             if re.search(pat, name):
                 return code
     return None
+
+
+# --- Telegram 通知 ------------------------------------------------------
+#
+# 為什麼本機這一支要自己發 Telegram，而不是把狀態寫到雲端讓排程代勞：
+# 這支腳本最危險的失敗全都發生在「碰到 Firestore 之前」—— 設定檔壞了、Keychain 讀不到、
+# 完全取硬碟存取權被收回、OneDrive 檔案還是佔位檔。那些情況下它根本沒辦法把狀態寫上雲端
+# 讓別人代報，只有它自己能說。macOS 通知只有坐在這台機器前面才看得到，而排程是週日中午跑的。
+#
+# 雲端那邊另有一層看門狗（scripts/bill-reminder.mjs 讀 billbot_heartbeat），
+# 負責「這支腳本連跑都沒跑」的情況 —— 死掉的程式不會自己報死訊。
+
+def tg_creds():
+    token = keychain_get(KEYCHAIN_TG_SERVICE, 'bot_token')
+    chat_id = keychain_get(KEYCHAIN_TG_SERVICE, 'chat_id')
+    return (token, chat_id) if token and chat_id else (None, None)
+
+
+def esc(v):
+    """Telegram 的 HTML 模式只需要處理這三個字元。"""
+    return html.escape(str(v), quote=False)
+
+
+def tg(message, is_failure=False):
+    """推一則 Telegram。永遠不丟例外、永遠不改離開碼 ——
+    資料都已經寫進雲端了，通知失敗不該讓整支程式變成失敗。"""
+    global TG_FAILED_SENT
+    if is_failure:
+        TG_FAILED_SENT = True
+    token, chat_id = tg_creds()
+    if not token or not chat_id:
+        log(f'Keychain 裡沒有 Telegram 的 bot_token／chat_id（服務 {KEYCHAIN_TG_SERVICE}），'
+            '略過推播。設定方式見 README.md', 'WARN')
+        return
+    if DRY_RUN:
+        log(f"--dry-run：本來會推一則 {len(message.splitlines())} 行的 Telegram（內容不印）")
+        return
+    try:
+        _post_json(f'https://api.telegram.org/bot{token}/sendMessage',
+                   {'chat_id': chat_id, 'text': message,
+                    'parse_mode': 'HTML', 'disable_web_page_preview': True})
+        vlog('Telegram 已送出')
+    except urllib.error.HTTPError as e:
+        # 回應可能把我們送出去的訊息原文帶回來（裡面有金額），只取 description
+        desc = ''
+        try:
+            desc = json.loads(e.read().decode('utf-8', 'replace')).get('description', '')
+        except (ValueError, OSError):
+            pass
+        log(f"Telegram 推播失敗（HTTP {e.code}）{'：' + desc if desc else ''}", 'WARN')
+    except (urllib.error.URLError, OSError, ValueError) as e:
+        log(f"Telegram 推播失敗：{type(e).__name__}", 'WARN')
+
+
+def added_message(added, before, after):
+    lines = ['✅ <b>帳單機器人</b>',
+             f"已同步 {len(added)} 筆新帳單到卡片管家：", '']
+    for _item, b in added:
+        lines.append(f"• {esc(b['name'])}　${b['amount']:,}　"
+                     + (f"{esc(b['date'])} 到期" if b['date'] else '沒抓到截止日'))
+    total = sum(b['amount'] for _i, b in added)
+    lines += ['', f"合計 ${total:,}　雲端帳單 {before} → {after} 筆"]
+    return '\n'.join(lines)
 
 
 # --- PDF 取字 -----------------------------------------------------------
@@ -339,6 +410,54 @@ def patch_bills(cfg, token, bills):
         return False
 
 
+def patch_heartbeat(cfg, token):
+    """只寫 billbot_heartbeat 一個欄位，updateMask 刻意不含 bills。
+
+    為什麼不跟 patch_bills 共用：心跳在「這次沒有新帳單」時也要寫，而那條路徑手上的
+    bills 是舊的（甚至沒去讀）。把它一起 PATCH 回去等於拿舊資料覆蓋雲端 ——
+    網頁可能在這之間改過。updateMask 只列心跳欄位，就不可能動到 bills。
+    """
+    url = doc_url(cfg) + '?updateMask.fieldPaths=billbot_heartbeat'
+    payload = {'fields': {'billbot_heartbeat': to_fs(int(time.time() * 1000))}}
+    body = json.dumps(payload).encode('utf-8')
+    req = urllib.request.Request(url, data=body, method='PATCH',
+                                 headers={'Content-Type': 'application/json',
+                                          'Authorization': f'Bearer {token}'})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            resp.read()
+        return True
+    except (urllib.error.HTTPError, urllib.error.URLError, OSError) as e:
+        log(f"心跳寫入失敗：{type(e).__name__}", 'WARN')
+        return False
+
+
+def write_heartbeat(cfg, bot_pw, token=None):
+    """跑完就蓋一個時戳上雲端。
+
+    雲端的看門狗靠它分辨兩件長得一樣的事：「這週真的沒有新帳單」與「機器人根本沒跑」
+    （Mac 關機、排程被卸掉、硬碟存取權被收回）。前者是常態，後者是帳單會遲繳。
+
+    刻意只在「跑完」的路徑寫 —— 中途 sys.exit 的失敗不寫，這樣連續失敗也會讓看門狗叫。
+    """
+    if DRY_RUN:
+        vlog('--dry-run：不寫心跳')
+        return
+    if not bot_pw:
+        return
+    if token is None:
+        token = sign_in(cfg, bot_pw)
+        if not token:
+            # 「沒有新帳單」那條路徑本來連登入都不用，所以登入失敗以前不會有人知道。
+            # 現在它會讓心跳停掉，看門狗幾天後才會叫，所以當場也說一聲。
+            tg('⚠️ <b>帳單機器人</b>\n跑完了，但寫心跳時登入失敗。\n'
+               '雲端看門狗可能會誤報「機器人沒跑」。')
+            return
+    if not patch_heartbeat(cfg, token):
+        tg('⚠️ <b>帳單機器人</b>\n跑完了，但心跳寫不進雲端。\n'
+           '雲端看門狗可能會誤報「機器人沒跑」。')
+
+
 # --- 處理過的檔案帳本 ---------------------------------------------------
 
 def load_ledger():
@@ -443,10 +562,27 @@ def main():
     DRY_RUN = '--dry-run' in args
     setup_check = '--setup-check' in args
 
+    # 刻意排在讀設定檔之前：確認推播能不能通，不該被無關的雲端設定卡住。
+    # 存在的理由與雲端排程的 test_send 一樣 —— chat id 填錯時 Telegram 會回 200，
+    # 訊息卻送到你看不到的地方，是唯一一種安靜的失敗。
+    if '--telegram-test' in args:
+        if not all(tg_creds()):
+            log(f'Keychain 裡沒有 {KEYCHAIN_TG_SERVICE} 的 bot_token／chat_id，'
+                '見 README.md', 'ERROR')
+            sys.exit(2)
+        tg('✅ <b>帳單機器人</b>\n測試訊息：Telegram 這條路是通的。\n'
+           '平常只有「同步了新帳單」「這次沒有新帳單」「失敗」才會收到。')
+        log('已送出測試訊息 —— 手機沒收到就是 chat id 不對')
+        return
+
     cfg = load_config()
     watch_dir = Path(os.path.expanduser(cfg['watch_dir']))
     if not watch_dir.is_dir():
         log(f"監看的資料夾不存在：{watch_dir}", 'ERROR')
+        # 這也是「完全取硬碟存取權被收回」的徵兆 —— 資料夾明明在，程式卻看不到
+        tg(f'❌ <b>帳單機器人</b>\n看不到監看的資料夾，這次完全沒跑。\n'
+           f'可能是 OneDrive 沒同步，或是「完全取硬碟存取權」被收回了。\n'
+           f'{esc(watch_dir)}', is_failure=True)
         sys.exit(2)
 
     bot_pw = keychain_get(KEYCHAIN_BOT_SERVICE, cfg['bot_email'])
@@ -459,6 +595,8 @@ def main():
             log(msg + ' —— --dry-run 繼續跑，但不會與雲端比對重複', 'WARN')
         else:
             log(msg, 'ERROR')
+            tg('❌ <b>帳單機器人</b>\nKeychain 裡讀不到機器人帳號的密碼，'
+               '這次完全沒跑。\n見 scripts/billbot/README.md', is_failure=True)
             sys.exit(2)
 
     if setup_check:
@@ -476,6 +614,9 @@ def main():
         codes = sorted({c for c, _ in BANK_CODE_RULES})
         have = [c for c in codes if keychain_get(KEYCHAIN_PDF_SERVICE, c)]
         log(f"Keychain 裡已有 PDF 密碼的銀行（{len(have)}/{len(codes)}）：{', '.join(have) or '無'}")
+        tg_ok = all(tg_creds())
+        log(f"Telegram 推播：{'已設定' if tg_ok else '沒設定（Keychain 缺 bot_token／chat_id）'}"
+            + ('' if tg_ok else ' —— 排程失敗時不會通知你，見 README.md'))
         log('✅ 設定檢查通過')
         return
 
@@ -544,8 +685,21 @@ def main():
         log(msg)
         if failed:
             notify('帳單機器人', f"{len(failed)} 個檔案處理失敗，請看記錄檔")
+            tg('⚠️ <b>帳單機器人</b>\n'
+               f"{len(failed)} 個檔案處理失敗，沒有新增任何帳單：\n"
+               + '\n'.join(f"• {esc(n)}：{esc(why)}" for n, why in failed)
+               + '\n\n多半是 PDF 密碼變了，或這家銀行的版面改了。'
+                 '詳見 ~/Library/Logs/mywallet-billbot.log',
+               is_failure=True)
+        elif cfg.get('telegram_notify_empty', True):
+            # 「這次沒事」也要說一聲。使用者指定要的，理由也站得住腳：
+            # 收到這則就等於知道排程活著，不必自己去記「上次是什麼時候跑的」。
+            tg('🗂 <b>帳單機器人</b>\n'
+               f"這次沒有新帳單（掃過 {len(pdfs)} 個檔案）。\n"
+               '收到這則就代表排程有跑、機器人是活著的。')
         save_ledger(ledger)
         cleanup_processed(stale, cfg, watch_dir)
+        write_heartbeat(cfg, bot_pw)
         return
 
     token, doc = None, None
@@ -553,10 +707,14 @@ def main():
         token = sign_in(cfg, bot_pw)
         if not token:
             notify('帳單機器人', '登入失敗，帳單沒有上傳')
+            tg('❌ <b>帳單機器人</b>\n機器人帳號登入失敗，解析好的帳單沒有上傳。\n'
+               '可能是帳號密碼改了，或 Firebase 連不上。', is_failure=True)
             sys.exit(1)
         doc = fetch_doc(cfg, token)
         if doc is None:
             notify('帳單機器人', '讀不到雲端資料，帳單沒有上傳')
+            tg('❌ <b>帳單機器人</b>\n讀不到雲端的卡片管家資料，帳單沒有上傳。\n'
+               '可能是 Firestore 規則被改動了。', is_failure=True)
             sys.exit(1)
     elif not DRY_RUN:
         sys.exit(2)          # 理論上到不了這裡，上面已經擋掉
@@ -613,6 +771,9 @@ def main():
         # 雲端已經有這幾筆了，檔案該清掉的照清 —— 不然重複下載的帳單會永遠留在資料夾裡
         cleanup_processed(dupes + stale, cfg, watch_dir)
         notify('帳單機器人', f"{len(dupes)} 筆帳單雲端已有，沒有新增")
+        tg('🗂 <b>帳單機器人</b>\n'
+           f"掃到 {len(dupes)} 筆帳單，雲端都已經有了，沒有新增。")
+        write_heartbeat(cfg, bot_pw, token)
         return
 
     if DRY_RUN:
@@ -625,6 +786,8 @@ def main():
 
     if not patch_bills(cfg, token, bills):
         notify('帳單機器人', '寫入雲端失敗，帳單沒有上傳')
+        tg('❌ <b>帳單機器人</b>\n寫入雲端失敗，帳單沒有上傳。\n'
+           'PDF 都留在原處，下次排程會再試一次。', is_failure=True)
         sys.exit(1)
 
     for item, _bill in added:
@@ -641,7 +804,27 @@ def main():
     log(f"✅ 已寫入雲端：新增 {len(added)} 筆，bills {before} → {len(bills)} 筆")
     detail = '、'.join(f"{b['name']} ${b['amount']:,}" for _i, b in added)
     notify('帳單機器人', f"新增 {len(added)} 筆帳單（共 ${total:,}）：{detail}")
+    tg(added_message(added, before, len(bills)))
+    write_heartbeat(cfg, bot_pw, token)
 
 
 if __name__ == '__main__':
-    main()
+    # 為什麼要在最外層再包一層：main() 裡有好幾條 sys.exit 的路徑，以前只寫記錄檔；
+    # 更糟的是未預期的例外（pdfplumber 或 jsc 不在、OneDrive 檔案讀到一半斷線）
+    # 連記錄都只有 launchd 的 stderr。排程是無人看管的，沒推播就等於沒發生。
+    try:
+        main()
+    except SystemExit as e:
+        code = e.code if isinstance(e.code, int) else (0 if e.code is None else 1)
+        if code != 0 and not TG_FAILED_SENT:
+            tg(f'❌ <b>帳單機器人</b>\n排程中止（exit {code}），帳單沒有上傳。\n'
+               '詳見 ~/Library/Logs/mywallet-billbot.log', is_failure=True)
+        raise
+    except BaseException as e:
+        # 例外內容只寫進本機記錄檔，推播只帶型別 —— 訊息會經過 Telegram 的伺服器
+        log(f"未預期的錯誤：{type(e).__name__}: {e}", 'ERROR')
+        notify('帳單機器人', '未預期的錯誤，帳單沒有上傳')
+        tg(f'❌ <b>帳單機器人</b>\n未預期的錯誤（{esc(type(e).__name__)}），'
+           '帳單沒有上傳。\n詳見 ~/Library/Logs/mywallet-billbot.log',
+           is_failure=True)
+        sys.exit(1)

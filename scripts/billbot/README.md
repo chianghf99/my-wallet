@@ -141,10 +141,12 @@ scripts/billbot/install-schedule.sh 0 12 0
 | 移除排程 | `scripts/billbot/install-schedule.sh --uninstall` |
 | 看記錄 | `tail -50 ~/Library/Logs/mywallet-billbot.log` |
 | 不寫雲端，只看會做什麼 | `python3 scripts/billbot/bill_bot.py --dry-run --verbose` |
+| 測 Telegram 通不通 | `python3 scripts/billbot/bill_bot.py --telegram-test` |
 
 星期幾：`0`=日、`1`=一 …… `6`=六。
 
-每次執行結束會跳 macOS 通知（新增了幾筆、共多少錢；失敗時也會通知）。
+每次執行結束會跳 macOS 通知（新增了幾筆、共多少錢；失敗時也會通知），
+**並推一則 Telegram**（見下面「Telegram 通知」）。
 
 ## 想改設定的時候看這裡
 
@@ -158,6 +160,7 @@ scripts/billbot/install-schedule.sh 0 12 0
 | **某家銀行金額或日期抓錯** | 改 `js/utils/bill-parse.js` 的 `processBankRules`。**網頁與排程共用這一份** | 排程立刻；網頁要 commit + push |
 | **新增一家銀行** | ①`bill-parse.js` 加一條解析規則 ②`bill_bot.py` 的 `BANK_CODE_RULES` 加檔名對應 ③把該行的 PDF 密碼存進 Keychain | 同上 |
 | **暫時停用排程** | `install-schedule.sh --uninstall`（程式與設定都留著，重裝即可） | 立刻 |
+| **不想每次都收到「這次沒有新帳單」** | 設定檔加 `"telegram_notify_empty": false` | 下次執行 |
 | **搬動整個專案資料夾** | 重跑 `build-app.sh`，並把新的 `.app` 重新加進「完全取硬碟存取權」 | 立刻 |
 | **換到別台電腦跑** | 見下面「換到別台電腦，或從這台清掉」 | — |
 
@@ -172,6 +175,82 @@ python3 scripts/billbot/bill_bot.py --setup-check
 ```bash
 python3 scripts/billbot/bill_bot.py --dry-run --verbose
 ```
+
+## Telegram 通知
+
+每次執行結束都會推一則到你的手機 —— 四種情況，一種都不會安靜：
+
+| 情況 | 訊息 |
+|---|---|
+| 同步了新帳單 | 列出每一筆的銀行、金額、繳款截止日，加總與雲端筆數 |
+| 這次沒有新帳單 | 一行「這次沒有新帳單（掃過 N 個檔案）」 |
+| 掃到的帳單雲端都已經有 | 一行「N 筆雲端已有，沒有新增」 |
+| 任何失敗 | 失敗在哪一步、檔案留在原處還是已經處理掉 |
+
+### 為什麼「沒有新帳單」也要推
+
+因為「沒有新帳單」跟「機器人根本沒跑」在手機上長得一模一樣：都是一片安靜。
+收到那一行就等於知道排程活著，不必自己去記上次是什麼時候跑的。
+嫌吵的話設定檔加 `"telegram_notify_empty": false`（但請先讀下面那節）。
+
+### 設定（約兩分鐘）
+
+bot 與 chat id 跟雲端排程**共用同一組**，所以如果 `scripts/README.md`
+那邊已經設好了，這裡只要把同樣的值放進 Keychain：
+
+```bash
+security add-generic-password -s mywallet-telegram -a bot_token -U -T /usr/bin/security -w
+```
+
+```bash
+security add-generic-password -s mywallet-telegram -a chat_id -U -T /usr/bin/security -w
+```
+
+兩個指令都會互動式詢問值（`-w` 後面不帶值），**不會留在 shell 歷史裡**。
+還沒有 bot 或不知道 chat id：建立步驟在 [`../README.md`](../README.md) 的「帳單到期提醒」。
+
+設好之後測一次：
+
+```bash
+python3 scripts/billbot/bill_bot.py --telegram-test
+```
+
+> **`-T /usr/bin/security` 不可以省。** 排程是以背景程式的身分跑的，它碰到
+> Keychain 的 ACL 詢問框沒辦法跳出來問你，只會無聲失敗 —— 而且記錄裡看起來
+> 跟「根本沒存密碼」一樣。這也是各家銀行 PDF 密碼用同一個寫法的原因。
+>
+> 要注意 `--telegram-test` 是在**你的終端機**裡跑的，讀得到不代表排程讀得到。
+> 真正的驗證是**下一次週日排程**：那天下午沒收到任何訊息（連「沒有新帳單」都沒有），
+> 第一個該懷疑的就是這個 ACL。想提前驗請看下面那段關於 `--run-now` 的警告。
+
+沒設也不會壞：讀不到 token 就只寫記錄檔並跳過推播，其餘功能照常。
+
+### 雲端那一層看門狗
+
+這支腳本自己報不了「我沒跑」—— Mac 關機、排程被卸掉、硬碟存取權被收回的時候，
+它連執行都沒有，哪來的通知。所以跑完會往 Firestore 寫一個時戳
+（`billbot_heartbeat`，只有這一個欄位，`updateMask` 刻意不含 `bills`），
+由 GitHub Actions 上的 `bill-reminder.mjs` 每天檢查：**超過 9 天沒動作就警告**
+（週排程 7 天 ＋ 2 天寬限）。
+
+| 心跳 | 看門狗 |
+|---|---|
+| 9 天內 | 安靜 |
+| 9～60 天 | 每天警告一次 |
+| 超過 60 天 | 停止警告（當作你是故意不用了） |
+| 雲端還沒有這個欄位 | **不警告** —— 分不出「還沒升級到會寫心跳的版本」與「真的掛了」 |
+
+最後那一列的意思是：**下次排程跑完，看門狗才開始生效** —— 不必特別做什麼，
+週日那次就會寫下第一個心跳（跟 Telegram 有沒有設好無關）。
+
+> ⚠️ **`--run-now` 不是無害的試跑。** 它是真的執行：會把資料夾裡認得出來的帳單
+> 寫進雲端、並按 `processed_action` 處理 PDF（這台機器設的是 `trash`）。
+> 想先看會發生什麼請用 `--dry-run`。另外，**抓不到繳款截止日的帳單要留意** ——
+> 重複判定是比對「名稱 ＋ 截止日」，所以同一期帳單如果你已經手動輸入過、而 PDF
+> 這次沒抓到日期，會變成兩筆；那一筆還會每天觸發「繳款日不明」的提醒。
+
+心跳只在「跑完」的路徑寫。中途失敗的執行**刻意不寫** —— 這樣連續失敗也會讓看門狗叫，
+不會因為「有跑」就被當成健康。
 
 ## 處理完的 PDF 要怎麼辦
 
@@ -279,7 +358,16 @@ clone → 設定檔 → 密碼進 Keychain → `build-app.sh` ＋ 給權限 → 
 4. **OneDrive 必須已經把檔案下載到本機**（不是「僅線上」的佔位檔）。
    讀取時通常會自動觸發下載，但離線時會失敗。
 
-5. **帳單的通訊地址等個資不經過這支腳本** —— 它只寫 `bills`（名稱、金額、日期、狀態）。
+5. **帳單的通訊地址等個資不經過這支腳本** —— 它只寫 `bills`（名稱、金額、日期、狀態）
+   與一個時戳欄位 `billbot_heartbeat`。
+
+6. **Telegram 的推播內容會經過 Telegram 的伺服器** —— 同步成功那則含銀行名稱與金額。
+   這是你自己跟自己 bot 的私人對話，但訊息確實不是只留在本機。
+   不想送出這些就把 Keychain 裡的 token 刪掉（推播會自動停用，其餘功能不受影響）。
+
+7. **Keychain 讀不到的時候連失敗通知都發不出去。** 推播用的 token 也在 Keychain 裡，
+   所以「Keychain 整個碰不到」這一種失敗是推不出訊息的 —— 那一種只能靠雲端看門狗
+   在 9 天後叫。這是這條路徑上唯一還安靜的失敗。
 
 ## 檔案
 
@@ -292,3 +380,4 @@ clone → 設定檔 → 密碼進 Keychain → `build-app.sh` ＋ 給權限 → 
 | `import_pdf_passwords.py` | 把舊 Windows 機器人的明文密碼搬進 Keychain |
 | `billbot.example.json` | 設定檔範本（實際設定在 `~/.config/mywallet/billbot.json`） |
 | `../../js/utils/bill-parse.js` | **13 家銀行的解析規則，與網頁共用的唯一一份** |
+| `../bill-reminder.mjs` | 雲端排程：帳單到期提醒 ＋ 這支腳本的看門狗 |

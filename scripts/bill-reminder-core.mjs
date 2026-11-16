@@ -240,3 +240,63 @@ export const buildMessage = (groups, opts = {}) => {
     if (url) parts.push('', esc(url));
     return parts.join('\n');
 };
+
+
+// --- 帳單機器人看門狗 -----------------------------------------------------
+//
+// 帳單機器人（scripts/billbot）跑在使用者那台 Mac 上，每週日中午一次，跑完會把時戳
+// 寫進 Firestore 的 billbot_heartbeat。這裡讀的就是那個時戳。
+//
+// 為什麼需要這一層：機器人每次跑完都會自己推一則 Telegram（連「這次沒有新帳單」都會推），
+// 所以它活著的時候你看得到。問題是它**沒跑**的時候什麼都不會發生 —— Mac 在排程時間
+// 關著、排程被卸掉、完全取硬碟存取權被收回，這些全都跟「這週剛好沒有帳單」長得一模一樣：
+// 一片安靜。死掉的程式不會自己報死訊，所以要由跑在 GitHub 機器上（與那台 Mac 無關）
+// 的這支排程來確認它還有沒有在動。
+//
+// 門檻預設 9 天 ＝ 週排程 7 天 ＋ 2 天寬限（GitHub 的 cron 本身就會延遲，
+// 而且 Mac 可能週日剛好沒開、週一才補跑）。
+
+export const DEFAULT_BILLBOT_STALE_DAYS = 9;
+export const DEFAULT_BILLBOT_MAX_DAYS = 60;
+
+// 回傳 { state, days }
+//   'unknown'   雲端還沒有心跳欄位 —— 不警告（見下方理由）
+//   'ok'        還在門檻內
+//   'stale'     該叫了
+//   'given-up'  太久了，停止每天吵（可能是故意不用了）
+//
+// 為什麼 'unknown' 不警告：沒有心跳欄位可能是「機器人還沒更新到會寫心跳的版本」，
+// 也可能是「真的掛了」，從雲端分不出來。對還沒設定好的人每天吵一則他看不懂的警告，
+// 只會讓他把整個提醒關掉 —— 那比漏報更糟。第一次成功執行就會寫下心跳，
+// 看門狗從那一刻才開始生效（日誌裡會說明現在是哪一種）。
+export const billbotStatus = (heartbeat, nowMs, opts = {}) => {
+    const staleDays = Number.isFinite(opts.staleDays) ? opts.staleDays : DEFAULT_BILLBOT_STALE_DAYS;
+    const maxDays = Number.isFinite(opts.maxDays) ? opts.maxDays : DEFAULT_BILLBOT_MAX_DAYS;
+    const hb = Number(heartbeat);
+    if (!Number.isFinite(hb) || hb <= 0) return { state: 'unknown', days: null };
+    // 心跳比現在還新（兩邊時鐘沒對齊）不是異常，不要因此叫
+    const days = Math.floor((nowMs - hb) / 86400000);
+    if (days < staleDays) return { state: 'ok', days };
+    if (days > maxDays) return { state: 'given-up', days };
+    return { state: 'stale', days };
+};
+
+export const buildBillbotAlert = (status, opts = {}) => {
+    if (!status || status.state !== 'stale') return null;
+    const lines = [
+        '⚠️ <b>帳單機器人已經沒動作了</b>',
+        '',
+        `雲端看到的最後一次執行是 <b>${status.days} 天前</b>。`,
+        '它平常每週日中午跑一次，而且每次跑完都會推一則訊息給你 —— 連「這次沒有新帳單」',
+        '都會推。所以這麼久沒消息，代表它根本沒跑，不是沒帳單。',
+        '',
+        '<b>先查這三個</b>',
+        '• 那台 Mac 週日中午是不是關機或沒登入',
+        '• 排程還在不在：<code>install-schedule.sh --status</code>',
+        '• 「完全取硬碟存取權」是不是被收回了（搬動過專案資料夾就會）',
+        '',
+        '這段期間的帳單不會自動進雲端，繳款日要自己看一下。',
+    ];
+    if (opts.url) lines.push('', opts.url);
+    return lines.join('\n');
+};

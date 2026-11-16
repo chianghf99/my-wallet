@@ -60,6 +60,19 @@
     <!-- Tailwind 自己放一份（vendor/），不走 CDN —— 它原本是全站唯一沒有 integrity 的
          外部腳本，被換掉就等於有人能在這一頁執行任意程式碼。見 vendor/README.md -->
     <script src="vendor/tailwind-3.4.17.js"></script>
+    <!-- ⚠️ 不要把 crypto-js 升到 4.2.x。這不是「換個 integrity 雜湊」的例行升級。
+         4.2.0 為了修 CVE-2023-46233 把 PBKDF2 的**預設 hasher 從 SHA1 改成 SHA256**。
+         本頁三處 PBKDF2（deriveKey / deriveMasterKey / 舊制遷移）都只傳了 keySize 與
+         iterations，沒有指定 hasher —— 升版後同一組 PIN／主密碼會導出完全不同的金鑰，
+         結果是既有卡片全部解不開、PIN 比對也過不了。而且不會有錯誤訊息，只會「密碼錯誤」。
+
+         而這個 CVE 對本頁幾乎不適用：它的核心是「預設只跑 1 次迭代」，而三處都明確
+         傳了迭代次數。剩下的差異只是 SHA1 當 PRF，在 PBKDF2 的用法下沒有實務破法。
+         也就是說：**收益趨近於零，代價是資料全毀。**
+
+         真要升的安全路徑：先在三處都補上 hasher: CryptoJS.algo.SHA1 保持相容，
+         確認導出的金鑰與現在逐位元相同，之後才動版本號與 integrity。
+         （若想改用 SHA256，就得寫一次性重新加密的遷移，不能直接換。） -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"
         integrity="sha384-S3wQ/l0OsbJoFeJC81UIr3JOlx/OzNJpRt1bV+yhpWQxPAahfpQtpxBSfn+Isslc" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script>
@@ -1581,6 +1594,8 @@ createApp({
         // Derive AES key from PIN using PBKDF2 with the legacy fixed salt.
         // Weak against anyone who has the ciphertext, since the salt is public (it's in
         // this source file) and the PIN search space is only 10^6 combinations.
+        // 沒有指定 hasher，所以吃 crypto-js 的預設值（4.1.1 = SHA1）。
+        // ⚠️ 升到 4.2.x 預設會變 SHA256，金鑰跟著變、既有密文解不開。詳見檔案開頭 crypto-js 的註解。
         const deriveKey = (pin) => {
             return CryptoJS.PBKDF2(pin, _FIXED_SALT, { keySize: 256 / 32, iterations: 10000 }).toString();
         };
@@ -1632,6 +1647,7 @@ createApp({
             return salt;
         };
         // 主密碼推導：高迭代次數 + 帳號專屬 salt，讓即使 salt 外洩，暴力破解成本也大幅提高
+        // 同上：未指定 hasher，依賴 crypto-js 4.1.1 的 SHA1 預設值。升版會換金鑰，不要直接升。
         const deriveMasterKey = (passphrase, salt) => {
             return CryptoJS.PBKDF2(passphrase, salt, { keySize: 256 / 32, iterations: 210000 }).toString();
         };
@@ -1725,6 +1741,8 @@ createApp({
                             const oldSalt = localStorage.getItem('app_pin_salt') || '';
                             const oldKeys = [pin]; // raw PIN
                             if (oldSalt) {
+                                // 同上：未指定 hasher。這條是讀舊資料的遷移路徑，
+                                // 升版換掉預設 hasher 會讓還沒遷移完的使用者永久讀不回舊卡片。
                                 oldKeys.push(CryptoJS.PBKDF2(pin, oldSalt, { keySize: 256/32, iterations: 100000 }).toString());
                             }
                             try {

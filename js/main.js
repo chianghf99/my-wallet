@@ -1,6 +1,6 @@
 import { db, auth } from './firebase-config.js';
 import { getLocalDate, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountSign, getFuturesDisplayName } from './utils/format.js';
-import { TAIFEX_PRODUCTS, TAIFEX_MIS_URL, taifexRequestBody, contractMonthOf, pickContract, pickFreshest, pickFromOpenData, OPEN_DATA_CONTRACT, cnyesUrl, cnyesEntry, parseCnyesQuote, TAIFEX_MARGINS, futuresDefaultsFor, nextSettlementDate, settlementAfter, settlementStatusOf, splitPosition, mergePositions, mergeAllPositions, undoOpenPlan } from './utils/futures.js';
+import { TAIFEX_PRODUCTS, TAIFEX_MIS_URL, taifexRequestBody, contractMonthOf, pickContract, pickFreshest, pickFromOpenData, OPEN_DATA_CONTRACT, cnyesUrl, cnyesEntry, parseCnyesQuote, TAIFEX_MARGINS, futuresDefaultsFor, nextSettlementDate, settlementAfter, settlementStatusOf, splitPosition, mergePositions, mergeAllPositions, undoOpenPlan, undoOpenEffect, vwapOfOpens, repointTx } from './utils/futures.js';
 import { computePortfolio, calcStats, calcStockExposure, calcFundsValueTwd, calcFundsCostTwd, calcFuturesMarginCash, calcFuturesMarginUsed, calcFuturesExposure, buildExposureTrend } from './utils/valuation.js';
 import { stockChangelog } from './changelog.js';
 
@@ -1351,10 +1351,30 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         note: [...new Set(list.map(p => (p.note || '').trim()).filter(Boolean))].join('、'),
                         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                     }, { merge: true });
+                    // v5.34.0: 被刪掉的部位 id 還留在交易紀錄的 positionId / oldPositionId /
+                    // newPositionId 上。不跟著改，撤銷時就會指向不存在的文件 —— 其中最糟的是
+                    // 平倉撤銷會「重建」一筆部位，使同一批口數同時存在合併後的部位與重建出來
+                    // 的部位裡（重複計算）。所以在同一個 batch 裡一起改指向保留下來的那一筆。
+                    const goneIds = new Set(list.slice(1).map(p => p.id));
+                    const txCol2 = db.collection('users').doc(user.value.uid).collection('futures_transactions');
+                    const patches = [];
+                    for (const t of futuresTransactions.value) {
+                        const patch = repointTx(t, goneIds, head.id);
+                        if (patch) patches.push([t.id, patch]);
+                    }
+                    // Firestore 單一 batch 上限 500 筆寫入；留餘裕給部位本身的寫入。
+                    if (patches.length > 450) {
+                        alert(`這組要改指向的交易紀錄有 ${patches.length} 筆，超過單次可安全寫入的量。\n請先縮小範圍（分批合併），以免寫到一半中斷。`);
+                        return;
+                    }
+                    for (const [id, patch] of patches) batch.update(txCol2.doc(id), patch);
                     for (const p of list.slice(1)) batch.delete(col.doc(p.id));
                     await batch.commit();
                     setTimeout(saveDailySnapshot, 500);
-                    toastOk(`已合併 ${list.length} 筆為 ${merged.contracts} 口，均價 ${formatNumber(merged.entryPrice)}`);
+                    toastOk(
+                        `已合併 ${list.length} 筆為 ${merged.contracts} 口，均價 ${formatNumber(merged.entryPrice)}` +
+                        (patches.length ? `，並把 ${patches.length} 筆交易紀錄改指向這筆` : '')
+                    );
                 };
 
                 // --- 期貨：建倉、平倉與轉倉 ---
@@ -2021,29 +2041,53 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                                     // 保留下來的那一筆、以及被加碼併入的那個既有部位，它們自己的
                                     // 建倉 tx 都沒有註記，整包刪掉會把別次建的口數一起清掉。
                                     // 判斷邏輯抽成 undoOpenPlan（可單獨測試），理由寫在那裡。
-                                    const cur = await posRef.get();
-                                    const plan = undoOpenPlan({
-                                        exists: cur.exists,
-                                        currentContracts: cur.exists ? (cur.data() || {}).contracts : 0,
-                                        txContracts: tx.contracts
+                                    let cur = await posRef.get();
+                                    let target = posRef;
+                                    // v5.34.0: 舊資料修補。v5.34.0 之前合併過的部位沒有改指向，
+                                    // 這些紀錄指著已被刪掉的文件。此時找「同商品／同結算日／同方向」
+                                    // 且目前還活著的部位 —— 只有恰好一筆才接手（兩筆以上無法判斷
+                                    // 該接哪一筆），並且一定先問使用者。
+                                    if (!cur.exists) {
+                                        const cands = futuresPositions.value.filter(
+                                            p => futuresGroupKey(p) === futuresGroupKey(tx)
+                                        );
+                                        if (cands.length === 1 && confirm(
+                                            `這筆建倉原本的部位已不在列表上，可能是舊版合併時被併進了：\n\n` +
+                                            `${getFuturesDisplayName(cands[0])}　${cands[0].contracts} 口` +
+                                            `　均價 ${formatNumber(cands[0].entryPrice)}\n\n` +
+                                            `要從這筆扣掉本次的 ${Number(tx.contracts) || 0} 口與保證金嗎？\n` +
+                                            `（選「取消」則只刪除紀錄，不動任何部位）`
+                                        )) {
+                                            target = db.collection('users').doc(uid)
+                                                .collection('futures_positions').doc(cands[0].id);
+                                            cur = await target.get();
+                                        }
+                                    }
+                                    // 扣掉這一筆之後，同一個部位底下還剩的建倉紀錄 —— 用來重算均價
+                                    const survivingOpens = cur.exists ? futuresTransactions.value.filter(
+                                        t => t.id !== tx.id && t.type === 'open' && t.positionId === target.id
+                                    ) : [];
+                                    const eff = undoOpenEffect({
+                                        position: cur.exists ? (cur.data() || {}) : null,
+                                        tx, survivingOpens
                                     });
-                                    if (plan.action === 'missing') {
+                                    if (eff.action === 'missing') {
                                         restoreNotes.push(
-                                            '這筆建倉原本的部位已不在列表上（很可能被「整理重複部位」併進另一筆），' +
-                                            '只刪除了紀錄、沒有調整任何部位的口數，請到合併後的那筆確認'
+                                            '這筆建倉原本的部位已不在列表上，只刪除了紀錄、' +
+                                            '沒有調整任何部位的口數，請自行核對'
                                         );
-                                    } else if (plan.action === 'subtract') {
-                                        batch.set(posRef, {
-                                            contracts: inc(-plan.lots),
-                                            marginUsed: inc(-(Number(tx.marginUsed) || 0)),
+                                    } else if (eff.action === 'subtract') {
+                                        const patch = {
+                                            contracts: inc(-eff.lots),
+                                            marginUsed: inc(eff.marginDelta),
                                             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                                        }, { merge: true });
-                                        restoreNotes.push(
-                                            `該部位含有多次建倉的口數，只扣掉這筆的 ${plan.lots} 口與保證金；` +
-                                            '均價仍是合併後的加權平均，請自行核對'
-                                        );
+                                        };
+                                        // 只有能精確重算時才寫均價；算不出來就不動它（理由見 undoOpenEffect）
+                                        if (eff.entryPrice !== null) patch.entryPrice = eff.entryPrice;
+                                        batch.set(target, patch, { merge: true });
+                                        restoreNotes.push(eff.note);
                                     } else {
-                                        batch.delete(posRef);
+                                        batch.delete(target);
                                     }
                                 }
                             }
@@ -2099,9 +2143,32 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                                 const rgRefRoll = db.collection('users').doc(uid).collection('realized_gains').doc(tx.realizedGainsId);
                                 batch.delete(rgRefRoll);
                             }
-                            // 刪除遠月部位
+                            // 刪除遠月部位 —— 但它可能已經被合併，裡面含有別筆的口數。
+                            // v5.34.0: 改指向之後 newPositionId 會指到合併後的那一筆，
+                            // 無條件刪除就會把別筆的口數一起清掉（與建倉撤銷同一類問題）。
                             if (tx.newPositionId) {
-                                batch.delete(db.collection('users').doc(uid).collection('futures_positions').doc(tx.newPositionId));
+                                const farRef = db.collection('users').doc(uid).collection('futures_positions').doc(tx.newPositionId);
+                                const farSnap = await farRef.get();
+                                const farPlan = undoOpenPlan({
+                                    exists: farSnap.exists,
+                                    currentContracts: farSnap.exists ? (farSnap.data() || {}).contracts : 0,
+                                    txContracts: tx.contracts
+                                });
+                                if (farPlan.action === 'subtract') {
+                                    batch.set(farRef, {
+                                        contracts: inc(-farPlan.lots),
+                                        // 轉倉紀錄的 marginUsed 存的正是「轉進遠月的那份」
+                                        // （split.releasedMargin），不是部位總額，所以可以直接相減。
+                                        marginUsed: inc(-(Number(tx.marginUsed) || 0)),
+                                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                                    }, { merge: true });
+                                    restoreNotes.push(
+                                        `遠月部位含有多次建倉的口數，只扣掉這次轉進的 ${farPlan.lots} 口；` +
+                                        '均價維持原值，請自行核對'
+                                    );
+                                } else if (farPlan.action === 'delete') {
+                                    batch.delete(farRef);
+                                }
                             }
                             // 還原近月部位
                             const snap = tx.oldPositionSnapshot;

@@ -475,3 +475,95 @@ export const pickFromOpenData = (rows = [], contract, contractMonth = null, pref
         stale: true            // 這是每日收盤資料，不是即時報價
     };
 };
+
+/**
+ * 一筆部位的均價，由它底下所有「建倉」交易紀錄的加權平均算出。
+ *
+ * 這是部位均價的定義式：部分平倉不改變剩餘口數的平均成本（本專案不做每日結算，
+ * 一路用建倉價扛到出場），所以只要建倉紀錄齊全，均價就能精確重算 —— 與順序無關、
+ * 與中間平掉幾口無關。這比「記下併入前的樣子」(previousState) 可靠，因為後者在
+ * 第二次撤銷時就失準了。
+ *
+ * 回傳 null 的情況（呼叫端必須改為不動均價並告知使用者）：
+ *   - 沒有任何建倉紀錄：轉倉產生的部位只寫 type:'rollover'，沒有 open 紀錄
+ *   - 任一筆沒有有效價格或口數：舊資料可能缺欄位
+ * 寧可不動均價，也不要寫進一個算錯的值。
+ */
+export const vwapOfOpens = (opens = []) => {
+    if (!Array.isArray(opens) || !opens.length) return null;
+    let lots = 0, notional = 0;
+    for (const o of opens) {
+        const c = Number(o && o.contracts);
+        const p = Number(o && (o.price !== undefined ? o.price : o.entryPrice));
+        if (!(c > 0) || !(p > 0)) return null;
+        lots += c;
+        notional += p * c;
+    }
+    return { contracts: lots, entryPrice: Number((notional / lots).toFixed(4)) };
+};
+
+/**
+ * 刪除一筆「建倉」紀錄時，對它指向的部位要做什麼。undoOpenPlan 的完整版：
+ * 除了決定「刪除還是只扣掉這筆」，還負責在能精確重算時把均價一起修正。
+ *
+ * survivingOpens 是**扣掉這一筆之後**，同一個部位底下剩餘的建倉紀錄。
+ * 只有在「剩餘建倉紀錄的口數總和，恰好等於部位扣除後的口數」時才重算均價 ——
+ * 不相等代表這個部位還有來源不明的口數（轉倉來的、或舊資料缺紀錄），
+ * 此時重算會算出一個漂亮但錯誤的均價，比留著舊均價加警告更糟。
+ * 這個檢查同時也正確涵蓋了「部分平倉過」的情形。
+ *
+ * @returns {{action:'delete'|'subtract'|'missing', lots:number,
+ *            marginDelta:number, entryPrice:number|null, note:string|null}}
+ */
+export const undoOpenEffect = ({ position, tx, survivingOpens = [] } = {}) => {
+    const exists = !!position;
+    const base = undoOpenPlan({
+        exists,
+        currentContracts: exists ? position.contracts : 0,
+        txContracts: tx && tx.contracts
+    });
+    if (base.action !== 'subtract') {
+        return { ...base, marginDelta: 0, entryPrice: null, note: null };
+    }
+    const marginDelta = -(Number(tx.marginUsed) || 0);
+    const remaining = (Number(position.contracts) || 0) - base.lots;
+    const vwap = vwapOfOpens(survivingOpens);
+    if (vwap && vwap.contracts === remaining) {
+        return {
+            ...base, marginDelta, entryPrice: vwap.entryPrice,
+            note: `已扣掉這筆的 ${base.lots} 口與保證金，並由其餘建倉紀錄重算均價`
+        };
+    }
+    return {
+        ...base, marginDelta, entryPrice: null,
+        note: `已扣掉這筆的 ${base.lots} 口與保證金。` +
+              '但這個部位的口數無法完全由建倉紀錄還原（可能有轉倉來的口數），' +
+              '均價維持原值，請自行核對'
+    };
+};
+
+/**
+ * 合併部位時，要把哪些交易紀錄的「部位指標」改指向保留下來的那一筆。
+ *
+ * 期貨交易紀錄有三個欄位存著部位 id：
+ *   positionId     建倉（open）指向它建出來的部位
+ *   oldPositionId  平倉／轉倉指向被動到的原部位
+ *   newPositionId  轉倉指向它產生的遠月部位
+ * 合併會刪掉其中幾個部位文件，這些欄位若不跟著改，撤銷時會指向不存在的文件 ——
+ * 而各個撤銷分支對「文件不存在」的反應不一樣，最糟的是平倉撤銷會**重建**一筆部位，
+ * 於是同一批口數同時存在合併後的部位和重建出來的部位裡（重複計算）。
+ *
+ * 只處理「被合併掉的部位」。被平倉平掉而消失的部位不在 fromIds 裡（它早就不在
+ * 部位列表上了），所以不會把已結束的部位誤接到別人身上。
+ *
+ * @returns {Object|null} 要寫進這筆 tx 的欄位；null 表示這筆不用動
+ */
+export const repointTx = (tx, fromIds, toId) => {
+    if (!tx || !toId) return null;
+    const from = fromIds instanceof Set ? fromIds : new Set(fromIds || []);
+    const patch = {};
+    for (const f of ['positionId', 'oldPositionId', 'newPositionId']) {
+        if (tx[f] && from.has(tx[f]) && tx[f] !== toId) patch[f] = toId;
+    }
+    return Object.keys(patch).length ? patch : null;
+};

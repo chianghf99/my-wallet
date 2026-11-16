@@ -9,7 +9,8 @@ import {
     parseSymbolId, pickContract, pickFreshest, contractMonthOf,
     pickFromOpenData, TAIFEX_PRODUCTS, effectiveStamp, pickDaySessionFirst, isWithinDays, cnyesEntry, cnyesUrl, parseCnyesQuote,
     thirdWednesday, nextSettlementDate, settlementAfter, daysUntilSettlement, settlementStatusOf,
-    splitPosition, mergePositions, mergeAllPositions, undoOpenPlan
+    splitPosition, mergePositions, mergeAllPositions, undoOpenPlan,
+    undoOpenEffect, vwapOfOpens, repointTx
 } from '../js/utils/futures.js';
 
 let fail = 0;
@@ -338,6 +339,128 @@ check('沒有任何參數時不當掉，也不選擇刪除以外的動作',
     steps.push(`untouched:${untouched}`, `${second.action}`);
     check('自動併入後反序撤銷：不留下 0 口的幽靈部位',
         steps, ['subtract:2', 'untouched:false', 'delete']);
+}
+
+// --- v5.34.0: 均價重算與改指向 ---
+
+check('建倉紀錄的加權平均（price 欄位）',
+    vwapOfOpens([{ contracts: 1, price: 23000 }, { contracts: 3, price: 23400 }]),
+    { contracts: 4, entryPrice: 23300 });
+check('沒有建倉紀錄 → null（轉倉產生的部位就是這種）', vwapOfOpens([]), null);
+check('有一筆缺價格 → null，不可硬算',
+    vwapOfOpens([{ contracts: 1, price: 23000 }, { contracts: 1 }]), null);
+check('單獨一筆也要能算（mergeAllPositions 會回 null，不能拿來用）',
+    vwapOfOpens([{ contracts: 2, price: 23100 }]), { contracts: 2, entryPrice: 23100 });
+
+// 三筆合併成 4 口，刪掉其中 1 口那筆 → 均價必須重算成其餘兩筆的加權平均
+{
+    const opens = [
+        { id: 'a', type: 'open', contracts: 1, price: 23000 },
+        { id: 'b', type: 'open', contracts: 1, price: 23200 },
+        { id: 'c', type: 'open', contracts: 2, price: 23400 }
+    ];
+    const merged = mergeAllPositions(opens.map(o => ({ contracts: o.contracts, entryPrice: o.price, marginUsed: 0 })));
+    const eff = undoOpenEffect({
+        position: { contracts: merged.contracts, entryPrice: merged.entryPrice, marginUsed: 300 },
+        tx: opens[0], survivingOpens: opens.slice(1)
+    });
+    check('刪一筆後精確重算均價 = 其餘兩筆的加權平均',
+        { action: eff.action, lots: eff.lots, entryPrice: eff.entryPrice },
+        { action: 'subtract', lots: 1, entryPrice: vwapOfOpens(opens.slice(1)).entryPrice });
+    // 再刪一筆：與順序無關，仍然精確
+    const eff2 = undoOpenEffect({
+        position: { contracts: 3, entryPrice: eff.entryPrice, marginUsed: 200 },
+        tx: opens[1], survivingOpens: [opens[2]]
+    });
+    check('連續刪第二筆仍精確（不像 previousState 會失準）',
+        { lots: eff2.lots, entryPrice: eff2.entryPrice }, { lots: 1, entryPrice: 23400 });
+}
+
+// 部位含有轉倉來的口數 → 建倉紀錄湊不齊，必須放棄重算而不是算出漂亮的錯值
+check('口數無法完全由建倉紀錄還原 → 不動均價',
+    undoOpenEffect({
+        position: { contracts: 5, entryPrice: 23300, marginUsed: 500 },
+        tx: { contracts: 2, marginUsed: 200 },
+        survivingOpens: [{ contracts: 1, price: 23000 }]   // 只剩 1 口，但部位會剩 3 口
+    }).entryPrice, null);
+
+check('部分平倉過的部位同樣不硬算均價',
+    undoOpenEffect({
+        position: { contracts: 3, entryPrice: 23300, marginUsed: 300 },
+        tx: { contracts: 1, marginUsed: 100 },
+        survivingOpens: [{ contracts: 1, price: 23000 }, { contracts: 2, price: 23400 }]  // 共 3 口 ≠ 剩 2 口
+    }).entryPrice, null);
+
+check('保證金一律按這筆紀錄的量相減',
+    undoOpenEffect({
+        position: { contracts: 4, entryPrice: 23300, marginUsed: 700 },
+        tx: { contracts: 1, marginUsed: 175 }, survivingOpens: []
+    }).marginDelta, -175);
+
+check('部位已不存在 → missing，不碰均價也不碰保證金',
+    undoOpenEffect({ position: null, tx: { contracts: 1, marginUsed: 100 } }),
+    { action: 'missing', lots: 0, marginDelta: 0, entryPrice: null, note: null });
+
+// --- 改指向：三個欄位都要處理 ---
+check('建倉的 positionId 改指向保留下來的那筆',
+    repointTx({ type: 'open', positionId: 'gone1' }, ['gone1', 'gone2'], 'head'), { positionId: 'head' });
+check('平倉的 oldPositionId 也要改 —— 不改會讓撤銷平倉「重建」一筆部位而重複計算',
+    repointTx({ type: 'close', oldPositionId: 'gone2' }, ['gone1', 'gone2'], 'head'), { oldPositionId: 'head' });
+check('轉倉的兩個欄位同時中就同時改',
+    repointTx({ type: 'rollover', oldPositionId: 'gone1', newPositionId: 'gone2' }, ['gone1', 'gone2'], 'head'),
+    { oldPositionId: 'head', newPositionId: 'head' });
+check('指向保留下來那筆的紀錄不用動', repointTx({ positionId: 'head' }, ['gone1'], 'head'), null);
+check('指向其他部位的紀錄不可誤改', repointTx({ positionId: 'other' }, ['gone1'], 'head'), null);
+check('已結束（被平倉刪掉）的部位不在 fromIds 裡，所以不會被誤接',
+    repointTx({ oldPositionId: 'closed-long-ago' }, ['gone1', 'gone2'], 'head'), null);
+
+// 回歸測試 3（v5.34.0）：整理重複後，逐筆撤銷必須能完整回復。
+// 這是 v5.33.1 當時列為「已知限制」的那件事。
+{
+    const head = 'H';
+    let opens = [
+        { id: 'a', type: 'open', contracts: 1, price: 23000, marginUsed: 175, positionId: 'P1' },
+        { id: 'b', type: 'open', contracts: 1, price: 23200, marginUsed: 175, positionId: 'P2' },
+        { id: 'c', type: 'open', contracts: 2, price: 23400, marginUsed: 350, positionId: 'P3' }
+    ];
+    // 合併：P1 當 head，P2/P3 被刪 → 它們的紀錄改指向 head
+    opens = opens.map(o => ({ ...o, ...(repointTx(o, ['P2', 'P3'], head) || {}) }));
+    opens[0].positionId = head;   // head 自己那筆本來就指向 head
+    check('合併後三筆建倉紀錄都指向保留下來的那一筆',
+        opens.map(o => o.positionId), [head, head, head]);
+
+    let pos = { contracts: 4, entryPrice: 23300, marginUsed: 700 };
+    const trace = [];
+    for (const tx of [...opens]) {
+        const surviving = opens.filter(o => o.id !== tx.id && o.positionId === head);
+        const eff = undoOpenEffect({ position: pos, tx, survivingOpens: surviving });
+        if (eff.action === 'subtract') {
+            pos = {
+                contracts: pos.contracts - eff.lots,
+                marginUsed: pos.marginUsed + eff.marginDelta,
+                entryPrice: eff.entryPrice !== null ? eff.entryPrice : pos.entryPrice
+            };
+        } else if (eff.action === 'delete') { pos = null; }
+        opens = opens.filter(o => o.id !== tx.id);
+        trace.push(eff.action);
+    }
+    check('整理重複後逐筆撤銷：每步都精確，最後一筆才刪除部位',
+        trace, ['subtract', 'subtract', 'delete']);
+    check('全部撤銷完畢，部位不留殘骸', pos, null);
+}
+
+// 回歸測試 4：撤銷到剩一筆時，均價必須等於那一筆自己的價格
+{
+    const opens = [
+        { id: 'a', type: 'open', contracts: 1, price: 23000, positionId: 'H' },
+        { id: 'b', type: 'open', contracts: 3, price: 23400, positionId: 'H' }
+    ];
+    const eff = undoOpenEffect({
+        position: { contracts: 4, entryPrice: 23300, marginUsed: 700 },
+        tx: opens[0], survivingOpens: [opens[1]]
+    });
+    check('撤銷到剩一筆：均價等於那一筆的價格，不是舊的合併均價',
+        eff.entryPrice, 23400);
 }
 
 // --- 商品對應 ---

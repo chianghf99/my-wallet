@@ -49,3 +49,10 @@ jobs:
       # （抓不到日期、或更糟：抓到錯的日期與金額）。每修好一家就留一份假數字樣本釘住。
       - name: 帳單 PDF 解析規則
         run: node scripts/test-bill-parse.mjs
+
+      # 帳單機器人跑在使用者的 Mac 上，推播是它唯一的對外管道 ——
+      # 「推播送不出去」這件事本身絕對不能安靜（實際踩過：Telegram 回 403，
+      # 而 --telegram-test 照報成功）。這支不碰網路、不碰 Keychain，
+      # pdfplumber 是延遲匯入的，所以在 CI 上也跑得動。
+      - name: 帳單機器人推播回傳值
+        run: python3 scripts/billbot/test_bill_bot.py

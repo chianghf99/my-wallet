@@ -215,6 +215,17 @@ security add-generic-password -s mywallet-telegram -a chat_id -U -T /usr/bin/sec
 python3 scripts/billbot/bill_bot.py --telegram-test
 ```
 
+成功會印「已送出測試訊息」並以 0 離開；**送不出去會印出 Telegram 給的拒絕原因、
+並以離開碼 2 結束**。最常見的兩種：
+
+| Telegram 說 | 意思 |
+|---|---|
+| `Forbidden: the bot can't send messages to the bot` | chat id 存成 bot 自己的 id，或整串 token（剪貼簿還是 token 就貼了兩次） |
+| `Bad Request: chat not found` | chat id 是別的對話，或你還沒跟這隻 bot 說過話 |
+
+查 chat id 的 `getUpdates` **只保留約 24 小時**，所以設定當天查過的那組訊息隔天就沒了 ——
+重查之前要先再跟 bot 傳一句話。
+
 > **`-T /usr/bin/security` 不可以省。** 排程是以背景程式的身分跑的，它碰到
 > Keychain 的 ACL 詢問框沒辦法跳出來問你，只會無聲失敗 —— 而且記錄裡看起來
 > 跟「根本沒存密碼」一樣。這也是各家銀行 PDF 密碼用同一個寫法的原因。
@@ -391,6 +402,7 @@ clone → 設定檔 → 密碼進 Keychain → `build-app.sh` ＋ 給權限 → 
 | 檔案 | 用途 |
 |---|---|
 | `bill_bot.py` | 主程式 |
+| `test_bill_bot.py` | 推播回傳值與訊息組裝的回歸測試（不碰網路與 Keychain，CI 也跑） |
 | `parse_bridge.js` | 用 jsc 呼叫網頁那份解析規則的橋接 |
 | `install-schedule.sh` | 安裝／修改／移除 launchd 排程 |
 | `build-app.sh` | 產生 `帳單機器人.app`，讓硬碟存取權只授權給它一個 |

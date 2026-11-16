@@ -195,8 +195,13 @@ def esc(v):
 
 
 def tg(message, is_failure=False):
-    """推一則 Telegram。永遠不丟例外、永遠不改離開碼 ——
-    資料都已經寫進雲端了，通知失敗不該讓整支程式變成失敗。"""
+    """推一則 Telegram，**回傳有沒有真的送出去**。
+
+    永遠不丟例外、永遠不改離開碼 —— 資料都已經寫進雲端了，通知失敗不該讓整支程式
+    變成失敗。但「送不出去」必須讓呼叫端知道：--telegram-test 的全部意義就是把
+    chat id 填錯這種錯誤變成吵的，它要是跟著一起吞掉，那個開關就等於不存在
+    （2026-11-16 實際踩到：Telegram 回 403，腳本照印「已送出測試訊息」並以 0 離開）。
+    """
     global TG_FAILED_SENT
     if is_failure:
         TG_FAILED_SENT = True
@@ -204,15 +209,16 @@ def tg(message, is_failure=False):
     if not token or not chat_id:
         log(f'Keychain 裡沒有 Telegram 的 bot_token／chat_id（服務 {KEYCHAIN_TG_SERVICE}），'
             '略過推播。設定方式見 README.md', 'WARN')
-        return
+        return False
     if DRY_RUN:
         log(f"--dry-run：本來會推一則 {len(message.splitlines())} 行的 Telegram（內容不印）")
-        return
+        return False
     try:
         _post_json(f'https://api.telegram.org/bot{token}/sendMessage',
                    {'chat_id': chat_id, 'text': message,
                     'parse_mode': 'HTML', 'disable_web_page_preview': True})
         vlog('Telegram 已送出')
+        return True
     except urllib.error.HTTPError as e:
         # 回應可能把我們送出去的訊息原文帶回來（裡面有金額），只取 description
         desc = ''
@@ -223,6 +229,10 @@ def tg(message, is_failure=False):
         log(f"Telegram 推播失敗（HTTP {e.code}）{'：' + desc if desc else ''}", 'WARN')
     except (urllib.error.URLError, OSError, ValueError) as e:
         log(f"Telegram 推播失敗：{type(e).__name__}", 'WARN')
+    # 排程是無人看管的，而這條路徑代表「該通知你的事情通知不到」。
+    # 記錄檔沒人會每週去翻，所以至少讓這台機器跳一個通知。
+    notify('帳單機器人', 'Telegram 推播失敗，詳見記錄檔')
+    return False
 
 
 def added_message(added, before, after):
@@ -570,9 +580,15 @@ def main():
             log(f'Keychain 裡沒有 {KEYCHAIN_TG_SERVICE} 的 bot_token／chat_id，'
                 '見 README.md', 'ERROR')
             sys.exit(2)
-        tg('✅ <b>帳單機器人</b>\n測試訊息：Telegram 這條路是通的。\n'
-           '平常只有「同步了新帳單」「這次沒有新帳單」「失敗」才會收到。')
-        log('已送出測試訊息 —— 手機沒收到就是 chat id 不對')
+        if not tg('✅ <b>帳單機器人</b>\n測試訊息：Telegram 這條路是通的。\n'
+                  '平常只有「同步了新帳單」「這次沒有新帳單」「失敗」才會收到。'):
+            # 上一行的 WARN 已經寫了 Telegram 給的拒絕原因（例如 chat not found、
+            # Forbidden）。這裡要以非 0 離開 —— 這支指令唯一的工作就是回答
+            # 「推播到底通不通」，報成功等於沒有這個開關。
+            log('測試訊息送不出去，設定還沒完成（原因見上一行）', 'ERROR')
+            sys.exit(2)
+        log('測試訊息已送出，Telegram 已接受。手機上看不到的話，'
+            '代表 chat id 指向的是別的對話 —— 那種情況 Telegram 一樣會回成功')
         return
 
     cfg = load_config()

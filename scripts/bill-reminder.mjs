@@ -34,6 +34,8 @@ import admin from 'firebase-admin';
 import { selectBills, buildMessage, totalCount, pickUid, DEFAULT_REMIND_DAYS,
          DEFAULT_OVERDUE_MAX_DAYS, billbotStatus, buildBillbotAlert,
          DEFAULT_BILLBOT_STALE_DAYS, DEFAULT_BILLBOT_MAX_DAYS } from './bill-reminder-core.mjs';
+// 公開日誌不得出現 uid；錯誤訊息會帶含 uid 的文件路徑（理由見 log-redact.mjs 檔頭）
+import { redactLog } from './log-redact.mjs';
 
 const TZ = 'Asia/Taipei';
 const DEFAULT_CARD_URL = 'https://chianghf99.github.io/my-wallet/mycreditcard.html';
@@ -155,6 +157,8 @@ const main = async () => {
 };
 
 main().catch(err => {
-    console.error('帳單提醒失敗：', err.message);
+    // 同 snapshot.mjs：錯誤訊息可能帶含 uid 的 Firestore 文件路徑。
+    // 這裡原本只印 err.message，但 message 本身就是會帶路徑的那一段。
+    console.error('帳單提醒失敗：', redactLog(err));
     process.exit(1); // 讓 Actions 標記為失敗，GitHub 會寄信通知
 });

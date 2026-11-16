@@ -56,3 +56,10 @@ jobs:
       # pdfplumber 是延遲匯入的，所以在 CI 上也跑得動。
       - name: 帳單機器人推播回傳值
         run: python3 scripts/billbot/test_bill_bot.py
+
+      # 這個 repo 是 public，Actions 日誌不需登入就看得到。排程的每個 console.log
+      # 都是人工挑過的，唯一不受控的是 catch 印出來的錯誤 —— 那串字是
+      # firebase-admin 給的，裡面會帶含 uid 的文件路徑。它只在排程真的壞掉的
+      # 那一天才印，所以沒有人會注意到它順手洩漏了什麼，只能靠測試釘住。
+      - name: 公開日誌不得出現 uid
+        run: node scripts/test-log-redact.mjs

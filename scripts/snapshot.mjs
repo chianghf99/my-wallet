@@ -23,6 +23,9 @@ import { buildSnapshotFields } from '../js/utils/valuation.js';
 import { TAIFEX_PRODUCTS, TAIFEX_MIS_URL, taifexRequestBody, contractMonthOf,
          pickContract, pickDaySessionFirst, pickFromOpenData, OPEN_DATA_CONTRACT,
          cnyesUrl, cnyesEntry, parseCnyesQuote } from '../js/utils/futures.js';
+// 錯誤訊息是 firebase-admin 給的、不是我們寫的，裡面會帶含 uid 的文件路徑。
+// 印進公開日誌前一律過這一層（理由寫在該檔的檔頭）。
+import { redactLog } from './log-redact.mjs';
 
 const TZ = 'Asia/Taipei';
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
@@ -343,7 +346,18 @@ const processUser = async (db, uid, rate, label) => {
 const main = async () => {
     const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
     if (!raw) throw new Error('缺少 FIREBASE_SERVICE_ACCOUNT 環境變數');
-    admin.initializeApp({ credential: admin.credential.cert(JSON.parse(raw)) });
+    let serviceAccount;
+    try {
+        serviceAccount = JSON.parse(raw);
+    } catch {
+        // 不要讓 JSON.parse 的原始錯誤訊息冒出來：V8 會把輸入的前 10 個字
+        // 回灌進訊息（實測 node v26：JSON.parse('eyJwcml2…') 得到
+        // 〈Unexpected token 'e', "eyJwcml2YX"... is not valid JSON〉）。
+        // 那 10 個字來自服務帳戶金鑰，而且是 secret 的「片段」——
+        // GitHub 只遮完整字串，片段不會被遮。
+        throw new Error('FIREBASE_SERVICE_ACCOUNT 不是合法的 JSON（請整份貼上服務帳戶金鑰）');
+    }
+    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
     const db = admin.firestore();
 
     const rate = await fetchExchangeRate();
@@ -372,6 +386,6 @@ const main = async () => {
 };
 
 main().catch(err => {
-    console.error('快照失敗：', err);
+    console.error('快照失敗：', redactLog(err));
     process.exit(1); // 讓 Actions 標記為失敗，GitHub 會寄信通知
 });

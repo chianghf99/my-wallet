@@ -63,7 +63,15 @@ Finnhub 僅保留為退路。
   銀行改版造成的解析失敗**完全沒有徵兆**：抓不到日期只是變成「繳款日不明」，抓到**錯的**
   日期或金額則會讓你照著錯的數字去繳款。每對著真實帳單修好一家，就在那裡留一份
   「版面結構相同、數字換成假的」樣本。真實金額與繳款日不進這個 public repo。
-- 六支測試都只用 Node 內建模組（不需 `npm install`），並由 `.github/workflows/tests.yml` 在每次推上 `main` 與 PR 時執行。
+- `log-redact.mjs` 是公開日誌的最後一道防線，`snapshot.mjs` 與 `bill-reminder.mjs` 的
+  `catch` 都要經過它。排程的每個 `console.log` 都是人工挑過的（印筆數、印序號），
+  唯一不受控的就是 catch 印出來的錯誤 —— 那串字是 firebase-admin 給的，裡面會帶
+  含 uid 的 Firestore 文件路徑。它**只在排程真的壞掉的那一天才印**，所以不會有人
+  注意到它順手洩漏了什麼，由 `test-log-redact.mjs` 釘住。
+  不能只依賴 GitHub 的 secret 遮蔽：它比對完整字串，`APP_UID` 存多組時只出現其中
+  一組不會被遮，而 `SNAPSHOT_ALL_USERS` 模式下讀到的別人的 uid 從頭到尾都不是 secret。
+- 七支 `.mjs` 測試都只用 Node 內建模組（不需 `npm install`），加上 `billbot/test_bill_bot.py`
+  共八支，由 `.github/workflows/tests.yml` 在每次推上 `main` 與 PR 時執行。
 - GitHub Actions 的 cron 不保證準時（實測延遲 1～2.5 小時）；因期貨固定取日盤收盤，對快照結果沒有影響。
 - 國定假日休市時會照跑，抓到的是前一交易日收盤價，等於複製前一天的快照，走勢圖呈現持平，不影響正確性。
 - 可在 Actions 頁面用 **Run workflow** 手動觸發測試。

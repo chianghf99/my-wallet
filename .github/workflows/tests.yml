@@ -44,3 +44,8 @@ jobs:
       # 或是把天數算錯一天（時區），要等到帳單逾期才會發現。
       - name: 帳單到期提醒挑選邏輯
         run: node scripts/test-bill-reminder.mjs
+
+      # 銀行每隔一段時間就改帳單版面，而改版造成的解析失敗完全沒有徵兆
+      # （抓不到日期、或更糟：抓到錯的日期與金額）。每修好一家就留一份假數字樣本釘住。
+      - name: 帳單 PDF 解析規則
+        run: node scripts/test-bill-parse.mjs

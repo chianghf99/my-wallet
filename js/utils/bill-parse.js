@@ -92,11 +92,24 @@
                 let parts = dStr.split(/[\/-]/);
                 if (parts.length === 3) {
                     let y = parseInt(parts[0]); if(y < 1000) y += 1911;
+                    // 年份不合理就當成「抓錯了」，回未知日期而不是一個 1937 年的日期。
+                    //
+                    // 守的是這一類失誤：規則寫 /\d{3}\/\d{2}\/\d{2}/（民國年），銀行卻改用
+                    // 西元 —— 那個 pattern 會在 "2026/07/31" 裡匹配到 "026/07/31"，
+                    // +1911 之後成為 1937-11-30，在網頁上顯示為逾期三萬多天。
+                    // 日期抓不到看得出來要自己補；日期錯掉看不出來，而且會一路錯到提醒。
+                    if (y < 2000 || y > 2100) return "未知日期";
                     return `${y}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}`;
                 }
                 return dStr;
             } catch(e) { return dStr; }
         };
+
+        // cleanDate 現在可能回「未知日期」，而中文字在字串比較上**大於**數字 ——
+        // 任何「map(cleanDate) 之後取最大值」的規則只要名單裡混進一個壞日期，
+        // 取到的就會是「未知日期」而不是正確的那一天。所以凡是要排序比大小的地方，
+        // 都先用這道篩子濾過。（下面三處：國泰、玉山、第一銀行）
+        const isIso = (d) => /^\d{4}-\d{2}-\d{2}$/.test(d);
 
         // 1. 星展銀行
         if (filename.includes("cbgcc") || filename.includes("dbs") || filename.includes("星展")) {
@@ -147,7 +160,8 @@
             const standaloneDates = [];
             for (let i = 0; i < lines.length; i++) {
                 if (/^\d{3,4}\/\d{2}\/\d{2}$/.test(lines[i])) {
-                    standaloneDates.push({ idx: i, iso: cleanDate(lines[i]) });
+                    const iso = cleanDate(lines[i]);
+                    if (isIso(iso)) standaloneDates.push({ idx: i, iso });
                 }
             }
             if (standaloneDates.length > 0) {
@@ -200,11 +214,27 @@
         // 8. 玉山銀行
         else if (filename.includes("玉山") || filename.includes("esun")) {
             bankName = "玉山信用卡";
-            let allDates = text.match(/\d{3}\/\d{2}\/\d{2}/g);
-            if (allDates) {
-                let validDates = allDates.filter(d => d.startsWith("11"));
-                if (validDates.length) dueDate = cleanDate(validDates.sort().pop());
-            }
+            // 玉山的電子帳單**標籤是圖片**：第 1 頁只有 50 個詞、7 張圖，整份文字層裡
+            // 找不到「繳款截止日」這幾個字，摘要區只剩一串裸數值。所以沒辦法靠標籤定位，
+            // 只能從所有日期裡用排除法挑。實測摘要區有兩個日期（繳款截止日在上、
+            // 結帳日在下），宣傳行裡還有第三個比繳款日更晚的日期。
+            //
+            // 原本寫死民國年 /\d{3}\/\d{2}\/\d{2}/ ——玉山 2026 年起改用西元年，
+            // 那個 pattern 會在 "2026/07/31" 裡匹配到 "026/07/31"，再被 startsWith("11")
+            // 濾掉，結果一筆都抓不到、安靜地變成「未知日期」。
+            // \d{3,4} 是貪婪的，遇到西元年會整個吃下四位，不需要 lookbehind（jsc 與
+            // 舊 Safari 的支援度不一致，能不用就不用）。
+            //
+            // ※ 開頭的行一定要先剔掉：那是宣傳與點數到期說明，裡面的日期比繳款日還晚
+            //（實測有「活動將於 2026/12/31 截止」），不剔掉的話「取最晚」會抓到活動日期。
+            // 抓不到日期只是要自己補，抓到**錯的**日期會讓你照著錯的日子去繳款。
+            const esunDates = text.split("\n")
+                .filter(l => !l.trim().startsWith("※"))
+                .join("\n")
+                .match(/\d{3,4}\/\d{1,2}\/\d{1,2}/g) || [];
+            // 民國與西元可能並存，統一轉成 ISO 再比大小；轉不出來的（年份不合理）丟掉
+            const esunIso = esunDates.map(cleanDate).filter(isIso);
+            if (esunIso.length) dueDate = esunIso.sort().pop();
             let amtMatch = textNoSpace.match(/本期應繳總金額[：:]?(?:TWD|NT\$|twd|nt\$)?(\d{1,3}(?:,\d{3})*)/i) || 
                            textNoSpace.match(/本期應繳總金額(\d{1,3}(?:,\d{3})*)元/) ||
                            textNoSpace.match(/(\d{1,3}(?:,\d{3})*)元(\d{1,3}(?:,\d{3})*)元/);
@@ -345,7 +375,7 @@
                 // 真的找不到結帳日時才退回取最大值。
                 const roc = text.match(/\d{3}\/\d{2}\/\d{2}/g) || [];
                 if (roc.length) {
-                    const isoAll = [...new Set(roc.map(cleanDate))].sort();
+                    const isoAll = [...new Set(roc.map(cleanDate))].filter(isIso).sort();
                     let stmtIso = "";
                     const lines = text.split('\n');
                     for (let i = 0; i < lines.length && !stmtIso; i++) {

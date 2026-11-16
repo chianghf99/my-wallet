@@ -59,7 +59,11 @@ Finnhub 僅保留為退路。
   它直接從 `mycreditcard.html` 抽出金鑰參數（固定 salt、PBKDF2 迭代次數、canary 明文）確認沒被改動，
   再用 Node 內建 crypto 獨立重算金鑰、解開寫死的密文。改錯這些不會當場報錯，
   而是等到換裝置登入才發現資料解不開，所以需要自動化把關。
-- 三支測試都只用 Node 內建模組（不需 `npm install`），並由 `.github/workflows/tests.yml` 在每次推上 `main` 與 PR 時執行。
+- `test-bill-parse.mjs` 釘住 13 家銀行的帳單解析規則（`js/utils/bill-parse.js`）。
+  銀行改版造成的解析失敗**完全沒有徵兆**：抓不到日期只是變成「繳款日不明」，抓到**錯的**
+  日期或金額則會讓你照著錯的數字去繳款。每對著真實帳單修好一家，就在那裡留一份
+  「版面結構相同、數字換成假的」樣本。真實金額與繳款日不進這個 public repo。
+- 六支測試都只用 Node 內建模組（不需 `npm install`），並由 `.github/workflows/tests.yml` 在每次推上 `main` 與 PR 時執行。
 - GitHub Actions 的 cron 不保證準時（實測延遲 1～2.5 小時）；因期貨固定取日盤收盤，對快照結果沒有影響。
 - 國定假日休市時會照跑，抓到的是前一交易日收盤價，等於複製前一天的快照，走勢圖呈現持平，不影響正確性。
 - 可在 Actions 頁面用 **Run workflow** 手動觸發測試。

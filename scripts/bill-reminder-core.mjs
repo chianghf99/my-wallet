@@ -46,18 +46,30 @@ export const daysUntil = (dateStr, todayStr) => {
     return Math.round((due - today) / 86400000);
 };
 
-// 這張帳單對應的卡片有沒有設自動扣繳。
+// 這張帳單對應的卡片有沒有設自動扣繳，設了的話扣款帳戶是哪一個。
 //
-// 比對方式刻意與網頁的 getCardAutopay 一字不差（卡片名稱是帳單名稱的子字串），
-// 兩邊判斷不一致會比沒有這個標記更糟。
+// 取「卡片名稱是帳單名稱的子字串」的第一張卡 —— 與網頁的 getCardAutopay 同一套規則。
 //
-// ⚠️ 只回傳 true/false。card.autopayFrom 存的是扣款帳戶末五碼，那是個資，
-//    絕對不可以放進推播訊息 —— 訊息會經過 Telegram 的伺服器。
-export const hasAutopay = (billName, cards) => {
-    if (!billName || !Array.isArray(cards)) return false;
+// ⚠️ 這跟網頁帳單列上看到的那個徽章不是同一套比對。那個是 getBillCardInfo
+//    （mycreditcard.html）：它用 getBankKeyword 正規化銀行名稱，而且把同一家銀行
+//    所有卡片的扣款帳戶去重後全部列出來。所以「一家銀行有多張卡、各綁不同帳戶」時，
+//    推播會比網頁少列幾個。沒把 getBankKeyword 搬過來，是因為它在
+//    js/utils/bill-parse.js 裡、是給瀏覽器用的 classic script，要讀檔才載得進來，
+//    會讓這個純函式模組變成得碰檔案系統的模組。
+//
+//    也刻意維持「取第一張」而不是「有任一張就算」：標記寫的是「自動扣繳，不用去繳」，
+//    多標一筆的代價是真的漏繳一期帳單。
+export const autopayAccount = (billName, cards) => {
+    if (!billName || !Array.isArray(cards)) return null;
     const c = cards.find(c => c && c.name && billName.includes(c.name));
-    return Boolean(c && c.autopayFrom);
+    return (c && c.autopayFrom) ? String(c.autopayFrom) : null;
 };
+
+// 2026-11-21 起，扣款帳戶末五碼會出現在 full 模式的推播訊息裡（使用者要求：
+// 繳款前想直接從通知看出該顧哪個帳戶，不必再打開網頁）。
+// 這反轉了 v5.15.0 當初「末五碼絕對不進訊息」的決定，代價是那五碼會經過 Telegram
+// 的伺服器。counts（隱私）模式一律不帶 —— 那個模式連金額與銀行名稱都不送出去。
+export const hasAutopay = (billName, cards) => autopayAccount(billName, cards) !== null;
 
 // 未繳＝不是 paid 也不是 skipped。
 //
@@ -98,7 +110,9 @@ export const selectBills = (bills, opts = {}) => {
         const amount = Number(b.amount) || 0;
         if (amount <= 0) continue;
 
-        const entry = { name: b.name || '未命名帳單', amount, date: b.date, autopay: hasAutopay(b.name, cards) };
+        const autopayFrom = autopayAccount(b.name, cards);
+        const entry = { name: b.name || '未命名帳單', amount, date: b.date,
+                        autopay: autopayFrom !== null, autopayFrom };
         const d = daysUntil(b.date, today);
 
         if (d === null) {
@@ -166,7 +180,11 @@ const mmdd = (dateStr) => {
 // Telegram 的 parse_mode: 'HTML' 只認這三個字元需要跳脫
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-const line = (e) => `• ${esc(e.name)}　<b>${money(e.amount)}</b>${e.autopay ? '　🏦 自動扣繳' : ''}`;
+// 扣款帳戶末五碼只會從這裡出去，而 line() 只有 detail='full' 會呼叫 ——
+// counts（隱私）模式走的是另一條分支，連金額與銀行都不送，自然也不會帶到這個。
+// autopayFrom 是表單自由輸入的欄位，一定要過 esc()。
+const line = (e) => `• ${esc(e.name)}　<b>${money(e.amount)}</b>`
+    + (e.autopay ? `　🏦 自動扣繳${e.autopayFrom ? `（扣款 ${esc(e.autopayFrom)}）` : ''}` : '');
 
 // 依剩餘天數分組，回傳 [[天數, 該天的帳單], ...]，天數由小到大
 const groupByDay = (list) => {

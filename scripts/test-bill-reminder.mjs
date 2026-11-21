@@ -8,8 +8,11 @@
 //      在台北（UTC+8）整個倒數會多出一天：當天到期顯示「剩 1 天」、逾期一天才顯示
 //      「今天到期」。提醒要是也這樣算，就會晚一天通知。
 //   2. 該提醒的不可以漏掉（未繳的判定、逾期、繳款日不明）。
-//   3. 不該外送的個資不可以混進訊息 —— 自動扣款帳戶末五碼永遠不能出現在推播裡，
-//      訊息會經過 Telegram 的伺服器。
+//   3. 哪些東西會離開這台機器，要兩邊都釘住。自動扣款帳戶末五碼從 2026-11-21 起
+//      **會**進 full 模式（使用者要求：繳款前想直接從通知看出該顧哪個帳戶），
+//      但 counts（隱私）模式絕對不可以帶 —— 訊息會經過 Telegram 的伺服器，
+//      而 counts 模式存在的理由就是「金額、銀行、帳戶一律不送出去」。
+//      只釘一邊的話，哪天改了 full 忘了 counts，隱私模式就會默默漏東西。
 //   4. 看門狗不可以在「還沒設定好」的時候每天亂叫，也不可以在機器人真的死掉時沉默。
 //
 // 執行：
@@ -21,7 +24,7 @@
 //     EOF
 //     /System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc -m /tmp/run.mjs
 
-import { parseYMD, daysUntil, hasAutopay, selectBills, buildMessage, totalCount, pickUid,
+import { parseYMD, daysUntil, hasAutopay, autopayAccount, selectBills, buildMessage, totalCount, pickUid,
          DEFAULT_REMIND_DAYS, DEFAULT_OVERDUE_MAX_DAYS,
          billbotStatus, buildBillbotAlert } from './bill-reminder-core.mjs';
 
@@ -65,7 +68,9 @@ expect('算不出來回 null', daysUntil('未知日期', TODAY), null);
 // --- hasAutopay -------------------------------------------------------
 
 const CARDS = [
-    { name: '國泰世華', autopayFrom: '12345' },
+    // 末五碼刻意不用 12345：下面有一筆金額就是 12345，用同一組數字會分不出
+    // 訊息裡出現的到底是金額還是帳戶（money() 會加逗號變 $12,345，但別靠那個）
+    { name: '國泰世華', autopayFrom: '98765' },
     { name: '台新銀行' },                       // 有卡沒設自動扣繳
 ];
 expectTrue('卡片有設自動扣繳就回 true', hasAutopay('國泰世華信用卡帳單', CARDS));
@@ -73,6 +78,16 @@ expect('卡片沒設自動扣繳回 false', hasAutopay('台新銀行帳單', CAR
 expect('找不到對應卡片回 false', hasAutopay('玉山銀行帳單', CARDS), false);
 expect('帳單沒有名字回 false', hasAutopay('', CARDS), false);
 expect('沒有卡片陣列也不可以爆炸', hasAutopay('國泰世華', undefined), false);
+
+// --- autopayAccount ---------------------------------------------------
+
+expect('回得出扣款帳戶末五碼', autopayAccount('國泰世華信用卡帳單', CARDS), '98765');
+expect('卡片沒設自動扣繳回 null', autopayAccount('台新銀行帳單', CARDS), null);
+expect('找不到對應卡片回 null', autopayAccount('玉山銀行帳單', CARDS), null);
+expect('帳單沒有名字回 null', autopayAccount('', CARDS), null);
+expect('autopayAccount 沒有卡片陣列也不可以爆炸', autopayAccount('國泰世華', undefined), null);
+expect('數字型態的末五碼要轉成字串（表單存進去的可能是數字）',
+    autopayAccount('玉山銀行帳單', [{ name: '玉山銀行', autopayFrom: 54321 }]), '54321');
 
 // --- selectBills ------------------------------------------------------
 
@@ -137,12 +152,30 @@ expectTrue('完整模式標得出自動扣繳', full.includes('自動扣繳'));
 expectTrue('逾期天數寫得出來', full.includes('逾期 3 天'));
 expectTrue('連結附在最後', full.includes('https://example.invalid/x'));
 
-// 這一題是隱私底線：扣款帳戶末五碼永遠不可以出現在推播訊息裡
-expect('自動扣款帳戶末五碼不可以出現在訊息裡', full.includes('12345'), false);
+// 2026-11-21 起這一題反過來了：full 模式要帶扣款帳戶（使用者要求），
+// counts 模式仍然絕對不可以帶。兩邊都釘住，免得哪天只改了一半。
+expectTrue('完整模式要寫出扣款帳戶末五碼', full.includes('98765'));
+
+const cathayLine = full.split('\n').find(l => l.includes('國泰世華'));
+const taishinLine = full.split('\n').find(l => l.includes('台新銀行'));
+expectTrue('扣款帳戶要跟在那張卡自己那一行',
+    Boolean(cathayLine && cathayLine.includes('98765')));
+expect('沒設自動扣繳的卡不可以被接上別人的帳戶',
+    Boolean(taishinLine && taishinLine.includes('98765')), false);
+expect('沒設自動扣繳的卡也不該有扣繳標記',
+    Boolean(taishinLine && taishinLine.includes('自動扣繳')), false);
+
+// autopayFrom 是表單的自由輸入欄位。HTML 模式下沒跳脫，Telegram 會把整則訊息退回
+// （parse error），結果就是那天完全收不到提醒 —— 又是一次安靜的失敗。
+const escGroups = selectBills([bill({ name: '跳脫測試', date: TODAY })],
+    { today: TODAY, cards: [{ name: '跳脫測試', autopayFrom: '<b>1' }] });
+expectTrue('扣款帳戶裡的角括號要跳脫',
+    buildMessage(escGroups, { detail: 'full' }).includes('&lt;b&gt;1'));
 
 const counts = buildMessage(groups, { detail: 'counts' });
 expect('精簡模式不可以有金額', counts.includes('6,789'), false);
 expect('精簡模式不可以有銀行名稱', counts.includes('國泰世華'), false);
+expect('精簡模式不可以有扣款帳戶末五碼', counts.includes('98765'), false);
 expectTrue('精簡模式講得出總筆數', counts.includes('3 筆'));
 
 // 同一天到期的要併成一段，不要每筆各開一個標題

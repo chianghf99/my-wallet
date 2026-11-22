@@ -17,12 +17,24 @@ Build_Bot_in_windows/
 .env
 .env.*
 
-# 給 AI 助理讀的本機筆記，不進版控（repo 為 public）
-# AGENTS.md 是同一類東西，只是給 Antigravity／Gemini 讀的入口
+# 給 AI 助理讀的本機筆記，不進版控（repo 為 public）。
+# progress.md 是敘事型進度，內容較敏感且體積大，留在本機。
 .claude/
-CLAUDE.md
-AGENTS.md
+
+# AGENTS.md 與 CLAUDE.md 刻意「進」版控（2026-11-23 起）：
+# 那是專案規範本體，裡面沒有任何不能公開的內容（已用 commit-msg hook 的規則掃過），
+# 而排除它們的代價是每台機器各自維護一份、從複製那刻起就開始飄 ——
+# Windows 那台就是這樣靠手動複製的。進版控之後靠 git pull 同步。
+# 規範只有 AGENTS.md 一份本體，CLAUDE.md 只是 @AGENTS.md 的 import。
+
+# Antigravity 自己在工作區產生的狀態，不進版控
 .agents/
+.antigravity/
+.gemini/
+GEMINI.md
+
+# 編輯器的本機設定
+.vscode/
 
 # commit-msg hook 的敏感字詞清單：銀行名與持股代號本身就不該進 public repo，
 # 寫進會被推上去的檔案等於 hook 自己洩漏要保護的東西。範本為 *.example.txt。

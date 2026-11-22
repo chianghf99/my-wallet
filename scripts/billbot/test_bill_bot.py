@@ -133,8 +133,10 @@ expect('未知值走舊相容：有 move_processed 就 move',
        bb.cleanup_action({'processed_action': 'xyz', 'move_processed': True}), 'move')
 expect('未知值走舊相容：沒有就 keep', bb.cleanup_action({'processed_action': 'xyz'}), 'keep')
 if sys.platform == 'win32':
-    expect('Windows 上 trash 不可以真的刪（改為 keep）',
-           bb.cleanup_action({'processed_action': 'trash'}), 'keep')
+    # 有 send2trash 才允許 trash（進資源回收筒）；沒有就退回 keep，不可以偷偷刪
+    expected = 'trash' if bb._send2trash_available() else 'keep'
+    expect('Windows 上 trash：有 send2trash 才是 trash，否則 keep',
+           bb.cleanup_action({'processed_action': 'trash'}), expected)
 else:
     expect('非 Windows 上 trash 維持原樣', bb.cleanup_action({'processed_action': 'trash'}), 'trash')
 expect('LOG_HINT 不含使用者家目錄路徑', bb.Path.home().as_posix() in bb.LOG_HINT, False)

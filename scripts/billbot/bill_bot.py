@@ -544,26 +544,40 @@ def cleanup_action(cfg):
     """處理完的 PDF 要怎麼辦：keep（留著）／move（搬到子夾）／trash（丟垃圾桶）。"""
     act = str(cfg.get('processed_action', '') or '').lower()
     if act in ('keep', 'move', 'trash'):
-        if act == 'trash' and sys.platform == 'win32':
-            # Windows 上 ~/.Trash 只是一般資料夾，不是資源回收筒；而且 OneDrive 把
-            # 「檔案離開同步資料夾」當成雲端刪除。寧可留著，也不要偷偷刪。
-            log("processed_action=trash 在 Windows 不支援（~/.Trash 不是資源回收筒），"
-                "本次改為 keep；請在設定檔把 processed_action 改成 move", 'WARN')
+        if act == 'trash' and sys.platform == 'win32' and not _send2trash_available():
+            # Windows 上 ~/.Trash 只是一般資料夾，不是資源回收筒。沒有 send2trash 就寧可留著，
+            # 也不要偷偷刪或丟進假的垃圾桶。
+            log("processed_action=trash 需要 send2trash 套件（pip install send2trash），"
+                "目前找不到，本次改為 keep", 'WARN')
             return 'keep'
         return act
     return 'move' if cfg.get('move_processed') else 'keep'   # 舊設定檔的相容
 
 
+def _send2trash_available():
+    try:
+        import send2trash  # noqa: F401  延後載入：CI（ubuntu）不需要它
+        return True
+    except ImportError:
+        return False
+
+
 def move_to_trash(path):
-    """把檔案搬進 ~/.Trash。
+    """把檔案丟進垃圾桶。Windows 用資源回收筒（send2trash），macOS 搬進 ~/.Trash。
 
-    不用 AppleScript 叫 Finder 刪：背景執行的程式要控制 Finder 需要「自動化」權限，
-    而背景程式無法跳出詢問框，只會無聲失敗。直接搬進 ~/.Trash 不需要任何額外權限，
-    檔案一樣在垃圾桶裡、一樣救得回來（只是沒有「放回原處」的來源資訊）。
+    Windows：send2trash 會把檔案放進資源回收筒，可以從那裡還原。
+    注意這個資料夾是 OneDrive 同步的，檔案離開資料夾等於雲端也刪除，
+    OneDrive 自己的回收筒會再留一份一段時間。
 
+    macOS：不用 AppleScript 叫 Finder 刪 —— 背景程式要控制 Finder 需要「自動化」權限，
+    而背景程式無法跳出詢問框，只會無聲失敗。直接搬進 ~/.Trash 不需要任何額外權限。
     這個資料夾是 OneDrive 同步的，所以檔案離開資料夾等於在雲端也刪除 ——
     OneDrive 自己的資源回收筒會再留一份一段時間。
     """
+    if sys.platform == 'win32':
+        from send2trash import send2trash
+        send2trash(str(path))
+        return None
     trash = Path.home() / '.Trash'
     trash.mkdir(exist_ok=True)
     dest = trash / path.name

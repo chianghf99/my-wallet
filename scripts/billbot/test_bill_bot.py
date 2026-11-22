@@ -126,5 +126,37 @@ expect('訊息只用白名單欄位，不會帶出 autopayFrom', 'autopayFrom' i
 expect('設定檔沒有 owner_uid 時 doc_url 不可以組出 undefined 路徑',
        'None' in bb.doc_url({'project_id': 'p', 'owner_uid': None}), True)
 
+# --- 解析橋接：中文不可以變亂碼（交班書 4.1、4.2）---------------------------
+# 用假文字（不是真帳單）走完整路徑：寫暫存檔 → 跑 Node 橋接 → 以 utf-8 解碼。
+# 2026-11 的踩坑：Windows 繁中預設 cp950，若漏掉 encoding='utf-8'，officialName 會變亂碼，
+# 雲端的重複判斷就失效。這一組就是守那條防線。沒有 node 時略過（不假裝通過）。
+import shutil as _shutil
+
+_node = _shutil.which('node')
+if _node is None:
+    print('⏭  找不到 node，略過解析橋接測試')
+else:
+    # 只換掉「用哪個執行器」，其餘（暫存檔、解碼、JSON 解析）全部走正式路徑
+    bb.rules_command = lambda p: [_node, str(bb.PARSE_BRIDGE_NODE), str(p)]
+
+    def _is_cjk(s):
+        return bool(s) and all('一' <= c <= '鿿' for c in s)
+
+    fubon = bb.run_bank_rules('富邦信用卡.pdf', '富邦信用卡帳單\n本期應繳總額 1,234\n繳款截止日 115/12/01\n')
+    expect('富邦：橋接有回傳結果', fubon is not None, True)
+    if fubon:
+        expect('富邦：銀行名稱', fubon['bankName'], '富邦信用卡')
+        expect('富邦：金額', fubon['amount'], 1234)
+        expect('富邦：截止日有解析出來', fubon['dueDate'] != '未知日期', True)
+        expect('富邦：officialName 不含亂碼字元 U+FFFD', '�' in fubon['officialName'], False)
+        expect('富邦：officialName 是中文', _is_cjk(fubon['officialName']), True)
+
+    ubot = bb.run_bank_rules('聯邦信用卡.pdf', '之信用卡消費帳單：2,500\n')
+    expect('聯邦：橋接有回傳結果', ubot is not None, True)
+    if ubot:
+        expect('聯邦：銀行名稱', ubot['bankName'], '聯邦信用卡')
+        expect('聯邦：金額', ubot['amount'], 2500)
+        expect('聯邦：officialName 是中文', _is_cjk(ubot['officialName']), True)
+
 print('\n✅ 全部通過' if failures == 0 else f'\n❌ 有 {failures} 項失敗')
 sys.exit(1 if failures else 0)

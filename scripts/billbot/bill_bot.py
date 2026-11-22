@@ -54,8 +54,10 @@
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import hashlib
 import html
@@ -67,7 +69,8 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 PARSE_MODULE = REPO / 'js' / 'utils' / 'bill-parse.js'
-PARSE_BRIDGE = Path(__file__).resolve().parent / 'parse_bridge.js'
+PARSE_BRIDGE = Path(__file__).resolve().parent / 'parse_bridge.js'          # macOS：jsc 用
+PARSE_BRIDGE_NODE = Path(__file__).resolve().parent / 'parse_bridge_node.mjs'  # Windows：Node 用
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc'
 
 CONFIG_PATH = Path.home() / '.config' / 'mywallet' / 'billbot.json'
@@ -150,7 +153,31 @@ def load_config():
 
 
 def keychain_get(service, account):
-    """從 Keychain 讀一組密碼。讀不到回 None（不是致命錯誤：有些銀行的 PDF 沒加密）。"""
+    """從系統密碼庫讀一組密碼。讀不到回 None（不是致命錯誤：有些銀行的 PDF 沒加密）。
+
+    macOS 用 Keychain（security 指令），Windows 用認證管理員（keyring 套件）。
+    所有呼叫處都經過這裡，不要在外面自己判斷平台。
+    """
+    if sys.platform == 'win32':
+        return _windows_vault_get(service, account)
+    return _macos_keychain_get(service, account)
+
+
+def _windows_vault_get(service, account):
+    # keyring 延後載入：CI（ubuntu）跑 test_bill_bot.py 時不需要它
+    try:
+        import keyring
+    except ImportError:
+        log("缺少 keyring 套件，請執行 pip install keyring", 'ERROR')
+        return None
+    try:
+        return keyring.get_password(service, account)
+    except Exception as e:
+        log(f"讀取認證管理員失敗（{service}）：{type(e).__name__}", 'WARN')
+        return None
+
+
+def _macos_keychain_get(service, account):
     try:
         r = subprocess.run(
             ['security', 'find-generic-password', '-s', service, '-a', account, '-w'],
@@ -286,17 +313,35 @@ def extract_text(pdf_path, passwords, max_pages=3):
     return None, None
 
 
-# --- 用 jsc 跑網頁那一份解析規則 ----------------------------------------
+# --- 跑網頁那一份解析規則（macOS 用 jsc，Windows 用 Node）-----------------
+
+def rules_command(input_path):
+    """組出執行解析規則的命令。兩條路徑輸出合約相同：最後一行是 JSON。
+
+    macOS 那條 jsc 路徑不動（它是回退路徑，見交班書 4.3）。
+    """
+    if sys.platform == 'win32':
+        node = shutil.which('node')
+        if not node:
+            raise OSError('找不到 node（Node.js 未安裝，或不在 PATH 裡）')
+        return [node, str(PARSE_BRIDGE_NODE), str(input_path)]
+    return [JSC, str(PARSE_MODULE), str(input_path), str(PARSE_BRIDGE)]
+
 
 def run_bank_rules(filename, text):
-    tmp = Path(os.environ.get('TMPDIR', '/tmp')) / f'billbot-input-{os.getpid()}.js'
+    # 用 tempfile 找暫存目錄：Windows 沒有 TMPDIR，寫死 /tmp 會寫不進去，
+    # 而那個失敗會被下面的 except 吃掉、每筆帳單都靜靜跳過（交班書 4.1）。
+    tmp = Path(tempfile.gettempdir()) / f'billbot-input-{os.getpid()}.js'
     try:
         tmp.write_text(
             'globalThis.__INPUT = ' +
             json.dumps({'filename': filename, 'text': text}, ensure_ascii=True) + ';\n',
             encoding='utf-8')
-        r = subprocess.run([JSC, str(PARSE_MODULE), str(tmp), str(PARSE_BRIDGE)],
-                           capture_output=True, text=True, timeout=60)
+        # 明確指定 utf-8：Windows 繁中預設是 cp950，會把中文輸出解成亂碼並寫進雲端，
+        # 造成重複帳單判斷失效（交班書 4.2，這是整件事最危險的一處）。
+        r = subprocess.run(rules_command(tmp),
+                           capture_output=True, text=True, encoding='utf-8',
+                           timeout=60)
         if r.returncode != 0:
             log(f"jsc 執行失敗：{r.stderr.strip()[:300]}", 'ERROR')
             return None

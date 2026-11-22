@@ -126,6 +126,19 @@ expect('訊息只用白名單欄位，不會帶出 autopayFrom', 'autopayFrom' i
 expect('設定檔沒有 owner_uid 時 doc_url 不可以組出 undefined 路徑',
        'None' in bb.doc_url({'project_id': 'p', 'owner_uid': None}), True)
 
+# --- processed_action（交班書第 7 節）---------------------------------------
+expect('move 原樣', bb.cleanup_action({'processed_action': 'move'}), 'move')
+expect('keep 原樣', bb.cleanup_action({'processed_action': 'keep'}), 'keep')
+expect('未知值走舊相容：有 move_processed 就 move',
+       bb.cleanup_action({'processed_action': 'xyz', 'move_processed': True}), 'move')
+expect('未知值走舊相容：沒有就 keep', bb.cleanup_action({'processed_action': 'xyz'}), 'keep')
+if sys.platform == 'win32':
+    expect('Windows 上 trash 不可以真的刪（改為 keep）',
+           bb.cleanup_action({'processed_action': 'trash'}), 'keep')
+else:
+    expect('非 Windows 上 trash 維持原樣', bb.cleanup_action({'processed_action': 'trash'}), 'trash')
+expect('LOG_HINT 不含使用者家目錄路徑', bb.Path.home().as_posix() in bb.LOG_HINT, False)
+
 # --- 解析橋接：中文不可以變亂碼（交班書 4.1、4.2）---------------------------
 # 用假文字（不是真帳單）走完整路徑：寫暫存檔 → 跑 Node 橋接 → 以 utf-8 解碼。
 # 2026-11 的踩坑：Windows 繁中預設 cp950，若漏掉 encoding='utf-8'，officialName 會變亂碼，

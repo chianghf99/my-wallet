@@ -75,7 +75,15 @@ JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/js
 
 CONFIG_PATH = Path.home() / '.config' / 'mywallet' / 'billbot.json'
 LEDGER_PATH = Path.home() / '.local' / 'state' / 'mywallet' / 'billbot-ledger.json'
-LOG_PATH = Path.home() / 'Library' / 'Logs' / 'mywallet-billbot.log'
+if sys.platform == 'win32':
+    # Windows 用 %LOCALAPPDATA%（不放在 ~ 底下，免得出現莫名的 Library 資料夾）
+    LOG_PATH = Path(os.environ.get('LOCALAPPDATA') or (Path.home() / 'AppData' / 'Local')) \
+        / 'mywallet' / 'mywallet-billbot.log'
+    LOG_HINT = r'%LOCALAPPDATA%\mywallet\mywallet-billbot.log'
+else:
+    LOG_PATH = Path.home() / 'Library' / 'Logs' / 'mywallet-billbot.log'
+    LOG_HINT = '~/Library/Logs/mywallet-billbot.log'
+# 推播訊息用的路徑提示：只給相對的寫法，不印出使用者名稱或完整家目錄
 
 KEYCHAIN_PDF_SERVICE = 'mywallet-bill-pdf'
 KEYCHAIN_BOT_SERVICE = 'mywallet-billbot-firebase'
@@ -536,6 +544,12 @@ def cleanup_action(cfg):
     """處理完的 PDF 要怎麼辦：keep（留著）／move（搬到子夾）／trash（丟垃圾桶）。"""
     act = str(cfg.get('processed_action', '') or '').lower()
     if act in ('keep', 'move', 'trash'):
+        if act == 'trash' and sys.platform == 'win32':
+            # Windows 上 ~/.Trash 只是一般資料夾，不是資源回收筒；而且 OneDrive 把
+            # 「檔案離開同步資料夾」當成雲端刪除。寧可留著，也不要偷偷刪。
+            log("processed_action=trash 在 Windows 不支援（~/.Trash 不是資源回收筒），"
+                "本次改為 keep；請在設定檔把 processed_action 改成 move", 'WARN')
+            return 'keep'
         return act
     return 'move' if cfg.get('move_processed') else 'keep'   # 舊設定檔的相容
 
@@ -750,7 +764,7 @@ def main():
                f"{len(failed)} 個檔案處理失敗，沒有新增任何帳單：\n"
                + '\n'.join(f"• {esc(n)}：{esc(why)}" for n, why in failed)
                + '\n\n多半是 PDF 密碼變了，或這家銀行的版面改了。'
-                 '詳見 ~/Library/Logs/mywallet-billbot.log',
+                 f'詳見 {LOG_HINT}',
                is_failure=True)
         elif cfg.get('telegram_notify_empty', True):
             # 「這次沒事」也要說一聲。使用者指定要的，理由也站得住腳：
@@ -879,13 +893,13 @@ if __name__ == '__main__':
         code = e.code if isinstance(e.code, int) else (0 if e.code is None else 1)
         if code != 0 and not TG_FAILED_SENT:
             tg(f'❌ <b>帳單機器人</b>\n排程中止（exit {code}），帳單沒有上傳。\n'
-               '詳見 ~/Library/Logs/mywallet-billbot.log', is_failure=True)
+               f'詳見 {LOG_HINT}', is_failure=True)
         raise
     except BaseException as e:
         # 例外內容只寫進本機記錄檔，推播只帶型別 —— 訊息會經過 Telegram 的伺服器
         log(f"未預期的錯誤：{type(e).__name__}: {e}", 'ERROR')
         notify('帳單機器人', '未預期的錯誤，帳單沒有上傳')
         tg(f'❌ <b>帳單機器人</b>\n未預期的錯誤（{esc(type(e).__name__)}），'
-           '帳單沒有上傳。\n詳見 ~/Library/Logs/mywallet-billbot.log',
+           f'帳單沒有上傳。\n詳見 {LOG_HINT}',
            is_failure=True)
         sys.exit(1)

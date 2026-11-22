@@ -1,5 +1,15 @@
 # 帳單機器人（本機排程）
 
+> **2026-11-22 起，真正在跑的排程在一台 24 小時開機的 Windows PC 上，不在 macOS。**
+> 下面描述的 macOS launchd 作法已經停用，而且這台 Mac 的排程、專用 app、設定檔、帳本、
+> 記錄檔與 Keychain 憑證**全部清除完畢**（Keychain 是永久刪除、沒有備份）。
+> 也就是說 **macOS 這邊已經不是回退路徑** —— 要回來跑得從「一次性設定」第 3 步整套重做，
+> 包含一家一家重新輸入 PDF 密碼。
+>
+> 設計理由、雲端設定（機器人帳號與 Firestore 規則）、重複與遺失的防線這幾節**兩個平台共用**，
+> 仍然有效。Windows 那邊的差異（執行解析規則的引擎、檔案路徑、憑證的存放方式）
+> 由該機器上的分支處理 —— 下面凡是提到 `jsc`、Keychain、launchd、完全取用磁碟的段落都只適用 macOS。
+
 你每個月唯一要做的事：**把帳單 PDF 從電子信箱下載到指定資料夾**。
 其餘由排程完成 —— 解開 PDF 密碼、解析銀行／金額／繳款截止日、寫進卡片管家的雲端資料。
 
@@ -302,17 +312,46 @@ python3 scripts/billbot/bill_bot.py --telegram-test
 
 | 東西 | 位置 | 清除 |
 |---|---|---|
-| 排程 | `~/Library/LaunchAgents/com.mywallet.billbot.plist` | `install-schedule.sh --uninstall` |
+| 排程 | `~/Library/LaunchAgents/com.mywallet.billbot.plist` | `install-schedule.sh --uninstall`（注意下面那段 `disable` 的陷阱） |
 | 專用 app | `scripts/billbot/帳單機器人.app` | 直接刪（建置產物，`build-app.sh` 重建） |
 | 硬碟存取權 | 系統設定 → 隱私權與安全性 → 完全取硬碟存取權 | 移除「帳單機器人」那一列 |
 | 設定檔 | `~/.config/mywallet/billbot.json` | 刪（內有 uid 與路徑，沒有密碼） |
-| 密碼 | Keychain，服務名稱 `mywallet-billbot-firebase` 與 `mywallet-bill-pdf` | 鑰匙圈存取搜 `mywallet` 刪 |
+| 密碼 | Keychain，服務名稱 `mywallet-billbot-firebase`、`mywallet-bill-pdf`、`mywallet-telegram` | 鑰匙圈存取搜 `mywallet` 刪 |
 | 帳本與記錄 | `~/.local/state/mywallet/billbot-ledger.json`、`~/Library/Logs/mywallet-billbot*.log` | 刪 |
+
+**這六處在這台 Mac 上已經於 2026-11-22 全部清除。** 刪除時全部先搬進垃圾桶而不是 `rm`，
+只有 Keychain 的 15 筆憑證是永久刪除（服務名稱各 1／12／2 筆，刪除筆數已核對相符）。
+
+### 陷阱：暫停排程用 `disable`，裝回來就得先 `enable`
+
+想「先停一陣子、之後再開」的話，`--uninstall` 不對 —— 它會連 plist 一起 `rm`。
+正確的暫停是 `launchctl bootout` 加 `launchctl disable`：
+
+```bash
+U=$(id -u); L=com.mywallet.billbot
+launchctl bootout "gui/$U/$L"     # 卸載
+launchctl disable "gui/$U/$L"     # 這個狀態跨重開機有效
+```
+
+少了 `disable` 的話，`~/Library/LaunchAgents` 裡的 agent 下次登入就自己載回來了。
+
+**而重新啟用一定要 `enable` 在 `bootstrap` 之前**，否則 launchd 會拒絕：
+
+```bash
+launchctl enable "gui/$U/$L" && launchctl bootstrap "gui/$U" ~/Library/LaunchAgents/$L.plist
+```
+
+這也是為什麼**光跑 `install-schedule.sh` 裝不回來** —— 那支沒有 `enable`。
+同理，`--uninstall` 不會清掉 `disable` 的標記，徹底清乾淨要自己補一次
+`launchctl enable`（`launchctl print-disabled gui/$(id -u)` 看得到殘留紀錄）。
 
 ### 順序
 
 1. **先把新機器裝好、試跑成功**（見下一小節），再回來清舊的。
    反過來做的話，中間卡住就兩邊都沒有。
+   （2026-11-22 搬到 Windows 時就是照這個順序：Mac 先 `bootout` ＋ `disable` 暫停、
+   plist 留著不刪，等 Windows 真的成功新增帳單之後才清。清掉 Keychain 那一步不可逆，
+   所以是最後做、而且單獨確認過一次。）
 2. 新機器 `--dry-run` 看起來對，再真的寫入一次，確認網頁上看得到。
 3. 舊機器 `install-schedule.sh --uninstall`，然後按上表清掉其餘五處。
 

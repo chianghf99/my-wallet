@@ -93,6 +93,24 @@ class TestTriggerSnapshot(unittest.TestCase):
         self.assertIn('14:35', ps)
         self.assertIn(ts.TASK_NAME, ps)
 
+    def test_get_telegram_creds_prefers_iris_bot_token(self):
+        orig = ts.keychain_get
+        try:
+            store = {
+                (ts.KEYCHAIN_TG_SERVICE, 'chat_id'): '999',
+                (ts.KEYCHAIN_TG_SERVICE, 'iris_bot_token'): 'tok_iris',
+                (ts.KEYCHAIN_TG_SERVICE, 'bot_token'): 'tok_billbot',
+            }
+            ts.keychain_get = lambda s, a: store.get((s, a))
+            tok, cid, acc = ts.get_telegram_creds()
+            self.assertEqual((tok, cid, acc), ('tok_iris', '999', 'iris_bot_token'))
+
+            del store[(ts.KEYCHAIN_TG_SERVICE, 'iris_bot_token')]
+            tok2, cid2, acc2 = ts.get_telegram_creds()
+            self.assertEqual((tok2, cid2, acc2), ('tok_billbot', '999', 'bot_token'))
+        finally:
+            ts.keychain_get = orig
+
 
 if __name__ == '__main__':
     unittest.main()

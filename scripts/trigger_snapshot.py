@@ -52,6 +52,8 @@ from pathlib import Path
 KEYCHAIN_GH_SERVICE = 'mywallet-github-dispatch'
 KEYCHAIN_GH_ACCOUNT = 'pat'
 KEYCHAIN_TG_SERVICE = 'mywallet-telegram'
+# 優先發給秘書「小艾（Iris）」聊天室（iris_bot_token），若未設定才退回帳單機器人的 bot_token
+KEYCHAIN_TG_TOKEN_ACCOUNTS = ('iris_bot_token', 'bot_token')
 
 DEFAULT_REPO = 'chianghf99/my-wallet'
 DEFAULT_WORKFLOW = 'daily-snapshot.yml'
@@ -131,12 +133,23 @@ def keychain_set(service, account, secret):
 
 # --- Telegram 失敗通報 --------------------------------------------------
 
+def get_telegram_creds():
+    """優先讀取小艾（iris_bot_token），無則退回帳單機器人（bot_token）。
+    回傳 (token, chat_id, which_account)。
+    """
+    chat_id = keychain_get(KEYCHAIN_TG_SERVICE, 'chat_id')
+    for acc in KEYCHAIN_TG_TOKEN_ACCOUNTS:
+        tok = keychain_get(KEYCHAIN_TG_SERVICE, acc)
+        if tok:
+            return tok, chat_id, acc
+    return None, chat_id, None
+
+
 def send_telegram_alert(reason, dry_run=False):
-    """發射失敗時立刻用本機 Telegram 憑證通知使用者（例如 PAT 到期 401）。
+    """發射失敗時立刻用本機 Telegram 憑證通知使用者（優先發給秘書小艾聊天室）。
     回傳布林值代表是否真的送出。
     """
-    token = keychain_get(KEYCHAIN_TG_SERVICE, 'bot_token')
-    chat_id = keychain_get(KEYCHAIN_TG_SERVICE, 'chat_id')
+    token, chat_id, _ = get_telegram_creds()
     if not token or not chat_id:
         log(f"未設定 Telegram 憑證（{KEYCHAIN_TG_SERVICE}），無法推播失敗通知", 'WARN')
         return False
@@ -277,14 +290,13 @@ def install_windows_task(time_str='14:35'):
 
 def cmd_setup_check():
     pat = keychain_get(KEYCHAIN_GH_SERVICE, KEYCHAIN_GH_ACCOUNT)
-    tg_tok = keychain_get(KEYCHAIN_TG_SERVICE, 'bot_token')
-    tg_cid = keychain_get(KEYCHAIN_TG_SERVICE, 'chat_id')
+    tg_tok, tg_cid, tg_acc = get_telegram_creds()
 
     print("=== 每日快照發射器 設定檢查 ===")
     print(f"1. GitHub PAT（{KEYCHAIN_GH_SERVICE} / {KEYCHAIN_GH_ACCOUNT}）："
           f"{'✅ 已設定（長度 ' + str(len(pat)) + '）' if pat else '❌ 未設定（請執行 --set-pat）'}")
     print(f"2. Telegram 告警憑證（{KEYCHAIN_TG_SERVICE}）："
-          f"{'✅ 已設定（與 billbot 共用）' if (tg_tok and tg_cid) else '⚠️ 未設定（發射失敗時無法由本機即時推播，僅靠雲端 3 天看門狗）'}")
+          f"{'✅ 已設定（使用 ' + str(tg_acc) + '）' if (tg_tok and tg_cid) else '⚠️ 未設定（發射失敗時無法由本機即時推播，僅靠雲端 3 天看門狗）'}")
     print(f"3. 記錄檔路徑：{LOG_PATH}")
     return 0 if pat else 2
 

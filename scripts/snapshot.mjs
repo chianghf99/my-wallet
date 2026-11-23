@@ -12,6 +12,8 @@
 //   FINNHUB_API_KEY           選填。美股的備援報價來源；主要來源是 Yahoo，不需金鑰
 //   APP_UID                   要快照的帳號 uid，多組以逗號分隔（必填）
 //   SNAPSHOT_ALL_USERS        設為 'true' 才會處理專案下所有帳號（沒有 APP_UID 時的明確開關）
+//   GITHUB_EVENT_NAME         選填。由 Actions 自動帶入（'schedule' 或 'workflow_dispatch'），寫入 trigger 欄位
+//   TARGET_DATE               選填。手動指定寫入哪一天（'YYYY-MM-DD'），未設則依台北 14:00 門檻自動歸屬
 //
 // ⚠️ 這個 repo 是公開的，GitHub Actions 的執行日誌任何人都看得到（不需登入）。
 // 因此日誌只能印筆數與狀態，絕對不要印出 uid、金額、持股代號等可識別或敏感的內容。
@@ -23,22 +25,15 @@ import { buildSnapshotFields } from '../js/utils/valuation.js';
 import { TAIFEX_PRODUCTS, TAIFEX_MIS_URL, taifexRequestBody, contractMonthOf,
          pickContract, pickDaySessionFirst, pickFromOpenData, OPEN_DATA_CONTRACT,
          cnyesUrl, cnyesEntry, parseCnyesQuote } from '../js/utils/futures.js';
+// 日期歸屬（台北小時 < 14 退回前一天）與觸發來源中繼欄位（有回歸測試）
+import { resolveSnapshotDate, buildSnapshotMeta } from './snapshot-core.mjs';
 // 錯誤訊息是 firebase-admin 給的、不是我們寫的，裡面會帶含 uid 的文件路徑。
 // 印進公開日誌前一律過這一層（理由寫在該檔的檔頭）。
 import { redactLog } from './log-redact.mjs';
 
-const TZ = 'Asia/Taipei';
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
 
 // --- 基礎工具 ---
-
-const getTaipeiDate = () => new Intl.DateTimeFormat('en-CA', {
-    timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit'
-}).format(new Date());
-
-const getTaipeiHour = () => Number(new Intl.DateTimeFormat('en-GB', {
-    timeZone: TZ, hour: '2-digit', hour12: false
-}).format(new Date()));
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -330,17 +325,23 @@ const processUser = async (db, uid, rate, label) => {
         usStocks: stocks.filter(s => !s.hiddenFromList && s.currency === 'USD'),
         cash, loans, realEstate, funds, futuresPositions, futuresMargin, rate
     });
-    const date = getTaipeiDate();
-    await userRef.collection('history').doc(date).set({
+    const resolved = resolveSnapshotDate({ targetDate: process.env.TARGET_DATE });
+    const meta = buildSnapshotMeta({
+        date: resolved.date,
+        savedHour: resolved.savedHour,
+        eventName: process.env.GITHUB_EVENT_NAME,
+    });
+    await userRef.collection('history').doc(resolved.date).set({
         ...snapshot,
-        date,
-        savedHour: getTaipeiHour(),
-        source: 'scheduled', // 標記來源，方便和手動快照區分
+        ...meta,
         timestamp: admin.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
 
     // 注意：這個 repo 是公開的，Actions 日誌任何人都看得到，因此絕對不要印出金額或 uid。
-    console.log(`${label} ${date} 快照完成`);
+    const note = resolved.overridden ? `（手動指定 TARGET_DATE）`
+        : resolved.shifted ? `（台北 ${resolved.wallDate} ${String(resolved.savedHour).padStart(2, '0')} 時執行 < 14 點，歸屬前一交易日）`
+        : '';
+    console.log(`${label} ${resolved.date} 快照完成（trigger=${meta.trigger}）${note}`);
 };
 
 const main = async () => {

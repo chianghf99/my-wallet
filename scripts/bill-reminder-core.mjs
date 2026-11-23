@@ -320,3 +320,80 @@ export const buildBillbotAlert = (status, opts = {}) => {
     if (opts.url) lines.push('', opts.url);
     return lines.join('\n');
 };
+
+
+// --- 每日快照發射器看門狗 -------------------------------------------------
+//
+// 為什麼需要這一層：
+// 每日快照有兩條觸發路徑：
+//   1. 家裡 24 小時開機的筆電每天 14:35 發 workflow_dispatch 訊號（準時，無延遲）
+//   2. GitHub Actions 自己的 schedule cron（實測延遲 7～12 小時，留著當筆電死掉時的保底）
+//
+// 正因為有第 2 條保底，當筆電那邊死掉（關機、睡眠沒喚醒、排程被刪、或 GitHub PAT 到期 401）
+// 時，晚上的 GitHub schedule 還是會默默把當天的快照補上 —— 走勢圖完好無缺，保底機制
+// 本身會把「筆電發射器已經壞了」這件事完全遮住，直到哪天 GitHub schedule 又跨午夜漏掉
+// 你才會發現已經退回 10 小時延遲好幾週了。
+//
+// 為什麼看 dispatchedAt 而不是 trigger === 'workflow_dispatch'：
+// 我們刻意不跳過同日第二次執行（讓晚上 schedule 可以用較新報價覆蓋早上的瞬斷舊價）。
+// 晚上 schedule 執行 set(..., { merge: true }) 時會把 trigger 覆寫成 'schedule'，
+// 但不會帶 dispatchedAt 欄位，因此早上的 dispatchedAt 時戳會在 merge 後保留下來。
+//
+// 門檻預設 3 天 ＝ 日排程 1 天 ＋ 2 天寬限。
+// 與 billbotStatus 相同：若傳入的近期快照裡「從來沒有出現過 dispatchedAt」（例如還沒在
+// 筆電上設定發射器），回傳 'unknown' 且不發警告，第一次成功發射後看門狗才自動生效。
+
+export const DEFAULT_DISPATCH_STALE_DAYS = 3;
+export const DEFAULT_DISPATCH_MAX_DAYS = 60;
+
+/**
+ * 從近期歷史快照（history 集合的文件陣列）抽取最新一次外部發射的毫秒時戳。
+ *
+ * 優先取 숫자型態的 dispatchedAt；若舊筆或手動觸發只有 trigger === 'workflow_dispatch'
+ * 而沒有 dispatchedAt，退而求其次用該筆的 date（UTC 午夜）估算。都沒有就回 null。
+ */
+export const latestDispatchMs = (historyDocs = []) => {
+    if (!Array.isArray(historyDocs)) return null;
+    let latest = null;
+    for (const doc of historyDocs) {
+        if (!doc || typeof doc !== 'object') continue;
+        const ts = Number(doc.dispatchedAt);
+        if (Number.isFinite(ts) && ts > 0) {
+            if (latest === null || ts > latest) latest = ts;
+            continue;
+        }
+        if (doc.trigger === 'workflow_dispatch' && typeof doc.date === 'string') {
+            const dMs = parseYMD(doc.date);
+            if (dMs !== null && (latest === null || dMs > latest)) latest = dMs;
+        }
+    }
+    return latest;
+};
+
+export const snapshotDispatchStatus = (historyDocs, nowMs, opts = {}) => {
+    const staleDays = Number.isFinite(opts.staleDays) ? opts.staleDays : DEFAULT_DISPATCH_STALE_DAYS;
+    const maxDays = Number.isFinite(opts.maxDays) ? opts.maxDays : DEFAULT_DISPATCH_MAX_DAYS;
+    const lastMs = latestDispatchMs(historyDocs);
+    if (lastMs === null) return { state: 'unknown', days: null };
+    const days = Math.floor((nowMs - lastMs) / 86400000);
+    if (days < staleDays) return { state: 'ok', days };
+    if (days > maxDays) return { state: 'given-up', days };
+    return { state: 'stale', days };
+};
+
+export const buildSnapshotDispatchAlert = (status, opts = {}) => {
+    if (!status || status.state !== 'stale') return null;
+    const lines = [
+        '⚠️ <b>每日快照的筆電準點觸發已經中斷</b>',
+        '',
+        `雲端最後一次收到外部觸發（workflow_dispatch）是 <b>${status.days} 天前</b>。`,
+        '這幾天是由 GitHub 自己的排程保底補上，所以走勢圖不會立刻缺天，但執行時間會退回延遲 7～10 小時。',
+        '',
+        '<b>先查這三個</b>',
+        '• GitHub Personal Access Token（PAT）是不是到期了（在筆電跑 <code>python trigger_snapshot.py --setup-check</code>）',
+        '• 那台 24 小時筆電是不是開著、有沒有進睡眠（工作排程器需勾「喚醒電腦執行」與「錯過排程後盡快執行」）',
+        '• Windows 工作排程器裡的 <code>MyWallet-DailySnapshotTrigger</code> 還在不在',
+    ];
+    if (opts.url) lines.push('', opts.url);
+    return lines.join('\n');
+};

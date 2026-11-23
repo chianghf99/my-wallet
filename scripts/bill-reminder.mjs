@@ -22,6 +22,9 @@
 //   BILLBOT_WATCHDOG     設 "false" 關掉「帳單機器人沒在跑」的警告。預設開啟
 //   BILLBOT_STALE_DAYS   機器人幾天沒動作就警告。預設 9（週排程 7 天 + 2 天寬限）
 //   BILLBOT_MAX_DAYS     超過幾天就停止每天警告（可能是故意不用了）。預設 60
+//   SNAPSHOT_WATCHDOG    設 "false" 關掉「每日快照筆電觸發中斷」的警告。預設開啟
+//   SNAPSHOT_STALE_DAYS  筆電幾天沒觸發快照就警告。預設 3（日排程 1 天 + 2 天寬限）
+//   SNAPSHOT_MAX_DAYS    超過幾天就停止每天警告。預設 60
 //   DRY_RUN              設 "true" 只檢查、不送出，日誌會多印「本來會送出幾行」
 //   TEST_SEND            設 "true" 即使沒有帳單快到期也送一則測試訊息，用來確認
 //                        token 與 chat id 真的通（平常沒事不送，否則無從驗證）
@@ -33,7 +36,9 @@
 import admin from 'firebase-admin';
 import { selectBills, buildMessage, totalCount, pickUid, DEFAULT_REMIND_DAYS,
          DEFAULT_OVERDUE_MAX_DAYS, billbotStatus, buildBillbotAlert,
-         DEFAULT_BILLBOT_STALE_DAYS, DEFAULT_BILLBOT_MAX_DAYS } from './bill-reminder-core.mjs';
+         DEFAULT_BILLBOT_STALE_DAYS, DEFAULT_BILLBOT_MAX_DAYS,
+         snapshotDispatchStatus, buildSnapshotDispatchAlert,
+         DEFAULT_DISPATCH_STALE_DAYS, DEFAULT_DISPATCH_MAX_DAYS } from './bill-reminder-core.mjs';
 // 公開日誌不得出現 uid；錯誤訊息會帶含 uid 的文件路徑（理由見 log-redact.mjs 檔頭）
 import { redactLog } from './log-redact.mjs';
 
@@ -125,10 +130,31 @@ const main = async () => {
         + (bot.days === null ? '（雲端還沒有心跳欄位，看門狗尚未生效）' : `（${bot.days} 天前）`));
 
     const alert = buildBillbotAlert(bot, { url: cardUrl });
+
+    // 每日快照的筆電發射器還活著嗎。
+    // 取最近 65 筆 history 文件來看 dispatchedAt（上限預設 60 天，讀 65 筆已涵蓋整個有效區間）。
+    // 若雲端還沒有任何一筆帶 dispatchedAt（還沒啟用筆電發射器），state 會是 'unknown'，安靜不警告。
+    const snapWatchdogOn = process.env.SNAPSHOT_WATCHDOG !== 'false';
+    let snapStatus = { state: 'off', days: null };
+    if (snapWatchdogOn) {
+        const histSnap = await db.collection('users').doc(uid).collection('history')
+            .orderBy('date', 'desc')
+            .limit(65)
+            .get();
+        const histDocs = histSnap.docs.map(d => d.data());
+        snapStatus = snapshotDispatchStatus(histDocs, Date.now(), {
+            staleDays: Number(process.env.SNAPSHOT_STALE_DAYS) || DEFAULT_DISPATCH_STALE_DAYS,
+            maxDays: Number(process.env.SNAPSHOT_MAX_DAYS) || DEFAULT_DISPATCH_MAX_DAYS,
+        });
+    }
+    console.log(`快照筆電觸發心跳：${snapStatus.state}`
+        + (snapStatus.days === null ? '（雲端尚無外部觸發紀錄，看門狗尚未生效）' : `（${snapStatus.days} 天前）`));
+
+    const snapAlert = buildSnapshotDispatchAlert(snapStatus);
     const hasBills = totalCount(groups) > 0;
 
-    if (!hasBills && !alert && !testSend) {
-        console.log('今天沒有需要提醒的帳單，機器人也正常，不送出');
+    if (!hasBills && !alert && !snapAlert && !testSend) {
+        console.log('今天沒有需要提醒的帳單，機器人與快照觸發也正常，不送出');
         return;
     }
 
@@ -152,6 +178,15 @@ const main = async () => {
         } else {
             await sendTelegram(token, chatId, alert);
             console.log('已送出看門狗警告');
+        }
+    }
+
+    if (snapAlert) {
+        if (dryRun) {
+            console.log(`DRY_RUN：本來會送出一則快照觸發看門狗警告（筆電 ${snapStatus.days} 天沒觸發）`);
+        } else {
+            await sendTelegram(token, chatId, snapAlert);
+            console.log('已送出快照觸發看門狗警告');
         }
     }
 };

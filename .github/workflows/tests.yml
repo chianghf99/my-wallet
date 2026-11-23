@@ -24,11 +24,12 @@ jobs:
         with:
           node-version: '22'
 
-      # 三支測試都只用 Node 內建模組，不需要 npm install。
-      - name: 估值與期貨取價邏輯
+      # 估值與期貨取價邏輯
+      - name: 估值、期貨取價與快照日期邏輯
         run: |
           node scripts/test-valuation.mjs
           node scripts/test-futures.mjs
+          node scripts/test-snapshot.mjs
 
       # 守住「既有加密資料還解得開」這條底線：金鑰參數被改動、或密文格式變了，
       # 這裡就會紅。詳見 scripts/test-card-crypto.mjs 的檔頭說明。
@@ -54,8 +55,10 @@ jobs:
       # 「推播送不出去」這件事本身絕對不能安靜（實際踩過：Telegram 回 403，
       # 而 --telegram-test 照報成功）。這支不碰網路、不碰 Keychain，
       # pdfplumber 是延遲匯入的，所以在 CI 上也跑得動。
-      - name: 帳單機器人推播回傳值
-        run: python3 scripts/billbot/test_bill_bot.py
+      - name: 帳單機器人推播回傳值與快照發射器
+        run: |
+          python3 scripts/billbot/test_bill_bot.py
+          python3 scripts/test_trigger_snapshot.py
 
       # 這個 repo 是 public，Actions 日誌不需登入就看得到。排程的每個 console.log
       # 都是人工挑過的，唯一不受控的是 catch 印出來的錯誤 —— 那串字是

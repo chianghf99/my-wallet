@@ -31,12 +31,13 @@ on:
     # 93 次樣本裡有 7 次跨過午夜；11-19 那次落在 23:59，離邊界只差一分鐘。
     #
     # 真要修的話，方向是讓日期來自「這份快照代表哪個交易日」而不是 wall clock
-    # （執行時刻在台北凌晨就算前一天）。那個改動在任何機器上都該有 ——
-    # 自架的排程也會因為重開機、睡著、網路斷而遲到。2026-11-22 討論過但決定先不動。
-    #
-    # 若要加保險：快照是寫入當日同一份文件（set + merge），重複執行只是以較新報價
-    # 覆蓋，不會產生重複資料，所以多跑一次是免費的 —— 但日期推導沒修之前，
-    # 補跑只能補「當天」，補不回已經被寫歪的那一天。
+    # （執行時刻在台北 14:00 之前就算前一天 —— 台股 13:30、期貨日盤 13:45 收盤，
+    # 14:00 前執行的排程拿到的必然是前一天的收盤價）。
+    # 2026-11-23 已於 scripts/snapshot-core.mjs 實作（resolveSnapshotDate）：
+    #   - 台北小時 < 14 自動退回前一天（同時覆蓋「GitHub 延遲跨過午夜」與「筆電隔天早上開機補跑」）
+    #   - 保留這個 schedule 作為 Windows 筆電死掉時的保底，且不跳過已存在的快照
+    #     （較晚執行的那次可用最新報價覆蓋早上的瞬斷舊價；筆電觸發寫入的 dispatchedAt
+    #     在 schedule merge 時不會被洗掉，由 bill-reminder.mjs 看門狗監看筆電是否存活）
     #
     # 改為每天都跑（原本只有週一到週五）。週末雖然台股與期貨休市，仍有兩個理由：
     #   1. 週六這一次會抓到「週五的美股收盤」。週五 14:37 台北執行時，美股最近一次
@@ -45,7 +46,12 @@ on:
     # 週末安全性已驗證：匯率 API 假日照常回應；台股／期貨報價抓不到時只會沿用
     # 資料庫既有價格（見 processUser 的「已沿用資料庫既有價格」），不會中止整支程式。
     - cron: '37 6 * * *'   # 每天 14:37 台北（台股 13:30、期貨日盤 13:45 收盤後）
-  workflow_dispatch: {}   # 允許在 Actions 頁面手動觸發，方便測試
+  workflow_dispatch:       # 允許由家裡 24h 筆電準時觸發，或在 Actions 頁面手動觸發
+    inputs:
+      target_date:
+        description: '手動指定寫入日期（YYYY-MM-DD，留空則依台北 14:00 門檻自動判斷）'
+        required: false
+        type: string
 
 # 預設沒有任何權限，這個工作只需要對外抓報價與寫 Firestore
 permissions: {}
@@ -65,12 +71,13 @@ jobs:
         working-directory: scripts
         run: npm install --no-audit --no-fund
 
-      # 估值邏輯是前端與排程共用的，先跑回歸測試確認公式沒被改壞，
-      # 失敗就中止，不要把錯誤的數字寫進歷史紀錄。
-      - name: 驗證估值與期貨取價邏輯
+      # 估值、期貨取價、快照日期歸屬是核心邏輯，先跑回歸測試確認公式沒被改壞，
+      # 失敗就中止，不要把錯誤的數字或錯的日期寫進歷史紀錄。
+      - name: 驗證估值、期貨取價與快照日期邏輯
         run: |
           node scripts/test-valuation.mjs
           node scripts/test-futures.mjs
+          node scripts/test-snapshot.mjs
 
       - name: 寫入每日快照
         working-directory: scripts
@@ -78,4 +85,5 @@ jobs:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
           APP_UID: ${{ secrets.APP_UID }}
+          TARGET_DATE: ${{ inputs.target_date }}
         run: node snapshot.mjs

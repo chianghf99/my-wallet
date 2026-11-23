@@ -3,12 +3,44 @@
 ## 每日資產快照
 
 `snapshot.mjs` 由 [`.github/workflows/daily-snapshot.yml`](../.github/workflows/daily-snapshot.yml)
-在每個交易日 **14:37（台北）** 觸發，流程：
+執行，流程：
 
 1. 抓匯率（失敗就整支中止，不寫入 —— 用預設匯率算出來的淨值會永久污染走勢圖）
-2. 抓台股與美股報價（Yahoo v8 為主，台股另有 MIS 與官方收盤快照兩層退路）、期貨（期交所即時行情，日盤與夜盤取較新者；退路為期交所每日行情），並寫回 Firestore
+2. 抓台股與美股報價（Yahoo v8 為主，台股另有 MIS 與官方收盤快照兩層退路）、期貨（期交所即時行情，固定取日盤收盤；退路為鉅亨與期交所每日行情），並寫回 Firestore
 3. 依 `js/utils/valuation.js`（與前端共用）算出淨資產、槓桿、曝險等指標
-4. 寫入 `users/{uid}/history/{YYYY-MM-DD}`，並標記 `source: 'scheduled'`
+4. 依 `scripts/snapshot-core.mjs` 的 `resolveSnapshotDate()` 決定歸屬日期（**台北時間 14:00 之前執行一律退回前一天**，避免排程延遲跨過台北午夜或隔天早上開機補跑時把昨天的收盤寫進今天）
+5. 寫入 `users/{uid}/history/{YYYY-MM-DD}`，標記 `source: 'scheduled'`、`trigger`（`workflow_dispatch` 或 `schedule`），並在外部觸發時額外記錄 `dispatchedAt` 時戳
+
+### 雙軌觸發架構：24h 筆電準點發訊號 ＋ GitHub Schedule 保底
+
+GitHub Actions 的 `schedule` 事件在高負載時延遲極嚴重（實測中位數達 7～9.9 小時，最大 12.3 小時），但外部透過 REST API 觸發 `workflow_dispatch` 則幾乎零延遲（數秒內啟動）。因此採用雙軌制：
+
+1. **主力（準點）**：家裡 24 小時開機的 Windows 筆電每天 **14:35** 由工作排程器執行 `scripts/trigger_snapshot.py`，發送 `workflow_dispatch` 訊號叫醒 GitHub Actions。
+   - **金鑰不落地**：筆電只存一顆僅限 `my-wallet` repo `Actions: Read and write` 權限的 Fine-grained PAT（存在系統密碼庫 `mywallet-github-dispatch` / `pat`），Firebase 服務帳戶金鑰與回歸測試閘門都留在 GitHub。
+2. **保底（備援）**：GitHub Actions 仍保留 `cron: '37 6 * * *'`（台北 14:37，實際常延遲至晚間執行），且**刻意不跳過同日已存在的快照** —— 晚間執行時會以較新報價覆蓋同一份文件（自我修復早上的瞬斷舊價），同時因為 `schedule` 不寫入 `dispatchedAt` key，在 `{ merge: true }` 下不會抹掉 14:35 留下的 `dispatchedAt` 紀錄。
+3. **兩層失敗通報**：
+   - 筆電端發射失敗（如 PAT 到期回 HTTP 401/403）時，`trigger_snapshot.py` 當場用本機 Telegram 憑證推播警告。
+   - 若筆電整台關機或睡眠未喚醒，`bill-reminder.mjs` 每天早上檢查 `history` 的 `dispatchedAt` —— 連續 3 天沒收到外部觸發就推播 Telegram 看門狗警告（尚未啟用筆電發射器前為 `unknown`，安靜不警告）。
+
+#### 在 Windows 筆電啟用準點發射器（一次性設定）
+
+1. 到 GitHub → Settings → Developer settings → Personal access tokens → **Fine-grained tokens** → Generate new token：
+   - Repository access：Only select repositories → 選 `my-wallet`
+   - Permissions → Repository permissions → **Actions**：選 **Read and write**（其餘全部不開）
+   - 記下到期日（到期前重產一顆並重跑第 2 步即可）
+2. 在 Windows 筆電的 repo 目錄下存入系統認證管理員並安裝排程：
+   ```powershell
+   python scripts/trigger_snapshot.py --set-pat
+   python scripts/trigger_snapshot.py --setup-check
+   python scripts/trigger_snapshot.py --dry-run
+   python scripts/trigger_snapshot.py --install-task
+   ```
+   `--install-task` 會自動建立名為 `MyWallet-DailySnapshotTrigger` 的每日 14:35 排程，並強制開啟 `WakeToRun`（喚醒電腦執行）與 `StartWhenAvailable`（錯過排程後盡快補跑）。
+3. 立即實測發射一次：
+   ```powershell
+   python scripts/trigger_snapshot.py
+   ```
+   到 GitHub Actions 頁面確認 `每日資產快照` 於數秒內啟動並完成。
 
 ### 為什麼固定取日盤
 

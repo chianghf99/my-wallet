@@ -26,7 +26,9 @@
 
 import { parseYMD, daysUntil, hasAutopay, autopayAccount, selectBills, buildMessage, totalCount, pickUid,
          DEFAULT_REMIND_DAYS, DEFAULT_OVERDUE_MAX_DAYS,
-         billbotStatus, buildBillbotAlert } from './bill-reminder-core.mjs';
+         billbotStatus, buildBillbotAlert,
+         latestDispatchMs, snapshotDispatchStatus, buildSnapshotDispatchAlert,
+         DEFAULT_DISPATCH_STALE_DAYS } from './bill-reminder-core.mjs';
 
 let failures = 0;
 const expect = (name, got, want) => {
@@ -276,6 +278,55 @@ expectTrue('警告要講幾天沒動作', alert.includes('12 天前'));
 expectTrue('警告要告訴人怎麼查排程', alert.includes('--status'));
 expectTrue('警告要說清楚「不是沒帳單，是沒跑」', alert.includes('不是沒帳單'));
 expectTrue('警告要附上卡片管家連結', alert.includes('https://example.com/card'));
+
+// --- 每日快照發射器看門狗 -------------------------------------------------
+//
+// 守的是：
+//   1. 還沒啟用筆電發射器（全部快照都只有 schedule、沒有 dispatchedAt）時，必須是 unknown 且不叫
+//   2. 同日晚上被 GitHub schedule 以 merge: true 覆寫成 trigger='schedule'，只要 dispatchedAt 還在，
+//      看門狗必須認得今天筆電有成功發射過（不能被保底機制誤導）
+//   3. 筆電真的停擺超過 3 天（預設門檻）時要叫，且警告內容要提到 PAT 與工作排程器
+
+expect('快照發射看門狗預設門檻是 3 天', DEFAULT_DISPATCH_STALE_DAYS, 3);
+expect('完全沒有歷史文件時是 unknown', snapshotDispatchStatus([], NOW).state, 'unknown');
+expect('全部都是 GitHub schedule（尚未啟用筆電發射器）時是 unknown',
+    snapshotDispatchStatus([
+        { date: '2026-11-16', trigger: 'schedule' },
+        { date: '2026-11-15', source: 'scheduled' },
+    ], NOW).state, 'unknown');
+
+expect('今天有 dispatchedAt（即使晚上被 schedule merge 改成 trigger=schedule）仍算 ok',
+    snapshotDispatchStatus([
+        { date: '2026-11-16', trigger: 'schedule', dispatchedAt: daysAgo(1) },
+    ], NOW), { state: 'ok', days: 1 });
+
+expect('2 天前發射還在寬限內（日排程 1 天 + 2 天寬限）',
+    snapshotDispatchStatus([{ date: '2026-11-14', dispatchedAt: daysAgo(2) }], NOW).state, 'ok');
+
+expect('3 天前發射、之後兩天只有 schedule 保底 → 該叫了（stale）',
+    snapshotDispatchStatus([
+        { date: '2026-11-16', trigger: 'schedule' },
+        { date: '2026-11-15', trigger: 'schedule' },
+        { date: '2026-11-13', trigger: 'schedule', dispatchedAt: daysAgo(3) },
+    ], NOW), { state: 'stale', days: 3 });
+
+expect('60 天內都持續叫',
+    snapshotDispatchStatus([{ date: '2026-09-17', dispatchedAt: daysAgo(60) }], NOW).state, 'stale');
+expect('超過 60 天停止每天吵（given-up）',
+    snapshotDispatchStatus([{ date: '2026-09-16', dispatchedAt: daysAgo(61) }], NOW).state, 'given-up');
+
+expect('只有 trigger=workflow_dispatch 沒有 dispatchedAt 時退回用 date 估算',
+    latestDispatchMs([{ date: '2026-11-15', trigger: 'workflow_dispatch' }]),
+    Date.UTC(2026, 10, 15));
+
+expect('unknown 不發快照觸發警告', buildSnapshotDispatchAlert({ state: 'unknown', days: null }), null);
+expect('ok 不發快照觸發警告', buildSnapshotDispatchAlert({ state: 'ok', days: 0 }), null);
+expect('given-up 不發快照觸發警告', buildSnapshotDispatchAlert({ state: 'given-up', days: 70 }), null);
+
+const snapAlert = buildSnapshotDispatchAlert({ state: 'stale', days: 4 });
+expectTrue('快照看門狗警告要講幾天沒收到外部觸發', snapAlert.includes('4 天前'));
+expectTrue('快照看門狗警告要提醒檢查 PAT 是否到期', snapAlert.includes('PAT'));
+expectTrue('快照看門狗警告要提醒檢查工作排程器', snapAlert.includes('工作排程器'));
 
 console.log(failures === 0
     ? '\n✅ 全部通過'

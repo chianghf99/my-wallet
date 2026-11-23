@@ -1,5 +1,5 @@
 import { db, auth } from './firebase-config.js';
-import { getLocalDate, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountSign, getFuturesDisplayName } from './utils/format.js';
+import { getLocalDate, getMonthEndDates, isFlowAfterStartSnapshot, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountSign, getFuturesDisplayName } from './utils/format.js';
 import { TAIFEX_PRODUCTS, TAIFEX_MIS_URL, taifexRequestBody, contractMonthOf, pickContract, pickFreshest, pickFromOpenData, OPEN_DATA_CONTRACT, cnyesUrl, cnyesEntry, parseCnyesQuote, TAIFEX_MARGINS, futuresDefaultsFor, nextSettlementDate, settlementAfter, settlementStatusOf, splitPosition, mergePositions, mergeAllPositions, undoOpenPlan, undoOpenEffect, vwapOfOpens, repointTx } from './utils/futures.js';
 import { computePortfolio, calcStats, calcStockExposure, calcFundsValueTwd, calcFundsCostTwd, calcFuturesMarginCash, calcFuturesMarginUsed, calcFuturesExposure, buildExposureTrend } from './utils/valuation.js';
 import { stockChangelog } from './changelog.js';
@@ -105,11 +105,8 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                         const dataUnrealized = [];
                         const tableData = [];
 
-                        const monthBoundaries = [];
-                        for (let i = 0; i <= monthsToFetch; i++) {
-                            const d = new Date(today.getFullYear(), today.getMonth() - i + 1, 0); 
-                            monthBoundaries.push(d.toISOString().split('T')[0]);
-                        }
+                        // v5.35.0: 用本地欄位組月底邊界，避免 .toISOString() 轉成 UTC 導致月底全部少一天（如 11/30 變 11/29）。
+                        const monthBoundaries = getMonthEndDates(monthsToFetch, today);
                         const earliestDate = monthBoundaries[monthBoundaries.length - 1];
 
                         const historySnap = await db.collection('users').doc(user.value.uid).collection('history')
@@ -316,6 +313,11 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 });
                 const twStockList = computed(() => sortedStocks.value.filter(s => s.currency === 'TWD'));
                 const usStockList = computed(() => sortedStocks.value.filter(s => s.currency === 'USD'));
+                // v5.35.0: 台股與美股共用同一份清單與卡片模板（見 mystock.html），避免改一處漏一處。
+                const stockMarkets = computed(() => [
+                    { key: 'TW', title: '台股庫存', flag: 'https://flagcdn.com/w40/tw.png', currency: 'TWD', list: twStockList.value, totalValue: twStats.value.value },
+                    { key: 'US', title: '美股庫存', flag: 'https://flagcdn.com/w40/us.png', currency: 'USD', list: usStockList.value, totalValue: usStats.value.value },
+                ].filter(m => m.list.length > 0));
                 // v5.14.0: 估值邏輯集中在 js/utils/valuation.js，前端與排程快照共用同一份，
                 // 避免只改一邊導致排程寫入用舊公式算出的歷史紀錄。
                 const portfolio = computed(() => computePortfolio({
@@ -649,7 +651,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     const y = new Date().getFullYear();
                     if (range === 'YTD') { divStartDate.value = `${y}-01-01`; divEndDate.value = today; }
                     else if (range === 'LAST_YEAR') { divStartDate.value = `${y - 1}-01-01`; divEndDate.value = `${y - 1}-12-31`; }
-                    else if (range === '3M') { const d = new Date(); d.setMonth(d.getMonth() - 3); divStartDate.value = d.toISOString().split('T')[0]; divEndDate.value = today; }
+                    else if (range === '3M') { const d = new Date(); d.setMonth(d.getMonth() - 3); divStartDate.value = getLocalDate(d); divEndDate.value = today; }
                     else if (range === 'ALL') { divStartDate.value = '2020-01-01'; divEndDate.value = today; }
                     fetchDividends();
                 };
@@ -663,7 +665,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     else if (range === 'THIS_MONTH') { realizedStartDate.value = `${y}-${m}-01`; realizedEndDate.value = today; }
                     else if (range === 'YTD') { realizedStartDate.value = `${y}-01-01`; realizedEndDate.value = today; }
                     else if (range === 'LAST_YEAR') { realizedStartDate.value = `${y - 1}-01-01`; realizedEndDate.value = `${y - 1}-12-31`; }
-                    else if (range === '3M') { const d2 = new Date(); d2.setMonth(d2.getMonth() - 3); realizedStartDate.value = d2.toISOString().split('T')[0]; realizedEndDate.value = today; }
+                    else if (range === '3M') { const d2 = new Date(); d2.setMonth(d2.getMonth() - 3); realizedStartDate.value = getLocalDate(d2); realizedEndDate.value = today; }
                     else if (range === 'ALL') { realizedStartDate.value = '2020-01-01'; realizedEndDate.value = today; }
                     fetchRealizedGains();
                 };
@@ -2897,11 +2899,14 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 // v5.9.0: 期間損益要扣掉本金進出，否則「這個月匯 50 萬進來」會被算成賺了 50 萬。
                 // 只認銀行活存的存入/提出；期貨保證金劃轉是內部搬錢（現金↔保證金），淨資產沒變不能算。
                 // 借款/還款若有連動現金則資產與負債同增同減，淨資產不變，本來就不必調整。
-                const fetchNetExternalFlow = async (fromDate, toDate) => {
+                const fetchNetExternalFlow = async (fromDate, toDate, startSnapshotTs = null) => {
                     if (!user.value) return 0;
+                    const startSnapTsMs = startSnapshotTs && typeof startSnapshotTs.toMillis === 'function' ? startSnapshotTs.toMillis() : null;
                     try {
+                        // v5.35.0: 用 >= fromDate，再用 isFlowAfterStartSnapshot 判斷起始日當天的入金是否發生在快照之後，
+                        // 避免下午拍完快照、晚上匯錢進來卻沒扣到這筆本金。
                         const snap = await db.collection('users').doc(user.value.uid).collection('transactions')
-                            .where('date', '>', fromDate)
+                            .where('date', '>=', fromDate)
                             .where('date', '<=', toDate).get();
                         return snap.docs.reduce((acc, doc) => {
                             const t = doc.data();
@@ -2909,6 +2914,8 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                             if (t.type !== 'deposit' && t.type !== 'withdraw') return acc;
                             if (t.linkedFuturesTxId) return acc;
                             if (`${t.name || ''}${t.memo || ''}`.includes('期貨保證金')) return acc; // 舊資料沒有 linkedFuturesTxId
+                            const txTsMs = t.timestamp && typeof t.timestamp.toMillis === 'function' ? t.timestamp.toMillis() : null;
+                            if (!isFlowAfterStartSnapshot(t.date, fromDate, txTsMs, startSnapTsMs)) return acc;
                             const rate = t.currency === 'USD' ? exchangeRate.value : 1;
                             const amt = Math.abs(t.totalAmount || 0) * rate;
                             return acc + (t.type === 'deposit' ? amt : -amt);
@@ -2941,7 +2948,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     if (d.length >= 2) {
                         const startVal = calcNetWorth(d[0]);
                         const endVal = calcNetWorth(d[d.length - 1]);
-                        const netFlow = await fetchNetExternalFlow(d[0].date, d[d.length - 1].date);
+                        const netFlow = await fetchNetExternalFlow(d[0].date, d[d.length - 1].date, d[0].timestamp || null);
                         const amount = endVal - startVal - netFlow;
                         // 分母用「期初淨資產 + 期間淨投入」概略代表這段期間投入的本金，
                         // 否則從 0 開始的新帳戶匯錢進來會算出 0%。
@@ -3149,22 +3156,27 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                             currentShares = existing.shares;
                             currentAvg = existing.avgCost;
                         } else if (transForm.value.type === 'buy') {
-                            const newDoc = await stockCol.add({ symbol: transForm.value.symbol, name: transForm.value.name, currency: form.value.currency, marketType: form.value.currency === 'USD' ? 'us' : '', shares: 0, avgCost: 0, currentPrice: 0, dividends: 0 });
-                            stockId = newDoc.id;
+                            // v5.35.0: 先預取 doc ref，跟交易紀錄一起放進同一個 batch 提交，
+                            // 不提前寫入 shares: 0 的幽靈股票，避免中途失敗留下孤兒文件。
+                            stockId = stockCol.doc().id;
                             currentShares = 0;
                             currentAvg = 0;
                             createdStock = true;
                         } else {
-                            // 賣出但庫存查無此檔：整筆當已實現損益處理
+                            // 賣出但庫存查無此檔：整筆當已實現損益處理（同樣用 batch 一次寫完）
                             const pnl = transForm.value.totalAmount - 0;
                             const realizedRef = realizedCol.doc();
+                            const transRef = transCol.doc();
                             logData.sharesBefore = 0;
                             logData.avgCostBefore = 0;
                             logData.stockDocId = null;
                             logData.realizedGainsId = realizedRef.id;
-                            await realizedRef.set({ ...logData, pnl: pnl, price: logData.price });
-                            await transCol.add(logData);
+
                             await updateCash(form.value.currency, transForm.value.totalAmount, 0);
+                            const batch = db.batch();
+                            batch.set(realizedRef, { ...logData, pnl: pnl, price: logData.price });
+                            batch.set(transRef, logData);
+                            await batch.commit();
                             closeTransModal();
                             return;
                         }
@@ -3176,30 +3188,55 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     logData.stockDocId = stockId || null;
                     logData.createdStock = createdStock;
 
+                    // 先驗證（例如賣出股數不足）再動任何雲端資料
                     let ns = 0, na = 0;
+                    let cashDelta = 0;
+                    let realizedPayload = null;
+                    let realizedRef = null;
                     if (transForm.value.type === 'buy') {
                         ns = currentShares + transForm.value.shares;
                         const oldTotal = currentShares * currentAvg;
                         na = (oldTotal + transForm.value.totalAmount) / ns;
-                        await updateCash(form.value.currency, -transForm.value.totalAmount, 0);
+                        cashDelta = -transForm.value.totalAmount;
                     } else {
                         if (!validateForm([['shares', transForm.value.shares <= currentShares, `庫存僅有 ${currentShares} 股，不足以賣出`]])) return;
                         ns = currentShares - transForm.value.shares;
                         na = currentAvg;
                         const pnl = transForm.value.totalAmount - (transForm.value.shares * currentAvg);
-                        const realizedRef = realizedCol.doc();
+                        realizedRef = realizedCol.doc();
                         logData.realizedGainsId = realizedRef.id;
-                        await realizedRef.set({ ...logData, pnl: pnl, price: logData.price });
-                        await updateCash(form.value.currency, transForm.value.totalAmount, 0);
+                        realizedPayload = { ...logData, pnl: pnl, price: logData.price };
+                        cashDelta = transForm.value.totalAmount;
                     }
 
-                    await transCol.add(logData);
+                    let shouldHideZero = false;
+                    if (stockId && ns === 0) {
+                        shouldHideZero = confirm('股數歸零，是否從清單隱藏此庫存項目？\n（之後重新買入仍會延續此紀錄）');
+                    }
 
+                    await updateCash(form.value.currency, cashDelta, 0);
+                    const batch = db.batch();
+                    if (realizedRef && realizedPayload) batch.set(realizedRef, realizedPayload);
+                    batch.set(transCol.doc(), logData);
                     if (stockId) {
-                        const ref = stockCol.doc(stockId);
-                        await ref.update({ shares: ns, avgCost: na, hiddenFromList: false });
-                        if (ns === 0 && confirm('股數歸零，是否從清單隱藏此庫存項目？\n（之後重新買入仍會延續此紀錄）')) await ref.update({ hiddenFromList: true });
+                        const stockRef = stockCol.doc(stockId);
+                        if (createdStock) {
+                            batch.set(stockRef, {
+                                symbol: transForm.value.symbol,
+                                name: transForm.value.name,
+                                currency: form.value.currency,
+                                marketType: form.value.currency === 'USD' ? 'us' : '',
+                                shares: ns,
+                                avgCost: na,
+                                currentPrice: 0,
+                                dividends: 0,
+                                hiddenFromList: shouldHideZero
+                            });
+                        } else {
+                            batch.update(stockRef, { shares: ns, avgCost: na, hiddenFromList: shouldHideZero });
+                        }
                     }
+                    await batch.commit();
 
                     setTimeout(async () => { await saveDailySnapshot(); if (activeSection.value === 'transactions') fetchTransactions(); if (activeSection.value === 'overview' || activeSection.value === '') drawChart(); }, 500);
                     closeTransModal();
@@ -3966,7 +4003,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     stockChangelog,
                     clearAllUserData, 
                     user, login, logout, stocks, exchangeRate, exchangeRateConfirmed, lastUpdated, isLoading, viewMode, isMobile, showPrivacy, isDarkMode, toggleDarkMode, activeSection, toggleSection, showChangelog, hideZeroShares, defaultPrivacyHidden,
-                    twStats, usStats, grandTotalValue, grandTotalAssets, grandTotalExposure, grandTotalPnL, twPieRatios, usPieRatios, twStockList, usStockList, leverageRatio, exposureRatio,
+                    twStats, usStats, grandTotalValue, grandTotalAssets, grandTotalExposure, grandTotalPnL, twPieRatios, usPieRatios, twStockList, usStockList, stockMarkets, leverageRatio, exposureRatio,
                     financialAssets, financialLoans, financialNetWorth, financialExposure, positionExposureMultiplier, twPositionExposureMultiplier, usPositionExposureMultiplier,
                     showModal, isEditing, form, openModal, editStock, closeModal, saveStock, deleteStock,
                     showTransModal, transForm, openTransModal, closeTransModal, submitTransaction, isFundMode, openFundModal,

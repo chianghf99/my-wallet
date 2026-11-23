@@ -13,6 +13,15 @@
 // 都是手寫的靜態內容，不含任何使用者輸入或雲端資料。
 export const stockChangelog = [
     {
+        version: "v5.35.0", date: "2026-11-23",
+        items: [
+            "修正「每月獲利總結」與「近 3 月篩選」的月底／跨日 UTC 時區偏移：<code>drawMonthlyChart</code> 原本直接對本地月底時間呼叫 <code>toISOString()</code>，在台北時區會把每月最後一天退前一天（如 11/30 變 11/29），導致月底當天的已實現損益與股息算進下個月。改為在本地計算日期並加入 <code>test-format.mjs</code> 回歸測試。",
+            "股票買賣改為先驗證再以單一 <code>db.batch()</code> 原子寫入：不再先建立 0 股空殼文件、也不再分開寫入 <code>realized_gains</code> 與 <code>transactions</code>，避免中途斷線留下孤兒紀錄。",
+            "修正期間淨資產損益在起始日當天的入金邊界：透過 <code>isFlowAfterStartSnapshot</code> 比對快照與交易時戳，起始日「拍完快照之後」的外部入金也會被正確扣除。",
+            "整合台股與美股庫存清單模板（<code>stockMarkets</code>），消除重複的表格與卡片標記，並在手機卡片模式下補齊刪除按鈕與個股占該市場市值比例顯示。"
+        ]
+    },
+    {
         version: "v5.34.0", date: "2026-11-16",
         items: [
             "補完上一版列為「已知限制」的那件事：合併過的部位，現在可以靠逐筆刪除建倉紀錄完整回復。合併時會把交易紀錄的部位指標一起改指向保留下來的那一筆，所以撤銷不再卡在「找不到對應部位」。",

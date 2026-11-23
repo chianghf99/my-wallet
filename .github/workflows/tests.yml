@@ -24,12 +24,13 @@ jobs:
         with:
           node-version: '22'
 
-      # 估值與期貨取價邏輯
-      - name: 估值、期貨取價與快照日期邏輯
+      # 估值、期貨取價、快照日期與本地日期邏輯
+      - name: 估值、期貨取價、快照與日期邏輯
         run: |
           node scripts/test-valuation.mjs
           node scripts/test-futures.mjs
           node scripts/test-snapshot.mjs
+          node scripts/test-format.mjs
 
       # 守住「既有加密資料還解得開」這條底線：金鑰參數被改動、或密文格式變了，
       # 這裡就會紅。詳見 scripts/test-card-crypto.mjs 的檔頭說明。

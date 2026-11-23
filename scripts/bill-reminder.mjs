@@ -25,6 +25,8 @@
 //   SNAPSHOT_WATCHDOG    設 "false" 關掉「每日快照筆電觸發中斷」的警告。預設開啟
 //   SNAPSHOT_STALE_DAYS  筆電幾天沒觸發快照就警告。預設 3（日排程 1 天 + 2 天寬限）
 //   SNAPSHOT_MAX_DAYS    超過幾天就停止每天警告。預設 60
+//   IRIS_BOT_TOKEN       秘書「小艾」的 Telegram bot token；快照觸發看門狗警告只發給小艾，
+//                        不發往帳單聊天室（保持帳單聊天室只有信用卡帳單相關訊息）
 //   DRY_RUN              設 "true" 只檢查、不送出，日誌會多印「本來會送出幾行」
 //   TEST_SEND            設 "true" 即使沒有帳單快到期也送一則測試訊息，用來確認
 //                        token 與 chat id 真的通（平常沒事不送，否則無從驗證）
@@ -182,11 +184,14 @@ const main = async () => {
     }
 
     if (snapAlert) {
+        const irisToken = (process.env.IRIS_BOT_TOKEN || '').trim();
         if (dryRun) {
-            console.log(`DRY_RUN：本來會送出一則快照觸發看門狗警告（筆電 ${snapStatus.days} 天沒觸發）`);
+            console.log(`DRY_RUN：本來會送出一則快照觸發看門狗警告給小艾（筆電 ${snapStatus.days} 天沒觸發）`);
+        } else if (!irisToken) {
+            console.log('未設定 IRIS_BOT_TOKEN，略過快照觸發看門狗推播（不發往帳單聊天室）');
         } else {
-            await sendTelegram(token, chatId, snapAlert);
-            console.log('已送出快照觸發看門狗警告');
+            await sendTelegram(irisToken, chatId, snapAlert);
+            console.log('已送出快照觸發看門狗警告（小艾聊天室）');
         }
     }
 };

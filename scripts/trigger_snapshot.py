@@ -52,8 +52,8 @@ from pathlib import Path
 KEYCHAIN_GH_SERVICE = 'mywallet-github-dispatch'
 KEYCHAIN_GH_ACCOUNT = 'pat'
 KEYCHAIN_TG_SERVICE = 'mywallet-telegram'
-# 優先發給秘書「小艾（Iris）」聊天室（iris_bot_token），若未設定才退回帳單機器人的 bot_token
-KEYCHAIN_TG_TOKEN_ACCOUNTS = ('iris_bot_token', 'bot_token')
+# 快照相關告警一律只發給秘書「小艾（Iris）」聊天室（iris_bot_token），不發往帳單聊天室
+KEYCHAIN_TG_TOKEN_ACCOUNT = 'iris_bot_token'
 
 DEFAULT_REPO = 'chianghf99/my-wallet'
 DEFAULT_WORKFLOW = 'daily-snapshot.yml'
@@ -134,14 +134,13 @@ def keychain_set(service, account, secret):
 # --- Telegram 失敗通報 --------------------------------------------------
 
 def get_telegram_creds():
-    """優先讀取小艾（iris_bot_token），無則退回帳單機器人（bot_token）。
+    """只讀取小艾（iris_bot_token），不混用帳單機器人的 bot_token。
     回傳 (token, chat_id, which_account)。
     """
     chat_id = keychain_get(KEYCHAIN_TG_SERVICE, 'chat_id')
-    for acc in KEYCHAIN_TG_TOKEN_ACCOUNTS:
-        tok = keychain_get(KEYCHAIN_TG_SERVICE, acc)
-        if tok:
-            return tok, chat_id, acc
+    tok = keychain_get(KEYCHAIN_TG_SERVICE, KEYCHAIN_TG_TOKEN_ACCOUNT)
+    if tok:
+        return tok, chat_id, KEYCHAIN_TG_TOKEN_ACCOUNT
     return None, chat_id, None
 
 

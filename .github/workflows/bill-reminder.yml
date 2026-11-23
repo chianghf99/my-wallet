@@ -60,6 +60,7 @@ jobs:
           REMINDER_UID: ${{ secrets.REMINDER_UID }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          IRIS_BOT_TOKEN: ${{ secrets.IRIS_BOT_TOKEN }}
           DRY_RUN: ${{ inputs.dry_run }}
           TEST_SEND: ${{ inputs.test_send }}
           # 想改提醒時機或訊息詳細程度，在這裡加環境變數即可，

@@ -93,7 +93,7 @@ class TestTriggerSnapshot(unittest.TestCase):
         self.assertIn('14:35', ps)
         self.assertIn(ts.TASK_NAME, ps)
 
-    def test_get_telegram_creds_prefers_iris_bot_token(self):
+    def test_get_telegram_creds_only_uses_iris_bot_token(self):
         orig = ts.keychain_get
         try:
             store = {
@@ -105,9 +105,10 @@ class TestTriggerSnapshot(unittest.TestCase):
             tok, cid, acc = ts.get_telegram_creds()
             self.assertEqual((tok, cid, acc), ('tok_iris', '999', 'iris_bot_token'))
 
+            # 移除 iris_bot_token 後不得退回帳單聊天室的 bot_token
             del store[(ts.KEYCHAIN_TG_SERVICE, 'iris_bot_token')]
             tok2, cid2, acc2 = ts.get_telegram_creds()
-            self.assertEqual((tok2, cid2, acc2), ('tok_billbot', '999', 'bot_token'))
+            self.assertEqual((tok2, cid2, acc2), (None, '999', None))
         finally:
             ts.keychain_get = orig
 

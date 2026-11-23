@@ -87,3 +87,18 @@ jobs:
           APP_UID: ${{ secrets.APP_UID }}
           TARGET_DATE: ${{ inputs.target_date }}
         run: node snapshot.mjs
+
+      # 快照排程自己失敗時，發送固定通知給秘書「小艾」聊天室（IRIS_BOT_TOKEN），
+      # 不發往信用卡帳單聊天室；若尚未設定 IRIS_BOT_TOKEN 則靜默略過。
+      - name: 失敗時通知秘書小艾（Telegram）
+        if: failure()
+        env:
+          IRIS_BOT_TOKEN: ${{ secrets.IRIS_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          if [ -n "$IRIS_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
+            curl -sS -X POST "https://api.telegram.org/bot$IRIS_BOT_TOKEN/sendMessage" \
+              --data-urlencode "chat_id=$TELEGRAM_CHAT_ID" \
+              --data-urlencode "text=❌ 每日資產快照排程失敗了（GitHub Actions）。請到 repo 的 Actions 頁面查看哪一步紅了。這則是固定訊息，不含執行內容。" \
+              -o /dev/null
+          fi

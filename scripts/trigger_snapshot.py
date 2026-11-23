@@ -58,6 +58,15 @@ DEFAULT_WORKFLOW = 'daily-snapshot.yml'
 DEFAULT_REF = 'main'
 TASK_NAME = 'MyWallet-DailySnapshotTrigger'
 
+# Windows 繁體中文環境預設 stdout 是 cp950，印出 emoji（如 ✅/⚠️）或特殊字元會丟 UnicodeEncodeError，
+# 排程在背景跑時這會造成整支腳本異常中止。統一強制 stdout/stderr 為 UTF-8（errors='replace'）。
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, 'reconfigure'):
+        try:
+            _stream.reconfigure(encoding='utf-8', errors='replace')
+        except Exception:
+            pass
+
 if sys.platform == 'win32':
     LOG_PATH = Path(os.environ.get('LOCALAPPDATA') or (Path.home() / 'AppData' / 'Local')) \
         / 'mywallet' / 'mywallet-snapshot-trigger.log'
@@ -235,12 +244,13 @@ def build_powershell_task_script(python_exe, script_path, time_str='14:35'):
     sc = str(script_path).replace("'", "''")
     wd = str(Path(script_path).resolve().parent.parent).replace("'", "''")
     return "\n".join([
+        "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8",
         "$ErrorActionPreference = 'Stop'",
         f"$action = New-ScheduledTaskAction -Execute '{py}' -Argument '\"{sc}\"' -WorkingDirectory '{wd}'",
         f"$trigger = New-ScheduledTaskTrigger -Daily -At '{time_str}'",
         "$settings = New-ScheduledTaskSettingsSet -WakeToRun -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries",
         f"Register-ScheduledTask -TaskName '{TASK_NAME}' -Action $action -Trigger $trigger -Settings $settings -Description '每日 14:35 觸發 GitHub Actions 執行 MyWallet 資產快照' -Force | Out-Null",
-        f"Write-Host '✅ 已建立工作排程：{TASK_NAME}（每天 {time_str}，已啟用喚醒與錯過補跑）'",
+        f"Write-Host 'OK: 已建立工作排程 {TASK_NAME}（每天 {time_str}，已啟用喚醒與錯過補跑）'",
     ])
 
 

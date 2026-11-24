@@ -1,22 +1,13 @@
 name: 帳單到期提醒
 
 on:
-  schedule:
-    # 每天 07:47 台北（23:47 UTC）。
-    #
-    # 為什麼排這麼早：GitHub 的排程不保證準時。2026-11-22 在 daily-snapshot 上量到的
-    # 延遲中位數是 7～10 小時（不是這裡原本寫的 67～151 分鐘，那個數字已經過期，
-    # 詳見 daily-snapshot.yml 的註解）。排在 07:47 原意是讓訊息落在早上 8～10 點、
-    # 還來得及當天去繳；按實測的延遲，實際上會落在下午到傍晚。
-    # 分鐘數刻意用零散數字，整點的排程比較容易被跳過。
-    #
-    # 這一支沒有 daily-snapshot 那個「跨午夜寫錯日期」的問題：它只讀帳單、推 Telegram，
-    # 不以執行當下的日期當 key 寫入任何東西。延遲的代價純粹是「訊息晚到」。
-    #
-    # 漏跑一天的代價有限：到期前第 3 天與第 1 天各提醒一次，再加上當天一定會提醒，
-    # 同一筆帳單總共有三次機會，不會因為單日沒跑就完全錯過。
-    - cron: '47 23 * * *'
-  workflow_dispatch:      # 可在 Actions 頁面手動觸發，方便測試
+  # 2026-11-24 起停用 GitHub Actions 的 schedule，改由家裡 24h Windows 筆電每天 08:30
+  # 透過 scripts/trigger_bill_reminder.py 發送 workflow_dispatch 準時觸發。
+  #
+  # 原因：GitHub 免費排程佇列延遲極不穩定（實測常延遲 3～10 小時以上），會把原本的早安提醒
+  # 拖到中午甚至傍晚；而且本 workflow 每次執行都會重送 Telegram 通知，若同時保留
+  # schedule 與外部觸發會造成同一天重複推播，因此改採純 workflow_dispatch。
+  workflow_dispatch:      # 由家裡 24h 筆電每天 08:30 觸發，或可在 Actions 頁面手動觸發
     inputs:
       dry_run:
         description: '只檢查不送出（日誌只會印筆數，不印內容）'

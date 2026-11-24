@@ -56,10 +56,11 @@ jobs:
       # 「推播送不出去」這件事本身絕對不能安靜（實際踩過：Telegram 回 403，
       # 而 --telegram-test 照報成功）。這支不碰網路、不碰 Keychain，
       # pdfplumber 是延遲匯入的，所以在 CI 上也跑得動。
-      - name: 帳單機器人推播回傳值與快照發射器
+      - name: 帳單機器人推播回傳值與筆電發射器
         run: |
           python3 scripts/billbot/test_bill_bot.py
           python3 scripts/test_trigger_snapshot.py
+          python3 scripts/test_trigger_bill_reminder.py
 
       # 這個 repo 是 public，Actions 日誌不需登入就看得到。排程的每個 console.log
       # 都是人工挑過的，唯一不受控的是 catch 印出來的錯誤 —— 那串字是

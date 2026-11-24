@@ -57,8 +57,10 @@
 - **每日資產快照**：GitHub Actions（`.github/workflows/daily-snapshot.yml`）。
   ⚠️ 實測延遲很嚴重、而且會跨過台北午夜造成走勢圖缺一天 —— 量到的數字、
   成因與修法都寫在那個檔案的註解裡，**動它之前先讀**。
-- **帳單到期提醒**：GitHub Actions（`.github/workflows/bill-reminder.yml`），含看門狗；
+- **帳單到期提醒**：GitHub Actions（`.github/workflows/bill-reminder.yml`）；
   由 24 小時開機的 Windows PC 每天 08:30 透過 `scripts/trigger_bill_reminder.py` 以 `workflow_dispatch` 觸發（已停用 GitHub `schedule` 避免排程延遲與重複推播）。
+- **雲端看門狗**：GitHub Actions（`.github/workflows/watchdog.yml`），純雲端每日排程（`WATCHDOG_ONLY=true`），
+  獨立監控 `billbot`（9 天）與每日快照筆電發射器（3 天）心跳，確保筆電整台離線時雲端仍會主動通報。
 - **帳單機器人**（`scripts/billbot`）：**一台 24 小時開機的 Windows PC**，不在開發機上。
   開發機（macOS）那側的排程、app、設定檔、帳本、記錄檔與 Keychain 憑證都已清除，
   **所以開發機不是回退路徑** —— 遇到問題方向是修 Windows，不要提議搬回去。

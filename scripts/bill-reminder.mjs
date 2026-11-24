@@ -27,6 +27,8 @@
 //   SNAPSHOT_MAX_DAYS    超過幾天就停止每天警告。預設 60
 //   IRIS_BOT_TOKEN       秘書「小艾」的 Telegram bot token；快照觸發看門狗警告只發給小艾，
 //                        不發往帳單聊天室（保持帳單聊天室只有信用卡帳單相關訊息）
+//   WATCHDOG_ONLY        設 "true" 只跑看門狗檢查，略過帳單到期提醒（供獨立雲端 watchdog.yml
+//                        使用，確保筆電整台離線時雲端仍會巡邏心跳，且不會重複發送帳單提醒）
 //   DRY_RUN              設 "true" 只檢查、不送出，日誌會多印「本來會送出幾行」
 //   TEST_SEND            設 "true" 即使沒有帳單快到期也送一則測試訊息，用來確認
 //                        token 與 chat id 真的通（平常沒事不送，否則無從驗證）
@@ -89,6 +91,7 @@ const main = async () => {
     const chatId = process.env.TELEGRAM_CHAT_ID;
     const dryRun = process.env.DRY_RUN === 'true';
     const testSend = process.env.TEST_SEND === 'true';
+    const watchdogOnly = process.env.WATCHDOG_ONLY === 'true';
     if (!dryRun && (!token || !chatId)) {
         throw new Error('缺少 TELEGRAM_BOT_TOKEN 或 TELEGRAM_CHAT_ID');
     }
@@ -107,17 +110,22 @@ const main = async () => {
     const today = getTaipeiDate();
     console.log(`讀到 ${bills.length} 筆帳單、${cards.length} 張卡片`);
 
-    const groups = selectBills(bills, {
-        today,
-        cards,
-        remindDays: parseDays(process.env.REMIND_DAYS, DEFAULT_REMIND_DAYS),
-        overdueMaxDays: Number(process.env.OVERDUE_MAX_DAYS) || DEFAULT_OVERDUE_MAX_DAYS,
-        remindUnknownDate: process.env.REMIND_UNKNOWN_DATE !== 'false',
-    });
+    let groups = { overdue: [], dueToday: [], dueSoon: [], unknownDate: [] };
+    if (watchdogOnly) {
+        console.log('WATCHDOG_ONLY 模式：略過帳單到期提醒，只檢查看門狗');
+    } else {
+        groups = selectBills(bills, {
+            today,
+            cards,
+            remindDays: parseDays(process.env.REMIND_DAYS, DEFAULT_REMIND_DAYS),
+            overdueMaxDays: Number(process.env.OVERDUE_MAX_DAYS) || DEFAULT_OVERDUE_MAX_DAYS,
+            remindUnknownDate: process.env.REMIND_UNKNOWN_DATE !== 'false',
+        });
 
-    // 只印筆數，不印金額、銀行與日期
-    console.log(`逾期 ${groups.overdue.length}、今天到期 ${groups.dueToday.length}、`
-        + `即將到期 ${groups.dueSoon.length}、繳款日不明 ${groups.unknownDate.length}`);
+        // 只印筆數，不印金額、銀行與日期
+        console.log(`逾期 ${groups.overdue.length}、今天到期 ${groups.dueToday.length}、`
+            + `即將到期 ${groups.dueSoon.length}、繳款日不明 ${groups.unknownDate.length}`);
+    }
 
     // 帳單機器人還活著嗎。這是獨立的一件事，所以也獨立成一則訊息 ——
     // 併進提醒裡的話，沒有帳單快到期的日子看門狗就跟著啞了，而那正是最需要它的時候。
@@ -153,14 +161,16 @@ const main = async () => {
         + (snapStatus.days === null ? '（雲端尚無外部觸發紀錄，看門狗尚未生效）' : `（${snapStatus.days} 天前）`));
 
     const snapAlert = buildSnapshotDispatchAlert(snapStatus);
-    const hasBills = totalCount(groups) > 0;
+    const hasBills = !watchdogOnly && totalCount(groups) > 0;
 
-    if (!hasBills && !alert && !snapAlert && !testSend) {
-        console.log('今天沒有需要提醒的帳單，機器人與快照觸發也正常，不送出');
+    if (!hasBills && !alert && !snapAlert && !(testSend && !watchdogOnly)) {
+        console.log(watchdogOnly
+            ? '看門狗檢查正常，不送出'
+            : '今天沒有需要提醒的帳單，機器人與快照觸發也正常，不送出');
         return;
     }
 
-    if (hasBills || testSend) {
+    if (hasBills || (testSend && !watchdogOnly)) {
         const text = buildMessage(groups, {
             detail: process.env.REMINDER_DETAIL === 'counts' ? 'counts' : 'full',
             url: cardUrl,

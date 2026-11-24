@@ -1,0 +1,63 @@
+name: 雲端看門狗（筆電與機器人心跳）
+
+# 獨立於 bill-reminder.yml 的純雲端排程：
+# bill-reminder.yml 已改由家裡 Windows 筆電每天 08:30 準時觸發；
+# 若整台筆電斷電／斷網，筆電端發射器與帳單提醒都會靜默停擺。
+# 本 workflow 保留在 GitHub Actions 雲端每天巡邏一次，只檢查心跳（WATCHDOG_ONLY=true），
+# 不重送帳單提醒、正常時 0 打擾；只在偵測到失聯超過門檻（billbot 9 天、快照筆電觸發 3 天）
+# 時才推播 Telegram 告警。GitHub schedule 延遲幾小時對以「天」計數的看門狗毫無影響。
+on:
+  schedule:
+    - cron: '13 1 * * *'   # 每天約 09:13 台北（零散分鐘避開整點排程擁擠）
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: '只檢查不送出（日誌只會印狀態，不印內容）'
+        type: boolean
+        default: false
+
+permissions: {}
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: 安裝相依套件
+        working-directory: scripts
+        run: npm install --no-audit --no-fund
+
+      - name: 驗證看門狗判定邏輯
+        run: node scripts/test-bill-reminder.mjs
+
+      - name: 檢查看門狗心跳
+        working-directory: scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          APP_UID: ${{ secrets.APP_UID }}
+          REMINDER_UID: ${{ secrets.REMINDER_UID }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          IRIS_BOT_TOKEN: ${{ secrets.IRIS_BOT_TOKEN }}
+          WATCHDOG_ONLY: 'true'
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: node bill-reminder.mjs
+
+      - name: 失敗時通知秘書小艾（Telegram）
+        if: failure()
+        env:
+          IRIS_BOT_TOKEN: ${{ secrets.IRIS_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          if [ -n "$IRIS_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
+            curl -sS -X POST "https://api.telegram.org/bot$IRIS_BOT_TOKEN/sendMessage" \
+              --data-urlencode "chat_id=$TELEGRAM_CHAT_ID" \
+              --data-urlencode "text=❌ 雲端看門狗排程失敗了（GitHub Actions）。請到 repo 的 Actions 頁面查看哪一步紅了。這則是固定訊息，不含執行內容。" \
+              -o /dev/null
+          fi

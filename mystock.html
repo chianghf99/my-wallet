@@ -49,7 +49,7 @@
            - fonts.googleapis.com/css2：回應內容依瀏覽器 User-Agent 而異
            - apis.google.com/js/api.js、accounts.google.com/gsi/client：
              Google 的載入器，內容持續更新且官方不提供固定雜湊 -->
-    <title>我的投資組合 | Portfolio v5.35.0</title>
+    <title>我的投資組合 | Portfolio v5.36.0</title>
     <!-- v5.12.0: PWA。三個入口各有獨立的 manifest 與圖示，
          加到主畫面後會是三個可分辨的 App，而不是同一顆圖示。 -->
     <link rel="manifest" href="./manifest-stock.webmanifest">
@@ -544,11 +544,10 @@
                                 formatCurrency(twStats.value + (cashData.twd || 0), 'TWD') }}</span><span
                                 v-else>****</span></div>
                         <div class="mt-1 text-xs flex items-center gap-1" v-if="showPrivacy">
-                            <span class="text-gray-400">較前日(未實現損益):</span>
-                            <span v-if="prevDayData" :class="getPnlClass(twStats.pnl - (prevDayData.twPnL || 0))">
-                                {{ formatCurrency(twStats.pnl - (prevDayData.twPnL || 0), 'TWD') }}
-                                <span class="ml-1">({{ getRoi(prevDayData.twVal, twStats.pnl - (prevDayData.twPnL || 0))
-                                    }})</span>
+                            <span class="text-gray-400">當日漲跌(較前收):</span>
+                            <span v-if="twDailyChange.hasData" :class="getPnlClass(twDailyChange.diff)">
+                                {{ formatCurrency(twDailyChange.diff, 'TWD') }}
+                                <span class="ml-1">({{ getRoi(twDailyChange.prevValue, twDailyChange.diff) }})</span>
                             </span>
                             <span v-else class="text-gray-400">-</span>
                         </div>
@@ -593,11 +592,10 @@
                             <span v-else>****</span>
                         </div>
                         <div class="mt-1 text-xs flex items-center gap-1" v-if="showPrivacy">
-                            <span class="text-gray-400">較前日(未實現損益):</span>
-                            <span v-if="prevDayData" :class="getPnlClass(usStats.pnl - (prevDayData.usPnL || 0))">
-                                {{ formatCurrency(usStats.pnl - (prevDayData.usPnL || 0), 'USD') }}
-                                <span class="ml-1">({{ getRoi(prevDayData.usVal, usStats.pnl - (prevDayData.usPnL || 0))
-                                    }})</span>
+                            <span class="text-gray-400">當日漲跌(較前收):</span>
+                            <span v-if="usDailyChange.hasData" :class="getPnlClass(usDailyChange.diff)">
+                                {{ formatCurrency(usDailyChange.diff, 'USD') }}
+                                <span class="ml-1">({{ getRoi(usDailyChange.prevValue, usDailyChange.diff) }})</span>
                             </span>
                             <span v-else class="text-gray-400">-</span>
                         </div>

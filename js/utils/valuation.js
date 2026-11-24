@@ -32,6 +32,39 @@ export const calcStats = (list = []) => {
 export const calcStockExposure = (list = []) =>
     list.reduce((acc, s) => acc + num(s.currentPrice) * num(s.shares) * (num(s.multiplier) || 1), 0);
 
+/**
+ * 依個股的 currentPrice 與 official previousClose 計算單日漲跌（原幣別）。
+ *
+ * 為什麼不用 history 的 prevDayData.usPnL 相減：
+ * 1) 美股收盤在台北凌晨 04:00~05:00，history 依台北日曆日切分，在跨午夜、週末、
+ *    或盤中看過網頁時會對到錯的交易日甚至變成 0。
+ * 2) 只要前一天有買賣股票（未實現損益轉成已實現），前後兩天相減會把賣出誤算成當日虧損。
+ * 用各檔股票自帶的 previousClose（由 Yahoo / 證交所回傳的前一交易日收盤價）才能
+ * 精確對齊各市場自己的交易日。
+ *
+ * 缺 previousClose 或 currentPrice 的個股會被跳過（不納入分子與分母），
+ * 避免手動建檔尚未抓報價時被算成 +100% 漲幅。
+ */
+export const calcDailyChange = (list = []) => {
+    let diff = 0, prevValue = 0, counted = 0;
+    for (const s of list) {
+        const cur = num(s && s.currentPrice);
+        const prev = num(s && s.previousClose);
+        const shares = num(s && s.shares);
+        if (cur > 0 && prev > 0 && shares > 0) {
+            diff += (cur - prev) * shares;
+            prevValue += prev * shares;
+            counted++;
+        }
+    }
+    return {
+        diff,
+        prevValue,
+        pct: prevValue > 0 ? (diff / prevValue) * 100 : 0,
+        hasData: counted > 0
+    };
+};
+
 // --- 現金 / 房地產 / 基金 ---
 
 export const calcCashValue = (cash = {}, rate) => num(cash.twd) + num(cash.usd) * rate;

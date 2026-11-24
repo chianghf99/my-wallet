@@ -13,6 +13,13 @@
 // 都是手寫的靜態內容，不含任何使用者輸入或雲端資料。
 export const stockChangelog = [
     {
+        version: "v5.36.0", date: "2026-11-24",
+        items: [
+            "修正台股與美股帳戶「較前日」的計算基準：原本拿當前未實現損益減去台北日曆日前一天的 <code>history</code> 快照，會因美股收盤在台北凌晨 04:00～05:00、週末休市排程、或前日賣股（未實現轉已實現）而對錯天甚至歸零。現在兩邊皆改由各檔自帶的 <code>previousClose</code>（前一日官方收盤價）直接加總 <code>(現價 − 前收) × 股數</code>，每天刷完報價就是準確的「當日收盤 vs 前一日收盤」漲跌，且完全不受買賣異動干擾。",
+            "<code>calcDailyChange</code> 抽成純函式放進 <code>valuation.js</code>，並於 <code>test-valuation.mjs</code> 新增 6 項回歸測試（含缺 <code>previousClose</code> 防呆）。"
+        ]
+    },
+    {
         version: "v5.35.0", date: "2026-11-23",
         items: [
             "修正「每月獲利總結」與「近 3 月篩選」的月底／跨日 UTC 時區偏移：<code>drawMonthlyChart</code> 原本直接對本地月底時間呼叫 <code>toISOString()</code>，在台北時區會把每月最後一天退前一天（如 11/30 變 11/29），導致月底當天的已實現損益與股息算進下個月。改為在本地計算日期並加入 <code>test-format.mjs</code> 回歸測試。",

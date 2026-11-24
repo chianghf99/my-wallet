@@ -6,7 +6,7 @@
 //
 // 執行：node scripts/test-valuation.mjs
 
-import { computePortfolio, buildSnapshotFields, buildExposureTrend } from '../js/utils/valuation.js';
+import { computePortfolio, buildSnapshotFields, buildExposureTrend, calcDailyChange } from '../js/utils/valuation.js';
 
 // --- 比對基準 ---
 // 原則上逐字對應線上公式，用來確認重構沒有改變計算結果。
@@ -262,6 +262,24 @@ expect('略過缺值後只留有效點', dirty.points.map(x => x.date), ['a', 'e
 expect('略過筆數', dirty.stats.partial, 3);
 expect('空輸入不炸', buildExposureTrend([]).stats.count, 0);
 expect('空輸入統計為 null', buildExposureTrend([]).stats.first, null);
+
+// --- calcDailyChange：以各市場自己的 previousClose 算當日漲跌 ---
+const dc = calcDailyChange([
+    { symbol: 'NVDA', shares: 10, currentPrice: 150, previousClose: 140 }, // +100 / 1400
+    { symbol: 'AAPL', shares: 5, currentPrice: 200, previousClose: 220 },  // -100 / 1100
+    { symbol: 'NEW', shares: 100, currentPrice: 50, previousClose: 0 },    // 沒昨收 → 必須跳過
+]);
+expect('calcDailyChange 兩檔抵銷淨額為 0', dc.diff, 0);
+expect('calcDailyChange 分母只含有效昨收 (1400+1100=2500)', dc.prevValue, 2500);
+expect('calcDailyChange hasData 為 true', dc.hasData, true);
+
+const dcUp = calcDailyChange([
+    { symbol: 'SPY', shares: 10, currentPrice: 550, previousClose: 500 },  // +500 / 5000 = +10%
+]);
+expect('calcDailyChange +10% 漲幅正確', dcUp.diff, 500);
+expect('calcDailyChange pct 正確', +dcUp.pct.toFixed(4), 10);
+expect('全無昨收時 hasData 為 false（不亂算 +100%）',
+    calcDailyChange([{ shares: 10, currentPrice: 100, previousClose: 0 }]).hasData, false);
 
 console.log(failures ? `\n❌ ${failures} 項不一致` : '\n全部通過：重構未改變任何計算結果');
 // 在 Node 下以離開碼回報結果；其他 JS 引擎（例如用 jsc 快速跑）則略過

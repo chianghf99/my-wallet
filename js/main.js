@@ -1,7 +1,7 @@
 import { db, auth } from './firebase-config.js';
 import { getLocalDate, getMonthEndDates, isFlowAfterStartSnapshot, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountSign, getFuturesDisplayName } from './utils/format.js';
 import { TAIFEX_PRODUCTS, TAIFEX_MIS_URL, taifexRequestBody, contractMonthOf, pickContract, pickFreshest, pickFromOpenData, OPEN_DATA_CONTRACT, cnyesUrl, cnyesEntry, parseCnyesQuote, TAIFEX_MARGINS, futuresDefaultsFor, nextSettlementDate, settlementAfter, settlementStatusOf, splitPosition, mergePositions, mergeAllPositions, undoOpenPlan, undoOpenEffect, vwapOfOpens, repointTx } from './utils/futures.js';
-import { computePortfolio, calcStats, calcStockExposure, calcFundsValueTwd, calcFundsCostTwd, calcFuturesMarginCash, calcFuturesMarginUsed, calcFuturesExposure, buildExposureTrend } from './utils/valuation.js';
+import { computePortfolio, calcStats, calcStockExposure, calcDailyChange, calcFundsValueTwd, calcFundsCostTwd, calcFuturesMarginCash, calcFuturesMarginUsed, calcFuturesExposure, buildExposureTrend } from './utils/valuation.js';
 import { stockChangelog } from './changelog.js';
 
 import { 
@@ -313,6 +313,10 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 });
                 const twStockList = computed(() => sortedStocks.value.filter(s => s.currency === 'TWD'));
                 const usStockList = computed(() => sortedStocks.value.filter(s => s.currency === 'USD'));
+                // v5.36.0: 台股與美股單日漲跌皆改依各檔自己的 previousClose（前收）計算，
+                // 不再拿台北日期的 history 快照相減，避免時差、週末排程或前日賣股造成失真。
+                const twDailyChange = computed(() => calcDailyChange(twStockList.value));
+                const usDailyChange = computed(() => calcDailyChange(usStockList.value));
                 // v5.35.0: 台股與美股共用同一份清單與卡片模板（見 mystock.html），避免改一處漏一處。
                 const stockMarkets = computed(() => [
                     { key: 'TW', title: '台股庫存', flag: 'https://flagcdn.com/w40/tw.png', currency: 'TWD', list: twStockList.value, totalValue: twStats.value.value },
@@ -4003,7 +4007,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     stockChangelog,
                     clearAllUserData, 
                     user, login, logout, stocks, exchangeRate, exchangeRateConfirmed, lastUpdated, isLoading, viewMode, isMobile, showPrivacy, isDarkMode, toggleDarkMode, activeSection, toggleSection, showChangelog, hideZeroShares, defaultPrivacyHidden,
-                    twStats, usStats, grandTotalValue, grandTotalAssets, grandTotalExposure, grandTotalPnL, twPieRatios, usPieRatios, twStockList, usStockList, stockMarkets, leverageRatio, exposureRatio,
+                    twStats, usStats, twDailyChange, usDailyChange, grandTotalValue, grandTotalAssets, grandTotalExposure, grandTotalPnL, twPieRatios, usPieRatios, twStockList, usStockList, stockMarkets, leverageRatio, exposureRatio,
                     financialAssets, financialLoans, financialNetWorth, financialExposure, positionExposureMultiplier, twPositionExposureMultiplier, usPositionExposureMultiplier,
                     showModal, isEditing, form, openModal, editStock, closeModal, saveStock, deleteStock,
                     showTransModal, transForm, openTransModal, closeTransModal, submitTransaction, isFundMode, openFundModal,

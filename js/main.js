@@ -1,7 +1,7 @@
 import { db, auth } from './firebase-config.js';
 import { getLocalDate, getMonthEndDates, isFlowAfterStartSnapshot, formatNumber, formatCurrency, getPnlClass, getRoi, formatChange, getTypeName, getAmountSign, getFuturesDisplayName } from './utils/format.js';
 import { TAIFEX_PRODUCTS, TAIFEX_MIS_URL, taifexRequestBody, contractMonthOf, pickContract, pickFreshest, pickFromOpenData, OPEN_DATA_CONTRACT, cnyesUrl, cnyesEntry, parseCnyesQuote, TAIFEX_MARGINS, futuresDefaultsFor, nextSettlementDate, settlementAfter, settlementStatusOf, splitPosition, mergePositions, mergeAllPositions, undoOpenPlan, undoOpenEffect, vwapOfOpens, repointTx } from './utils/futures.js';
-import { computePortfolio, calcStats, calcStockExposure, calcDailyChange, calcFundsValueTwd, calcFundsCostTwd, calcFuturesMarginCash, calcFuturesMarginUsed, calcFuturesExposure, buildExposureTrend } from './utils/valuation.js';
+import { computePortfolio, calcStats, calcStockExposure, calcDailyChange, calcFuturesRiskMetrics, calcFundsValueTwd, calcFundsCostTwd, calcFuturesMarginCash, calcFuturesMarginUsed, calcFuturesExposure, buildExposureTrend } from './utils/valuation.js';
 import { stockChangelog } from './changelog.js';
 
 import { 
@@ -363,10 +363,12 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                 const futuresTotalMarginUsed = computed(() => calcFuturesMarginUsed(futuresPositions.value, exchangeRate.value));
                 const futuresTotalExposure = computed(() => calcFuturesExposure(futuresPositions.value, exchangeRate.value));
 
-                const futuresRiskRatio = computed(() => {
-                    if (futuresTotalMarginUsed.value <= 0) return 0;
-                    return (futuresEquity.value / futuresTotalMarginUsed.value) * 100;
-                });
+                // v5.37.0: 統一期貨頁與資金管理頁共用的風控指標、可動用保證金、追繳緩衝與台指每點價值
+                const futuresRiskMetrics = computed(() =>
+                    calcFuturesRiskMetrics(futuresMargin.value, futuresPositions.value, exchangeRate.value)
+                );
+
+                const futuresRiskRatio = computed(() => futuresRiskMetrics.value.riskRatio);
 
                 const futuresLeverageRatio = computed(() => {
                     const eq = futuresEquity.value;
@@ -442,23 +444,9 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
                 // --- v5.18.0: 資金管理區用的衍生數值 ---
 
-                // 期貨風險指標 = 權益數 / 原始保證金。期交所規定低於 25% 會被強制平倉，
-                // 維持保證金約為原始保證金的 77%，以此分級提示。
-                const futuresRiskLabel = computed(() => {
-                    if (!(futuresTotalMarginUsed.value > 0)) return '';
-                    const r = futuresRiskRatio.value;
-                    if (r < 25) return '低於強制平倉標準';
-                    if (r < 77) return '低於維持保證金';
-                    if (r < 100) return '偏低';
-                    return '充足';
-                });
-                const futuresRiskClass = computed(() => {
-                    const r = futuresRiskRatio.value;
-                    if (r < 25) return 'text-red-600 dark:text-red-400';
-                    if (r < 77) return 'text-orange-600 dark:text-orange-400';
-                    if (r < 100) return 'text-amber-600 dark:text-amber-400';
-                    return 'text-emerald-600 dark:text-emerald-400';
-                });
+                // 期貨風險指標 = 權益數 / 原始保證金。v5.37.0 起與期貨頁統一使用 futuresRiskMetrics.riskLevel。
+                const futuresRiskLabel = computed(() => futuresRiskMetrics.value.riskLevel.label);
+                const futuresRiskClass = computed(() => futuresRiskMetrics.value.riskLevel.textClass);
 
                 // 借款年化利息成本（利率為選填，沒填就不計入）
                 const totalAnnualInterest = computed(() => loanList.value.filter(l => l.status !== 'archived').reduce(
@@ -4053,7 +4041,7 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
                     monthlyProfitData, monthlyProfitRange, drawMonthlyChart,
 
                     futuresMargin, futuresPositions, showFuturesModal, futuresForm, showFuturesMarginModal, futuresMarginForm, futuresLoading, futuresTransactions,
-                    futuresTotalUnrealizedPnL, futuresEquity, futuresTotalMarginUsed, futuresTotalExposure, futuresRiskRatio, futuresLeverageRatio,
+                    futuresTotalUnrealizedPnL, futuresEquity, futuresTotalMarginUsed, futuresTotalExposure, futuresRiskRatio, futuresRiskMetrics, futuresLeverageRatio,
                     openFuturesModal, saveFuturesPosition, deleteFuturesPosition, closeFuturesPosition, rollFuturesPosition, applyRollSpread, onRollClosePriceInput, showFuturesActionModal, futuresActionForm, submitFuturesAction, openFuturesMarginModal, adjustFuturesMargin, autoFetchTaiexIndexPrice, fetchFuturesPricesDirect, onFuturesSymbolChange, onFuturesContractsChange, deleteFuturesTransaction, futuresHistoryTab, getFuturesDisplayName, futuresTotalMarginCashTwd,
                     futuresHistoryRange, futuresHistoryStart, futuresHistoryEnd, futuresHistoryBounds, futuresHistoryFiltered, futuresCloseRecords, futuresRolloverRecords, futuresRealizedSummary,
                     editingFuturesFeeId, editingFuturesFeeValue, startEditFuturesFee, cancelEditFuturesFee, saveFuturesFee,

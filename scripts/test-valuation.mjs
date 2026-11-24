@@ -6,7 +6,7 @@
 //
 // 執行：node scripts/test-valuation.mjs
 
-import { computePortfolio, buildSnapshotFields, buildExposureTrend, calcDailyChange } from '../js/utils/valuation.js';
+import { computePortfolio, buildSnapshotFields, buildExposureTrend, calcDailyChange, calcFuturesRiskMetrics } from '../js/utils/valuation.js';
 
 // --- 比對基準 ---
 // 原則上逐字對應線上公式，用來確認重構沒有改變計算結果。
@@ -280,6 +280,48 @@ expect('calcDailyChange +10% 漲幅正確', dcUp.diff, 500);
 expect('calcDailyChange pct 正確', +dcUp.pct.toFixed(4), 10);
 expect('全無昨收時 hasData 為 false（不亂算 +100%）',
     calcDailyChange([{ shares: 10, currentPrice: 100, previousClose: 0 }]).hasData, false);
+
+// --- calcFuturesRiskMetrics：可動用保證金、追繳緩衝、台指可扛點數與統一分級 ---
+const fr = calcFuturesRiskMetrics(
+    { twd: 500000, usd: 0 },
+    [
+        { symbol: 'MTX', direction: 'long', contracts: 2, entryPrice: 23000, currentPrice: 23200, multiplier: 50, marginUsed: 350500, currency: 'TWD' },
+        { symbol: 'TMF', direction: 'long', contracts: 5, entryPrice: 23000, currentPrice: 23200, multiplier: 10, marginUsed: 175250, currency: 'TWD' },
+    ],
+    32
+);
+// 未平倉損益 = (200*2*50) + (200*5*10) = 20000 + 10000 = 30000 → 權益數 = 530000
+// 原始保證金 = 525750 → 可動用保證金 = 4250 → 風險指標 = 530000/525750*100 = 100.81% → '危險' (<120%)
+// 台指每點價值 = 2*50 + 5*10 = 150（等效 3 口小台）
+// 距追繳 (77% = 404827.5) 緩衝 = 125172.5 → 可扛 floor(125172.5 / 150) = 834 點
+expect('期貨權益數正確', fr.equity, 530000);
+expect('期貨原始保證金正確', fr.initialMargin, 525750);
+expect('期貨可動用保證金 = 權益數 - 原始保證金', fr.excessMargin, 4250);
+expect('風險指標 100.8% 統一歸類為危險', fr.riskLevel.label, '危險');
+expect('台指淨每點價值 = 150', fr.taiexPointValue, 150);
+expect('台指等效小台口數 = 3', fr.taiexNetSmallLots, 3);
+expect('距追繳可扛點數 = 834', fr.taiexBufferPointsCall, 834);
+
+// 驗證統一分級邊界
+const mkRisk = (eq, im) => calcFuturesRiskMetrics({ twd: eq }, [{ symbol: 'MTX', direction: 'long', contracts: 1, entryPrice: 20000, currentPrice: 20000, multiplier: 50, marginUsed: im }], 32).riskLevel.label;
+expect('風險指標 200% → 安全', mkRisk(200000, 100000), '安全');
+expect('風險指標 135% → 警戒', mkRisk(135000, 100000), '警戒');
+expect('風險指標 100% → 危險', mkRisk(100000, 100000), '危險');
+expect('風險指標 60% → 低於維持', mkRisk(60000, 100000), '低於維持');
+expect('風險指標 20% → 強制平倉', mkRisk(20000, 100000), '強制平倉');
+
+// 多空對沖的淨曝險計算
+const hedged = calcFuturesRiskMetrics(
+    { twd: 500000 },
+    [
+        { symbol: 'MTX', direction: 'long', contracts: 3, entryPrice: 20000, currentPrice: 20000, multiplier: 50, marginUsed: 300000 },
+        { symbol: 'MTX', direction: 'short', contracts: 1, entryPrice: 20000, currentPrice: 20000, multiplier: 50, marginUsed: 100000 },
+    ],
+    32
+);
+expect('多空總曝險 = 400萬', hedged.grossExposure, 4000000);
+expect('多空淨曝險 = +200萬', hedged.netExposure, 2000000);
+expect('多空淨每點價值 = +100', hedged.taiexPointValue, 100);
 
 console.log(failures ? `\n❌ ${failures} 項不一致` : '\n全部通過：重構未改變任何計算結果');
 // 在 Node 下以離開碼回報結果；其他 JS 引擎（例如用 jsc 快速跑）則略過

@@ -132,6 +132,120 @@ export const calcFuturesExposureContribution = (margin, positions, rate) => {
     return calcFuturesExposure(positions, rate) + Math.max(0, equity - used);
 };
 
+// 台指期系列代號（TX 大台、MTX/MXF 小台、TMF 微台），用來估算台指每點價值與可扛點數
+const isTaiexFutures = (sym) => {
+    const s = String(sym || '').toUpperCase();
+    return s.startsWith('TX') || s.startsWith('MTX') || s.startsWith('MXF') || s.startsWith('TMF');
+};
+
+/**
+ * 統一計算期貨頁與資金管理頁共用的風控與曝險指標（全部換算為台幣）。
+ *
+ * 為什麼集中算：
+ * 原本期貨頁（>=150% 安全 / 120% 危險）與資金管理頁（>=100% 充足 / 77% 維持 / 25% 強平）
+ * 分級標準打架，同一個風險指標切分頁會看到互相矛盾的標籤；且可動用保證金、追繳／強平緩衝、
+ * 多空淨曝險與台指每點價值都需要一致的計算邏輯。
+ */
+export const calcFuturesRiskMetrics = (margin = {}, positions = [], rate = 1) => {
+    const equity = calcFuturesEquity(margin, positions, rate);
+    const initialMargin = calcFuturesMarginUsed(positions, rate);
+    const maintenanceMargin = initialMargin * 0.77;
+    const forceCloseMargin = initialMargin * 0.25;
+    const excessMargin = equity - initialMargin;
+    const riskRatio = initialMargin > 0 ? (equity / initialMargin) * 100 : 0;
+
+    let riskLevel = {
+        key: 'none',
+        label: '',
+        textClass: 'text-gray-400',
+        badgeClass: 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400',
+        barClass: 'bg-gray-400',
+    };
+    if (initialMargin > 0) {
+        if (riskRatio < 25) {
+            riskLevel = {
+                key: 'force-close',
+                label: '強制平倉',
+                textClass: 'text-red-600 dark:text-red-400',
+                badgeClass: 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-400',
+                barClass: 'bg-red-600',
+            };
+        } else if (riskRatio < 77) {
+            riskLevel = {
+                key: 'margin-call',
+                label: '低於維持',
+                textClass: 'text-red-600 dark:text-red-400',
+                badgeClass: 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-400',
+                barClass: 'bg-red-500',
+            };
+        } else if (riskRatio < 120) {
+            riskLevel = {
+                key: 'danger',
+                label: '危險',
+                textClass: 'text-red-500 dark:text-red-400',
+                badgeClass: 'bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400',
+                barClass: 'bg-red-500',
+            };
+        } else if (riskRatio < 150) {
+            riskLevel = {
+                key: 'warn',
+                label: '警戒',
+                textClass: 'text-orange-500 dark:text-orange-400',
+                badgeClass: 'bg-orange-100 text-orange-800 dark:bg-orange-950/30 dark:text-orange-400',
+                barClass: 'bg-orange-400',
+            };
+        } else {
+            riskLevel = {
+                key: 'safe',
+                label: '安全',
+                textClass: 'text-emerald-600 dark:text-emerald-400',
+                badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400',
+                barClass: 'bg-emerald-500',
+            };
+        }
+    }
+
+    let longExposure = 0;
+    let shortExposure = 0;
+    let taiexPointValue = 0;
+    for (const p of positions) {
+        const val = num(p && p.currentPrice) * num(p && p.contracts) * num(p && p.multiplier) * rateFor(p, rate);
+        const isLong = p && p.direction === 'long';
+        if (isLong) longExposure += val;
+        else shortExposure += val;
+
+        if (p && isTaiexFutures(p.symbol)) {
+            const pv = num(p.contracts) * num(p.multiplier);
+            taiexPointValue += isLong ? pv : -pv;
+        }
+    }
+
+    const grossExposure = longExposure + shortExposure;
+    const netExposure = longExposure - shortExposure;
+    const bufferToCall = initialMargin > 0 ? equity - maintenanceMargin : 0;
+    const bufferToForceClose = initialMargin > 0 ? equity - forceCloseMargin : 0;
+    const absTaiexPv = Math.abs(taiexPointValue);
+
+    return {
+        equity,
+        initialMargin,
+        maintenanceMargin,
+        excessMargin,
+        riskRatio,
+        riskLevel,
+        bufferToCall,
+        bufferToForceClose,
+        grossExposure,
+        longExposure,
+        shortExposure,
+        netExposure,
+        taiexPointValue,
+        taiexNetSmallLots: taiexPointValue / 50,
+        taiexBufferPointsCall: (initialMargin > 0 && absTaiexPv > 0) ? Math.floor(bufferToCall / absTaiexPv) : null,
+        taiexBufferPointsForce: (initialMargin > 0 && absTaiexPv > 0) ? Math.floor(bufferToForceClose / absTaiexPv) : null,
+    };
+};
+
 // --- 彙總 ---
 
 /**
